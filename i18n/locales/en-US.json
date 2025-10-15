@@ -1,0 +1,965 @@
+ {
+  "language": "English",
+  "nav": {
+    "home": "Home",
+    "about": "About Us",
+    "welcome": "Welcome",
+    "dashboard": "Dashboard",
+    "main": "Main Menu",
+    "error": "Error",
+    "profile": "Profile",
+    "reset-password": "Reset Password",
+    "task-manager": "Task Manager",
+    "settings": "Settings",
+    "support": "Support",
+    "logout": "Logout",
+    "warehouse": "Warehouse",
+    "inventory": "Inventory",
+    "goods": "Goods",
+    "cyclecount": "Cycle Count",
+    "adjustment": "Adjustment",
+    "ASN": "ASN",
+    "sorting": "Sorting",
+    "DN": "DN",
+    "picking": "Picking",
+    "packing": "Packing",
+    "delivery": "Delivery",
+    "location": "Location",
+    "staff": "Staff",
+    "carrier": "Carrier",
+    "supplier": "Supplier",
+    "recipient": "Recipient",
+    "company": "Company",
+    "department": "Department",
+    "SYSTEM": "SYSTEM",
+    "WarehouseManger": "Warehouse Management",
+    "ASNManger": "ASN Management",
+    "InventoryManger": "Inventory Management",
+    "DNManger": "DN Management"
+  },
+  "button": {
+    "back-to-home": "Back to Home",
+    "reset": "Reset",
+    "search": "Search",
+    "process": "Process",
+    "clear_recents": "Clear Recents",
+    "print-to-pdf": "Print to PDF",
+    "upload": "Upload",
+    "close": "Close",
+    "confirm": "Confirm",
+    "save": "Save",
+    "complete": "Complete",
+    "delete": "Delete",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "generate": "Generate",
+    "edit": "Edit",
+    "print": "Print",
+    "approved": "Approved",
+    "next": "Next",
+    "previous": "Previous",
+    "replenish":"Replenish Picking"
+  },
+  "welcome-wms": {
+    "title": "Welcome to Warehouse Management System (WMS)",
+    "description": "WMS (Warehouse Management System) is an intelligent solution designed to optimize warehouse operations. It enhances logistics efficiency and accuracy through automated inventory management, real-time order processing, and intelligent storage layout. The system supports seamless integration with ERP, TMS, etc., enabling full supply chain collaboration to help enterprises reduce operational costs and improve customer satisfaction.",
+    "download-apk": "Scan to download mobile APP",
+    "download-description": "Manage warehouse anytime, anywhere with more efficient mobile operations",
+    "download-description-more": "Break free from fixed workstations! The mobile APP allows real-time synchronization of warehouse dynamics. Complete inbound, outbound, transfer, and counting operations by scanning codes anywhere. Improve on-site efficiency for smarter, more flexible warehouse management!",
+    "version-support": "Currently supports Android only"
+  },
+  "error": {
+    "http-401": {
+      "title": "401 Unauthorized",
+      "description": "The requested resource requires valid credentials. Please log in and try again or contact the system administrator."
+    },
+    "http-404": {
+      "title": "404 Page Not Found",
+      "description": "The page you are trying to access cannot be found. It may have been removed or never existed. Please check the URL or return to the navigation menu."
+    },
+    "http-500": {
+      "title": "500 Internal Server Error",
+      "description": "The server encountered an unexpected error. Technical team has been notified. Please try again later or contact the system administrator."
+    },
+    "http-403": {
+      "title": "403 Forbidden",
+      "description": "You do not have permission to access this resource. Contact your system administrator for more information."
+    },
+    "upload-image-type": "Invalid product image format. Please upload JPG or PNG files.",
+    "upload-image-size": "Product image size exceeds 5MB. Please upload a smaller file.",
+    "upload-image-no-file": "Please select a product image file to upload.",
+    "generic-required": "{field} cannot be empty",
+    "file-upload": "File upload failed. Please try again later.",
+    "no-found-data": "No relevant data found. Please check your search criteria or try again later.",
+    "empty-items": "No items to process",
+    "check-quantities": "Please check the quantities entered. Ensure they are valid and within the allowed range."
+  },
+  "search": {
+    "people": "People",
+    "pages": "Pages",
+    "articles": "Articles",
+    "tags": "Keywords"
+  },
+  "footer": {
+    "copyright": "Copyright © {year} {company}. Technology developed by {developer}",
+    "company": "GoodsMart",
+    "developer": "Loop"
+  },
+  "pagination": {
+    "page-size": "Items per page",
+    "page": "Page",
+    "of": "/",
+    "total": "Total",
+    "items": "Items",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "upload": {
+    "title": "Upload File",
+    "description": "Drag and drop files here, or <span class='filepond--label-action'>click</span> to select files.",
+    "drag-and-drop": "Drag & drop files here",
+    "select-file": "Select File",
+    "success": "File uploaded successfully!",
+    "upload-csv": "Upload CSV File",
+    "upload-csv-description": "Please upload a CSV file that meets the requirements with correct formatting.",
+    "download-template": "Download Template",
+    "duplicate-record": "Duplicate Record",
+    "skip": "Skip",
+    "active": "Activate",
+    "append": "Append",
+    "overwrite": "Overwrite",
+    "skip-tips": "No changes, keep original record",
+    "active-tips": "Activate only",
+    "append-tips": "Fill blanks & activate",
+    "overwrite-tips": "Full overwrite & activate",
+    "button": {
+      "uploading": "Uploading...",
+      "upload": "Upload"
+    },
+    "image": {
+      "upload": "Upload Product Image",
+      "success": "Product image uploaded successfully",
+      "delete-success": "Product image deleted successfully",
+      "delete-failed": "Failed to delete image. Please try again later."
+    }
+  },
+  "profile":{
+    "current-password": "Current Password",
+    "new-password": "New Password",
+    "confirm-password": "Confirm Password"
+  },
+  "common": {
+    "account": "Username / Email",
+    "password": "Password",
+    "search": "Search",
+    "search-placeholder": "Search...",
+    "all-warehouse": "All Warehouses",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "pending": "Pending",
+      "approved": "Approved",
+      "started": "Started",
+      "in-progress": "In Progress",
+      "sorting": "Sorting",
+      "closed": "Closed",
+      "received": "Received",
+      "sorted": "Sorted",
+      "picked": "Picked",
+      "packed": "Packed",
+      "delivered": "Delivered",
+      "completed": "Completed",
+      "processed": "Processed",
+      "signed": "Signed",
+      "created": "Created",
+      "cancelled": "Cancelled",
+      "loading": "Loading",
+      "all": "All",
+      "nothing-show": "Nothing to show"
+    },
+    "entities": {
+      "goods": "Goods",
+      "warehouse": "Warehouse",
+      "department": "Department",
+      "company": "Company",
+      "inventory": "Inventory",
+      "location": "Location",
+      "staff": "Staff",
+      "recipient": "Recipient",
+      "supplier": "Supplier",
+      "carrier": "Carrier",
+      "task": "Task",
+      "role": "Role",
+      "user": "User"
+    },
+    "fields": {
+      "id": "ID",
+      "name": "Name",
+      "password": "Password",
+      "code": "Code",
+      "description": "Description",
+      "quantity": "Quantity",
+      "remark": "Remark",
+      "type": "Type",
+      "action": "Action",
+      "difference": "Difference",
+      "reason": "Reason",
+      "status": "Status",
+      "old-status": "Old Status",
+      "new-status": "New Status",
+      "address": "Address",
+      "phone": "Phone",
+      "email": "Email",
+      "zip": "Zip Code",
+      "logo": "Logo",
+      "currency": "Currency",
+      "website": "Website",
+      "contact": "Contact",
+      "country": "Country/Region",
+      "base-info": "Basic Information",
+      "items": "Items",
+      "task-logs": "Task Logs",
+      "task-id": "Task ID",
+      "task-details": "Task Details",
+      "batch-id": "Batch ID",
+      "tracking-number": "Tracking Number",
+      "summary": "Summary",
+      "delivery-info": "Delivery Information",
+      "shipping-cost": "Shipping Cost"
+    },
+    "dates": {
+      "updated": "Updated",
+      "created": "Created",
+      "completed": "Completed",
+      "closed": "Closed",
+      "approved": "Approved",
+      "putaway": "Putaway",
+      "removal": "Removal",
+      "adjustment": "Adjusted",
+      "transfer": "Transferred",
+      "cycle-count": "Counted",
+      "sorting": "Sorted",
+      "picked": "Picked",
+      "packed": "Packed",
+      "delivered": "Delivered",
+      "signed": "Signed",
+      "scheduled": "Scheduled",
+      "changed": "Changed",
+      "started": "Started",
+      "expected-arrival": "Expected Arrival",
+      "actual-arrival": "Actual Arrival"
+    },
+    "users": {
+      "creator": "Creator",
+      "operator": "Operator",
+      "approver": "Approver",
+      "manager": "Manager"
+    },
+    "locations": {
+      "from": "From Location",
+      "to": "To Location",
+      "placeholder": "Select location",
+      "standard": "Standard",
+      "damaged": "Damaged",
+      "return": "Return"
+    },
+    "quantities": {
+      "system": "System Quantity",
+      "actual": "Actual Quantity",
+      "adjusted": "Adjusted Quantity",
+      "expected": "Expected Quantity",
+      "available": "Available Quantity",
+      "damaged": "Damaged Quantity",
+      "sorted": "Sorted Quantity",
+      "picked": "Picked Quantity",
+      "packed": "Packed Quantity",
+      "delivered": "Delivered Quantity",
+      "total-system": "Total System",
+      "total-actual": "Total Actual",
+      "total-available": "Total Available",
+      "total-expected": "Total Expected",
+      "total-adjusted": "Total Adjusted",
+      "total-difference": "Total Difference",
+      "total-volume": "Total Volume",
+      "total-weight": "Total Weight",
+      "total-damage": "Total Damaged",
+      "total-sorted": "Total Sorted",
+      "total-picked": "Total Picked",
+      "total-packed": "Total Packed",
+      "total-delivered": "Total Delivered",
+      "total-items": "Total Items",
+      "max": "Max Quantity"
+    },
+    "inventory-ops": {
+      "storage": "Storage",
+      "putaway": "Putaway",
+      "removal": "Removal",
+      "adjustment": "Inventory Adjustment",
+      "transfer": "Inventory Transfer",
+      "cycle-count": "Cycle Count"
+    },
+    "operations": {
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "view": "View",
+      "create": "Create",
+      "add-item": "Add Item",
+      "edit-remark": "Edit Remark"
+    },
+    "units": {
+      "weight": "kg",
+      "length": "mm",
+      "volume": "m³"
+    },
+    "placeholders": {
+      "name": "Enter name",
+      "code": "Enter code",
+      "password": "Enter password",
+      "description": "Enter description",
+      "address": "Enter address",
+      "phone": "Enter phone number",
+      "email": "Enter email",
+      "zip": "Enter zip code",
+      "contact": "Enter contact",
+      "country": "Enter country/region",
+      "quantity": "Enter quantity",
+      "remark": "Enter remark",
+      "goods-code": "Enter goods code",
+      "reason": "Enter reason",
+      "tracking-number": "Enter tracking number"
+    },
+    "tips": {
+      "name": "Max 100 characters",
+      "code": "Max 50 characters",
+      "country": "Two uppercase letters (e.g., CN/JP/US)",
+      "readonly": "Read-only"
+    },
+    "validation": {
+      "name-required": "{entity} name cannot be empty",
+      "email-required": "Email cannot be empty",
+      "email-format": "Invalid email format",
+      "password-required": "Password cannot be empty",
+      "password-min-length": "Password must be at least {min} characters",
+      "country-required": "Country cannot be empty",
+      "country-format": "Invalid country format (use two uppercase letters e.g., CN/JP/US)",
+      "role-min-count": "Select at least one role",
+      "warehouse-required": "Select a warehouse",
+      "goods-item-required": "Select at least one product",
+      "supplier-required": "Select a supplier",
+      "type-required": "Select a type",
+      "address-required": "Address cannot be empty",
+      "expected-shipping-date-required": "Expected shipping date required",
+      "quantity-required": "Quantity cannot be empty",
+      "goods-exists": "Product already exists in list",
+      "file-required": "File cannot be empty",
+      "csv-only": "Only CSV files are allowed",
+      "company-required": "Company cannot be empty",
+      "current-password-required": "Current password cannot be empty",
+      "new-password-required": "New password cannot be empty",
+      "confirm-password-required": "Please confirm your new password",
+      "password-complexity": "Password must be at least {min} characters and include uppercase, lowercase, number, and special character",
+      "password-mismatch": "New password and confirmation do not match",
+      "password-same-as-old": "New password cannot be the same as the current password"
+    },
+    "statistics": {
+      "title": "Statistics",
+      "this-month": "This Month",
+      "last-year": "Past Year",
+      "last-month": "Past Month",
+      "last-n-months": "Last {n} Months"
+    }
+  },
+  "roles": {
+    "admin": "System Administrator",
+    "company_admin": "Company Administrator",
+    "warehouse_admin": "Warehouse Administrator",
+    "warehouse_operator": "Warehouse Operator",
+    "default_role": "Regular User"
+  },
+  "login": {
+    "title": "Warehouse Management System (WMS)",
+    "welcome-message": "Connect the 2D world, break business boundaries",
+    "forgot-password": "Forgot Password?",
+    "sign-in": "Sign In",
+    "sign-up": "Sign Up",
+    "remember-me": "Remember Me",
+    "errors": {
+      "browser-not-support": "Browser does not support password auto-fill",
+      "invalid-credentials": "Invalid credentials",
+      "login-failed": "Login failed",
+      "decryption-failed": "Decryption failed",
+      "credential-parse-failed": "Credential parse failed"
+    },
+    "marketing": {
+      "dare-to-dream-title": "Dare to Dream",
+      "dare-to-dream": "Take the first step and chase your dreams. We'll be with you no matter the challenge.",
+      "path-to-success-title": "Path to Success",
+      "path-to-success": "Your journey to success starts here. Let's create a brilliant future together.",
+      "fearless-journey-title": "Fearless Journey",
+      "fearless-journey": "Pursue excellence without fear. Begin your new business journey with us."
+    }
+  },
+  "inventory": {
+    "title": "Inventory Management",
+    "fields": {
+      "total": "Total",
+      "asn": "ASN",
+      "received": "Received",
+      "sorted": "Sorted",
+      "onhand": "On Hand",
+      "available": "Available",
+      "sale": "Sale",
+      "locked": "Locked",
+      "damage": "Damaged",
+      "return": "Return",
+      "dn": "DN",
+      "picked": "Picked",
+      "packed": "Packed",
+      "delivered": "Delivered"
+    },
+    "thresholds": {
+      "low": "Low Threshold",
+      "high": "High Threshold",
+      "low-stock": "Low Stock",
+      "high-stock": "High Stock"
+    },
+    "tooltips": {
+      "total": "Total Inventory: Includes on-hand, damaged, returned, sorted, picked, and packed.",
+      "received": "Received: Quantity received but not yet sorted. Not included in total inventory calculation.",
+      "asn": "ASN Inventory: Pre-arrival notification confirmed but not physically arrived. Not included in current inventory calculation.",
+      "dn": "DN Inventory: Outbound order waiting for picking. Generated DN not yet picked. Excluded from current inventory calculation.",
+      "low-threshold": "Low threshold: Triggers restock request when inventory falls below this level.",
+      "high-threshold": "High threshold: Triggers clearance request when inventory exceeds this level.",
+      "available": "Available Stock: Current stock quantity ready for use (includes physical on-hand + damaged + returned items), excluding locked and pending outbound inventory.",
+      "sale": "Sellable Stock: Current stock quantity available for sale, excluding locked and pending outbound inventory."
+    }
+  },
+  "company": {
+    "title": "Company Management",
+    "entity": "Company",
+    "fields": {
+      "name": "Company Name",
+      "description": "Company Description",
+      "address": "Company Address"
+    },
+    "form": {
+      "placeholders": {
+        "name": "Enter company name",
+        "description": "Enter company description"
+      }
+    },
+    "operations": {
+      "add": "Add Company",
+      "edit": "Edit Company",
+      "delete": "Delete Company"
+    }
+  },
+  "department": {
+    "title": "Department Management",
+    "entity": "Department",
+    "fields": {
+      "name": "Department Name",
+      "description": "Department Description"
+    },
+    "form": {
+      "placeholders": {
+        "name": "Enter department name",
+        "description": "Enter department description"
+      }
+    },
+    "operations": {
+      "add": "Add Department",
+      "edit": "Edit Department",
+      "delete": "Delete Department"
+    }
+  },
+  "warehouse": {
+    "title": "Warehouse Management",
+    "entity": "Warehouse",
+    "fields": {
+      "name": "Warehouse Name",
+      "description": "Warehouse Description"
+    },
+    "form": {
+      "placeholders": {
+        "name": "Enter warehouse name",
+        "description": "Enter warehouse description"
+      }
+    },
+    "operations": {
+      "add": "Add Warehouse",
+      "edit": "Edit Warehouse",
+      "delete": "Delete Warehouse"
+    }
+  },
+  "location": {
+    "title": "Location Management",
+    "entity": "Location",
+    "fields": {
+      "code": "Location Code",
+      "capacity": "Capacity",
+      "width": "Width",
+      "depth": "Depth",
+      "height": "Height",
+      "description": "Description",
+      "warehouse": "Warehouse",
+      "location-type": "Location Type",
+      "specification": "Specification"
+    },
+    "form": {
+      "placeholders": {
+        "code": "Enter location code",
+        "capacity": "Enter capacity",
+        "width": "Enter width",
+        "depth": "Enter depth",
+        "height": "Enter height"
+      }
+    },
+    "tips": {
+      "code": "Max 50 characters",
+      "capacity": "m³ (3 decimals)",
+      "dimensions": "cm"
+    },
+    "operations": {
+      "add": "Add Location",
+      "edit": "Edit Location",
+      "delete": "Delete Location"
+    },
+    "validation": {
+      "code-required": "Location code required",
+      "warehouse-required": "Select warehouse",
+      "location-type-required": "Select location type",
+      "goods": {
+        "required": "Select a product"
+      },
+      "quantity-required": "Enter quantity",
+      "reason-required": "Enter reason"
+    }
+  },
+  "staff": {
+    "title": "Staff Management",
+    "entity": "Staff",
+    "fields": {
+      "name": "Staff Name",
+      "department": "Department",
+      "position": "Position",
+      "employee-number": "Employee Number",
+      "hire-date": "Hire Date",
+      "roles": "Roles",
+      "avater": "Avatar"
+    },
+    "form": {
+      "placeholders": {
+        "name": "Enter staff name",
+        "position": "Enter position",
+        "employee-number": "Enter employee number"
+      }
+    },
+    "operations": {
+      "add": "Add Staff",
+      "edit": "Edit Staff",
+      "delete": "Delete Staff"
+    }
+  },
+  "supplier": {
+    "title": "Supplier Management",
+    "entity": "Supplier",
+    "fields": {
+      "name": "Supplier Name",
+      "description": "Supplier Description"
+    },
+    "form": {
+      "placeholders": {
+        "name": "Enter supplier name",
+        "description": "Enter supplier description"
+      }
+    },
+    "operations": {
+      "add": "Add Supplier",
+      "edit": "Edit Supplier",
+      "delete": "Delete Supplier"
+    }
+  },
+  "carrier": {
+    "title": "Carrier Management",
+    "entity": "Carrier",
+    "fields": {
+      "name": "Carrier Name",
+      "description": "Carrier Description"
+    },
+    "operations": {
+      "add": "Add Carrier",
+      "edit": "Edit Carrier",
+      "delete": "Delete Carrier"
+    }
+  },
+  "recipient": {
+    "title": "Recipient Management",
+    "entity": "Recipient",
+    "fields": {
+      "name": "Recipient Name",
+      "description": "Recipient Description"
+    },
+    "operations": {
+      "add": "Add Recipient",
+      "edit": "Edit Recipient",
+      "delete": "Delete Recipient"
+    }
+  },
+  "goods": {
+    "title": "Goods Management",
+    "entity": "Goods",
+    "fields": {
+      "name": "Product Name",
+      "description": "Description",
+      "manufacturer": "Manufacturer",
+      "brand": "Brand",
+      "category": "Category",
+      "code": "Code",
+      "tags": "Tags",
+      "price": "Price",
+      "discount-price": "Discount Price",
+      "off": "Discount",
+      "specification": "Specification",
+      "currency": "Currency",
+      "unit": "Unit",
+      "weight": "Weight",
+      "length": "Length",
+      "width": "Width",
+      "height": "Height",
+      "volume": "Volume",
+      "image": "Image",
+      "product-date": "Production Date",
+      "expiry-date": "Expiry Date"
+    },
+    "form": {
+      "placeholders": {
+        "name": "Enter product name",
+        "code": "Enter product code",
+        "category": "Select category",
+        "manufacturer": "Enter manufacturer",
+        "brand": "Enter brand",
+        "price": "Enter price",
+        "discount-price": "Enter discount price",
+        "weight": "Enter weight",
+        "length": "Enter length",
+        "width": "Enter width",
+        "height": "Enter height",
+        "volume": "Enter volume",
+        "tags": "Enter tags",
+        "tag-add": "Add as new tag",
+        "product-date": "Select production date",
+        "expiry-date": "Select expiry date",
+        "quantity": "Enter quantity",
+        "remark": "Enter remarks"
+      },
+      "tips": {
+        "code": "Max 50 characters",
+        "weight": "kg (3 decimals)",
+        "dimensions": "mm"
+      }
+    },
+    "operations": {
+      "add": "Add Product",
+      "edit": "Edit Product",
+      "delete": "Delete Product",
+      "view-inventory": "View Inventory",
+      "create-putaway": "Create Putaway",
+      "create-removal": "Create Removal",
+      "create-adjustment": "Create Adjustment",
+      "create-transfer": "Create Transfer"
+    },
+    "validation": {
+      "location": {
+        "required": "Select location",
+        "not-same": "Locations cannot be identical",
+        "same-warehouse": "Locations must be in same warehouse"
+      },
+      "code-required": "Product code required",
+      "quantity-required": "Enter quantity",
+      "reason-required": "Enter reason"
+    },
+    "action-results": {
+      "not-found": "Product not found. Verify code or name."
+    }
+  },
+  "cyclecount": {
+    "title": "Cycle Counting",
+    "entity": "Cycle Count",
+    "fields": {
+      "name": "Count Task Name",
+      "description": "Description",
+      "status": "Status",
+      "scheduled-date": "Scheduled Date",
+      "actual-date": "Actual Date",
+      "difference": "Difference",
+      "reason": "Reason",
+      "items": "Items"
+    },
+    "form": {
+      "placeholders": {
+        "name": "Enter count name",
+        "description": "Enter description",
+        "reason": "Enter difference reason",
+        "search": "Count No./Product Code",
+        "scheduled-date": "Select scheduled date"
+      }
+    },
+    "operations": {
+      "add": "Add Count",
+      "edit": "Edit Count",
+      "delete": "Delete Count",
+      "back-to-list": "Back to Count List"
+    },
+    "validation": {
+      "no-valid-records": "No valid records to adjust."
+    }
+  },
+  "adjustment": {
+    "title": "Adjustment",
+    "entity": "Adjustment",
+    "fields": {
+      "name": "Adjustment Name",
+      "description": "Description",
+      "status": "Status",
+      "scheduled-date": "Scheduled Date",
+      "actual-date": "Actual Date",
+      "difference": "Difference",
+      "reason": "Reason",
+      "items": "Items"
+    },
+    "form": {
+      "placeholders": {
+        "name": "Enter adjustment name",
+        "description": "Enter description",
+        "reason": "Enter reason",
+        "search": "Adjustment No./Product Code",
+        "scheduled-date": "Select scheduled date"
+      }
+    },
+    "operations": {
+      "add": "Add Adjustment",
+      "edit": "Edit Adjustment",
+      "delete": "Delete Adjustment",
+      "back-to-list": "Back to Adjustment List"
+    }
+  },
+  "asn": {
+    "title": "ASN Management",
+    "entity": "ASN",
+    "fields": {
+      "number": "ASN No.",
+      "type": "Type",
+      "expected-arrival-date": "Expected Arrival",
+      "actual-date": "Actual Arrival",
+      "items": "Products",
+      "details": "ASN Details",
+      "tracking-info": "Tracking Info"
+    },
+    "form": {
+      "placeholders": {
+        "number": "Enter ASN number",
+        "supplier": "Select supplier",
+        "search": "ASN/Product Code/Tracking No.",
+        "expected-arrival-date": "Select expected arrival"
+      }
+    },
+    "operations": {
+      "add": "Add ASN",
+      "edit": "Edit ASN",
+      "delete": "Delete ASN",
+      "back-to-list": "Back to ASN List",
+      "sorting": "Sorting",
+      "receive": "Receive"
+    },
+    "type": {
+      "inbound": "Standard Inbound",
+      "return_from_customer": "Customer Return",
+      "transfer": "Transfer"
+    },
+    "tips": {
+      "created-successfully": "ASN created by {creator} successfully.",
+      "started-successfully": "ASN processing started.",
+      "received-successfully": "Package received.",
+      "sorting-operation-message": "{operator} sorted {sortedQuantity} items with {damagedQuantity} damaged (expected {expectedQuantity})."
+    }
+  },
+  "sorting": {
+    "title": "Sorting Management",
+    "entity": "Sorting Task",
+    "fields": {
+      "number": "Sorting No.",
+      "status": "Status",
+      "scheduled-date": "Scheduled Date",
+      "actual-date": "Actual Date",
+      "items": "Items",
+      "details": "Task Details"
+    },
+    "form": {
+      "placeholders": {
+        "number": "Enter sorting number",
+        "search": "Sorting No./ASN/Product Code"
+      }
+    },
+    "operations": {
+      "add": "Add Sorting Task",
+      "edit": "Edit Sorting Task",
+      "delete": "Delete Sorting Task",
+      "back-to-list": "Back to Sorting List"
+    }
+  },
+  "dn": {
+    "title": "DN Management",
+    "entity": "DN",
+    "fields": {
+      "number": "DN No.",
+      "type": "Type",
+      "scheduled-date": "Scheduled Date",
+      "actual-date": "Actual Date",
+      "shipping-address": "Shipping Address",
+      "items": "Products",
+      "details": "DN Details",
+      "packing-info": "Packing Info",
+      "special-handling": "Special Handling",
+      "transportation": "Transportation",
+      "order-no": "Order No.",
+      "tracking-info": "Tracking Info"
+    },
+    "form": {
+      "placeholders": {
+        "number": "Enter DN number",
+        "recipient": "Select recipient",
+        "search": "DN/Product Code/Tracking No.",
+        "scheduled-date": "Select scheduled date",
+        "shipping-address": "Enter shipping address",
+        "order-no": "Enter order number"
+      }
+    },
+    "operations": {
+      "add": "Add DN",
+      "edit": "Edit DN",
+      "delete": "Delete DN",
+      "back-to-list": "Back to DN List",
+      "picking": "Picking",
+      "packing": "Packing",
+      "delivery": "Delivery",
+      "sign": "Sign"
+    },
+    "type": {
+      "shipping": "Standard Outbound",
+      "return_to_supplier": "Supplier Return",
+      "damage_to_supplier": "Damage to Supplier",
+      "transfer": "Transfer"
+    },
+    "transportation": {
+      "express": "Express Delivery",
+      "pickup": "Self Pickup",
+      "courier": "Courier Delivery",
+      "air": "Air Freight",
+      "sea": "Sea Freight",
+      "land": "Land Freight",
+      "rail": "Rail Transport",
+      "drone": "Drone Delivery"
+    },
+    "tips": {
+      "created-successfully": "DN created by {creator} successfully.",
+      "started-successfully": "DN processing started.",
+      "picking-operation-message": "{creator} picked {pickedQuantity} items (expected {expectedQuantity}).",
+      "packing-operation-message": "{operator} packed {packedQuantity} items."
+    }
+  },
+  "picking": {
+    "title": "Picking Management",
+    "entity": "Picking Task",
+    "fields": {
+      "number": "Picking No.",
+      "status": "Status",
+      "scheduled-date": "Scheduled Date",
+      "actual-date": "Actual Date",
+      "items": "Items",
+      "details": "Task Details"
+    },
+    "form": {
+      "placeholders": {
+        "number": "Enter picking number",
+        "search": "Picking No./DN/Product Code"
+      }
+    },
+    "operations": {
+      "add": "Add Picking Task",
+      "edit": "Edit Picking Task",
+      "delete": "Delete Picking Task",
+      "back-to-list": "Back to Picking List"
+    }
+  },
+  "packing": {
+    "title": "Packing Management",
+    "entity": "Packing Task",
+    "fields": {
+      "number": "Packing No.",
+      "status": "Status",
+      "scheduled-date": "Scheduled Date",
+      "actual-date": "Actual Date",
+      "items": "Items",
+      "details": "Task Details"
+    },
+    "form": {
+      "placeholders": {
+        "number": "Enter packing number",
+        "search": "Packing No./DN/Product Code"
+      }
+    },
+    "operations": {
+      "add": "Add Packing Task",
+      "edit": "Edit Packing Task",
+      "delete": "Delete Packing Task",
+      "back-to-list": "Back to Packing List"
+    }
+  },
+  "delivery": {
+    "title": "Delivery Management",
+    "entity": "Delivery Task",
+    "fields": {
+      "number": "Delivery No.",
+      "status": "Status",
+      "scheduled-date": "Scheduled Date",
+      "actual-date": "Actual Date",
+      "detail-info": "Delivery Details",
+      "items": "Items",
+      "details": "Task Details"
+    },
+    "form": {
+      "placeholders": {
+        "number": "Enter delivery number",
+        "search": "Delivery No./DN/Product Code",
+        "signed-time": "Select signature time"
+      }
+    },
+    "operations": {
+      "add": "Add Delivery Task",
+      "edit": "Edit Delivery Task",
+      "delete": "Delete Delivery Task",
+      "back-to-list": "Back to Delivery List"
+    }
+  },
+  "action-results": {
+    "success": "Success",
+    "failed": "Failed. Please try again later",
+    "task-start-process": "Task started",
+    "task-complete": "Task completed",
+    "task-item-complete": "Task item completed",
+    "task-save-changes-before-complete": "Save changes before completing task",
+    "task-approved": "Task approved",
+    "op-success": "{operation} {entity} successful",
+    "op-failed": "{operation} {entity} failed. Please try later.",
+    "delete-confirm-title": "Delete Confirmation",
+    "delete-confirm": "Delete this {entity}? This action cannot be undone.",
+    "complete-confirm-title": "Complete Confirmation",
+    "complete-confirm": "Complete this {entity}? No further edits possible after completion.",
+    "create-confirm-title": "Create Confirmation",
+    "create-confirm": "Create this {entity}? Verify all information.",
+    "not-found": "{entity} not found. Verify {identifier} or name.",
+    "more-items-found": "Found {n} results. Refine keywords for accuracy."
+  }
+}

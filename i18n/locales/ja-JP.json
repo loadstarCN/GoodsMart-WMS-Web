@@ -1,0 +1,965 @@
+{
+  "language": "日本語",
+  "nav": {
+    "home": "ホーム",
+    "about": "私たちについて",
+    "welcome": "ようこそ",
+    "dashboard": "ダッシュボード",
+    "main": "メインメニュー",
+    "error": "エラー",
+    "profile": "プロフィール",
+    "reset-password": "パスワードリセット",
+    "task-manager": "タスク管理",
+    "settings": "設定",
+    "support": "サポート",
+    "logout": "ログアウト",
+    "warehouse": "倉庫",
+    "inventory": "在庫",
+    "goods": "商品",
+    "cyclecount": "サイクルカウント",
+    "adjustment": "在庫調整",
+    "ASN": "ASN",
+    "sorting": "仕分け",
+    "DN": "DN",
+    "picking": "ピッキング",
+    "packing": "梱包",
+    "delivery": "配送",
+    "location": "ロケーション",
+    "staff": "スタッフ",
+    "carrier": "運送業者",
+    "supplier": "サプライヤー",
+    "recipient": "受取先",
+    "company": "会社",
+    "department": "部門",
+    "SYSTEM": "システム",
+    "WarehouseManger": "倉庫管理",
+    "ASNManger": "ASN管理",
+    "InventoryManger": "在庫管理",
+    "DNManger": "DN管理"
+  },
+  "button": {
+    "back-to-home": "ホームに戻る",
+    "reset": "リセット",
+    "search": "検索",
+    "process": "処理",
+    "clear_recents": "最近をクリア",
+    "print-to-pdf": "PDFとして印刷",
+    "upload": "アップロード",
+    "close": "閉じる",
+    "confirm": "確認",
+    "save": "保存",
+    "complete": "完了",
+    "delete": "削除",
+    "submit": "送信",
+    "cancel": "キャンセル",
+    "generate": "生成",
+    "edit": "編集",
+    "print": "印刷",
+    "approved": "承認済み",
+    "next": "次へ",
+    "previous": "前へ",
+    "replenish":"補充"
+  },
+  "welcome-wms": {
+    "title": "倉庫管理システム（WMS）へようこそ",
+    "description": "WMS（倉庫管理システム）は、自動化された在庫管理、リアルタイム発注処理、インテリジェントな倉庫レイアウトにより物流効率と精度を向上させる倉庫運用最適化ソリューションです。ERP、TMSなどとのシームレスな連携でサプライチェーン全体の協働を実現し、企業の運用コスト削減と顧客満足度向上を支援します。",
+    "download-apk": "モバイルアプリをダウンロード",
+    "download-description": "いつでもどこでも倉庫管理を効率的に",
+    "download-description-more": "固定作業場からの解放！モバイルアプリで倉庫の動きをリアルタイム同期。場所を問わず、コードスキャンで入庫、出庫、移動、棚卸を完了。現場作業効率を向上させ、倉庫管理をよりスマートに柔軟に！",
+    "version-support": "現在Androidのみ対応"
+  },
+  "error": {
+    "http-401": {
+      "title": "401 未認証",
+      "description": "要求されたリソースには有効な認証情報が必要です。ログイン後に再試行するかシステム管理者に連絡してください。"
+    },
+    "http-404": {
+      "title": "404 ページが見つかりません",
+      "description": "アクセスしようとしたページが見つかりません。削除されたか、存在しなかった可能性があります。URLを確認するかナビゲーションメニューから再アクセスしてください。"
+    },
+    "http-500": {
+      "title": "500 サーバー内部エラー",
+      "description": "サーバーが予期せぬエラーに遭遇しました。技術チームに通知済みです。後で再試行するかシステム管理者に連絡してください。"
+    },
+    "http-403": {
+      "title": "403 アクセス禁止",
+      "description": "このリソースへのアクセス権限がありません。詳細についてはシステム管理者に連絡してください。"
+    },
+    "upload-image-type": "商品画像形式が不正です。JPGまたはPNG形式をアップロードしてください。",
+    "upload-image-size": "商品画像が5MBを超えています。再アップロードしてください。",
+    "upload-image-no-file": "アップロードする商品画像ファイルを選択してください。",
+    "generic-required": "{field}は必須です",
+    "file-upload": "ファイルアップロードに失敗しました。後で再試行してください。",
+    "no-found-data": "関連データが見つかりません。検索条件を確認するか後で再試行してください。",
+    "empty-items": "処理する項目がありません。項目を追加してください。",
+    "check-quantities": "数量を確認してください。システム数量と実数量が一致しません。"
+  },
+  "search": {
+    "people": "ユーザー",
+    "pages": "ページ",
+    "articles": "記事",
+    "tags": "キーワード"
+  },
+  "footer": {
+    "copyright": "著作権 © {year} {company}，技術開発：{developer}",
+    "company": "GoodsMart",
+    "developer": "Loop"
+  },
+  "pagination": {
+    "page-size": "ページあたり件数",
+    "page": "ページ",
+    "of": "/",
+    "total": "合計",
+    "items": "項目",
+    "previous": "前",
+    "next": "次"
+  },
+  "upload": {
+    "title": "ファイルアップロード",
+    "description": "ファイルをドラッグ＆ドロップするか、<span class='filepond--label-action'>クリック</span>してファイルを選択してください。",
+    "drag-and-drop": "ファイルをここにドラッグ＆ドロップ",
+    "select-file": "ファイルを選択",
+    "success": "ファイルのアップロードが成功しました！",
+    "upload-csv": "CSVファイルのアップロード",
+    "upload-csv-description": "所定の書式要件を満たすCSVファイルをアップロードしてください。",
+    "download-template": "テンプレートをダウンロード",
+    "duplicate-record": "重複レコード",
+    "skip": "スキップ",
+    "active": "アクティベート",
+    "append": "補充",
+    "overwrite": "上書き",
+    "skip-tips": "変更なし・元のレコードを維持",
+    "active-tips": "アクティベートのみ",
+    "append-tips": "空白補充＋アクティベート",
+    "overwrite-tips": "全上書き＋アクティベート",
+    "button": {
+      "uploading": "アップロード中...",
+      "upload": "アップロード"
+    },
+    "image": {
+      "upload": "商品画像のアップロード",
+      "success": "商品画像が正常にアップロードされました",
+      "delete-success": "商品画像が正常に削除されました",
+      "delete-failed": "画像の削除に失敗しました。後ほど再度お試しください。"
+    }
+  },
+  "profile":{
+    "current-password": "現在のパスワード",
+    "new-password": "新しいパスワード",
+    "confirm-password": "パスワード確認"
+  },
+  "common": {
+    "account": "ユーザー名 / メール",
+    "password": "パスワード",
+    "search": "検索",
+    "search-placeholder": "検索...",
+    "all-warehouse": "すべての倉庫",
+    "status": {
+      "active": "有効",
+      "inactive": "無効",
+      "pending": "保留中",
+      "approved": "承認済み",
+      "started": "開始済み",
+      "in-progress": "処理中",
+      "sorting": "仕分け中",
+      "closed": "終了",
+      "received": "受領済み",
+      "sorted": "仕分け済み",
+      "picked": "ピッキング済み",
+      "packed": "梱包済み",
+      "delivered": "配送済み",
+      "completed": "完了",
+      "processed": "処理済み",
+      "signed": "サイン済み",
+      "created": "作成済み",
+      "cancelled": "キャンセル済み",
+      "loading": "読込中",
+      "all": "全て",
+      "nothing-show": "表示なし"
+    },
+    "entities": {
+      "goods": "商品",
+      "warehouse": "倉庫",
+      "department": "部門",
+      "company": "会社",
+      "inventory": "在庫",
+      "location": "ロケーション",
+      "staff": "従業員",
+      "recipient": "受取人",
+      "supplier": "サプライヤー",
+      "carrier": "運送業者",
+      "task": "タスク",
+      "role": "ロール",
+      "user": "ユーザー"
+    },
+    "fields": {
+      "id": "ID",
+      "name": "名称",
+      "password": "パスワード",
+      "code": "コード",
+      "description": "説明",
+      "quantity": "数量",
+      "remark": "備考",
+      "type": "タイプ",
+      "action": "操作",
+      "difference": "差異",
+      "reason": "理由",
+      "status": "ステータス",
+      "old-status": "旧ステータス",
+      "new-status": "新ステータス",
+      "address": "住所",
+      "phone": "電話",
+      "email": "メール",
+      "zip": "郵便番号",
+      "logo": "ロゴ",
+      "currency": "通貨",
+      "website": "ウェブサイト",
+      "contact": "連絡先",
+      "country": "国/地域",
+      "base-info": "基本情報",
+      "items": "項目",
+      "task-logs": "タスクログ",
+      "task-id": "タスクID",
+      "task-details": "タスク明細",
+      "batch-id": "バッチID",
+      "tracking-number": "追跡番号",
+      "summary": "サマリー",
+      "delivery-info": "配送情報",
+      "shipping-cost": "送料"
+    },
+    "dates": {
+      "updated": "更新日時",
+      "created": "作成日時",
+      "completed": "完了日時",
+      "closed": "終了日時",
+      "approved": "承認日時",
+      "putaway": "入庫日時",
+      "removal": "出庫日時",
+      "adjustment": "調整日時",
+      "transfer": "移動日時",
+      "cycle-count": "棚卸日時",
+      "sorting": "仕分日時",
+      "picked": "ピッキング日時",
+      "packed": "梱包日時",
+      "delivered": "配送日時",
+      "signed": "受領日時",
+      "scheduled": "予定日",
+      "changed": "変更日時",
+      "started": "開始日時",
+      "expected-arrival": "予定到着",
+      "actual-arrival": "実績到着"
+    },
+    "users": {
+      "creator": "作成者",
+      "operator": "作業者",
+      "approver": "承認者",
+      "manager": "管理者"
+    },
+    "locations": {
+      "from": "移動元",
+      "to": "移動先",
+      "placeholder": "ロケーション選択",
+      "standard": "標準",
+      "damaged": "不良品",
+      "return": "返品"
+    },
+    "quantities": {
+      "system": "システム数量",
+      "actual": "実数量",
+      "adjusted": "調整後数量",
+      "expected": "予定数量",
+      "available": "有効在庫",
+      "damaged": "不良数量",
+      "sorted": "仕分数",
+      "picked": "ピッキング数",
+      "packed": "梱包数",
+      "delivered": "配送数",
+      "total-system": "システム総数",
+      "total-actual": "実総数",
+      "total-available": "有効総数",
+      "total-expected": "予定総数",
+      "total-adjusted": "調整総数",
+      "total-difference": "差異総数",
+      "total-volume": "総体積",
+      "total-weight": "総重量",
+      "total-damage": "不良総数",
+      "total-sorted": "仕分総数",
+      "total-picked": "ピッキング総数",
+      "total-packed": "梱包総数",
+      "total-delivered": "配送総数",
+      "total-items": "項目総数",
+      "max": "最大数量"
+    },
+    "inventory-ops": {
+      "storage": "保管",
+      "putaway": "入庫",
+      "removal": "出庫",
+      "adjustment": "在庫調整",
+      "transfer": "在庫移動",
+      "cycle-count": "サイクルカウント"
+    },
+    "operations": {
+      "add": "追加",
+      "edit": "編集",
+      "delete": "削除",
+      "view": "表示",
+      "create": "作成",
+      "add-item": "項目追加",
+      "edit-remark": "備考編集"
+    },
+    "units": {
+      "weight": "kg",
+      "length": "mm",
+      "volume": "m³"
+    },
+    "placeholders": {
+      "name": "名称を入力",
+      "code": "コードを入力",
+      "password": "パスワードを入力",
+      "description": "説明を入力",
+      "address": "住所を入力",
+      "phone": "電話番号を入力",
+      "email": "メールを入力",
+      "zip": "郵便番号を入力",
+      "contact": "連絡先を入力",
+      "country": "国/地域を入力",
+      "quantity": "数量を入力",
+      "remark": "備考を入力",
+      "goods-code": "商品コードを入力",
+      "reason": "理由を入力",
+      "tracking-number": "追跡番号を入力"
+    },
+    "tips": {
+      "name": "100文字以内",
+      "code": "50文字以内",
+      "country": "大文字2文字 (例: JP/US/CN)",
+      "readonly": "読取専用"
+    },
+    "validation": {
+      "name-required": "{entity}名称は必須です",
+      "email-required": "メール必須",
+      "email-format": "メール形式不正",
+      "password-required": "パスワード必須",
+      "password-min-length": "パスワードは{min}文字以上",
+      "country-required": "国/地域必須",
+      "country-format": "国コード形式不正 (大文字2文字 例: JP/US/CN)",
+      "role-min-count": "ロールを1つ以上選択",
+      "warehouse-required": "倉庫を選択",
+      "goods-item-required": "商品を1つ以上選択",
+      "supplier-required": "サプライヤー選択",
+      "type-required": "タイプ選択",
+      "address-required": "住所必須",
+      "expected-shipping-date-required": "出荷予定日必須",
+      "quantity-required": "数量必須",
+      "goods-exists": "商品が既にリストに存在",
+      "file-required": "ファイルを選択",
+      "csv-only": "CSVファイルのみ",
+      "company-required": "会社選択必須",
+      "current-password-required": "現在のパスワードは必須です",
+      "new-password-required": "新しいパスワードは必須です",
+      "confirm-password-required": "新しいパスワードの確認が必要です",
+      "password-complexity": "パスワードは{min}文字以上で、大文字、小文字、数字、特殊文字を含める必要があります",
+      "password-mismatch": "新しいパスワードと確認が一致しません",
+      "password-same-as-old": "新しいパスワードは現在のパスワードと同じにすることはできません"
+    },
+    "statistics": {
+      "title": "統計情報",
+      "this-month": "今月",
+      "last-year": "過去1年",
+      "last-month": "過去1ヶ月",
+      "last-n-months": "過去{n}ヶ月"
+    }
+  },
+  "roles": {
+    "admin": "システム管理者",
+    "company_admin": "会社管理者",
+    "warehouse_admin": "倉庫管理者",
+    "warehouse_operator": "倉庫作業員",
+    "default_role": "一般ユーザー"
+  },
+  "login": {
+    "title": "倉庫管理システム（WMS）",
+    "welcome-message": "2次元の世界をつなぎ、ビジネスの境界を突破",
+    "forgot-password": "パスワードを忘れた？",
+    "sign-in": "ログイン",
+    "sign-up": "サインアップ",
+    "remember-me": "ログイン状態を保持",
+    "errors": {
+      "browser-not-support": "ブラウザがパスワード自動入力未対応",
+      "invalid-credentials": "認証情報無効",
+      "login-failed": "ログイン失敗",
+      "decryption-failed": "復号化失敗",
+      "credential-parse-failed": "認証情報解析失敗"
+    },
+    "marketing": {
+      "dare-to-dream-title": "夢への挑戦",
+      "dare-to-dream": "夢を追いかける第一歩を。挑戦がどんなに大きくても、私たちは共に進みます。",
+      "path-to-success-title": "成功への道",
+      "path-to-success": "成功への旅がここから始まります。共に輝かしい未来を創造しましょう。",
+      "fearless-journey-title": "恐れない旅",
+      "fearless-journey": "卓越を恐れず追求。新しいビジネスへの旅を共に始めましょう。"
+    }
+  },
+  "inventory": {
+    "title": "在庫管理",
+    "fields": {
+      "total": "総数",
+      "asn": "ASN",
+      "received": "受領済",
+      "sorted": "仕分済",
+      "onhand": "実在庫",
+      "available": "有効在庫",
+      "sale": "販売可能",
+      "locked": "保留中",
+      "damage": "不良品",
+      "return": "返品",
+      "dn": "DN",
+      "picked": "ピッキング済",
+      "packed": "梱包済",
+      "delivered": "配送済"
+    },
+    "thresholds": {
+      "low": "低閾値",
+      "high": "高閾値",
+      "low-stock": "在庫不足",
+      "high-stock": "在庫過剰"
+    },
+    "tooltips": {
+      "total": "在庫総量：包括在庫、破損、返品、仕分け完了、ピッキング済、梱包済。",
+      "received": "受領済在庫：受領済で未仕分けの在庫数量。現在在庫総数計算には含まれません。",
+      "asn": "ASN在庫：確定済未入庫の事前入庫通知。現在在庫総数計算には含まれません。",
+      "dn": "DN在庫：出庫指示に基づく未ピッキング出荷伝票。現在在庫総数計算には含まれません。",
+      "low-threshold": "低閾値：在庫が下回った場合、補充または発注をトリガー",
+      "high-threshold": "高閾値：在庫が超えた場合、整理または販促をトリガー",
+      "available": "利用可能在庫：現在使用可能な在庫数量（実在庫＋破損品＋返品品を含む）。ロック済み・出庫待ち在庫は除く。",
+      "sale": "販売可能在庫：現在販売可能な在庫数量。ロック済み・出庫待ち在庫は除く。"
+    }
+  },
+  "company": {
+    "title": "会社管理",
+    "entity": "会社",
+    "fields": {
+      "name": "会社名",
+      "description": "会社説明",
+      "address": "会社住所"
+    },
+    "form": {
+      "placeholders": {
+        "name": "会社名入力",
+        "description": "会社説明入力"
+      }
+    },
+    "operations": {
+      "add": "会社追加",
+      "edit": "会社編集",
+      "delete": "会社削除"
+    }
+  },
+  "department": {
+    "title": "部門管理",
+    "entity": "部門",
+    "fields": {
+      "name": "部門名",
+      "description": "部門説明"
+    },
+    "form": {
+      "placeholders": {
+        "name": "部門名入力",
+        "description": "部門説明入力"
+      }
+    },
+    "operations": {
+      "add": "部門追加",
+      "edit": "部門編集",
+      "delete": "部門削除"
+    }
+  },
+  "warehouse": {
+    "title": "倉庫管理",
+    "entity": "倉庫",
+    "fields": {
+      "name": "倉庫名",
+      "description": "倉庫説明"
+    },
+    "form": {
+      "placeholders": {
+        "name": "倉庫名入力",
+        "description": "倉庫説明入力"
+      }
+    },
+    "operations": {
+      "add": "倉庫追加",
+      "edit": "倉庫編集",
+      "delete": "倉庫削除"
+    }
+  },
+  "location": {
+    "title": "ロケーション管理",
+    "entity": "ロケーション",
+    "fields": {
+      "code": "ロケーションコード",
+      "capacity": "容量",
+      "width": "幅",
+      "depth": "奥行",
+      "height": "高さ",
+      "description": "説明",
+      "warehouse": "所属倉庫",
+      "location-type": "ロケーション種別",
+      "specification": "仕様"
+    },
+    "form": {
+      "placeholders": {
+        "code": "ロケーションコード入力",
+        "capacity": "容量入力",
+        "width": "幅入力",
+        "depth": "奥行入力",
+        "height": "高さ入力"
+      }
+    },
+    "tips": {
+      "code": "50文字以内",
+      "capacity": "m³（小数点3位）",
+      "dimensions": "cm"
+    },
+    "operations": {
+      "add": "ロケーション追加",
+      "edit": "ロケーション編集",
+      "delete": "ロケーション削除"
+    },
+    "validation": {
+      "code-required": "ロケーションコード必須",
+      "warehouse-required": "倉庫選択",
+      "location-type-required": "種別選択",
+      "goods": {
+        "required": "商品選択"
+      },
+      "quantity-required": "数量入力",
+      "reason-required": "理由入力"
+    }
+  },
+  "staff": {
+    "title": "従業員管理",
+    "entity": "従業員",
+    "fields": {
+      "name": "従業員名",
+      "department": "部門",
+      "position": "職位",
+      "employee-number": "社員番号",
+      "hire-date": "入社日",
+      "roles": "ロール",
+      "avater": "アバター"
+    },
+    "form": {
+      "placeholders": {
+        "name": "従業員名入力",
+        "position": "職位入力",
+        "employee-number": "社員番号入力"
+      }
+    },
+    "operations": {
+      "add": "従業員追加",
+      "edit": "従業員編集",
+      "delete": "従業員削除"
+    }
+  },
+  "supplier": {
+    "title": "サプライヤー管理",
+    "entity": "サプライヤー",
+    "fields": {
+      "name": "サプライヤー名",
+      "description": "サプライヤー説明"
+    },
+    "form": {
+      "placeholders": {
+        "name": "サプライヤー名入力",
+        "description": "サプライヤー説明入力"
+      }
+    },
+    "operations": {
+      "add": "サプライヤー追加",
+      "edit": "サプライヤー編集",
+      "delete": "サプライヤー削除"
+    }
+  },
+  "carrier": {
+    "title": "運送業者管理",
+    "entity": "運送業者",
+    "fields": {
+      "name": "運送業者名",
+      "description": "説明"
+    },
+    "operations": {
+      "add": "運送業者追加",
+      "edit": "運送業者編集",
+      "delete": "運送業者削除"
+    }
+  },
+  "recipient": {
+    "title": "受取先管理",
+    "entity": "受取先",
+    "fields": {
+      "name": "受取先名",
+      "description": "説明"
+    },
+    "operations": {
+      "add": "受取先追加",
+      "edit": "受取先編集",
+      "delete": "受取先削除"
+    }
+  },
+  "goods": {
+    "title": "商品管理",
+    "entity": "商品",
+    "fields": {
+      "name": "商品名",
+      "description": "説明",
+      "manufacturer": "製造元",
+      "brand": "ブランド",
+      "category": "カテゴリー",
+      "code": "コード",
+      "tags": "タグ",
+      "price": "価格",
+      "discount-price": "割引価格",
+      "off": "割引",
+      "specification": "仕様",
+      "currency": "通貨",
+      "unit": "単位",
+      "weight": "重量",
+      "length": "長さ",
+      "width": "幅",
+      "height": "高さ",
+      "volume": "体積",
+      "image": "画像",
+      "product-date": "製造日",
+      "expiry-date": "有効期限"
+    },
+    "form": {
+      "placeholders": {
+        "name": "商品名入力",
+        "code": "商品コード入力",
+        "category": "カテゴリー選択",
+        "manufacturer": "製造元入力",
+        "brand": "ブランド入力",
+        "price": "価格入力",
+        "discount-price": "割引価格入力",
+        "weight": "重量入力",
+        "length": "長さ入力",
+        "width": "幅入力",
+        "height": "高さ入力",
+        "volume": "体積入力",
+        "tags": "タグ入力",
+        "tag-add": "新規タグとして追加",
+        "product-date": "製造日選択",
+        "expiry-date": "有効期限選択",
+        "quantity": "数量入力",
+        "remark": "備考入力"
+      },
+      "tips": {
+        "code": "50文字以内",
+        "weight": "kg（小数点3位）",
+        "dimensions": "mm"
+      }
+    },
+    "operations": {
+      "add": "商品追加",
+      "edit": "商品編集",
+      "delete": "商品削除",
+      "view-inventory": "在庫表示",
+      "create-putaway": "入庫作成",
+      "create-removal": "出庫作成",
+      "create-adjustment": "在庫調整作成",
+      "create-transfer": "在庫移動作成"
+    },
+    "validation": {
+      "location": {
+        "required": "ロケーション選択",
+        "not-same": "同一ロケーション不可",
+        "same-warehouse": "同一倉庫内のみ"
+      },
+      "code-required": "商品コード必須",
+      "quantity-required": "数量入力",
+      "reason-required": "理由入力"
+    },
+    "action-results": {
+      "not-found": "商品が見つかりません。コードまたは名称を確認してください。"
+    }
+  },
+  "cyclecount": {
+    "title": "サイクルカウント",
+    "entity": "サイクルカウント",
+    "fields": {
+      "name": "タスク名",
+      "description": "説明",
+      "status": "ステータス",
+      "scheduled-date": "予定日",
+      "actual-date": "実績日",
+      "difference": "差異",
+      "reason": "理由",
+      "items": "商品"
+    },
+    "form": {
+      "placeholders": {
+        "name": "タスク名入力",
+        "description": "説明入力",
+        "reason": "差異理由入力",
+        "search": "カウント番号/商品コード",
+        "scheduled-date": "予定日選択"
+      }
+    },
+    "operations": {
+      "add": "カウント追加",
+      "edit": "カウント編集",
+      "delete": "カウント削除",
+      "back-to-list": "一覧に戻る"
+    },
+    "validation": {
+      "no-valid-records": "調整対象の有効なレコードがありません。"
+    }
+  },
+  "adjustment": {
+    "title": "在庫調整",
+    "entity": "在庫調整",
+    "fields": {
+      "name": "調整名",
+      "description": "説明",
+      "status": "ステータス",
+      "scheduled-date": "予定日",
+      "actual-date": "実績日",
+      "difference": "差異",
+      "reason": "理由",
+      "items": "商品"
+    },
+    "form": {
+      "placeholders": {
+        "name": "調整名入力",
+        "description": "説明入力",
+        "reason": "理由入力",
+        "search": "調整番号/商品コード",
+        "scheduled-date": "予定日選択"
+      }
+    },
+    "operations": {
+      "add": "調整追加",
+      "edit": "調整編集",
+      "delete": "調整削除",
+      "back-to-list": "一覧に戻る"
+    }
+  },
+  "asn": {
+    "title": "ASN管理",
+    "entity": "ASN",
+    "fields": {
+      "number": "ASN番号",
+      "type": "タイプ",
+      "expected-arrival-date": "予定到着",
+      "actual-date": "実績到着",
+      "items": "商品",
+      "details": "ASN詳細",
+      "tracking-info": "追跡情報"
+    },
+    "form": {
+      "placeholders": {
+        "number": "ASN番号入力",
+        "supplier": "サプライヤー選択",
+        "search": "ASN/商品コード/追跡番号",
+        "expected-arrival-date": "予定到着選択"
+      }
+    },
+    "operations": {
+      "add": "ASN追加",
+      "edit": "ASN編集",
+      "delete": "ASN削除",
+      "back-to-list": "一覧に戻る",
+      "sorting": "仕分け",
+      "receive": "受領"
+    },
+    "type": {
+      "inbound": "通常入庫",
+      "return_from_customer": "顧客返品",
+      "transfer": "在庫移動"
+    },
+    "tips": {
+      "created-successfully": "{creator}によるASN作成完了。",
+      "started-successfully": "ASN処理開始。",
+      "received-successfully": "荷物を受領しました。",
+      "sorting-operation-message": "{operator}が仕分操作で{sortedQuantity}点商品を仕分け、{damagedQuantity}点不良あり(予定{expectedQuantity}点)。"
+    }
+  },
+  "sorting": {
+    "title": "仕分け管理",
+    "entity": "仕分タスク",
+    "fields": {
+      "number": "仕分番号",
+      "status": "ステータス",
+      "scheduled-date": "予定日",
+      "actual-date": "実績日",
+      "items": "商品",
+      "details": "タスク詳細"
+    },
+    "form": {
+      "placeholders": {
+        "number": "仕分番号入力",
+        "search": "仕分番号/ASN/商品コード"
+      }
+    },
+    "operations": {
+      "add": "仕分追加",
+      "edit": "仕分編集",
+      "delete": "仕分削除",
+      "back-to-list": "一覧に戻る"
+    }
+  },
+  "dn": {
+    "title": "DN管理",
+    "entity": "DN",
+    "fields": {
+      "number": "DN番号",
+      "type": "タイプ",
+      "scheduled-date": "予定日",
+      "actual-date": "実績日",
+      "shipping-address": "配送先",
+      "items": "商品",
+      "details": "DN詳細",
+      "packing-info": "梱包情報",
+      "special-handling": "特別対応",
+      "transportation": "輸送方法",
+      "order-no": "注文番号",
+      "tracking-info": "追跡情報"
+    },
+    "form": {
+      "placeholders": {
+        "number": "DN番号入力",
+        "recipient": "受取先選択",
+        "search": "DN/商品コード/追跡番号",
+        "scheduled-date": "予定日選択",
+        "shipping-address": "配送先入力",
+        "order-no": "注文番号入力"
+      }
+    },
+    "operations": {
+      "add": "DN追加",
+      "edit": "DN編集",
+      "delete": "DN削除",
+      "back-to-list": "一覧に戻る",
+      "picking": "ピッキング",
+      "packing": "梱包",
+      "delivery": "配送",
+      "sign": "サイン"
+    },
+    "type": {
+      "shipping": "通常出庫",
+      "return_to_supplier": "サプライヤー返品",
+      "damage_to_supplier": "サプライヤー不良",
+      "transfer": "在庫移動"
+    },
+    "transportation": {
+      "express": "宅配便",
+      "pickup": "自宅受け取り",
+      "courier": "配送員配達",
+      "air": "航空便",
+      "sea": "海上輸送",
+      "land": "陸上輸送",
+      "rail": "鉄道輸送",
+      "drone": "ドローン配送"
+    },
+    "tips": {
+      "created-successfully": "{creator}によるDN作成完了。",
+      "started-successfully": "DN処理開始。",
+      "picking-operation-message": "{creator}がピッキング操作で{pickedQuantity}点商品をピッキング(予定{expectedQuantity}点)。",
+      "packing-operation-message": "{operator}が梱包操作で{packedQuantity}点商品を梱包。"
+    }
+  },
+  "picking": {
+    "title": "ピッキング管理",
+    "entity": "ピッキングタスク",
+    "fields": {
+      "number": "ピッキング番号",
+      "status": "ステータス",
+      "scheduled-date": "予定日",
+      "actual-date": "実績日",
+      "items": "商品",
+      "details": "タスク詳細"
+    },
+    "form": {
+      "placeholders": {
+        "number": "ピッキング番号入力",
+        "search": "ピッキング番号/DN/商品コード"
+      }
+    },
+    "operations": {
+      "add": "ピッキング追加",
+      "edit": "ピッキング編集",
+      "delete": "ピッキング削除",
+      "back-to-list": "一覧に戻る"
+    }
+  },
+  "packing": {
+    "title": "梱包管理",
+    "entity": "梱包タスク",
+    "fields": {
+      "number": "梱包番号",
+      "status": "ステータス",
+      "scheduled-date": "予定日",
+      "actual-date": "実績日",
+      "items": "商品",
+      "details": "タスク詳細"
+    },
+    "form": {
+      "placeholders": {
+        "number": "梱包番号入力",
+        "search": "梱包番号/DN/商品コード"
+      }
+    },
+    "operations": {
+      "add": "梱包追加",
+      "edit": "梱包編集",
+      "delete": "梱包削除",
+      "back-to-list": "一覧に戻る"
+    }
+  },
+  "delivery": {
+    "title": "配送管理",
+    "entity": "配送タスク",
+    "fields": {
+      "number": "配送番号",
+      "status": "ステータス",
+      "scheduled-date": "予定日",
+      "actual-date": "実績日",
+      "detail-info": "配送詳細",
+      "items": "商品",
+      "details": "タスク詳細"
+    },
+    "form": {
+      "placeholders": {
+        "number": "配送番号入力",
+        "search": "配送番号/DN/商品コード",
+        "signed-time": "受領時刻選択"
+      }
+    },
+    "operations": {
+      "add": "配送追加",
+      "edit": "配送編集",
+      "delete": "配送削除",
+      "back-to-list": "一覧に戻る"
+    }
+  },
+  "action-results": {
+    "success": "成功",
+    "failed": "失敗。後で再試行してください",
+    "task-start-process": "タスク開始",
+    "task-complete": "タスク完了",
+    "task-item-complete": "タスク項目完了",
+    "task-save-changes-before-complete": "タスク完了前に変更を保存",
+    "task-approved": "タスク承認済",
+    "op-success": "{entity}の{operation}成功",
+    "op-failed": "{entity}の{operation}失敗。後で再試行してください。",
+    "delete-confirm-title": "削除確認",
+    "delete-confirm": "この{entity}を削除しますか？削除後は復元できません。",
+    "complete-confirm-title": "完了確認",
+    "complete-confirm": "この{entity}を完了しますか？完了後の編集は不可です。",
+    "create-confirm-title": "作成確認",
+    "create-confirm": "この{entity}を作成しますか？全情報を確認してください。",
+    "not-found": "{entity}情報が見つかりません。{identifier}または名称を確認してください。",
+    "more-items-found": "{n}件の結果。キーワードを絞ってください。"
+  }
+}

@@ -1,0 +1,17 @@
+[data-theme-mode="dark"] {
+    path.jvm-region.jvm-element {
+        fill: rgb(var(--light-rgb)) !important;
+    }
+
+    text.jvm-marker.jvm-element {
+        fill: var(--default-text-color);
+    }
+}
+.jvm-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px !important;
+  height: 20px !important;
+  line-height: 20px !important;
+}

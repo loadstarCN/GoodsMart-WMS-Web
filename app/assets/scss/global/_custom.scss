@@ -1,0 +1,820 @@
+.text-color {
+    font-weight: 600 !important;
+    color: var(--custom-black);
+}
+
+// .text,
+// .text-light {
+//     color: rgb(var(--default-text-color)) !important;
+// }
+
+// .landing-footer-list li {
+//     display: inline-block;
+//     padding: 0 12px;
+// }
+
+.custom-multiselect .multiselect {
+    width: 40%;
+}
+
+#btc-chart {
+
+    .apexcharts-svg,
+    .apexcharts-canvas {
+        width: 120px !important;
+    }
+}
+
+// .apexcharts-menu-icon {
+//     display: none;
+
+// }
+
+.custom-chart-class {
+
+    .apexcharts-menu-icon,
+    .apexcharts-pan-icon,
+    .apexcharts-reset-icon,
+    .apexcharts-selection-icon,
+    .apexcharts-toolbar-custom-icon,
+    .apexcharts-zoom-icon,
+    .apexcharts-zoomin-icon,
+    .apexcharts-zoomout-icon {
+        display: none;
+    }
+}
+
+
+@media (max-width: 320px) {
+    .custom-map-class {
+        margin-bottom: 10px;
+    }
+}
+
+.swal2-cancel {
+    margin-right: 5px;
+}
+
+//styles//
+body ::-webkit-scrollbar {
+    width: 0;
+    height: .25rem;
+    -webkit-transition: all ease 50ms;
+    transition: all ease 50ms;
+    background: rgb(var(--light-rgb));
+}
+
+.countryby-sale-list {
+    li {
+        &:last-child {
+            margin-block-end: 0px !important;
+        }
+    }
+}
+
+.ecommrce-top-customers {
+    li {
+        margin-bottom: 0.7rem !important;
+
+        &:last-child {
+            margin-bottom: 0px !important;
+        }
+    }
+}
+
+.recent-transaction-list {
+    li {
+        margin-bottom: 0.65rem !important;
+
+        &:last-child {
+            margin-bottom: 0px !important;
+        }
+    }
+}
+
+#analytics-bouncerate {
+    .apexcharts-grid {
+        line {
+            stroke: transparent !important;
+        }
+    }
+}
+
+.projects-maintask-card {
+    li {
+        margin-bottom: 0.8rem !important;
+
+        &:last-child {
+            margin-bottom: 0px !important;
+        }
+    }
+}
+
+.product-features {
+    .ql-formats {
+        padding: 0rem !important;
+    }
+
+    .ql-snow .ql-toolbar button svg,
+    .quillWrapper .ql-snow.ql-toolbar button svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .ql-container {
+        max-height: 12rem;
+    }
+}
+
+.landing-footer-list {
+    display: flex;
+    flex-direction: column;
+
+    li {
+        padding-inline-start: 0px;
+    }
+}
+
+.task-image {
+    margin-block-end: 0.5rem;
+}
+
+.alert {
+    .btn-close {
+        background-image: none;
+    }
+}
+
+.card-bg-primary {
+    .blockquote {
+        padding: 0px !important;
+    }
+}
+
+.select2 {
+    .select2-selection--single {
+        background-color: var(--custom-white) !important;
+        border: 1px solid var(--default-border) !important;
+        height: 40px !important;
+
+        .select2-selection__rendered {
+            color: rgb(var(--default-text-color)) !important;
+        }
+    }
+}
+
+.select2-results__options {
+    background-color: var(--custom-white) !important;
+}
+
+.select2-dropdown {
+    background-color: var(--custom-white) !important;
+    border: 1px solid var(--default-border) !important;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: var(--primary-color) !important;
+}
+
+.select2-container--default .select2-results__option[aria-selected=true] {
+    background-color: var(--custom-white) !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 38px !important;
+}
+
+.multiselect__option--selected {
+    font-weight: normal !important;
+    color: #fff ;
+    background-color: var(--primary-color);
+}
+
+.notification-slider {
+
+    .swiper-button-next,
+    .swiper-button-prev {
+        color: #000 !important;
+    }
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 38px !important;
+    width: 29px !important;
+}
+
+.switcher-style {
+
+    .color-primary-light,
+    .color-bg-transparent {
+        .current-color {
+            background-color: var(--primary-color) !important;
+        }
+    }
+}
+
+[data-vertical-style="doublemenu"] {
+    .app-sidebar .side-menu__item {
+        margin-block: 4px;
+    }
+}
+
+.recent-order-list {
+    li {
+        margin-bottom: 1.1rem !important;
+
+        &:last-child {
+            margin-bottom: 0px !important;
+        }
+    }
+}
+
+.sessionby-device-card {
+    .apexcharts-tooltip {
+        .apexcharts-tooltip-series-group {
+            &:last-child {
+                .apexcharts-tooltip-y-group {
+                    color: #000 !important;
+                }
+            }
+        }
+    }
+}
+
+#crm-revenue-analytics .apexcharts-title-text {
+    transform: translateY(0.625rem);
+}
+
+[dir="rtl"] {
+    .swal2-cancel {
+        margin-left: 5px;
+    }
+
+    .translate-middle-x {
+        transform: translateX(50%) !important;
+    }
+}
+
+@media (min-width: 1682px) {
+
+    .input-group .multiselect {
+        width: 5rem !important;
+    }
+}
+
+.ps--active-x>.ps__rail-x {
+    display: none !important;
+}
+
+a {
+    text-decoration: none;
+    color: rgba(var(--dark-rgb), var(--bs-link-opacity, 1));
+}
+
+[data-theme-mode=dark] .bg-light,
+[data-theme-mode=dark] .card-bg-light {
+    color: var(--custom-black) !important;
+}
+
+.landing-footer-list {
+    display: inline !important;
+}
+
+.crm-top-deals .avatar-undefined {
+    padding: .375rem;
+    border-radius: .25rem;
+    margin-inline-end: .75rem;
+}
+
+#quill-container {
+    max-height: 12.5rem;
+    overflow-y: scroll;
+}
+
+.jvm-zoom-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px !important;
+    height: 20px !important;
+    line-height: 20px !important;
+}
+
+.jvm-zoom-btn.jvm-zoomin {
+    top: 4px !important;
+}
+
+[dir="rtl"] {
+    .expand-icon {
+        transform: rotate(135deg);
+    }
+}
+
+.crypto .multiselect {
+    width: 94px !important;
+}
+
+.multiselect__option--highlight {
+    background-color: var(--primary-color) !important;
+    color: #fff !important;
+}
+
+.filepond--root[data-style-panel-layout~=circle] {
+    border-radius: 99999rem;
+    overflow: hidden;
+}
+
+[dir="rtl"] {
+    .vue3-easy-data-table__body td .expand-icon[data-v-32683533] {
+
+        transform: rotate(129deg);
+    }
+}
+
+.swiper-pagination {
+    position: absolute;
+    // bottom: 43px !important;
+}
+
+.crypto-buy-sell-input {
+    width: 100% !important;
+}
+
+@media (min-width: 1400px) {
+    [data-width=boxed] .latest-timeline {
+        margin-bottom: 30px;
+    }
+}
+
+.multiselect--above .multiselect {
+    background-color: transparent !important;
+}
+
+.order-track {
+    .accordion:last-child {
+        .accordion-body {
+            padding: 0;
+        }
+    }
+}
+
+.invoice-custom {
+    input::-webkit-inner-spin-button {
+        display: none;
+    }
+}
+
+.form-control::-webkit-input-placeholder {
+    font-size: -0.125rem !important;
+}
+
+// @media (max-width: 320px) {
+// .offcanvas-body .btn-list button
+// {
+//     margin: 0px 1px 0px 0px !important;
+// }
+// }
+.choices-control .multiselect__tags,
+.multiselect__single {
+    border: none !important;
+}
+
+[data-theme-mode=dark] .recent-transaction-list .flex-fill p {
+    color: #fff;
+}
+
+.single-fileupload .filepond--root {
+    width: 8rem !important;
+    height: 8rem !important;
+    margin: 0 auto !important;
+
+    .filepond--panel {
+        border-radius: 50% !important;
+    }
+
+    .filepond--drop-label {
+        min-height: 7.75em;
+    }
+
+    .filepond--image-preview-wrapper {
+        border-radius: 50% !important;
+    }
+}
+
+.filepond--root[data-style-panel-layout~=circle]>.filepond--panel {
+    border-radius: inherit !important;
+}
+
+[data-menu-styles=transparent][data-nav-layout=vertical][data-theme-mode=light] {
+    &[data-nav-style=icon-click][data-toggled=icon-click-closed] {
+        .app-sidebar .main-sidebar-header .header-logo {
+
+            .desktop-dark,
+            .desktop-logo,
+            .toggle-white,
+            .toggle-dark {
+                display: none;
+            }
+
+            .toggle-logo {
+                display: block;
+            }
+        }
+    }
+}
+
+//bubble
+.apexcharts-series-markers.apexcharts-series-bubble {
+    path {
+        stroke: transparent !important;
+    }
+}
+
+.chat-user-details {
+    height: calc(100vh - 8rem) !important;
+    overflow: auto !important;
+}
+
+.filepond--file {
+    background-color: #fff !important;
+}
+
+#candlestick-line .apexcharts-series {
+    stroke: #0ca3e7d9 !important;
+}
+
+#jvm-markers-group {
+    circle[data-index="0"] {
+        fill: #28d193 !important;
+    }
+
+    circle[data-index="1"] {
+        fill: #ff8c33 !important;
+    }
+
+    circle[data-index="2"] {
+        fill: #ff534d !important;
+    }
+
+    circle[data-index="3"] {
+        fill: #ffbe14 !important;
+    }
+
+    circle[data-index="4"] {
+        fill: #4b9bfa !important;
+    }
+}
+
+#candlestick-line .apexcharts-line {
+    stroke: #23b7e5 !important;
+}
+
+.blog-images-container {
+    .dropzone__progress {
+        border-radius: 0 !important;
+    }
+}
+
+.quillWrapper {
+    .ql-video {
+        display: none;
+    }
+
+}
+
+.ql-editor .ql-video {
+    width: 100% !important;
+}
+
+.vue3-easy-data-table__message {
+    margin-top: 45px;
+}
+
+@media (min-width: 992px) {
+    [data-nav-style=icon-hover][data-toggled=icon-hover-closed][data-menu-styles="transparent"][data-theme-mode="light"] {
+        .app-sidebar .main-sidebar-header .header-logo .desktop-logo {
+            display: none;
+        }
+
+        .app-sidebar .main-sidebar-header .header-logo .toggle-logo {
+            display: block;
+        }
+
+        .slide.side-menu__label1 {
+            border-block-end: 1px solid rgba(0, 0, 0, 0.085);
+        }
+    }
+
+    [data-nav-style=icon-click][data-toggled=icon-click-closed][data-menu-styles="transparent"][data-theme-mode="light"] {
+        .slide.side-menu__label1 {
+            border-block-end: 1px solid rgba(0, 0, 0, 0.085);
+        }
+    }
+}
+
+@media (min-width: 992px) {
+
+    [data-bg-img=bgimg1],
+    [data-bg-img=bgimg2],
+    [data-bg-img=bgimg3],
+    [data-bg-img=bgimg4],
+    [data-bg-img=bgimg5] {
+        &[data-nav-style=menu-click][data-toggled=menu-click-closed] {
+            &[data-nav-layout=vertical] {
+                .app-sidebar .main-sidebar-header {
+                    backdrop-filter: blur(30px) !important;
+                }
+            }
+        }
+    }
+}
+
+#sell-crypto,
+#buy-crypto {
+    .multiselect__tags {
+        padding: 8px 23px 0 8px;
+    }
+}
+
+[dir="rtl"] {
+
+    #sell-crypto,
+    #buy-crypto {
+        .multiselect__tags {
+            padding: 8px 8px 0 23px;
+        }
+    }
+
+    .form-floating>.form-control-plaintext~label,
+    .form-floating>.form-control:focus~label,
+    .form-floating>.form-control:not(:placeholder-shown)~label,
+    .form-floating>.form-select~label {
+        transform: scale(0.85) translateY(-0.5rem) translateX(0.5rem) !important;
+    }
+}
+
+.tab-content .tab-pane {
+    &:focus-visible {
+        outline: 0 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .job-landing-form.form-control {
+        padding-inline-end: 6rem !important;
+    }
+}
+
+.job-landing-form {
+    padding-inline-end: 9rem !important;
+}
+
+//date 
+.dp__input_icon {
+    display: none !important;
+}
+
+.input-group-custom {
+    .dp__input {
+        padding: 0 !important;
+    }
+
+    .dp__input_wrap {
+        border: 0 !important;
+    }
+
+    .dp--clear-btn {
+        display: none;
+    }
+
+    .dp__input_icon_pad {
+        padding-inline-start: 0 !important;
+    }
+}
+
+//styles//
+@media (max-width: 991.98px) {
+    .app-sidebar {
+        .main-sidebar {
+            padding-block-end: 0rem;
+            height: calc(100vh - 1rem);
+        }
+    }
+}
+
+.top-traders-list {
+    li {
+        margin-bottom: 1.17rem !important;
+
+        &:last-child {
+            margin-bottom: 0px !important;
+        }
+    }
+}
+
+.recent-activity-table {
+    tr {
+        th {
+            &:first-child {
+                text-align: center !important;
+            }
+        }
+    }
+}
+
+[dir="rtl"] {
+    .dp--menu-wrapper {
+        .dp__inner_nav {
+            svg {
+                rotate: 180deg;
+            }
+        }
+    }
+}
+
+.app-sidebar {
+    .ps__thumb-y {
+        right: 0px !important;
+    }
+}
+
+.ql-toolbar.ql-snow .ql-picker-label {
+    border: 0px solid transparent !important;
+}
+
+.v-input__control {
+    label {
+        font-size: 14px !important;
+    }
+
+    input,
+    .v-field__input {
+        min-height: 50px !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .notification-slider {
+
+        .swiper-button-next,
+        .swiper-button-prev {
+            display: none;
+        }
+    }
+}
+
+@media (min-width: 1682px) {
+    .companies-search-input {
+        .multiselect {
+            width: 15% !important;
+        }
+    }
+}
+
+.modal {
+    padding-right: 0px !important;
+}
+
+.v-table.v-table--fixed-header>.v-table__wrapper>table>thead>tr>th {
+    background-color: rgb(var(--light-rgb)) !important;
+}
+
+@media (max-width: 1400px) {
+    .apexcharts-toolbar {
+        display: none !important;
+    }
+}
+
+@media (max-width: 400px) {
+    .apexcharts-title-text {
+        display: none !important;
+    }
+}
+
+.color-input {
+    &.form-check-input:checked {
+        background-color: rgb(249 249 250);
+    }
+}
+
+
+[data-nav-layout="horizontal"] {
+    .app-sidebar {
+        .slide {
+            .slide-menu {
+
+                &.child2,
+                &.child3 {
+                    border-radius: 0.25rem;
+                }
+            }
+        }
+    }
+}
+
+@media (min-width: 992px) {
+    [data-nav-layout="horizontal"][data-theme-mode="dark"] {
+
+        &[data-bg-img="bgimg1"],
+        &[data-bg-img="bgimg2"],
+        &[data-bg-img="bgimg3"],
+        &[data-bg-img="bgimg4"],
+        &[data-bg-img="bgimg5"] {
+            .app-sidebar {
+                border-bottom: 0px !important;
+            }
+        }
+    }
+}
+
+@media (min-width: 992px) {
+    [data-nav-layout="vertical"] {
+        .app-sidebar .side-menu__item {
+            margin-block: 0.25rem;
+        }
+
+        .app-sidebar .slide-menu.child1 .side-menu__item,
+        .app-sidebar .slide-menu {
+            &.child1,&.child2,&.child3 {
+                .side-menu__item {
+                    margin-block: 0px !important;
+                }
+            }
+        }
+    }
+}
+
+[data-theme-mode="dark"]{
+.card-bg-primary{
+    .text-light{
+        color:#fff !important;
+    }
+}
+}
+[data-page-style="modern"] {
+    .authentication .authentication-barrier:after {
+        background-image: linear-gradient(to left, rgb(0 0 0 / 12%), transparent);
+    }
+    .authentication .authentication-barrier:before {
+        background-image: linear-gradient(to left, transparent, rgb(0 0 0 / 12%));
+    }
+}
+.multiselect--active .multiselect__select {
+    right: -2px;
+}
+.vue-slider-process {
+    background-color: #845adf !important;
+}
+.jobs-candidates {
+    .col:first-child {
+        border-inline-end: 1px dashed var(--default-border);
+    }
+}
+@media (max-width: 575.98px) {
+    .main-header-container .animated-arrow.hor-toggle {
+        margin-inline-end: 0rem;
+    }
+}
+.nft-table2, .hrmclientsTable, .projects-overview-table {
+    tr:last-child {
+        td {
+            border-bottom: 0;
+        }
+    }
+}
+body::-webkit-scrollbar-thumb {
+    background: rgb(var(--light-rgb)) !important;
+}
+.main-chart-wrapper #chat-msg-scroll.chat-users-tab {
+    max-height: calc(100vh - 21rem) !important;
+}
+.create-invoice-select .multiselect {
+    background-color: rgb(var(--light-rgb))!important;
+}
+.v-btn.v-btn--density-default {
+    font-family: var(--default-font-family) !important;
+}
+.v-input--density-default .v-field--variant-filled .v-label.v-field-label--floating {
+    font-size: 13px !important;
+    top: 1px !important;
+}
+.select2-results {
+    border-radius: 3px;
+    overflow: hidden;
+}
+@media (min-width: 1400px) {
+    .widget-map .sales-visitors-countries {
+        border-inline-end: 0;
+    }
+}
+.vue3-easy-data-table__body td, .vue3-easy-data-table__header th,.vue3-easy-data-table__footer {
+    background-color: var(--custom-white) !important;
+}
+.stock-card {
+    .trending-icon {
+        display: none;
+    }
+}
+.table thead.table-primary th {
+    color: rgb(var(--primary-rgb));
+}

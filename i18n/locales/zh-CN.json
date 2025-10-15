@@ -1,0 +1,971 @@
+{
+  "language": "中文",
+  "nav": {
+    "home": "首页",
+    "about": "关于我们",
+    "welcome": "欢迎",
+    "dashboard": "仪表盘",
+    "main": "主菜单",
+    "error": "错误",
+    "profile": "个人资料",
+    "reset-password": "重置密码",
+    "task-manager": "任务管理器",
+    "settings": "设置",
+    "support": "支持",
+    "logout": "退出登录",
+    "warehouse": "仓库",
+    "inventory": "库存",
+    "goods": "商品",
+    "cyclecount": "循环盘点",
+    "adjustment": "库存调整",
+    "ASN": "收货通知",
+    "sorting": "分拣",
+    "DN": "发货单",
+    "picking": "拣货",
+    "packing": "打包",
+    "delivery": "配送",
+    "location": "库位",
+    "staff": "员工",
+    "carrier": "承运商",
+    "supplier": "供应商",
+    "recipient": "收货方",
+    "company": "公司",
+    "department": "部门",
+    "SYSTEM": "系统",
+    "WarehouseManger": "仓库管理",
+    "ASNManger": "收货通知管理",
+    "InventoryManger": "库存管理",
+    "DNManger": "发货单管理"
+  },
+  "button": {
+    "back-to-home": "返回首页",
+    "reset": "重置",
+    "search": "搜索",
+    "process": "处理",
+    "clear_recents": "清除最近",
+    "print-to-pdf": "打印为PDF",
+    "upload": "上传",
+    "close": "关闭",
+    "confirm": "确认",
+    "save": "保存",
+    "complete": "完成",
+    "delete": "删除",
+    "submit": "提交",
+    "cancel": "取消",
+    "generate": "生成",
+    "edit": "编辑",
+    "print": "打印",
+    "approved": "批准",
+    "next": "下一步",
+    "previous": "上一步",
+    "replenish":"补充拣货"
+
+  },
+  "welcome-wms": {
+    "title": "欢迎使用仓储管理系统 (WMS)",
+    "description": "WMS（仓储管理系统）是专为优化仓库运营设计的智能解决方案，通过自动化库存管理、实时订单处理和智能仓储布局，提升物流效率与准确性。系统支持与ERP、TMS等无缝集成，实现供应链全链路协同，助力企业降低运营成本并提高客户满意度。",
+    "download-apk":"扫码下载移动端APP",
+    "download-description":"随时随地管理仓库，掌上作业更高效",
+    "download-description-more":"告别固定工位的束缚！移动APP让您实时同步仓库动态。无论身在何处，扫码即可完成入库、出库、移库和盘点操作。提升现场作业效率，让仓库管理更智能、更灵活！",
+    "version-support":"目前仅支持Android"
+  },
+  "error": {
+    "http-401": {
+      "title": "401 未授权",
+      "description": "您请求的资源需要有效的身份凭证，请登录后重试或联系系统管理员。"
+    },
+    "http-404": {
+      "title": "404 页面未找到",
+      "description": "我们无法找到您要访问的页面，可能已被移除或从未存在。建议检查网址是否正确，或通过导航菜单重新访问。"
+    },
+    "http-500": {
+      "title": "500 服务器内部错误",
+      "description": "服务器遇到意外错误，无法完成请求。技术团队已收到通知，建议稍后重试或联系系统管理员。"
+    },
+    "http-403": {
+      "title": "403 禁止访问",
+      "description": "您无权访问此资源。请联系系统管理员以获取更多信息。"
+    },
+    "upload-image-type": "商品图片格式不正确，请上传jpg、png格式的图片。",
+    "upload-image-size": "商品图片大小不能超过5MB，请重新上传。",
+    "upload-image-no-file": "请选择要上传的商品图片文件。",
+    "generic-required": "{field}不能为空",
+    "file-upload": "文件上传失败，请稍后重试。",
+    "no-found-data": "未找到相关数据，请检查您的查询条件或稍后重试。",
+    "empty-items": "没有可用的项目",
+    "check-quantities": "请检查数量是否正确"
+  },
+  "search": {
+    "people": "用户",
+    "pages": "页面",
+    "articles": "文章",
+    "tags": "关键字"
+  },
+  "footer": {
+    "copyright": "版权所有 © {year} {company}，技术开发：{developer}",
+    "company": "GoodsMart",
+    "developer": "Loop"
+  },
+  "pagination": {
+    "page-size": "每页条数",
+    "page": "页码",
+    "of": "/",
+    "total": "总计",
+    "items": "条目",
+    "previous": "上一页",
+    "next": "下一页"
+  },
+  "upload": {
+    "title": "上传文件",
+    "description": "请将文件拖放到此处，或<span class='filepond--label-action'>点击</span>选择文件进行上传。",
+    "drag-and-drop": "拖放文件到此处",
+    "select-file": "选择文件",
+    "success": "文件上传成功！",
+    "upload-csv": "上传CSV文件",
+    "upload-csv-description": "请上传符合要求的CSV文件，确保文件格式正确。",
+    "download-template": "下载模板",
+    "duplicate-record": "重复记录",
+    "skip": "跳过",
+    "active": "激活",
+    "append": "补充",
+    "overwrite": "覆盖",
+    "skip-tips":"无修改，保留原记录",
+    "active-tips":"仅激活",
+    "append-tips":"填空白+激活",
+    "overwrite-tips":"全覆盖+激活",
+    "button": {
+      "uploading": "上传中...",
+      "upload": "上传"
+    },
+    "image": {
+      "upload": "上传商品图片",
+      "success": "商品图片上传成功",
+      "delete-success": "商品图片删除成功",
+      "delete-failed": "商品图片删除失败，请稍后重试。"
+    }
+  },
+  "profile":{
+    "current-password": "当前密码",
+    "new-password": "新密码",
+    "confirm-password": "确认密码"
+  },
+  "common": {
+    "account": "用户名 / 邮箱",
+    "password": "密码",
+    "search": "搜索",
+    "search-placeholder": "搜索...",
+    "all-warehouse":"全部仓库",
+    "status": {
+      "active": "激活",
+      "inactive": "未激活",
+      "pending": "待处理",
+      "approved": "已批准",
+      "started": "已开始",
+      "in-progress": "进行中",
+      "sorting": "分拣中",
+      "closed": "已关闭",
+      "received": "已接收",
+      "sorted": "已分拣",
+      "picked": "已拣货",
+      "packed": "已打包",
+      "delivered": "已交付",
+      "completed": "已完成",
+      "processed": "已处理",
+      "signed": "已签收",
+      "created": "已创建",
+      "cancelled": "已取消",
+      "loading": "加载",
+      "all": "全部",
+      "nothing-show": "无内容显示"      
+    },
+    "entities": {
+      "goods": "商品",
+      "warehouse": "仓库",
+      "department": "部门",
+      "company": "公司",
+      "inventory": "库存",
+      "location": "库位",
+      "staff": "员工",
+      "recipient": "收货人",
+      "supplier": "供应商",
+      "carrier": "承运商",
+      "task": "任务",
+      "role": "角色",
+      "user": "用户"
+    },
+    "fields": {
+      "id": "ID",
+      "name": "名称",
+      "password": "密码",
+      "code": "编码",
+      "description": "描述",
+      "quantity": "数量",
+      "remark": "备注",
+      "type": "类型",
+      "action": "操作",
+      "difference": "差异",
+      "reason": "原因",
+      "status": "状态",
+      "old-status": "旧状态",
+      "new-status": "新状态",
+      "address": "地址",
+      "phone": "电话",
+      "email": "电子邮件",
+      "zip": "邮政编码",
+      "logo": "Logo",
+      "currency": "货币类型",
+      "website": "网站",
+      "contact": "联系人",
+      "country": "国家/地区",
+      "base-info": "基础信息",
+      "items": "项目",
+      "task-logs": "任务日志",
+      "task-id": "任务ID",
+      "task-details": "任务明细",
+      "batch-id": "批次ID",
+      "tracking-number": "快递单号",
+      "summary": "摘要信息",
+      "delivery-info": "配送信息",
+      "shipping-cost": "运费"
+    },
+    "dates": {
+      "updated": "更新时间",
+      "created": "创建时间",
+      "completed": "完成时间",
+      "closed": "关闭时间",
+      "approved": "审批时间",
+      "putaway":"上架时间",
+      "removal":"下架时间",
+      "adjustment":"调整极时间",
+      "transfer":"转移时间",
+      "cycle-count":"盘点时间",
+      "sorting": "分拣时间",
+      "picked": "拣货时间",
+      "packed": "打包时间",
+      "delivered": "交付时间",
+      "signed": "签收时间",
+      "scheduled": "计划时间",
+      "changed": "变更时间",
+      "started": "开始时间",
+      "expected-arrival": "预计到货时间",
+      "actual-arrival": "实际到货时间"
+    },
+    "users": {
+      "creator": "创建者",
+      "operator": "操作员",
+      "approver": "审批人",
+      "manager": "管理员"      
+    },
+    "locations": {
+      "from": "起始库位",
+      "to": "目标库位",
+      "placeholder": "请选择库位",
+      "standard": "标准库位",
+      "damaged": "损坏库位",
+      "return": "退货库位"
+    },
+    "quantities": {
+      "system": "系统数量",
+      "actual": "实际数量",
+      "adjusted": "调整数量",
+      "expected": "预计数量",
+      "available": "可用数量",
+      "damaged": "损坏数量",
+      "sorted": "分拣数量",
+      "picked": "拣货数量",
+      "packed": "打包数量",
+      "delivered": "交付数量",
+      "total-system": "系统总数",
+      "total-actual": "实际总数",
+      "total-available": "可用总数",
+      "total-expected": "预计总数",
+      "total-adjusted": "调整总数",
+      "total-difference": "差异总数",
+      "total-volume": "总体积",
+      "total-weight": "总重量",
+      "total-damage": "总损坏数量",
+      "total-sorted": "总分拣数量",
+      "total-picked": "总拣货数量",
+      "total-packed": "总打包数量",
+      "total-delivered": "总交付数量",
+      "total-items": "总项目数量",
+      "max": "最大数量"
+    },
+    "inventory-ops": {
+      "storage": "存储",
+      "putaway": "上架",
+      "removal": "下架",
+      "adjustment": "库存调整",
+      "transfer": "库存转移",
+      "cycle-count": "循环盘点"
+    },
+    "operations": {
+      "add": "添加",
+      "edit": "编辑",
+      "delete": "删除",
+      "view": "查看",
+      "create": "创建",      
+      "add-item": "添加项目",
+      "edit-remark": "编辑备注"
+    },
+    "units": {
+      "weight": "千克",
+      "length": "毫米",
+      "volume": "立方米"
+    },
+    
+    "placeholders": {
+      "name": "请输入名称",
+      "code": "请输入编码",
+      "password": "请输入密码",
+      "description": "请输入描述",
+      "address": "请输入地址",
+      "phone": "请输入联系电话",
+      "email": "请输入电子邮件",
+      "zip": "请输入邮政编码",
+      "contact": "请输入联系人",
+      "country": "请输入国家/地区",
+      "quantity": "请输入数量",
+      "remark": "请输入备注信息",
+      "goods-code": "请输入商品编码",
+      "reason": "请输入原因",
+      "tracking-number": "请输入快递单号"
+    },    
+    "tips": {
+      "name": "长度≤100字符",
+      "code": "长度≤50字符",
+      "country": "两位大写字母，如CN/JP/US",
+      "readonly": "只读"
+    },
+    "validation": {
+      "name-required": "{entity}名称不能为空",
+      "email-required": "电子邮件不能为空",
+      "email-format": "电子邮件格式不正确",
+      "password-required": "密码不能为空",
+      "password-min-length": "密码长度不能少于{min}位",
+      "country-required": "国家/地区不能为空",
+      "country-format": "国家/地区格式不正确（应为两位大写字母，如CN/JP/US）",
+      "role-min-count": "至少选择一个角色",
+      "warehouse-required": "请选择仓库",
+      "goods-item-required": "请至少选择一个商品",
+      "supplier-required": "请选择供应商",
+      "type-required": "请选择类型",
+      "address-required": "地址不能为空",
+      "expected-shipping-date-required": "预计发货日期不能为空",
+      "quantity-required": "数量不能为空",
+      "goods-exists": "商品已存在于列表中",
+      "file-required": "请选择上传文件",
+      "csv-only": "仅支持上传CSV文件",
+      "company-required": "公司不能为空",
+      "current-password-required": "当前密码不能为空",
+      "new-password-required": "新密码不能为空",
+      "confirm-password-required": "请确认您的新密码",
+      "password-complexity": "密码必须至少包含{min}个字符，并包括大写字母、小写字母、数字和特殊字符",
+      "password-mismatch": "新密码和确认密码不匹配",
+      "password-same-as-old": "新密码不能与当前密码相同"
+    },
+    "statistics": {
+      "title": "统计信息",
+      "this-month": "本月",
+      "last-year": "过去一年",
+      "last-month": "过去一个月",      
+      "last-n-months": "过去{n}个月"
+    }
+  },
+  "roles": {
+    "admin": "系统管理员",
+    "company_admin": "公司管理员",
+    "warehouse_admin": "仓库管理员",
+    "warehouse_operator": "仓库操作员",
+    "default_role": "普通用户"
+  },
+  "login": {
+    "title": "仓库管理系统（WMS）",
+    "welcome-message": "连接二次元世界，打破商业边界",
+    "forgot-password": "忘记密码？",
+    "sign-in": "登录",
+    "sign-up": "注册",
+    "remember-me": "记住我",
+    "errors": {
+      "browser-not-support": "当前浏览器不支持密码自动填充功能",
+      "invalid-credentials": "凭证无效",
+      "login-failed": "登录失败",
+      "decryption-failed": "解密失败",
+      "credential-parse-failed": "凭证解析失败"
+    },
+    "marketing": {
+      "dare-to-dream-title": "敢于梦想",
+      "dare-to-dream": "敢于迈出第一步，追逐你的梦想。无论挑战多大，我们与你同行。",
+      "path-to-success-title": "成功之路",
+      "path-to-success": "成功之旅从这里开始。让我们携手并进，共创辉煌未来。",
+      "fearless-journey-title": "无畏之旅",
+      "fearless-journey": "勇往直前，追求卓越。与我们共同开启新的商业旅程。"
+    }
+  },
+  "inventory": {
+    "title": "库存管理",
+    "fields": {
+      "total": "总数",
+      "asn": "ASN",
+      "received": "已接收",
+      "sorted": "已分拣",
+      "onhand": "实际在库",
+      "available": "可用",
+      "sale": "可售",
+      "locked": "锁定",
+      "damage": "破损",
+      "return": "退货",
+      "dn": "DN",
+      "picked": "已拣货",
+      "packed": "已打包",
+      "delivered": "已交付"
+    },
+    "thresholds": {
+      "low": "低阈值",
+      "high": "高阈值",
+      "low-stock": "库存不足",
+      "high-stock": "库存过剩"
+    },
+    "tooltips": {
+      "total": "库存总量：包括在库、损坏、退货、分拣完成、已拣货、已包装。",
+      "received": "已接收：已接收但未分拣的库存数量，不计入库存总量计算。",
+      "asn": "预约收货单（ASN库存），指已确认但未实际到货的预到货通知单，不计入库存总量计算。",
+      "dn": "发货单（DN库存）：基于出库指令生成的待出库货物凭证，已生成发货单但未完成拣货作业，不参与库存总量计算。",
+      "low-threshold": "低阈值：库存不足的阈值，低于此数量时会触发补货或采购请求。",
+      "high-threshold": "高阈值：库存过剩的阈值，高于此数量时会触发清理或促销请求。",
+      "available": "可用库存：当前可供使用的库存量(实际在库+破损+退货)，已扣除锁定和待出库的库存。",
+      "sale": "可售库存：当前可供销售的库存量，已扣除锁定和待出库的库存。"
+    }
+  },
+  "company": {
+    "title": "公司管理",
+    "entity": "公司",
+    "fields": {
+      "name": "公司名称",
+      "description": "公司描述",
+      "address": "公司地址"
+    },
+    "form": {
+      "placeholders": {
+        "name": "请输入公司名称",
+        "description": "请输入公司描述"
+      }
+    },
+    "operations": {
+      "add": "添加公司",
+      "edit": "编辑公司",
+      "delete": "删除公司"
+    }
+  },
+  "department": {
+    "title": "部门管理",
+    "entity": "部门",
+    "fields": {
+     "name": "部门名称",
+      "description": "部门描述"
+    },
+    "form": {
+      "placeholders": {
+        "name": "请输入部门名称",
+        "description": "请输入部门描述"
+      }
+    },
+    "operations": {
+      "add": "添加部门",
+      "edit": "编辑部门",
+      "delete": "删除部门"
+    }
+  },
+  "warehouse": {
+    "title": "仓库管理",
+    "entity": "仓库",
+    "fields": {
+      "name": "仓库名称",
+      "description": "仓库描述"
+    },
+    "form": {
+      "placeholders": {
+        "name": "请输入仓库名称",
+        "description": "请输入仓库描述"
+      }
+    },
+    "operations": {
+      "add": "添加仓库",
+      "edit": "编辑仓库",
+      "delete": "删除仓库"
+    }
+  },
+  "location": {
+    "title": "库位管理",
+    "entity": "库位",
+    "fields": {
+      "code": "库位编码",
+      "capacity": "库位容量",
+      "width": "库位宽度",
+      "depth": "库位深度",
+      "height": "库位高度",
+      "description": "库位描述",
+      "warehouse": "所属仓库",
+      "location-type": "库位类型",
+      "specification": "规格"
+    },
+    "form": {
+      "placeholders": {
+        "code": "请输入库位编码",
+        "capacity": "请输入库位容量",
+        "width": "请输入库位宽度",
+        "depth": "请输入库位深度",
+        "height": "请输入库位高度"
+      }
+    },
+    "tips": {
+      "code": "长度≤50字符",
+      "capacity": "立方米，三位小数",
+      "dimensions": "厘米"
+    },
+    "operations": {
+      "add": "添加库位",
+      "edit": "编辑库位",
+      "delete": "删除库位"      
+    },
+    "validation": {
+      "code-required": "库位编码不能为空",
+      "warehouse-required": "请选择所属仓库",
+      "location-type-required": "请选择库位类型",
+      "goods": {
+        "required": "请选择一个商品"
+      },
+      "quantity-required": "请输入数量",
+      "reason-required": "请输入原因"
+    }
+  },
+  "staff": {
+    "title": "员工管理",
+    "entity": "员工",
+    "fields": {
+      "name": "员工姓名",
+      "department": "部门",
+      "position": "职位",
+      "employee-number": "员工编号",
+      "hire-date": "入职日期",
+      "roles": "角色",
+      "avater": "头像"
+    },
+    "form": {
+      "placeholders": {
+        "name": "请输入员工姓名",
+        "position": "请输入职位",
+        "employee-number": "请输入员工编号"
+      }
+    },
+    "operations": {
+      "add": "添加员工",
+      "edit": "编辑员工",
+      "delete": "删除员工"
+    }
+  },
+  "supplier": {
+    "title": "供应商管理",
+    "entity": "供应商",
+    "fields": {
+      "name": "供应商名称",
+      "description": "供应商描述"
+    },
+    "form": {
+      "placeholders": {
+        "name": "请输入供应商名称",
+        "description": "请输入供应商描述"
+      }
+    },
+    "operations": {
+      "add": "添加供应商",
+      "edit": "编辑供应商",
+      "delete": "删除供应商"
+    }
+  },
+  "carrier": {
+    "title": "承运商管理",
+    "entity": "承运商",
+    "fields": {
+      "name": "承运商名称",
+      "description": "承运商描述"
+    },    
+    "operations": {
+      "add": "添加承运商",
+      "edit": "编辑承运商",
+      "delete": "删除承运商"
+    }
+  },
+  "recipient": {
+    "title": "收货方管理",
+    "entity": "收货方",
+    "fields": {
+      "name": "收货方名称",
+      "description": "收货方描述"
+    },
+    "operations": {
+      "add": "添加收货方",
+      "edit": "编辑收货方",
+      "delete": "删除收货方"
+    }
+  },
+  "goods": {
+    "title": "商品管理",
+    "entity": "商品",
+    "fields": {
+      "name": "商品名称",
+      "description": "商品描述",
+      "manufacturer": "生产商",
+      "brand": "品牌",
+      "category": "分类",
+      "code": "编码",
+      "tags": "标签",
+      "price": "价格",
+      "discount-price": "折扣价",
+      "off": "折扣",
+      "specification": "规格",
+      "currency": "货币类型",
+      "unit": "计量单位",
+      "weight": "重量",
+      "length": "长度",
+      "width": "宽度",
+      "height": "高度",
+      "volume": "体积",
+      "image": "图片",
+      "product-date": "生产日期",
+      "expiry-date": "有效期至"
+    },
+    "form": {
+      "placeholders": {
+        "name": "请输入商品名称",
+        "code": "请输入商品编码",
+        "category": "请选择商品分类",
+        "manufacturer": "请输入生产商名称",
+        "brand": "请输入品牌名称",
+        "price": "请输入商品价格",
+        "discount-price": "请输入折扣价格",
+        "weight": "请输入商品重量",
+        "length": "请输入商品长度",
+        "width": "请输入商品宽度",
+        "height": "请输入商品高度",
+        "volume": "请输入商品体积",
+        "tags": "请输入商品标签",
+        "tag-add": "将此添加为新标签",
+        "product-date": "请选择生产日期",
+        "expiry-date": "请选择有效期至",
+        "quantity": "请输入商品数量",
+        "remark": "请输入商品备注信息"
+      },
+      "tips": {
+        "code": "长度≤50字符",
+        "weight": "千克，三位小数",
+        "dimensions": "毫米"
+      }
+    },
+    "operations": {
+      "add": "添加商品",
+      "edit": "编辑商品",
+      "delete": "删除商品",
+      "view-inventory": "查看库存",
+      "create-putaway": "创建上架记录",
+      "create-removal": "创建下架记录",
+      "create-adjustment": "创建库存调整记录",
+      "create-transfer": "创建库存转移记录"      
+    },
+    "validation": {
+      "location": {
+        "required": "请选择一个库位",
+        "not-same": "库位不能相同",
+        "same-warehouse": "库位必须在同一仓库"
+      },
+      "code-required": "商品编码不能为空",
+      "quantity-required": "请输入数量",
+      "reason-required": "请输入原因"
+    },
+    "action-results": {
+      "not-found": "没有找到商品，请检查商品编码或名称是否正确。"
+    }
+  },
+  "cyclecount": {
+    "title": "循环盘点",
+    "entity": "循环盘点",
+    "fields": {
+      "name": "盘点任务名称",
+      "description": "盘点描述",
+      "status": "盘点状态",
+      "scheduled-date": "计划日期",
+      "actual-date": "实际日期",
+      "difference": "差异数量",
+      "reason": "差异原因",
+      "items": "盘点商品"
+    },
+    "form": {
+      "placeholders": {
+        "name": "请输入盘点名称",
+        "description": "请输入盘点描述",
+        "reason": "请输入差异原因",
+        "search": "盘点单号/商品编码",
+        "scheduled-date": "请选择计划日期"
+      }
+    },
+    "operations": {
+      "add": "添加盘点",
+      "edit": "编辑盘点",
+      "delete": "删除盘点",
+      "back-to-list": "返回盘点列表"
+    },
+    "validation": {
+      "no-valid-records": "没有需要调整的有效记录。"
+    }
+  },
+  "adjustment": {
+    "title": "库存调整",
+    "entity": "库存调整",
+    "fields": {
+      "name": "调整名称",
+      "description": "调整描述",
+      "status": "调整状态",
+      "scheduled-date": "计划日期",
+      "actual-date": "实际日期",
+      "difference": "差异数量",
+      "reason": "差异原因",
+      "items": "调整商品"
+    },
+    "form": {
+      "placeholders": {
+        "name": "请输入调整名称",
+        "description": "请输入调整描述",
+        "reason": "请输入差异原因",
+        "search": "调整单号/商品编码",
+        "scheduled-date": "请选择计划日期"
+      }
+    },
+    "operations": {
+      "add": "添加调整记录",
+      "edit": "编辑调整记录",
+      "delete": "删除调整记录",
+      "back-to-list": "返回调整列表"
+    }
+  },
+  "asn":{
+    "title": "收货通知管理",
+    "entity": "收货通知",
+    "fields": {
+      "number": "收货通知单号",
+      "type": "收货通知类型",
+      "expected-arrival-date": "计划收货日期",
+      "actual-date": "实际收货日期",
+      "items": "商品列表",
+      "details": "收货通知详情",
+      "tracking-info": "订单跟踪信息"
+    },
+    "form": {
+      "placeholders": {
+        "number": "请输入收货通知单号",
+        "supplier": "请选择供应商",
+        "search": "ASN/商品编码/快递单号",
+        "expected-arrival-date": "请选择计划收货日期"
+      }
+    },
+    "operations": {
+      "add": "添加收货通知",
+      "edit": "编辑收货通知",
+      "delete": "删除收货通知",
+      "back-to-list": "返回收货通知列表",
+      "sorting": "分拣",
+      "receive": "接收"
+    },
+    "type":{
+      "inbound": "正常入库",
+      "return_from_customer": "客户退货",
+      "transfer": "库存转移"
+    },
+    "tips":{
+      "created-successfully": "收货通知由{creator}创建成功。",
+      "started-successfully": "收货通知开始处理。",
+      "received-successfully": "已接收了包裹。",
+      "sorting-operation-message": "{operator} 在分拣操作中分拣了 {sortedQuantity} 件物品，以及{damagedQuantity}件损毁，共计{allQuantity}件物品，（预期 {expectedQuantity} 件）。"
+    }
+  },
+  "sorting":{
+    "title": "分拣管理",
+    "entity": "分拣任务",
+    "fields": {
+      "number": "分拣单号",
+      "status": "分拣状态",
+      "scheduled-date": "计划分拣日期",
+      "actual-date": "实际分拣日期",
+      "items": "分拣商品列表",
+      "details": "分拣任务详情"
+    },
+    "form": {
+      "placeholders": {
+        "number": "请输入分拣单号",
+        "search": "分拣单号/ASN/商品编码"
+      }
+    },
+    "operations": {
+      "add": "添加分拣任务",
+      "edit": "编辑分拣任务",
+      "delete": "删除分拣任务",
+      "back-to-list": "返回分拣任务列表"
+    }
+  },
+  "dn":{
+    "title": "发货单管理",
+    "entity": "发货单",
+    "fields": {
+      "number": "发货单号",
+      "type": "发货类型",
+      "scheduled-date": "计划发货日期",
+      "actual-date": "实际发货日期",
+      "shipping-address": "送货地址",
+      "items": "商品列表",
+      "details": "发货单详情",
+      "packing-info": "订单跟踪信息",
+      "special-handling": "特殊处理要求",
+      "transportation": "运输方式",
+      "order-no": "订单号",
+      "tracking-info":"订单跟踪信息"
+    },
+    "form": {
+      "placeholders": {
+        "number": "请输入发货单号",
+        "recipient": "请选择收货方",
+        "search": "DN/商品编码/快递单号",
+        "scheduled-date": "请选择计划发货日期",
+        "shipping-address": "请输入送货地址",
+        "order-no": "请输入订单号"
+      }
+    },
+    "operations": {
+      "add": "添加发货单",
+      "edit": "编辑发货单",
+      "delete": "删除发货单",
+      "back-to-list": "返回发货单列表",
+      "picking": "拣货",
+      "packing": "打包",
+      "delivery": "配送",
+      "sign": "签收"
+    },
+    "type":{
+      "shipping": "正常出库",
+      "return_to_supplier": "退货给供应商",
+      "damage_to_supplier": "损坏给供应商",
+      "transfer": "库存转移"
+    },
+    "transportation":{
+      "express": "快递",
+      "pickup": "自提",
+      "courier": "快递员配送",
+      "air": "空运",
+      "sea": "海运",
+      "land": "陆运",
+      "rail": "铁路运输",
+      "drone": "无人机配送"
+    },
+    "tips":{
+      "created-successfully": "发货单由{creator}创建成功。",
+      "started-successfully": "发货单开始处理。",
+      "picking-operation-message": "{creator} 在拣货操作中拣选了 {pickedQuantity} 件物品（预期 {expectedQuantity} 件）。",
+      "packing-operation-message": "{operator} 在打包操作中打包了 {packedQuantity} 件物品。"
+    }
+  },
+  "picking":{
+    "title": "拣货管理",
+    "entity": "拣货任务",
+    "fields": {
+      "number": "拣货单号",
+      "status": "拣货状态",
+      "scheduled-date": "计划拣货日期",
+      "actual-date": "实际拣货日期",
+      "items": "拣货商品列表",
+      "details": "拣货任务详情"
+    },
+    "form": {
+      "placeholders": {
+        "number": "请输入拣货单号",
+        "search": "拣货单号/DN/商品编码"
+      }
+    },
+    "operations": {
+      "add": "添加拣货任务",
+      "edit": "编辑拣货任务",
+      "delete": "删除拣货任务",
+      "back-to-list": "返回拣货任务列表"
+    }
+  },
+  "packing":{
+    "title": "打包管理",
+    "entity": "打包任务",
+    "fields": {
+      "number": "打包单号",
+      "status": "打包状态",
+      "scheduled-date": "计划打包日期",
+      "actual-date": "实际打包日期",
+      "items": "打包商品列表",
+      "details": "打包任务详情"
+    },
+    "form": {
+      "placeholders": {
+        "number": "请输入打包单号",
+        "search": "打包单号/DN/商品编码"
+      }
+    },
+    "operations": {
+      "add": "添加打包任务",
+      "edit": "编辑打包任务",
+      "delete": "删除打包任务",
+      "back-to-list": "返回打包任务列表"
+    }
+  },
+  "delivery":{
+    "title": "配送管理",
+    "entity": "配送任务",
+    "fields": {
+      "number": "配送单号",
+      "status": "配送状态",
+      "scheduled-date": "计划配送日期",
+      "actual-date": "实际配送日期",
+      "detail-info": "配送详情",
+      "items": "配送商品列表",
+      "details": "配送任务详情"
+      
+    },
+    "form": {
+      "placeholders": {
+        "number": "请输入配送单号",
+        "search": "配送单号/DN/商品编码",
+        "signed-time": "请选择签收时间"
+      }
+    },
+    "operations": {
+      "add": "添加配送任务",
+      "edit": "编辑配送任务",
+      "delete": "删除配送任务",
+      "back-to-list": "返回配送任务列表"
+    }
+  },
+  "action-results": {
+    "success": "操作成功",
+    "failed": "操作失败，请稍后重试",
+    "task-start-process": "任务已开始处理",
+    "task-complete": "任务已完成",
+    "task-item-complete": "任务项已完成",
+    "task-save-changes-before-complete": "请先保存更改再完成任务",
+    "task-approved": "任务已批准",
+    "op-success": "{operation}{entity}成功",
+    "op-failed": "{operation}{entity}失败，请稍后重试。",
+    "delete-confirm-title": "删除确认",
+    "delete-confirm": "您确定要删除此{entity}吗？删除后将无法恢复。",
+    "complete-confirm-title": "完成确认",
+    "complete-confirm": "您确定要完成此{entity}吗？完成后将无法再进行编辑。",
+    "create-confirm-title": "创建确认",
+    "create-confirm": "您确定要创建此{entity}吗？请确保所有信息正确无误。",
+    "not-found": "未找到{entity}信息，请检查{identifier}或名称是否正确。",
+    "more-items-found": "有{n}条结果，建议输入更准确的关键字以缩小范围。"
+   
+
+
+  }
+}

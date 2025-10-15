@@ -1,0 +1,103 @@
+@use "../variables";
+.tooltip {
+  z-index: 105;
+
+  @mixin tooltip-color($color) {
+    .tooltip-inner {
+      background-color: $color;
+    }
+
+    &.bs-tooltip-auto[data-popper-placement^="top"] .tooltip-arrow::before,
+    &.bs-tooltip-top .tooltip-arrow::before {
+      border-top-color: $color;
+    }
+
+    &.bs-tooltip-auto[data-popper-placement^="right"] .tooltip-arrow::before,
+    &.bs-tooltip-end .tooltip-arrow::before {
+      border-right-color: $color;
+    }
+
+    &.bs-tooltip-auto[data-popper-placement^="left"] .tooltip-arrow::before,
+    &.bs-tooltip-start .tooltip-arrow::before {
+      border-left-color: $color;
+    }
+
+    &.bs-tooltip-auto[data-popper-placement^="bottom"] .tooltip-arrow::before,
+    &.bs-tooltip-end .tooltip-arrow::before {
+      border-bottom-color: $color;
+    }
+  }
+
+  &.tooltip-primary {
+    @include tooltip-color(variables.$primary);
+    background-color: variables.$primary !important;
+  }
+
+  &.tooltip-secondary {
+    @include tooltip-color(variables.$secondary);
+    background-color: variables.$secondary !important;
+  }
+
+  &.tooltip-warning {
+    @include tooltip-color(variables.$warning);
+    background-color: variables.$warning !important;
+  }
+
+  &.tooltip-info {
+    @include tooltip-color(variables.$info);
+    background-color: variables.$info !important;
+  }
+
+  &.tooltip-success {
+    @include tooltip-color(variables.$success);
+    background-color: variables.$success !important;
+  }
+
+  &.tooltip-danger {
+    @include tooltip-color(variables.$danger);
+    background-color: variables.$danger !important;
+  }
+
+  &.tooltip-dark {
+    @include tooltip-color(variables.$dark);
+    background-color: variables.$dark !important;
+
+    .tooltip-inner {
+      color: variables.$custom-white;
+    }
+  }
+
+  &.tooltip-light {
+    @include tooltip-color(variables.$light);
+
+    .tooltip-inner {
+      color: variables.$default-text-color;
+    }
+  }
+}
+
+
+.tooltip-primary {
+  background-color: variables.$primary !important;
+}
+.tooltip-secondary {
+  background-color: variables.$secondary !important;
+}
+.tooltip-warning {
+  background-color: variables.$warning !important;
+}
+.tooltip-info {
+  background-color: variables.$info !important;
+}
+.tooltip-success {
+  background-color: variables.$success !important;
+}
+.tooltip-danger {
+  background-color: variables.$danger !important;
+}
+.tooltip-dark {
+  background-color: variables.$dark !important;
+}
+.tooltip-light {
+  background-color: variables.$light !important;
+}
