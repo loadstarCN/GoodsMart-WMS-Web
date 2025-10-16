@@ -1,175 +1,178 @@
-# GoodsMart WMS 客户端
-GoodsMart WMS (Warehouse Management System) 客户端是一个基于现代Web技术栈构建的仓库管理系统前端界面。该系统提供了直观的用户界面，帮助企业管理仓库运营、库存控制、订单处理和物流跟踪等核心功能。
+# GoodsMart WMS Client
 
-> **重要提示**: 本项目必须与 https://github.com/loadstarCN/GoodsMart-WMS-Backend 后端API项目配合使用才能正常运行。
+[中文 README](./README-zh.md)
 
-## 📜 许可证
+GoodsMart WMS (Warehouse Management System) Client is a modern web-based frontend interface for warehouse management systems. It provides an intuitive user interface to help businesses manage core functionalities including warehouse operations, inventory control, order processing, and logistics tracking.
 
-本项目采用 **GNU Affero General Public License v3.0 (AGPL-3.0)** 许可证。
+> **Important Note**: This project must be used in conjunction with the https://github.com/loadstarCN/GoodsMart-WMS-Backend backend API project to function properly.
 
-### 重要许可条款：
-- ✅ **允许**：自由使用、修改和分发
-- ✅ **要求**：开源衍生作品，保持相同许可证
-- ✅ **要求**：明确标注版权和许可信息
-- ✅ **要求**：声明对原始代码的更改
-- ❌ **禁止**：将本软件用于商业用途（需单独授权）
-- ❌ **禁止**：闭源分发或SaaS服务（需单独授权）
+## 📜 License
 
-**商业使用许可**：如需将本项目用于商业用途，请联系作者获取商业许可证。
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
-## ✨ 功能特性
+### Important License Terms:
+- ✅ **Permitted**: Free use, modification, and distribution
+- ✅ **Required**: Open source derivative works, maintain same license
+- ✅ **Required**: Clear attribution of copyright and license information
+- ✅ **Required**: Declaration of changes to original code
+- ❌ **Prohibited**: Commercial use of this software (separate authorization required)
+- ❌ **Prohibited**: Closed-source distribution or SaaS services (separate authorization required)
 
-- 📦 **库存管理** - 实时库存监控和多维度库存查询
-- 📊 **数据可视化** - 丰富的图表和报表展示
-- 🔍 **智能搜索** - 快速检索商品、订单和库存信息
-- 📱 **响应式设计** - 完美适配桌面和移动设备
-- 🔐 **安全认证** - JWT身份验证和权限控制
-- 🌐 **多语言支持** - 国际化(i18n)支持
-- 🎨 **现代化UI** - 基于Bootstrap的优雅界面设计
+**Commercial Use License**: To use this project for commercial purposes, please contact the author for a commercial license.
 
-## 🚀 技术栈
+## ✨ Features
 
-- **前端框架**: Nuxt.js 4
-- **UI组件库**: Bootstrap
-- **状态管理**: Pinia
-- **HTTP客户端**: Axios
-- **样式预处理**: SCSS
-- **构建工具**: Vite
-- **代码质量**: ESLint + Prettier
+- 📦 **Inventory Management** - Real-time inventory monitoring and multi-dimensional inventory queries
+- 📊 **Data Visualization** - Rich charts and report displays
+- 🔍 **Smart Search** - Quick retrieval of products, orders, and inventory information
+- 📱 **Responsive Design** - Perfect adaptation for desktop and mobile devices
+- 🔐 **Security Authentication** - JWT authentication and permission control
+- 🌐 **Multi-language Support** - Internationalization (i18n) support
+- 🎨 **Modern UI** - Elegant interface design based on Bootstrap
 
-## 📋 前置要求
+## 🚀 Tech Stack
 
-在开始之前，请确保您的系统已安装：
+- **Frontend Framework**: Nuxt.js 4
+- **UI Component Library**: Bootstrap
+- **State Management**: Pinia
+- **HTTP Client**: Axios
+- **Style Preprocessing**: SCSS
+- **Build Tool**: Vite
+- **Code Quality**: ESLint + Prettier
 
-- Node.js 18.0.0 或更高版本
-- npm 或 yarn 包管理器
+## 📋 Prerequisites
+
+Before starting, ensure your system has:
+
+- Node.js 18.0.0 or higher
+- npm or yarn package manager
 - Git
-- **https://github.com/loadstarCN/GoodsMart-WMS-Backend** 后端服务（必须同时部署）
+- **https://github.com/loadstarCN/GoodsMart-WMS-Backend** backend service (must be deployed simultaneously)
 
-## ⚡ 快速开始
+## ⚡ Quick Start
 
-### 1. 首先部署API服务
+### 1. First Deploy the API Service
 
-请先确保 https://github.com/loadstarCN/GoodsMart-WMS-Backend 后端服务已正确部署并运行在 http://localhost:5000
+Please ensure the https://github.com/loadstarCN/GoodsMart-WMS-Backend backend service is properly deployed and running at http://localhost:5000
 
-### 2. 克隆客户端项目
+### 2. Clone the Client Project
 
 ```bash
 git clone https://github.com/loadstarCN/GoodsMart-WMS-Web.git
 cd GoodsMart-WMS-Web
 ```
 
-### 3. 安装依赖
+### 3. Install Dependencies
 
 ```bash
 npm install
-# 或
+# or
 yarn install
 ```
 
-### 4. 环境配置
+### 4. Environment Configuration
 
-复制环境变量示例文件并配置您的环境变量：
+Copy the environment variable example file and configure your environment variables:
 
 ```bash
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，配置您的API地址和其他环境变量：
+Edit the `.env` file to configure your API address and other environment variables:
 
 ```env
-# API配置 - 必须指向已部署的GoodsMart-WMS-Backend服务
+# API Configuration - Must point to the deployed GoodsMart-WMS-Backend service
 API_BASE_URL=http://localhost:5000
 
-# 加密密钥（使用 openssl rand -base64 32 生成）
+# Encryption key (generate using openssl rand -base64 32)
 NUXT_PUBLIC_ENCRYPTION_KEY=your_secure_base64_encryption_key_here
 
-# 其他配置...
+# Other configurations...
 ```
 
-### 5. 启动开发服务器
+### 5. Start Development Server
 
 ```bash
 npm run dev
-# 或
+# or
 yarn dev
 ```
 
-访问 http://localhost:3000 查看应用。
+Access http://localhost:3000 to view the application.
 
-### 6. 构建生产版本
+### 6. Build Production Version
 
 ```bash
 npm run build
-# 或
+# or
 yarn build
 ```
 
-预览生产构建：
+Preview production build:
 
 ```bash
 npm run preview
-# 或
+# or
 yarn preview
 ```
 
-## 🔌 API 集成
+## 🔌 API Integration
 
-**本项目必须与 https://github.com/loadstarCN/GoodsMart-WMS-Backend 后端API项目配合使用**。请确保：
+**This project must be used in conjunction with the https://github.com/loadstarCN/GoodsMart-WMS-Backend backend API project**. Please ensure:
 
-1. API服务已正确部署并运行
-2. 数据库已初始化并迁移完成
-3. Redis服务已启动（如使用）
-4. 环境变量中的 `API_BASE_URL` 指向正确的API地址
+1. The API service is properly deployed and running
+2. The database is initialized and migrations completed
+3. Redis service is started (if used)
+4. The `API_BASE_URL` in environment variables points to the correct API address
 
-### API服务部署检查
+### API Service Deployment Check
 
-在启动客户端前，请验证API服务状态：
+Before starting the client, verify API service status:
 
 ```bash
-# 检查API服务是否正常运行
+# Check if API service is running normally
 curl http://localhost:5000/api/health
 
-# 预期响应: {"status":"healthy","message":"API service is running"}
+# Expected response: {"status":"healthy","message":"API service is running"}
 ```
 
-## 🗂️ 项目结构
+## 🗂️ Project Structure
 
 ```
 GoodsMart-WMS-Web/
-├── assets/          # 静态资源（样式、图片等）
-├── components/      # Vue组件
-├── composables/     # 组合式函数
-├── layouts/         # 布局组件
-├── locales/         # 国际化文件
-├── middleware/      # 中间件
-├── pages/           # 页面组件
-├── plugins/         # Nuxt插件
-├── public/          # 公共静态文件
-├── server/          # 服务器端API和中间件
-├── stores/          # Pinia状态管理
-├── types/           # TypeScript类型定义
-└── utils/           # 工具函数
+├── assets/          # Static resources (styles, images, etc.)
+├── components/      # Vue components
+├── composables/     # Composable functions
+├── layouts/         # Layout components
+├── locales/         # Internationalization files
+├── middleware/      # Middleware
+├── pages/           # Page components
+├── plugins/         # Nuxt plugins
+├── public/          # Public static files
+├── server/          # Server-side API and middleware
+├── stores/          # Pinia state management
+├── types/           # TypeScript type definitions
+└── utils/           # Utility functions
 ```
 
-## 🛠️ 开发指南
+## 🛠️ Development Guide
 
-### 添加新页面
+### Adding New Pages
 
-在 `pages` 目录下创建 `.vue` 文件即可自动生成路由。
+Create `.vue` files in the `pages` directory to automatically generate routes.
 
-### 状态管理
+### State Management
 
-使用 Pinia 进行状态管理，在 `stores` 目录下创建 store 文件。
+Use Pinia for state management, create store files in the `stores` directory.
 
-### 自定义组件
+### Custom Components
 
-在 `components` 目录下创建可复用的 Vue 组件。
+Create reusable Vue components in the `components` directory.
 
-### API调用示例
+### API Call Example
 
 ```javascript
-// 在Vue组件中调用API
+// Calling API in Vue components
 const { data: products, error } = await useFetch('/api/products', {
   baseURL: runtimeConfig.public.apiBaseUrl,
   headers: {
@@ -178,41 +181,41 @@ const { data: products, error } = await useFetch('/api/products', {
 })
 ```
 
-## 📦 部署
+## 📦 Deployment
 
-### 完整系统部署流程
+### Complete System Deployment Process
 
-1. **首先部署API服务**
+1. **First Deploy API Service**
    ```bash
-   # 部署GoodsMart-WMS-Backend
+   # Deploy GoodsMart-WMS-Backend
    git clone https://github.com/loadstarCN/GoodsMart-WMS-Backend.git
    cd GoodsMart-WMS-Backend
-   # ... 按照API项目的README进行部署
+   # ... Follow the API project's README for deployment
    ```
 
-2. **然后部署客户端**
+2. **Then Deploy Client**
    ```bash
-   # 部署GoodsMart-WMS-Web
+   # Deploy GoodsMart-WMS-Web
    git clone https://github.com/loadstarCN/GoodsMart-WMS-Web.git
    cd GoodsMart-WMS-Web
-   # ... 按照以下指南进行部署
+   # ... Follow the guide below for deployment
    ```
 
-### 使用 Supervisord (生产环境)
+### Using Supervisord (Production Environment)
 
-1. 安装 Supervisord：
+1. Install Supervisord:
 
 ```bash
 sudo apt-get install supervisor
 ```
 
-2. 创建配置文件：
+2. Create configuration file:
 
 ```bash
 sudo nano /etc/supervisor/conf.d/nuxt-wms.conf
 ```
 
-添加以下内容：
+Add the following content:
 
 ```ini
 [program:nuxt-wms]
@@ -226,43 +229,43 @@ stdout_logfile=/var/log/nuxt-wms.out.log
 user=www-data
 ```
 
-3. Supervisord 常用命令：
+3. Supervisord Common Commands:
 
 ```bash
-# 重启 Supervisord
+# Restart Supervisord
 sudo systemctl restart supervisor
 
-# 查看状态
+# Check status
 sudo supervisorctl status
 
-# 重启进程
+# Restart process
 sudo supervisorctl restart nuxt-wms
 
-# 重新加载配置
+# Reload configuration
 sudo supervisorctl reread
 sudo supervisorctl update
 ```
 
-### 使用 PM2
+### Using PM2
 
 ```bash
-# 全局安装 PM2
+# Install PM2 globally
 npm install -g pm2
 
-# 启动应用
+# Start application
 pm2 start ecosystem.config.js
 
-# 查看应用状态
+# Check application status
 pm2 status
 
-# 重启应用
+# Restart application
 pm2 restart nuxt-wms
 
-# 停止应用
+# Stop application
 pm2 stop nuxt-wms
 ```
 
-创建 `ecosystem.config.js` 文件：
+Create `ecosystem.config.js` file:
 
 ```javascript
 module.exports = {
@@ -278,43 +281,42 @@ module.exports = {
 }
 ```
 
-## 🤝 贡献指南
+## 🤝 Contribution Guidelines
 
-我们欢迎任何形式的贡献！请阅读我们的贡献指南：
+We welcome contributions of any kind! Please read our contribution guidelines:
 
-1. Fork 本项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启一个 Pull Request
+1. Fork this project
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 🆘 支持
+## 🆘 Support
 
-如果您遇到任何问题或有任何疑问，请：
+If you encounter any issues or have questions, please:
 
-1. 确保API服务已正确部署并运行
-2. 查看 https://github.com/loadstarCN/GoodsMart-WMS-Web/wiki
-3. 搜索 https://github.com/loadstarCN/GoodsMart-WMS-Web/issues
-4. 提交新的 Issue
+1. Ensure the API service is properly deployed and running
+2. Check https://github.com/loadstarCN/GoodsMart-WMS-Web/wiki
+3. Search https://github.com/loadstarCN/GoodsMart-WMS-Web/issues
+4. Submit a new Issue
 
-## 🔗 关联项目
+## 🔗 Related Projects
 
-本项目是 GoodsMart WMS 系统的一部分，相关项目链接：
+This project is part of the GoodsMart WMS system. Related project links:
 
-https://github.com/loadstarCN/GoodsMart-WMS - 包含完整系统的文档和协调信息  
-https://github.com/loadstarCN/GoodsMart-WMS-Backend - 必须配合使用的后端服务  
+https://github.com/loadstarCN/GoodsMart-WMS - Contains documentation and coordination information for the complete system  
+https://github.com/loadstarCN/GoodsMart-WMS-Backend - Backend service that must be used together
 
-建议开发者同时关注主仓库以获取最新系统更新和完整文档。
+Developers are advised to also follow the main repository for the latest system updates and complete documentation.
 
+## 🙏 Acknowledgments
 
-## 🙏 致谢
-
-感谢所有为这个项目做出贡献的开发者。
+Thanks to all developers who have contributed to this project.
 
 ---
 
-**重要提示**: 
-- 这是一个开源项目，请确保不要将任何敏感信息（如API密钥、数据库凭证等）提交到版本控制系统。
-- 使用环境变量来管理敏感配置。
-- **本项目必须与 https://github.com/loadstarCN/GoodsMart-WMS-Backend 配合使用**，单独部署客户端无法正常工作。
-- 本项目采用AGPLv3许可证，**禁止商业使用**，如需商业用途请联系作者获取商业许可。
+**Important Notes**: 
+- This is an open-source project, ensure no sensitive information (such as API keys, database credentials, etc.) is committed to version control.
+- Use environment variables to manage sensitive configurations.
+- **This project must be used in conjunction with https://github.com/loadstarCN/GoodsMart-WMS-Backend** - deploying the client alone will not work.
+- This project uses AGPLv3 license, **commercial use is prohibited**, contact the author for commercial licensing if needed.
