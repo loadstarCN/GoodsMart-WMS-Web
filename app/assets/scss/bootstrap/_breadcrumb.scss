@@ -3,15 +3,15 @@
 
 .page-header-breadcrumb {
   .breadcrumb-item + .breadcrumb-item::before {
-    content: var(--bs-breadcrumb-divider, "\ea65");
-    font-family: "tabler-icons" !important;
+    content: var(--bs-breadcrumb-divider, "\ea6e");
+    font-family: "remixicon" !important;
   }
 }
 [dir="rtl"] {
   .page-header-breadcrumb {
     .breadcrumb-item + .breadcrumb-item::before {
       content: var(--bs-breadcrumb-divider, "\ea64");
-      font-family: "tabler-icons" !important;
+      font-family: "remixicon" !important;
     }
   }
 }
@@ -33,22 +33,22 @@
 .breadcrumb-example1 {
   .breadcrumb-item + .breadcrumb-item::before {
     color: variables.$text-muted;
-    content: var(--bs-breadcrumb-divider, "\ea65");
-    font-family: "tabler-icons" !important;
+    content: var(--bs-breadcrumb-divider, "\ea6e");
+    font-family: "remixicon" !important;
   }
 }
 .breadcrumb-style1 {
   .breadcrumb-item + .breadcrumb-item::before {
     color: variables.$text-muted;
     content: var(--bs-breadcrumb-divider, "\ea1c");
-    font-family: "tabler-icons" !important;
+    font-family: "remixicon" !important;
   }
 }
 .breadcrumb-style2 {
   .breadcrumb-item + .breadcrumb-item::before {
     color: variables.$text-muted;
     content: var(--bs-breadcrumb-divider, "\ea61");
-    font-family: "tabler-icons" !important;
+    font-family: "remixicon" !important;
   }
 }
 .embedded-breadcrumb:before {

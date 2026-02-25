@@ -366,11 +366,10 @@ button {
   }
 }
 
-.switcher-icon i {
-  animation-name: spin;
-  animation-duration: 3000ms;
-  animation-iteration-count: infinite;
-  animation-timing-function: linear;
+.switcher-icon .header-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .switch-select {
@@ -472,8 +471,8 @@ button {
 
         &:before {
           position: absolute;
-          content: "\ea5e";
-          font-family: tabler-icons !important;
+          content: "\eb7b";
+          font-family: remixicon !important;
           color: variables.$success;
           width: 100%;
           height: 100%;

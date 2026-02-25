@@ -33,7 +33,7 @@ export const useWarehouseStore = defineStore('warehouse', {
   },
   
   getters: {
-    currentWarehouseLabel: (state) => 
-      state.currentWarehouse?.name || 'All Warehouse'
+    currentWarehouseLabel: (state) =>
+      state.currentWarehouse?.name || ''
   }
 })

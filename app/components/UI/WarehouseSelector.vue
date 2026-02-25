@@ -6,7 +6,7 @@
       data-bs-toggle="dropdown" 
       aria-expanded="false"
     >
-      {{ selectedLabel || 'Select Warehouse' }}
+      {{ selectedLabel || t('common.all-warehouse') }}
       <i class="ri-arrow-down-s-line"></i>
     </button>
     <ul class="dropdown-menu">
