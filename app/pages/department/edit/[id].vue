@@ -138,7 +138,7 @@ onMounted(async() => {
           </div>
           <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
             <button class="btn btn-primary-light m-1" @click="saveDepartment">{{ t('department.operations.edit')}}<i
-                class="bi bi-plus-lg ms-2"></i></button>
+                class="ri-add-line ms-2"></i></button>
           </div>
         </div>
       </div>

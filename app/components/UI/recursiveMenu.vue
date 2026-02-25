@@ -8,7 +8,7 @@
         <span v-if="level > 1">{{ $t(menuData.title) }}
             <span v-if="menuData.badge" :class="`badge ${menuData?.badgeColor} ms-1`">{{ menuData.badge
                 }}</span></span>
-        <i class="fe fe-chevron-right side-menu__angle"></i>
+        <i class="ri-arrow-right-s-line side-menu__angle"></i>
     </a>
     <ul class="slide-menu "
         :class="`${menuData.active ? 'double-menu-active' : ''} child${level} ${menuData?.dirchange ? 'force-left' : ''}`"

@@ -34,7 +34,7 @@ export default {
       <div class="d-flex justify-content-between">
         <h6 class="fw-semibold mb-0">${{ jobsListData?.from }} - ${{ jobsListData?.to }}</h6>
         <a href="" class="text-primary fw-semibold fs-14 d-inline-flex">Apply Now <i
-            class="fe fe-arrow-right transform-arrow ms-2 lh-base"></i></a>
+            class="ri-arrow-right-line transform-arrow ms-2 lh-base"></i></a>
       </div>
     </div>
   </div>

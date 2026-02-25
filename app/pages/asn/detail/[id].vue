@@ -350,7 +350,7 @@ function getEarliestStartedItem(itemSortingData: any) {
                                         data-bs-target="#basicOne" aria-expanded="true" aria-controls="basicOne">
                                         <div class="d-flex mb-0">
                                             <div class="me-2"><span
-                                                    class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i class="fe fe-package fs-12"></i></span></div>
+                                                    class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i class="ri-archive-line fs-12"></i></span></div>
                                             <div class="flex-fill">
                                                 <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.created')}}</p><span class="mb-1 d-block fs-11 text-success">{{ $dayjs(itemData?.created_at) }}</span>
                                             </div>
@@ -377,7 +377,7 @@ function getEarliestStartedItem(itemSortingData: any) {
                                         <div class="d-flex mb-0">
                                             <div class="me-2"><span
                                                     class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i
-                                                        class="fe fe-package fs-12"></i></span></div>
+                                                        class="ri-archive-line fs-12"></i></span></div>
                                             <div class="flex-fill">
                                                 <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.received')}}</p><span
                                                     class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(itemData?.received_at) }}</span>
@@ -406,7 +406,7 @@ function getEarliestStartedItem(itemSortingData: any) {
                                         <div class="d-flex mb-0">
                                             <div class="me-2"><span
                                                     class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i
-                                                        class="fe fe-package fs-12"></i></span></div>
+                                                        class="ri-archive-line fs-12"></i></span></div>
                                             <div class="flex-fill">
                                                 <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.sorted')}}</p><span
                                                     class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(getEarliestStartedItem(itemSortingData))}}</span>
@@ -437,7 +437,7 @@ function getEarliestStartedItem(itemSortingData: any) {
                                         <div class="d-flex mb-0">
                                             <div class="me-2"><span
                                                     class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i
-                                                        class="fe fe-package fs-12"></i></span></div>
+                                                        class="ri-archive-line fs-12"></i></span></div>
                                             <div class="flex-fill">
                                                 <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.completed')}}</p><span
                                                     class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}</span>
@@ -461,7 +461,7 @@ function getEarliestStartedItem(itemSortingData: any) {
                                         <div class="d-flex mb-0">
                                             <div class="me-2"><span
                                                     class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i
-                                                        class="fe fe-package fs-12"></i></span></div>
+                                                        class="ri-archive-line fs-12"></i></span></div>
                                             <div class="flex-fill">
                                                 <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">Closed</p><span
                                                     class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(itemData?.closed_at,'YYYY-MM-DD HH:mm:ss') }}</span>

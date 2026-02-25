@@ -30,7 +30,7 @@ export default {
         <div class="dropdown">
           <a aria-label="anchor" href="javascript:void(0);" class="btn btn-icon btn-sm btn-light show"
             data-bs-toggle="dropdown" aria-expanded="true">
-            <i class="fe fe-more-vertical"></i>
+            <i class="ri-more-2-fill"></i>
           </a>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="javascript:void(0);"><i
