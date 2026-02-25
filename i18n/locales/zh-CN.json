@@ -1017,6 +1017,9 @@
     "header-color-note": "提示：如需动态更改顶栏颜色，请使用下方主题主色调选择器",
     "theme-primary": "主题主色调：",
     "theme-background": "主题背景色：",
-    "menu-bg-image": "菜单背景图片："
+    "menu-bg-image": "菜单背景图片：",
+    "color": "彩色",
+    "gradient": "渐变",
+    "transparent": "透明"
   }
 }

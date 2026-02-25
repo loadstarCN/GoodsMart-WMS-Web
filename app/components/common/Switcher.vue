@@ -285,7 +285,7 @@
                 <div class="tab-pane fade border-0" id="switcher-profile" role="tabpanel" aria-labelledby="switcher-profile-tab" tabindex="0">
                     <div>
                         <div class="theme-colors">
-                            <p class="switcher-style-head">{{ $t('switcher.menu-colors') }} <b>{{ switcher.menuColor }}</b></p>
+                            <p class="switcher-style-head">{{ $t('switcher.menu-colors') }} <b>{{ $t('switcher.' + switcher.menuColor) }}</b></p>
                             <div class="d-flex switcher-style pb-2">
                                 <div class="form-check switch-select me-3">
                                     <input @click="menuColorFn('light')" class="form-check-input color-input color-white" data-bs-toggle="tooltip"
@@ -316,7 +316,7 @@
                             <div class="px-4 pb-3 text-muted fs-11">{{ $t('switcher.menu-color-note') }}</div>
                         </div>
                         <div class="theme-colors">
-                            <p class="switcher-style-head">{{ $t('switcher.header-colors') }} <b>{{switcher.headerColor }}</b></p>
+                            <p class="switcher-style-head">{{ $t('switcher.header-colors') }} <b>{{ $t('switcher.' + switcher.headerColor) }}</b></p>
                             <div class="d-flex switcher-style pb-2">
                                 <div class="form-check switch-select me-3">
                                     <input @click="headerColorFn('light')" class="form-check-input color-input color-white" data-bs-toggle="tooltip"

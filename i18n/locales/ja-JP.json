@@ -1014,6 +1014,9 @@
     "header-color-note": "ヒント：ヘッダーの色を動的に変更するには、下のテーマプライマリカラーピッカーを使用してください",
     "theme-primary": "テーマプライマリ：",
     "theme-background": "テーマ背景色：",
-    "menu-bg-image": "メニュー背景画像："
+    "menu-bg-image": "メニュー背景画像：",
+    "color": "カラー",
+    "gradient": "グラデーション",
+    "transparent": "透明"
   }
 }

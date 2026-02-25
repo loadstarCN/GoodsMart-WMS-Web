@@ -1014,6 +1014,9 @@
     "header-color-note": "Note: If you want to change color Header dynamically change from below Theme Primary color picker",
     "theme-primary": "Theme Primary:",
     "theme-background": "Theme Background:",
-    "menu-bg-image": "Menu With Background Image:"
+    "menu-bg-image": "Menu With Background Image:",
+    "color": "Color",
+    "gradient": "Gradient",
+    "transparent": "Transparent"
   }
 }
