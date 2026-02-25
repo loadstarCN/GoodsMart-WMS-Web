@@ -1,18 +1,22 @@
 import CryptoJS from "crypto-js";
-const { public: { clientEncryptionKey } } = useRuntimeConfig()
-const SECRET_KEY = clientEncryptionKey;
 
 // ================== 公共工具方法 ==================
 type StorageType = typeof localStorage | typeof sessionStorage;
 
+// 懒获取密钥，避免在模块顶层调用 useRuntimeConfig()（Nuxt 实例尚未就绪）
+const getSecretKey = (): string => {
+  const { public: { clientEncryptionKey } } = useRuntimeConfig()
+  return clientEncryptionKey as string;
+};
+
 // 加解密核心方法（提取重复逻辑）
 const encryptData = (value: unknown): string => {
-  return CryptoJS.AES.encrypt(JSON.stringify(value), SECRET_KEY).toString();
+  return CryptoJS.AES.encrypt(JSON.stringify(value), getSecretKey()).toString();
 };
 
 const decryptData = <T>(cipherText: string): T | null => {
   try {
-    const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
+    const bytes = CryptoJS.AES.decrypt(cipherText, getSecretKey());
     return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
   } catch (e) {
     console.error(`[SecureStorage] 解密失败: ${(e as Error).message}`);
