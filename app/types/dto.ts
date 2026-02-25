@@ -1,5 +1,5 @@
-export interface PaginationData {
-    items: any[];
+export interface PaginationData<T = any> {
+    items: T[];
     total: number;
     page: number;
     per_page: number;

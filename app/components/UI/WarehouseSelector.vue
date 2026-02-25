@@ -7,7 +7,7 @@
       aria-expanded="false"
     >
       {{ selectedLabel || 'Select Warehouse' }}
-      <i class="bx bx-chevron-down"></i>
+      <i class="ri-arrow-down-s-line"></i>
     </button>
     <ul class="dropdown-menu">
       <li>

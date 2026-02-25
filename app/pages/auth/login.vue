@@ -61,17 +61,16 @@ const decrypt = (ciphertext: string) => {
   }
 }
 
-// 初始化凭证
+// 初始化凭证（仅恢复账号，不存储密码）
 const initCredentials = () => {
   if (!isStorageSupported.value) return
-  
+
   const storedData = localStorage.getItem('userCredentials')
   if (storedData) {
     try {
       const decrypted = decrypt(storedData);
-      const { account, password } = JSON.parse(decrypted);
+      const { account } = JSON.parse(decrypted);
       user.account = account;
-      user.password = password;
       rememberMe.value = true;
     } catch (e) {
       console.error(t('login.errors.credential-parse-failed'), e);
@@ -130,10 +129,10 @@ const handleRememberPassword = () => {
   if (!isStorageSupported.value) return
 
   if (rememberMe.value) {
+    // 仅存储账号，不存储密码（加密密钥为客户端可见的公钥，存密码存在安全风险）
     const encrypted = encrypt(
       JSON.stringify({
         account: user.account,
-        password: user.password,
         timestamp: Date.now()
       })
     );

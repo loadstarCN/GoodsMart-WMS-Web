@@ -13,13 +13,6 @@ export default defineNuxtConfig({
     port: 3000
   },
   nitro: {
-    devProxy: {
-      '/api': {
-        target: process.env.API_BASE_URL || 'http://127.0.0.1:5000',
-        changeOrigin: true,
-      }
-    },
-    
   },
   
  telemetry: false,
@@ -73,8 +66,6 @@ export default defineNuxtConfig({
 
 
  css : [
-   '@mdi/font/css/materialdesignicons.css',
-   'vuetify/styles/main.sass',
    '@/assets/css/icons.css',
    '@/assets/css/bootstrap.css',
    '@/assets/css/styles.css',
@@ -88,6 +79,18 @@ export default defineNuxtConfig({
    define: {
      // 'import.meta.env.BASE_URL': JSON.stringify('/nuxt/ynex/preview/'),
    },
+   build: {
+     rollupOptions: {
+       output: {
+         manualChunks(id) {
+           if (id.includes('vuetify')) return 'vuetify'
+           if (id.includes('apexcharts')) return 'apexcharts'
+           if (id.includes('sweetalert2')) return 'sweetalert2'
+           if (id.includes('bootstrap/dist')) return 'bootstrap'
+         }
+       }
+     }
+   }
  },
 
   i18n: {

@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
         <div class="header-element header-search">
           <!-- Start::header-link -->
           <a href="javascript:void(0);" class="header-link" data-bs-toggle="modal" data-bs-target="#searchModal">
-            <i class="bx bx-search-alt-2 header-link-icon"></i>
+            <i class="ri-search-line header-link-icon"></i>
           </a>
           <!-- End::header-link -->
         </div>
@@ -265,12 +265,12 @@ onBeforeUnmount(() => {
           <a href="javascript:void(0);" class="header-link layout-setting">
             <span class="light-layout" @click="colorthemeFn('dark')">
               <!-- Start::header-link-icon -->
-              <i class="bx bx-moon header-link-icon"></i>
+              <i class="ri-moon-line header-link-icon"></i>
               <!-- End::header-link-icon -->
             </span>
             <span class="dark-layout" @click="colorthemeFn('light')">
               <!-- Start::header-link-icon -->
-              <i class="bx bx-sun header-link-icon"></i>
+              <i class="ri-sun-line header-link-icon"></i>
               <!-- End::header-link-icon -->
             </span>
           </a>
@@ -282,8 +282,8 @@ onBeforeUnmount(() => {
         <div class="header-element header-fullscreen">
           <!-- Start::header-link -->
           <a @click="toggleFullScreen();" href="javascript:void(0);" class="header-link">
-            <i v-if="!isFullScreen" class="bx bx-fullscreen full-screen-open header-link-icon"></i>
-            <i v-if="isFullScreen" class="bx bx-exit-fullscreen full-screen-close header-link-icon"></i>
+            <i v-if="!isFullScreen" class="ri-fullscreen-line full-screen-open header-link-icon"></i>
+            <i v-if="isFullScreen" class="ri-fullscreen-exit-line full-screen-close header-link-icon"></i>
           </a>
           <!-- End::header-link -->
         </div>
@@ -307,10 +307,10 @@ onBeforeUnmount(() => {
             aria-labelledby="mainHeaderProfile" style="">
             <li>
               <NuxtLink class="dropdown-item d-flex" to="/authentication/reset-password"><i
-                  class="ti ti-lock fs-18 me-2 op-7"></i>{{ $t("nav.reset-password") }}</NuxtLink>
+                  class="ri-lock-line fs-18 me-2 op-7"></i>{{ $t("nav.reset-password") }}</NuxtLink>
             </li>
             <li>
-              <NuxtLink class="dropdown-item d-flex" @click="logout"><i class="ti ti-logout fs-18 me-2 op-7"></i>{{
+              <NuxtLink class="dropdown-item d-flex" @click="logout"><i class="ri-logout-box-r-line fs-18 me-2 op-7"></i>{{
                 $t("nav.logout") }}</NuxtLink>
             </li>
           </ul>
@@ -328,7 +328,7 @@ onBeforeUnmount(() => {
           <!-- Start::header-link|switcher-icon -->
           <a href="javascript:void(0);" class="header-link switcher-icon" data-bs-toggle="offcanvas"
             data-bs-target="#switcher-canvas">
-            <i class="bx bx-cog header-link-icon"></i>
+            <i class="ri-settings-3-line header-link-icon"></i>
           </a>
           <!-- End::header-link|switcher-icon -->
         </div>

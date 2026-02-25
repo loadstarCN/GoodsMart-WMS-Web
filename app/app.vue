@@ -6,11 +6,15 @@
   </NuxtLayout>
 </template>
 <script setup lang="ts">
+import { startTokenRefreshMonitor } from '~/utils/auth';
 
 const getImagePath = (imageName: any) => {
   const publicPath = import.meta.env.BASE_URL || '';
   return `${publicPath}${imageName}`;
 }
+const stopTokenMonitor = startTokenRefreshMonitor();
+onUnmounted(stopTokenMonitor);
+
 useHead({
   title: ' GoodsMart WMS - Admin Dashboard ',
   link: [{ rel: 'icon', type: 'image/png', href: getImagePath('images/brand-logos/favicon.ico') }],

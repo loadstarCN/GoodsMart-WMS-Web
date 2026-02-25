@@ -16,9 +16,9 @@ export default {
           <a href="javascript:void(0);" class="stretched-link"></a>
           <img :src="value.bg" alt="img" class="nft-img img-fluid">
           <a href="javascript:void(0);" class="nft-btn"><v-tooltip activator="parent" location="top">Like</v-tooltip><i
-              class="ti ti-heart"></i></a>
+              class="ri-heart-line"></i></a>
           <span class="nft-timer-container">
-            <i class="ti ti-bolt fs-14"></i>
+            <i class="ri-flashlight-line fs-14"></i>
             <span class="nft-timer ms-1 fs-11">{{ value.auctionTime }}</span>
           </span>
         </div>

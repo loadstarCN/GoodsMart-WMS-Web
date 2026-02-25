@@ -96,7 +96,7 @@ export default {
                             <td>
                                 <span class="avatar avatar-sm avatar-rounded bg-light">
                                     <i
-                                        :class="`ti ti-arrow-narrow-${transaction.arrowDirection} text-${transaction.arrowTextColor} fw-semibold fs-16`"></i>
+                                        :class="`ri-arrow-${transaction.arrowDirection}-line text-${transaction.arrowTextColor} fw-semibold fs-16`"></i>
                                 </span>
                             </td>
                             <td>

@@ -123,11 +123,6 @@ jsVector
 @forward "menu-styles/vertical";
 
 /* PAGES */
-@forward "pages/chat";
-@forward "pages/ecommerce";
-@forward "pages/file-manager";
-@forward "pages/landing";
-@forward "pages/mail";
 @forward "pages/task";
 
 /* UTILITIES */
@@ -138,20 +133,13 @@ jsVector
 @forward "util/typography";
 
 /* Global */
-@forward "global/vue3-slider-component";
 @forward "global/vue-multiselect";
-@forward "global/dropzone";
 @forward "global/vuepic_vue-datepicker";
-@forward "global/vue3-datepicker";
 @forward "global/vue3colorpicker";
-@forward "global/v-color-picker";
-@forward "global/form-wizard-vue3";
 @forward "global/vuetify";
 @forward "global/vue3-easy-data-table";
 @forward "global/charts";
 @forward "global/pscroll";
-@forward "global/range-slider";
-@forward "global/jsVector";
 @forward "global/custom";
 
 @forward "custom/custom";

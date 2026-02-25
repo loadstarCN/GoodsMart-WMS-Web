@@ -40,14 +40,16 @@ export const isTokenValid = (token: string) => {
   }
 };
 
-// 定时刷新任务（在 app.vue 中初始化）
+// 定时刷新任务（在 app.vue 中初始化，返回清理函数）
 export const startTokenRefreshMonitor = () => {
-  setInterval(async () => {
+  const handle = setInterval(async () => {
     const tokenExp = useCookie('token_exp').value;
     const authStore = useAuthStore();
-    
+
     if (tokenExp && (Number(tokenExp) - Date.now()/1000 < 300)) {
       await authStore.refreshToken();
     }
   }, 60_000); // 每分钟检查一次
+
+  return () => clearInterval(handle);
 };

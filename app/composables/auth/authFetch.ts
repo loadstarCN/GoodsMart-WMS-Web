@@ -14,17 +14,16 @@ export const authFetch = async (input: RequestInfo, init?: RequestInit) => {
     }
 
     try {
-      const response = await fetch('/api/auth/refresh', {
+      const response = await fetch('/api/system/user/refresh', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${refreshToken.value}` },
       })
 
       if (!response.ok) throw new Error('REFRESH_FAILED')
-      
-      const { access_token, refresh_token } = await response.json()
-      await authStore.refreshToken()
-      return access_token
+
+      const data = await response.json()
+      authStore.updateAuthCredentials(data)
+      return data.access_token
     } catch (error) {
       authStore.logUserOut()
       throw new Error('AUTH_REQUIRED')

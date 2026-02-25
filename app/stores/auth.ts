@@ -17,11 +17,12 @@ export const useAuthStore = defineStore('auth', {
     // 通用凭证更新函数
     updateAuthCredentials(data: any) {
       useCookie('token').value = data.access_token;
-      // useCookie('token_exp').value = (Date.now()/1000 + data.expires_in).toString();
-      
+      if (data.expires_in) {
+        useCookie('token_exp').value = (Date.now()/1000 + data.expires_in).toString();
+      }
+
       if (data.refresh_token) {
         useCookie('refresh_token').value = data.refresh_token;
-        // useCookie('refresh_token_exp').value = (Date.now()/1000 + data.refresh_expires_in).toString();
       }
 
       if (data.userInfo) {
