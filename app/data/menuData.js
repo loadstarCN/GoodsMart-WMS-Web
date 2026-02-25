@@ -100,7 +100,7 @@ export let menuData = [
         path: '/delivery/',
         type: 'link',
         title: 'nav.delivery',
-        icon: 'bx bx-truck',
+        icon: 'bx bx-paper-plane',
         selected: false,
         active: false,
         dirchange: false,
