@@ -18,7 +18,7 @@
                 <div class="tab-pane fade show active border-0" id="switcher-home" role="tabpanel" aria-labelledby="switcher-home-tab"
                     tabindex="0">
                     <div class="">
-                        <p class="switcher-style-head">{{ $t('switcher.theme-color-mode') }}</p>
+                        <p class="switcher-style-head">{{ $t('switcher.color-mode') }}</p>
                         <div class="row switcher-style gx-0">
                             <div class="col-4">
                                 <div class="form-check switch-select">
@@ -62,7 +62,7 @@
                         </div>
                     </div>
                     <div class="">
-                        <p class="switcher-style-head">{{ $t('switcher.navigation-styles') }}</p>
+                        <p class="switcher-style-head">{{ $t('switcher.nav-styles') }}</p>
                         <div class="row switcher-style gx-0">
                             <div class="col-4">
                                 <div class="form-check switch-select">
@@ -126,7 +126,7 @@
                         </div>
                     </div>
                     <div class="sidemenu-layout-styles">
-                        <p class="switcher-style-head">{{ $t('switcher.sidemenu-layout-styles') }}</p>
+                        <p class="switcher-style-head">{{ $t('switcher.sidemenu-styles') }}</p>
                         <div class="row switcher-style gx-0 pb-2 gy-2">
                             <div class="col-sm-6">
                                 <div class="form-check switch-select">
@@ -215,7 +215,7 @@
                         </div>
                     </div>
                     <div class="">
-                        <p class="switcher-style-head">{{ $t('switcher.layout-width-styles') }}</p>
+                        <p class="switcher-style-head">{{ $t('switcher.layout-width') }}</p>
                         <div class="row switcher-style gx-0">
                             <div class="col-4">
                                 <div class="form-check switch-select">
