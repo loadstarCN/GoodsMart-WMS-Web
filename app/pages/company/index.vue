@@ -135,7 +135,13 @@ const saveCompany = async () => {
 
   if (Object.values(errors.value).some(v => v)) return
 
-  await httpRequest(`/api/warehouse/company/${staffStore.staffInfo?.company_id}`, {
+  const companyId = staffStore.staffInfo?.company_id
+  if (!companyId) {
+    showToast(t('common.validation.company-required'), 'error')
+    return
+  }
+
+  await httpRequest(`/api/warehouse/company/${companyId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: itemData.value,
@@ -153,7 +159,13 @@ const saveCompany = async () => {
 
 const fetchData = async () => {
     loading.value = true;
-    const data = await httpRequest(`/api/warehouse/company/${staffStore.staffInfo?.company_id}`, {
+    const companyId = staffStore.staffInfo?.company_id
+    if (!companyId) {
+      showToast(t('common.validation.company-required'), 'error')
+      loading.value = false
+      return null
+    }
+    const data = await httpRequest(`/api/warehouse/company/${companyId}`, {
         method: 'GET',
         params: route.query,
         onSuccess: (data) => {
@@ -180,6 +192,10 @@ const fetchData = async () => {
 
 
 onMounted(async() => {
+  // 确保 staffInfo 已加载（可能 Header 尚未完成加载）
+  if (!staffStore.staffInfo) {
+    await staffStore.getCurrentStaffInfo()
+  }
   await fetchData();
 })
 
@@ -230,7 +246,7 @@ onMounted(async() => {
                       </div>
                       <div class="col-xl-6">
                         <label for="carrier-email" class="form-label">{{ t('common.fields.email')}}</label>
-                        <input type="email" class="form-control" id="carrier-email" :placeholder="t('company.form.placeholders.email')"
+                        <input type="email" class="form-control" id="carrier-email" :placeholder="t('common.placeholders.email')"
                           v-model="itemData.email">
                           <div v-if="errors.email" class="invalid-feedback d-block">{{ errors.email }}</div>
                       </div>
@@ -261,7 +277,7 @@ onMounted(async() => {
           </div>
           <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
             <button class="btn btn-primary-light m-1" @click="saveCompany">{{ t('company.operations.edit')}}<i
-                class="bi bi-plus-lg ms-2"></i></button>
+                class="ri-add-line ms-2"></i></button>
           </div>
         </div>
       </div>

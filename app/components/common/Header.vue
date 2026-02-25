@@ -244,14 +244,14 @@ onBeforeUnmount(() => {
           <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-auto-close="outside"
             data-bs-toggle="dropdown">
             <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang"
-              class="rounded-circle header-link-icon"><span class="fw-semibold mb-0 lh-1">{{ languages[currentLang]
+              class="rounded-circle flag-icon"><span class="fw-semibold mb-0 lh-1">{{ languages[currentLang]
               }}</span>
           </a>
           <!-- End::header-link|dropdown-toggle -->
           <ul class="main-header-dropdown dropdown-menu dropdown-menu-end" data-popper-placement="none">
             <li v-for="lang in ['en', 'zh', 'ja']" :key="lang">
               <a @click="setLocale(lang)" class="dropdown-item">
-                <img :src="`/images/flags/${lang}_flag.jpg`" class="avatar avatar-xs me-2">
+                <img :src="`/images/flags/${lang}_flag.jpg`" class="rounded-circle flag-dropdown me-2">
                 {{ languages[lang] }}
               </a>
             </li>
@@ -349,13 +349,13 @@ onBeforeUnmount(() => {
         <div class="modal-body">
           <div class="input-group">
             <a href="javascript:void(0);" class="input-group-text" id="Search-Grid"><i
-                class="fe fe-search header-link-icon fs-18"></i></a>
+                class="ri-search-line header-link-icon fs-18"></i></a>
             <input type="search" class="form-control border-0 px-2" placeholder="Search" aria-label="Username">
             <a href="javascript:void(0);" class="input-group-text" id="voice-search"><i
-                class="fe fe-mic header-link-icon"></i></a>
+                class="ri-mic-line header-link-icon"></i></a>
             <a href="javascript:void(0);" class="btn btn-light btn-icon" data-bs-toggle="dropdown"
               aria-expanded="false">
-              <i class="fe fe-more-vertical"></i>
+              <i class="ri-more-2-fill"></i>
             </a>
             <ul class="dropdown-menu">
               <li><a class="dropdown-item" href="javascript:void(0);">Action</a></li>
@@ -370,9 +370,9 @@ onBeforeUnmount(() => {
           <div class="mt-4">
             <p class="font-weight-semibold text-muted mb-2">Are You Looking For...</p>
             <span class="search-tags" v-for="(header,index) in header" :key="index">
-              <i :class="`fe fe-${header.icon} me-2`"></i>{{$t(header.name)}}
+              <i :class="`ri-${header.icon} me-2`"></i>{{$t(header.name)}}
               <a href="javascript:void(0)" class="tag-addon" @click="removeHeader(index)">
-                <i class="fe fe-x"></i>
+                <i class="ri-close-line"></i>
               </a>
             </span>
           </div>
@@ -381,17 +381,17 @@ onBeforeUnmount(() => {
             <div class="p-2 border br-5 d-flex align-items-center text-muted mb-2 alert">
               <NuxtLink to="/"><span>Notifications</span></NuxtLink>
               <a class="ms-auto lh-1" href="javascript:void(0);" data-bs-dismiss="alert" aria-label="Close"><i
-                  class="fe fe-x text-muted"></i></a>
+                  class="ri-close-line text-muted"></i></a>
             </div>
             <div class="p-2 border br-5 d-flex align-items-center text-muted mb-2 alert">
               <NuxtLink to="/"><span>Alerts</span></NuxtLink>
               <a class="ms-auto lh-1" href="javascript:void(0);" data-bs-dismiss="alert" aria-label="Close"><i
-                  class="fe fe-x text-muted"></i></a>
+                  class="ri-close-line text-muted"></i></a>
             </div>
             <div class="p-2 border br-5 d-flex align-items-center text-muted mb-0 alert">
               <NuxtLink to="/"><span>Mail</span></NuxtLink>
               <a class="ms-auto lh-1" href="javascript:void(0);" data-bs-dismiss="alert" aria-label="Close"><i
-                  class="fe fe-x text-muted"></i></a>
+                  class="ri-close-line text-muted"></i></a>
             </div>
           </div>
         </div>
@@ -405,3 +405,20 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Flag icon in header bar - prevents compression of rectangular flag images */
+.flag-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: cover;
+  vertical-align: middle;
+}
+/* Flag icon in dropdown menu */
+.flag-dropdown {
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: cover;
+  vertical-align: middle;
+}
+</style>
