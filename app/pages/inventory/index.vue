@@ -156,7 +156,7 @@ function calculateTotalStock(inventory: any) {
                                                 </p>
                                                 <p class="mb-0 fs-11 text-muted">{{ inventory.goods?.code }}</p>
                                                 <p class="mb-0 fs-11 text-muted d-xxl-none">@<NuxtLink
-                                                        :to="`/warehouse/${inventory.warehouse?.id}`"
+                                                        :to="`/warehouse/detail/${inventory.warehouse?.id}`"
                                                         class="text-default text-wrap">{{ inventory.warehouse?.name }}
                                                     </NuxtLink>
                                                 </p>
@@ -164,7 +164,7 @@ function calculateTotalStock(inventory: any) {
                                         </div>
                                     </td>
                                     <td class="d-none d-xxl-table-cell">
-                                        <NuxtLink :to="`/warehouse/${inventory.warehouse?.id}`"
+                                        <NuxtLink :to="`/warehouse/detail/${inventory.warehouse?.id}`"
                                             class="text-default text-wrap">{{
                                             inventory.warehouse?.name }}
                                         </NuxtLink>

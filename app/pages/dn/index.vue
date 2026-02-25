@@ -285,7 +285,7 @@ onMounted(async() => {
                                         </NuxtLink>
                                     </td>
                                     <td class="">
-                                        <NuxtLink :to="`/warehouse/${dn?.warehouse?.id}`" class="text-default">{{
+                                        <NuxtLink :to="`/warehouse/detail/${dn?.warehouse?.id}`" class="text-default">{{
                                             dn?.warehouse?.name }}
                                         </NuxtLink>
                                     </td>
