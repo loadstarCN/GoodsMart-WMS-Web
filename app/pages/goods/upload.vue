@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 definePageMeta({
-  middleware: ["auth"]
 })
 
 // 获取国际化方法

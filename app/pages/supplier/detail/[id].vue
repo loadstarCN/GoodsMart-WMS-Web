@@ -2,7 +2,6 @@
 
 // 定义页面元数据
 definePageMeta({
-  middleware: ["auth"],
 });
 
 let loading = ref(true);

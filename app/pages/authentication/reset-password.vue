@@ -5,7 +5,6 @@ import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
 
 definePageMeta({
-    middleware: ["auth"],
 })
 // 获取国际化方法
 const { t } = useI18n();

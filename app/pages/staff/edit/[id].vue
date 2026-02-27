@@ -3,7 +3,6 @@ import { staffRolesOptions } from '~/data/selectOptions'
 
 // 定义页面元数据
 definePageMeta({
-  middleware: ["auth"]
 })
 
 

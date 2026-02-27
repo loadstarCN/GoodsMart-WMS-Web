@@ -3,7 +3,6 @@
 // 定义页面元数据
 definePageMeta({
   layout: 'custom',
-  middleware: ["auth"],
 });
 
 const staffStore = useStaffStore()

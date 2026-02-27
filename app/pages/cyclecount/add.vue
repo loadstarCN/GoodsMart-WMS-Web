@@ -3,7 +3,6 @@ import { useUseGoodsLocationSearch } from '~/composables/goods/useGoodsLocationS
 
 // 定义页面元数据
 definePageMeta({
-  middleware: ["auth"],
 });
 
 // 获取国际化方法

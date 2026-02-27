@@ -1,7 +1,6 @@
 <script setup>
 // 定义页面元数据
 definePageMeta({
-  middleware: ["auth"]
 })
 
 // 富文本编辑器

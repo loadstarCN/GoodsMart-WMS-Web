@@ -158,7 +158,6 @@ onUnmounted(() => document.body.classList.remove('bg-white'));
  ​********************/
 definePageMeta({
   layout: 'custom',
-  middleware: ["auth"]
 });
 </script>
 

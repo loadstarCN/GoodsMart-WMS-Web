@@ -1,21 +1,25 @@
-<template lang="">
-  <Switcher />
-  <div class="page">
-    <Header />
-    <Sidebar />
-    
-        <!-- Start::app-content -->
-        <div class="main-content app-content">
-            <div class="container-fluid">
-              <slot></slot>
-            </div>
-        </div>
-        <!-- End::app-content -->
-      <Footer />
-  </div>
-  <BackToTop />
-</template>
-<script lang="ts">
+<template>
+  <template v-if="authenticated">
+    <Switcher />
+    <div class="page">
+      <Header />
+      <Sidebar />
 
+          <!-- Start::app-content -->
+          <div class="main-content app-content">
+              <div class="container-fluid">
+                <slot></slot>
+              </div>
+          </div>
+          <!-- End::app-content -->
+        <Footer />
+    </div>
+    <BackToTop />
+  </template>
+</template>
+<script lang="ts" setup>
+import { useAuthStore } from '~/stores/auth';
+
+const { authenticated } = storeToRefs(useAuthStore());
 </script>
 <style lang=""></style>
