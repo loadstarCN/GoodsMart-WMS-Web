@@ -16,13 +16,14 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     // 通用凭证更新函数
     updateAuthCredentials(data: any) {
-      useCookie('token').value = data.access_token;
+      const cookieOpts = { secure: true, sameSite: 'lax' as const }
+      useCookie('token', cookieOpts).value = data.access_token;
       if (data.expires_in) {
-        useCookie('token_exp').value = (Date.now()/1000 + data.expires_in).toString();
+        useCookie('token_exp', cookieOpts).value = (Date.now()/1000 + data.expires_in).toString();
       }
 
       if (data.refresh_token) {
-        useCookie('refresh_token').value = data.refresh_token;
+        useCookie('refresh_token', cookieOpts).value = data.refresh_token;
       }
 
       if (data.userInfo) {
@@ -76,6 +77,7 @@ export const useAuthStore = defineStore('auth', {
       const cookiesToClear = [
         'token',
         'refresh_token',
+        'token_exp',
       ];
     
       cookiesToClear.forEach(name => {

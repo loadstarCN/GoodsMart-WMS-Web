@@ -26,10 +26,11 @@ const decryptData = <T>(cipherText: string): T | null => {
 
 // 通用数据验证（合并重复的验证逻辑）
 const validateData = <T>(data: any): data is T => {
+  if (data == null) return false;
   if (data?.hasOwnProperty('id') && data?.hasOwnProperty('user_name')) {
     return !!data.id && typeof data.user_name === "string";
   }
-  return true;
+  return false;
 };
 
 // 通用存储处理器（策略模式）
