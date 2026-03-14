@@ -43,7 +43,7 @@ export default defineNuxtConfig({
    transpile : ["vuetify", 'vue-countup-v3']
  },
 
- devtools: { enabled: true },
+ devtools: { enabled: process.env.NODE_ENV !== 'production' },
 
  imports: {
     dirs: [
@@ -84,9 +84,16 @@ export default defineNuxtConfig({
        output: {
          manualChunks(id) {
            if (id.includes('vuetify')) return 'vuetify'
-           if (id.includes('apexcharts')) return 'apexcharts'
+           if (id.includes('apexcharts') || id.includes('vue3-apexcharts')) return 'apexcharts'
            if (id.includes('sweetalert2')) return 'sweetalert2'
            if (id.includes('bootstrap/dist')) return 'bootstrap'
+           if (id.includes('echarts') || id.includes('zrender')) return 'echarts'
+           if (id.includes('quill') || id.includes('tiptap') || id.includes('@vueup/vue-quill') || id.includes('element-tiptap')) return 'editor'
+           if (id.includes('leaflet')) return 'leaflet'
+           if (id.includes('@fullcalendar')) return 'fullcalendar'
+           if (id.includes('filepond')) return 'filepond'
+           if (id.includes('lightgallery') || id.includes('photoswipe')) return 'gallery'
+           if (id.includes('codemirror')) return 'codemirror'
          }
        }
      }

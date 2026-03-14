@@ -80,14 +80,21 @@
 
 <script lang="ts">
 import { defineComponent, ref, onMounted, watch } from 'vue';
-import { useStore } from 'vuex';
 import { switcherStore } from '~/stores/switcher';
 
 export default defineComponent({
 
   setup() {
-    const store = useStore();
-    const local_variable = store.state; // Vuex store state
+    // 主题状态由 pinia switcherStore 管理，此组件已废弃，仅保留结构
+    const local_variable = reactive({
+      dataThemeMode: 'light',
+      dir: 'ltr',
+      dataMenuPosition: 'fixed',
+      dataNavLayout: 'vertical',
+      dataNavStyle: '',
+      toggled: '',
+      colorPrimaryRgb: '',
+    });
 
     const themeMode = ref(local_variable.dataThemeMode); // To control theme mode (light/dark)
     const direction = ref(local_variable.dir); // LTR or RTL
@@ -107,32 +114,32 @@ export default defineComponent({
     };
 
     const setLightMode = () => {
-      store.dispatch('setThemeMode', 'light');
+      /* noop - use switcherStore.colorthemeFn('light') if needed */
     };
 
     const setDarkMode = () => {
-      store.dispatch('setThemeMode', 'dark');
+      /* noop - use switcherStore.colorthemeFn('dark') if needed */
     };
 
     const setLTR = () => {
-      store.dispatch('setDirection', 'ltr');
+      /* noop */
     };
 
     const setRTL = () => {
-      store.dispatch('setDirection', 'rtl');
+      /* noop */
     };
 
-    const changePrimaryColor = (color: string) => {
-      store.dispatch('setPrimaryColor', color);
+    const changePrimaryColor = (_color: string) => {
+      /* noop */
     };
 
     const resetSettings = () => {
-      store.dispatch('resetSettings');
+      /* noop */
     };
 
     // Watch for any state changes
-    watch(themeMode, (newMode) => {
-      store.dispatch('setThemeMode', newMode);
+    watch(themeMode, (_newMode) => {
+      /* noop */
     });
 
     onMounted(() => {
