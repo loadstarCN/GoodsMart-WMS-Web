@@ -11,7 +11,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
     if (authStore.userInfo?.type === 'staff') {
         // 会话状态同步
         if (!staffStore.staffInfo) {
-            console.log("Staff info not found, fetching...");
             await staffStore.getCurrentStaffInfo();
         }
     }

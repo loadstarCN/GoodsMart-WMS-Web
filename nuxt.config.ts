@@ -104,7 +104,7 @@ export default defineNuxtConfig({
     defaultLocale: 'en',
     strategy: 'no_prefix', // 路由策略
     compilation: {
-      escapeHtml: false, // 允许HTML标签渲染
+      escapeHtml: true,
       strictMessage: false // 关闭严格模式警告
     },
     detectBrowserLanguage: {

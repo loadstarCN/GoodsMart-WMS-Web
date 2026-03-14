@@ -1,4 +1,4 @@
-export const useUseChartMonthOptions = (months: number) => {
+export const useChartMonthOptions = (months: number) => {
   const generateMonths = (months: number) => {
     const categories = [];
     const currentDate = new Date();

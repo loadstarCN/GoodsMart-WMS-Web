@@ -100,8 +100,8 @@ const activeTab = computed(() => {
 })
 
 // 6个月的统计数据
-import { useUseChartMonthOptions } from '@/composables/chart/useChartMonthOptions';
-const listViewOptions = useUseChartMonthOptions(6);
+import { useChartMonthOptions } from '@/composables/chart/useChartMonthOptions';
+const listViewOptions = useChartMonthOptions(6);
 const listViewSeries = ref([]);
 
 

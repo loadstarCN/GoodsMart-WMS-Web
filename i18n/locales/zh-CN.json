@@ -236,7 +236,7 @@
       "approved": "审批时间",
       "putaway":"上架时间",
       "removal":"下架时间",
-      "adjustment":"调整极时间",
+      "adjustment":"调整时间",
       "transfer":"转移时间",
       "cycle-count":"盘点时间",
       "sorting": "分拣时间",
