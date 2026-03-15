@@ -1,6 +1,6 @@
 <script setup>
 import { switcherStore } from '@/stores/switcher'
-import { header as staticHeader, languages } from '~/data/headerData.js'
+import { languages } from '~/data/headerData.js'
 import { useI18n } from 'vue-i18n'
 import Avatar from '@/components/UI/avatar.vue'
 
@@ -10,7 +10,6 @@ const { setLocale: setI18nLocale } = useI18n()
 // 响应式状态
 const cookieLang = useCookie('i18n_lang', { maxAge: 2592000 })
 const currentLang = ref(cookieLang.value || 'en')
-const header = ref([...staticHeader])
 const isFullScreen = ref(false)
 
 // Store 实例
@@ -134,9 +133,6 @@ const enterFullscreen = (element) => {
   enterMethods.find(fn => fn())
 }
 
-const removeHeader = (index) => {
-    header.value.splice(index, 1)
-}
 
 
 const selectWarehouse = (warehouse) => {
@@ -227,15 +223,7 @@ onBeforeUnmount(() => {
       <!-- Start::header-content-right -->
       <div class="header-content-right">
 
-        <!-- Start::header-element -->
-        <div class="header-element header-search">
-          <!-- Start::header-link -->
-          <a href="javascript:void(0);" class="header-link" data-bs-toggle="modal" data-bs-target="#searchModal">
-            <i class="ri-search-line header-link-icon"></i>
-          </a>
-          <!-- End::header-link -->
-        </div>
-        <!-- End::header-element -->
+        <!-- Search removed -->
 
         <!-- Start::header-element -->
 
@@ -317,7 +305,7 @@ onBeforeUnmount(() => {
         </div>
         <!-- End::header-element -->
         <!-- Start::header-element -->
-        <div class="pt-1">
+        <div class="pt-1" v-if="userStore.userInfo?.type !== 'user'">
           <WarehouseSelector :warehouses="warehouseStore.warehouses"
             :selected-label="warehouseStore.currentWarehouseLabel" @select="selectWarehouse" />
         </div>
@@ -343,67 +331,7 @@ onBeforeUnmount(() => {
   <!-- /app-header -->
 
 
-  <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModal" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-body">
-          <div class="input-group">
-            <a href="javascript:void(0);" class="input-group-text" id="Search-Grid"><i
-                class="ri-search-line header-link-icon fs-18"></i></a>
-            <input type="search" class="form-control border-0 px-2" placeholder="Search" aria-label="Username">
-            <a href="javascript:void(0);" class="input-group-text" id="voice-search"><i
-                class="ri-mic-line header-link-icon"></i></a>
-            <a href="javascript:void(0);" class="btn btn-light btn-icon" data-bs-toggle="dropdown"
-              aria-expanded="false">
-              <i class="ri-more-2-fill"></i>
-            </a>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="javascript:void(0);">Action</a></li>
-              <li><a class="dropdown-item" href="javascript:void(0);">Another action</a></li>
-              <li><a class="dropdown-item" href="javascript:void(0);">Something else here</a></li>
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li><a class="dropdown-item" href="javascript:void(0);">Separated link</a></li>
-            </ul>
-          </div>
-          <div class="mt-4">
-            <p class="font-weight-semibold text-muted mb-2">Are You Looking For...</p>
-            <span class="search-tags" v-for="(header,index) in header" :key="index">
-              <i :class="`ri-${header.icon} me-2`"></i>{{$t(header.name)}}
-              <a href="javascript:void(0)" class="tag-addon" @click="removeHeader(index)">
-                <i class="ri-close-line"></i>
-              </a>
-            </span>
-          </div>
-          <div class="my-4">
-            <p class="font-weight-semibold text-muted mb-2">Recent Search :</p>
-            <div class="p-2 border br-5 d-flex align-items-center text-muted mb-2 alert">
-              <NuxtLink to="/"><span>Notifications</span></NuxtLink>
-              <a class="ms-auto lh-1" href="javascript:void(0);" data-bs-dismiss="alert" aria-label="Close"><i
-                  class="ri-close-line text-muted"></i></a>
-            </div>
-            <div class="p-2 border br-5 d-flex align-items-center text-muted mb-2 alert">
-              <NuxtLink to="/"><span>Alerts</span></NuxtLink>
-              <a class="ms-auto lh-1" href="javascript:void(0);" data-bs-dismiss="alert" aria-label="Close"><i
-                  class="ri-close-line text-muted"></i></a>
-            </div>
-            <div class="p-2 border br-5 d-flex align-items-center text-muted mb-0 alert">
-              <NuxtLink to="/"><span>Mail</span></NuxtLink>
-              <a class="ms-auto lh-1" href="javascript:void(0);" data-bs-dismiss="alert" aria-label="Close"><i
-                  class="ri-close-line text-muted"></i></a>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <div class="btn-group ms-auto">
-            <button class="btn btn-sm btn-primary-light">{{ $t("button.search") }}</button>
-            <button class="btn btn-sm btn-primary">{{ $t("button.clear_recents") }}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Search modal removed -->
 </template>
 
 <style scoped>

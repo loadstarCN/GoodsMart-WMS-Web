@@ -231,7 +231,8 @@
       "tracking-number": "Tracking Number",
       "summary": "Summary",
       "delivery-info": "Delivery Information",
-      "shipping-cost": "Shipping Cost"
+      "shipping-cost": "Shipping Cost",
+      "image": "Image"
     },
     "dates": {
       "updated": "Updated",
@@ -1053,6 +1054,131 @@
     "tips": {
       "key-warning": "Please save this key securely. It will not be shown again after closing.",
       "no-keys": "No API keys yet. Click the button above to create one."
+    }
+  },
+  "admin": {
+    "title": "Admin Console",
+    "nav": {
+      "overview": "OVERVIEW",
+      "dashboard": "Dashboard",
+      "tenant-management": "TENANT MANAGEMENT",
+      "tenants": "Tenants",
+      "system-management": "SYSTEM MANAGEMENT",
+      "users": "Users",
+      "roles": "Roles",
+      "permissions": "Permissions",
+      "logs": "Operation Logs"
+    },
+    "dashboard": {
+      "total-tenants": "Total Tenants",
+      "total-users": "Total Users",
+      "total-roles": "Total Roles",
+      "view-all": "View All"
+    },
+    "tenants": {
+      "title": "Tenant Management",
+      "entity": "Tenant",
+      "fields": {
+        "expired-at": "Expiry Date"
+      },
+      "operations": {
+        "add": "Add Tenant",
+        "edit": "Edit Tenant",
+        "delete": "Delete Tenant"
+      }
+    },
+    "users": {
+      "title": "User Management",
+      "type-admin": "Admin",
+      "type-staff": "Staff"
+    },
+    "roles": {
+      "title": "Role Management",
+      "entity": "Role",
+      "fields": {
+        "permissions": "Permissions"
+      },
+      "operations": {
+        "add": "Add Role",
+        "edit": "Edit Role"
+      },
+      "placeholders": {
+        "description": "Enter role description"
+      },
+      "select-all": "Select All",
+      "clear-all": "Clear All"
+    },
+    "permissions": {
+      "title": "Permission Management",
+      "entity": "Permission",
+      "operations": {
+        "add": "Add Permission",
+        "edit": "Edit Permission"
+      },
+      "placeholders": {
+        "name": "e.g. manage_users",
+        "description": "Enter permission description"
+      },
+      "empty": "No permissions available. Please add permissions first.",
+      "categories": {
+        "global": "Global",
+        "system": "System Management",
+        "master-data": "Master Data",
+        "goods": "Goods & Inventory",
+        "inbound": "Inbound Operations",
+        "outbound": "Outbound Operations",
+        "inventory-ops": "Inventory Operations"
+      },
+      "modules": {
+        "global": "Global Access",
+        "tasks": "Tasks",
+        "user": "Users",
+        "role": "Roles",
+        "permission": "Permissions",
+        "logs": "Logs",
+        "limiter": "Rate Limiter",
+        "api-keys": "API Keys",
+        "company": "Company",
+        "staff": "Staff",
+        "department": "Department",
+        "warehouse": "Warehouse",
+        "location": "Location",
+        "supplier": "Supplier",
+        "carrier": "Carrier",
+        "recipient": "Recipient",
+        "goods": "Goods",
+        "inventory": "Inventory",
+        "asn": "ASN",
+        "putaway": "Putaway",
+        "dn": "DN",
+        "picking": "Picking",
+        "sorting": "Sorting",
+        "packing": "Packing",
+        "delivery": "Delivery",
+        "payment": "Payment",
+        "adjustment": "Adjustment",
+        "cycle-count": "Cycle Count",
+        "transfer": "Transfer",
+        "removal": "Removal"
+      },
+      "ops": {
+        "read": "View",
+        "edit": "Edit",
+        "delete": "Delete",
+        "add": "Import",
+        "create": "Create",
+        "execute": "Execute"
+      }
+    },
+    "logs": {
+      "title": "Operation Logs",
+      "fields": {
+        "user": "User",
+        "method": "Method",
+        "path": "Path",
+        "status-code": "Status Code",
+        "ip": "IP Address"
+      }
     }
   },
   "options": {

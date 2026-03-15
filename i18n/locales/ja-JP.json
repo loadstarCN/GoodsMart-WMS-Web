@@ -231,7 +231,8 @@
       "tracking-number": "追跡番号",
       "summary": "サマリー",
       "delivery-info": "配送情報",
-      "shipping-cost": "送料"
+      "shipping-cost": "送料",
+      "image": "画像"
     },
     "dates": {
       "updated": "更新日時",
@@ -1053,6 +1054,131 @@
     "tips": {
       "key-warning": "このキーを安全に保管してください。閉じた後は再表示できません。",
       "no-keys": "APIキーはまだありません。上のボタンをクリックして作成してください。"
+    }
+  },
+  "admin": {
+    "title": "管理コンソール",
+    "nav": {
+      "overview": "概要",
+      "dashboard": "ダッシュボード",
+      "tenant-management": "テナント管理",
+      "tenants": "テナント一覧",
+      "system-management": "システム管理",
+      "users": "ユーザー管理",
+      "roles": "ロール管理",
+      "permissions": "権限管理",
+      "logs": "操作ログ"
+    },
+    "dashboard": {
+      "total-tenants": "テナント数",
+      "total-users": "ユーザー数",
+      "total-roles": "ロール数",
+      "view-all": "すべて表示"
+    },
+    "tenants": {
+      "title": "テナント管理",
+      "entity": "テナント",
+      "fields": {
+        "expired-at": "有効期限"
+      },
+      "operations": {
+        "add": "テナント追加",
+        "edit": "テナント編集",
+        "delete": "テナント削除"
+      }
+    },
+    "users": {
+      "title": "ユーザー管理",
+      "type-admin": "管理者",
+      "type-staff": "従業員"
+    },
+    "roles": {
+      "title": "ロール管理",
+      "entity": "ロール",
+      "fields": {
+        "permissions": "権限"
+      },
+      "operations": {
+        "add": "ロール追加",
+        "edit": "ロール編集"
+      },
+      "placeholders": {
+        "description": "ロールの説明を入力"
+      },
+      "select-all": "すべて選択",
+      "clear-all": "すべてクリア"
+    },
+    "permissions": {
+      "title": "権限管理",
+      "entity": "権限",
+      "operations": {
+        "add": "権限追加",
+        "edit": "権限編集"
+      },
+      "placeholders": {
+        "name": "例: manage_users",
+        "description": "権限の説明を入力"
+      },
+      "empty": "権限がありません。先に権限を追加してください。",
+      "categories": {
+        "global": "グローバル",
+        "system": "システム管理",
+        "master-data": "マスターデータ",
+        "goods": "商品・在庫",
+        "inbound": "入庫操作",
+        "outbound": "出庫操作",
+        "inventory-ops": "在庫操作"
+      },
+      "modules": {
+        "global": "グローバルアクセス",
+        "tasks": "タスク",
+        "user": "ユーザー",
+        "role": "ロール",
+        "permission": "権限",
+        "logs": "ログ",
+        "limiter": "レートリミッター",
+        "api-keys": "APIキー",
+        "company": "会社",
+        "staff": "従業員",
+        "department": "部門",
+        "warehouse": "倉庫",
+        "location": "ロケーション",
+        "supplier": "仕入先",
+        "carrier": "配送業者",
+        "recipient": "届け先",
+        "goods": "商品",
+        "inventory": "在庫",
+        "asn": "入庫通知",
+        "putaway": "棚入れ",
+        "dn": "出庫通知",
+        "picking": "ピッキング",
+        "sorting": "仕分け",
+        "packing": "梱包",
+        "delivery": "配送",
+        "payment": "入金",
+        "adjustment": "在庫調整",
+        "cycle-count": "棚卸し",
+        "transfer": "在庫移動",
+        "removal": "在庫除去"
+      },
+      "ops": {
+        "read": "閲覧",
+        "edit": "編集",
+        "delete": "削除",
+        "add": "インポート",
+        "create": "作成",
+        "execute": "実行"
+      }
+    },
+    "logs": {
+      "title": "操作ログ",
+      "fields": {
+        "user": "ユーザー",
+        "method": "メソッド",
+        "path": "パス",
+        "status-code": "ステータスコード",
+        "ip": "IPアドレス"
+      }
     }
   },
   "options": {

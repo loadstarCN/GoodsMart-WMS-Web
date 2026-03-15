@@ -231,7 +231,8 @@
       "tracking-number": "快递单号",
       "summary": "摘要信息",
       "delivery-info": "配送信息",
-      "shipping-cost": "运费"
+      "shipping-cost": "运费",
+      "image": "图片"
     },
     "dates": {
       "updated": "更新时间",
@@ -1053,6 +1054,131 @@
     "tips": {
       "key-warning": "请妥善保管此密钥，关闭后将无法再次查看",
       "no-keys": "暂无 API 密钥，点击上方按钮创建"
+    }
+  },
+  "admin": {
+    "title": "管理控制台",
+    "nav": {
+      "overview": "概览",
+      "dashboard": "仪表盘",
+      "tenant-management": "租户管理",
+      "tenants": "租户列表",
+      "system-management": "系统管理",
+      "users": "用户管理",
+      "roles": "角色管理",
+      "permissions": "权限管理",
+      "logs": "操作日志"
+    },
+    "dashboard": {
+      "total-tenants": "租户总数",
+      "total-users": "用户总数",
+      "total-roles": "角色总数",
+      "view-all": "查看全部"
+    },
+    "tenants": {
+      "title": "租户管理",
+      "entity": "租户",
+      "fields": {
+        "expired-at": "到期日期"
+      },
+      "operations": {
+        "add": "添加租户",
+        "edit": "编辑租户",
+        "delete": "删除租户"
+      }
+    },
+    "users": {
+      "title": "用户管理",
+      "type-admin": "管理员",
+      "type-staff": "员工"
+    },
+    "roles": {
+      "title": "角色管理",
+      "entity": "角色",
+      "fields": {
+        "permissions": "权限"
+      },
+      "operations": {
+        "add": "添加角色",
+        "edit": "编辑角色"
+      },
+      "placeholders": {
+        "description": "输入角色描述"
+      },
+      "select-all": "全选",
+      "clear-all": "清除全部"
+    },
+    "permissions": {
+      "title": "权限管理",
+      "entity": "权限",
+      "operations": {
+        "add": "添加权限",
+        "edit": "编辑权限"
+      },
+      "placeholders": {
+        "name": "例如 manage_users",
+        "description": "输入权限描述"
+      },
+      "empty": "暂无权限，请先添加权限。",
+      "categories": {
+        "global": "全局权限",
+        "system": "系统管理",
+        "master-data": "基础数据",
+        "goods": "商品与库存",
+        "inbound": "入库操作",
+        "outbound": "出库操作",
+        "inventory-ops": "库存操作"
+      },
+      "modules": {
+        "global": "全局访问",
+        "tasks": "任务",
+        "user": "用户",
+        "role": "角色",
+        "permission": "权限",
+        "logs": "日志",
+        "limiter": "速率限制",
+        "api-keys": "API 密钥",
+        "company": "公司",
+        "staff": "员工",
+        "department": "部门",
+        "warehouse": "仓库",
+        "location": "库位",
+        "supplier": "供应商",
+        "carrier": "承运商",
+        "recipient": "收货人",
+        "goods": "商品",
+        "inventory": "库存",
+        "asn": "入库通知",
+        "putaway": "上架",
+        "dn": "出库通知",
+        "picking": "拣货",
+        "sorting": "分拣",
+        "packing": "打包",
+        "delivery": "配送",
+        "payment": "收款",
+        "adjustment": "库存调整",
+        "cycle-count": "盘点",
+        "transfer": "调拨",
+        "removal": "移除"
+      },
+      "ops": {
+        "read": "查看",
+        "edit": "编辑",
+        "delete": "删除",
+        "add": "导入",
+        "create": "创建",
+        "execute": "执行"
+      }
+    },
+    "logs": {
+      "title": "操作日志",
+      "fields": {
+        "user": "用户",
+        "method": "请求方法",
+        "path": "请求路径",
+        "status-code": "状态码",
+        "ip": "IP 地址"
+      }
     }
   },
   "options": {

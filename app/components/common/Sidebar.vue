@@ -80,12 +80,18 @@ export default {
     RecursiveMenu,
     PerfectScrollbar,
   },
+  props: {
+    menuItems: {
+      type: Array,
+      default: null
+    }
+  },
   data() {
     return {
       setMenu: false,
       menuOverflowed: false,
       previousUrl: '/',
-      menuData,
+      menuData: this.menuItems || menuData,
       WindowPreSize: [window.innerWidth],
       oldLi: undefined,
       level: 0,
