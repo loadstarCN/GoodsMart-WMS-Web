@@ -1221,7 +1221,7 @@
         "password-placeholder": "SMTPログインパスワード",
         "password-hint": "空白のままにすると現在のパスワードを維持します",
         "sender": "送信元メール",
-        "sender-placeholder": "例: noreply@example.com",
+        "sender-placeholder": "例: noreply{'@'}example.com",
         "use-tls": "TLSを有効化",
         "save-success": "SMTP設定を保存しました",
         "test-title": "テストメール",

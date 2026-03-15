@@ -1221,7 +1221,7 @@
         "password-placeholder": "SMTP 登录密码",
         "password-hint": "留空表示保持当前密码不变",
         "sender": "发件人邮箱",
-        "sender-placeholder": "例如 noreply@example.com",
+        "sender-placeholder": "例如 noreply{'@'}example.com",
         "use-tls": "启用 TLS",
         "save-success": "SMTP 配置已保存",
         "test-title": "测试邮件",
