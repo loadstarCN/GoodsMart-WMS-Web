@@ -35,7 +35,8 @@
     "WarehouseManger": "倉庫管理",
     "ASNManger": "ASN管理",
     "InventoryManger": "在庫管理",
-    "DNManger": "DN管理"
+    "DNManger": "DN管理",
+    "apikeys": "APIキー"
   },
   "button": {
     "back-to-home": "ホームに戻る",
@@ -58,7 +59,7 @@
     "approved": "承認済み",
     "next": "次へ",
     "previous": "前へ",
-    "replenish":"補充"
+    "replenish": "補充"
   },
   "welcome-wms": {
     "title": "倉庫管理システム（WMS）へようこそ",
@@ -143,7 +144,7 @@
       "delete-failed": "画像の削除に失敗しました。後ほど再度お試しください。"
     }
   },
-  "profile":{
+  "profile": {
     "current-password": "現在のパスワード",
     "new-password": "新しいパスワード",
     "confirm-password": "パスワード確認"
@@ -1018,5 +1019,35 @@
     "color": "カラー",
     "gradient": "グラデーション",
     "transparent": "透明"
+  },
+  "apikeys": {
+    "title": "APIキー管理",
+    "entity": "APIキー",
+    "fields": {
+      "key": "キー",
+      "system-name": "システム名",
+      "permissions": "権限",
+      "webhook-url": "Webhook URL",
+      "webhook-secret": "Webhook Secret"
+    },
+    "form": {
+      "placeholders": {
+        "system-name": "システム名を入力（例：Shopify、ERP）",
+        "webhook-url": "Webhook コールバック URL を入力",
+        "webhook-secret": "Webhook 署名キーを入力"
+      }
+    },
+    "operations": {
+      "add": "APIキー作成",
+      "edit": "編集",
+      "delete": "削除",
+      "copy": "キーをコピー",
+      "copied": "クリップボードにコピーしました",
+      "regenerate": "再生成"
+    },
+    "tips": {
+      "key-warning": "このキーを安全に保管してください。閉じた後は再表示できません。",
+      "no-keys": "APIキーはまだありません。上のボタンをクリックして作成してください。"
+    }
   }
 }

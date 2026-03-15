@@ -185,5 +185,14 @@ export let menuData = [
         active: false,
         dirchange: false,
     },
-    
+    {
+        path: '/apikeys/',
+        type: 'link',
+        title: 'nav.apikeys',
+        icon: 'ri-key-2-line',
+        selected: false,
+        active: false,
+        dirchange: false,
+    },
+
 ];

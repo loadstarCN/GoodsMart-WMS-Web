@@ -35,7 +35,8 @@
     "WarehouseManger": "仓库管理",
     "ASNManger": "收货通知管理",
     "InventoryManger": "库存管理",
-    "DNManger": "发货单管理"
+    "DNManger": "发货单管理",
+    "apikeys": "API 密钥"
   },
   "button": {
     "back-to-home": "返回首页",
@@ -58,16 +59,15 @@
     "approved": "批准",
     "next": "下一步",
     "previous": "上一步",
-    "replenish":"补充拣货"
-
+    "replenish": "补充拣货"
   },
   "welcome-wms": {
     "title": "欢迎使用仓储管理系统 (WMS)",
     "description": "WMS（仓储管理系统）是专为优化仓库运营设计的智能解决方案，通过自动化库存管理、实时订单处理和智能仓储布局，提升物流效率与准确性。系统支持与ERP、TMS等无缝集成，实现供应链全链路协同，助力企业降低运营成本并提高客户满意度。",
-    "download-apk":"扫码下载移动端APP",
-    "download-description":"随时随地管理仓库，掌上作业更高效",
-    "download-description-more":"告别固定工位的束缚！移动APP让您实时同步仓库动态。无论身在何处，扫码即可完成入库、出库、移库和盘点操作。提升现场作业效率，让仓库管理更智能、更灵活！",
-    "version-support":"目前仅支持Android"
+    "download-apk": "扫码下载移动端APP",
+    "download-description": "随时随地管理仓库，掌上作业更高效",
+    "download-description-more": "告别固定工位的束缚！移动APP让您实时同步仓库动态。无论身在何处，扫码即可完成入库、出库、移库和盘点操作。提升现场作业效率，让仓库管理更智能、更灵活！",
+    "version-support": "目前仅支持Android"
   },
   "error": {
     "http-401": {
@@ -129,10 +129,10 @@
     "active": "激活",
     "append": "补充",
     "overwrite": "覆盖",
-    "skip-tips":"无修改，保留原记录",
-    "active-tips":"仅激活",
-    "append-tips":"填空白+激活",
-    "overwrite-tips":"全覆盖+激活",
+    "skip-tips": "无修改，保留原记录",
+    "active-tips": "仅激活",
+    "append-tips": "填空白+激活",
+    "overwrite-tips": "全覆盖+激活",
     "button": {
       "uploading": "上传中...",
       "upload": "上传"
@@ -144,7 +144,7 @@
       "delete-failed": "商品图片删除失败，请稍后重试。"
     }
   },
-  "profile":{
+  "profile": {
     "current-password": "当前密码",
     "new-password": "新密码",
     "confirm-password": "确认密码"
@@ -154,7 +154,7 @@
     "password": "密码",
     "search": "搜索",
     "search-placeholder": "搜索...",
-    "all-warehouse":"全部仓库",
+    "all-warehouse": "全部仓库",
     "status": {
       "active": "激活",
       "inactive": "未激活",
@@ -176,7 +176,7 @@
       "cancelled": "已取消",
       "loading": "加载",
       "all": "全部",
-      "nothing-show": "无内容显示"      
+      "nothing-show": "无内容显示"
     },
     "entities": {
       "goods": "商品",
@@ -234,11 +234,11 @@
       "completed": "完成时间",
       "closed": "关闭时间",
       "approved": "审批时间",
-      "putaway":"上架时间",
-      "removal":"下架时间",
-      "adjustment":"调整时间",
-      "transfer":"转移时间",
-      "cycle-count":"盘点时间",
+      "putaway": "上架时间",
+      "removal": "下架时间",
+      "adjustment": "调整时间",
+      "transfer": "转移时间",
+      "cycle-count": "盘点时间",
       "sorting": "分拣时间",
       "picked": "拣货时间",
       "packed": "打包时间",
@@ -254,7 +254,7 @@
       "creator": "创建者",
       "operator": "操作员",
       "approver": "审批人",
-      "manager": "管理员"      
+      "manager": "管理员"
     },
     "locations": {
       "from": "起始库位",
@@ -304,7 +304,7 @@
       "edit": "编辑",
       "delete": "删除",
       "view": "查看",
-      "create": "创建",      
+      "create": "创建",
       "add-item": "添加项目",
       "edit-remark": "编辑备注"
     },
@@ -313,7 +313,6 @@
       "length": "毫米",
       "volume": "立方米"
     },
-    
     "placeholders": {
       "name": "请输入名称",
       "code": "请输入编码",
@@ -330,7 +329,7 @@
       "goods-code": "请输入商品编码",
       "reason": "请输入原因",
       "tracking-number": "请输入快递单号"
-    },    
+    },
     "tips": {
       "name": "长度≤100字符",
       "code": "长度≤50字符",
@@ -368,7 +367,7 @@
       "title": "统计信息",
       "this-month": "本月",
       "last-year": "过去一年",
-      "last-month": "过去一个月",      
+      "last-month": "过去一个月",
       "last-n-months": "过去{n}个月"
     }
   },
@@ -461,7 +460,7 @@
     "title": "部门管理",
     "entity": "部门",
     "fields": {
-     "name": "部门名称",
+      "name": "部门名称",
       "description": "部门描述"
     },
     "form": {
@@ -526,7 +525,7 @@
     "operations": {
       "add": "添加库位",
       "edit": "编辑库位",
-      "delete": "删除库位"      
+      "delete": "删除库位"
     },
     "validation": {
       "code-required": "库位编码不能为空",
@@ -589,7 +588,7 @@
     "fields": {
       "name": "承运商名称",
       "description": "承运商描述"
-    },    
+    },
     "operations": {
       "add": "添加承运商",
       "edit": "编辑承运商",
@@ -670,7 +669,7 @@
       "create-putaway": "创建上架记录",
       "create-removal": "创建下架记录",
       "create-adjustment": "创建库存调整记录",
-      "create-transfer": "创建库存转移记录"      
+      "create-transfer": "创建库存转移记录"
     },
     "validation": {
       "location": {
@@ -747,7 +746,7 @@
       "back-to-list": "返回调整列表"
     }
   },
-  "asn":{
+  "asn": {
     "title": "收货通知管理",
     "entity": "收货通知",
     "fields": {
@@ -775,19 +774,19 @@
       "sorting": "分拣",
       "receive": "接收"
     },
-    "type":{
+    "type": {
       "inbound": "正常入库",
       "return_from_customer": "客户退货",
       "transfer": "库存转移"
     },
-    "tips":{
+    "tips": {
       "created-successfully": "收货通知由{creator}创建成功。",
       "started-successfully": "收货通知开始处理。",
       "received-successfully": "已接收了包裹。",
       "sorting-operation-message": "{operator} 在分拣操作中分拣了 {sortedQuantity} 件物品，以及{damagedQuantity}件损毁，共计{allQuantity}件物品，（预期 {expectedQuantity} 件）。"
     }
   },
-  "sorting":{
+  "sorting": {
     "title": "分拣管理",
     "entity": "分拣任务",
     "fields": {
@@ -811,7 +810,7 @@
       "back-to-list": "返回分拣任务列表"
     }
   },
-  "dn":{
+  "dn": {
     "title": "发货单管理",
     "entity": "发货单",
     "fields": {
@@ -826,7 +825,7 @@
       "special-handling": "特殊处理要求",
       "transportation": "运输方式",
       "order-no": "订单号",
-      "tracking-info":"订单跟踪信息"
+      "tracking-info": "订单跟踪信息"
     },
     "form": {
       "placeholders": {
@@ -848,13 +847,13 @@
       "delivery": "配送",
       "sign": "签收"
     },
-    "type":{
+    "type": {
       "shipping": "正常出库",
       "return_to_supplier": "退货给供应商",
       "damage_to_supplier": "损坏给供应商",
       "transfer": "库存转移"
     },
-    "transportation":{
+    "transportation": {
       "express": "快递",
       "pickup": "自提",
       "courier": "快递员配送",
@@ -864,14 +863,14 @@
       "rail": "铁路运输",
       "drone": "无人机配送"
     },
-    "tips":{
+    "tips": {
       "created-successfully": "发货单由{creator}创建成功。",
       "started-successfully": "发货单开始处理。",
       "picking-operation-message": "{creator} 在拣货操作中拣选了 {pickedQuantity} 件物品（预期 {expectedQuantity} 件）。",
       "packing-operation-message": "{operator} 在打包操作中打包了 {packedQuantity} 件物品。"
     }
   },
-  "picking":{
+  "picking": {
     "title": "拣货管理",
     "entity": "拣货任务",
     "fields": {
@@ -895,7 +894,7 @@
       "back-to-list": "返回拣货任务列表"
     }
   },
-  "packing":{
+  "packing": {
     "title": "打包管理",
     "entity": "打包任务",
     "fields": {
@@ -919,7 +918,7 @@
       "back-to-list": "返回打包任务列表"
     }
   },
-  "delivery":{
+  "delivery": {
     "title": "配送管理",
     "entity": "配送任务",
     "fields": {
@@ -930,7 +929,6 @@
       "detail-info": "配送详情",
       "items": "配送商品列表",
       "details": "配送任务详情"
-      
     },
     "form": {
       "placeholders": {
@@ -1021,5 +1019,35 @@
     "color": "彩色",
     "gradient": "渐变",
     "transparent": "透明"
+  },
+  "apikeys": {
+    "title": "API 密钥管理",
+    "entity": "API 密钥",
+    "fields": {
+      "key": "密钥",
+      "system-name": "系统名称",
+      "permissions": "权限",
+      "webhook-url": "Webhook URL",
+      "webhook-secret": "Webhook Secret"
+    },
+    "form": {
+      "placeholders": {
+        "system-name": "请输入系统名称（如：Shopify、ERP）",
+        "webhook-url": "请输入 Webhook 回调地址",
+        "webhook-secret": "请输入 Webhook 签名密钥"
+      }
+    },
+    "operations": {
+      "add": "创建 API 密钥",
+      "edit": "编辑",
+      "delete": "删除",
+      "copy": "复制密钥",
+      "copied": "已复制到剪贴板",
+      "regenerate": "重新生成"
+    },
+    "tips": {
+      "key-warning": "请妥善保管此密钥，关闭后将无法再次查看",
+      "no-keys": "暂无 API 密钥，点击上方按钮创建"
+    }
   }
 }

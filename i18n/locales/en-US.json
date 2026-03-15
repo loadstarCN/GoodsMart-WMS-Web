@@ -1,4 +1,4 @@
- {
+{
   "language": "English",
   "nav": {
     "home": "Home",
@@ -35,7 +35,8 @@
     "WarehouseManger": "Warehouse Management",
     "ASNManger": "ASN Management",
     "InventoryManger": "Inventory Management",
-    "DNManger": "DN Management"
+    "DNManger": "DN Management",
+    "apikeys": "API Keys"
   },
   "button": {
     "back-to-home": "Back to Home",
@@ -58,7 +59,7 @@
     "approved": "Approved",
     "next": "Next",
     "previous": "Previous",
-    "replenish":"Replenish Picking"
+    "replenish": "Replenish Picking"
   },
   "welcome-wms": {
     "title": "Welcome to Warehouse Management System (WMS)",
@@ -143,7 +144,7 @@
       "delete-failed": "Failed to delete image. Please try again later."
     }
   },
-  "profile":{
+  "profile": {
     "current-password": "Current Password",
     "new-password": "New Password",
     "confirm-password": "Confirm Password"
@@ -1018,5 +1019,35 @@
     "color": "Color",
     "gradient": "Gradient",
     "transparent": "Transparent"
+  },
+  "apikeys": {
+    "title": "API Key Management",
+    "entity": "API Key",
+    "fields": {
+      "key": "Key",
+      "system-name": "System Name",
+      "permissions": "Permissions",
+      "webhook-url": "Webhook URL",
+      "webhook-secret": "Webhook Secret"
+    },
+    "form": {
+      "placeholders": {
+        "system-name": "Enter system name (e.g. Shopify, ERP)",
+        "webhook-url": "Enter Webhook callback URL",
+        "webhook-secret": "Enter Webhook signing secret"
+      }
+    },
+    "operations": {
+      "add": "Create API Key",
+      "edit": "Edit",
+      "delete": "Delete",
+      "copy": "Copy Key",
+      "copied": "Copied to clipboard",
+      "regenerate": "Regenerate"
+    },
+    "tips": {
+      "key-warning": "Please save this key securely. It will not be shown again after closing.",
+      "no-keys": "No API keys yet. Click the button above to create one."
+    }
   }
 }
