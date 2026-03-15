@@ -291,4 +291,14 @@ definePageMeta({
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+/* 修复 custom layout 下图标字体未加载导致下拉箭头显示异常 */
+:deep(.dropdown-toggle::after) {
+  font-family: inherit;
+  content: "";
+  border-top: 0.3em solid;
+  border-right: 0.3em solid transparent;
+  border-bottom: 0;
+  border-left: 0.3em solid transparent;
+}
+</style>
