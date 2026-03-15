@@ -1090,7 +1090,8 @@
     "users": {
       "title": "User Management",
       "type-admin": "Admin",
-      "type-staff": "Staff"
+      "type-staff": "Staff",
+      "company": "Company"
     },
     "roles": {
       "title": "Role Management",

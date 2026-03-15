@@ -150,6 +150,7 @@ const activeTab = computed(() => {
                                     <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.id') }}</th>
                                     <th scope="col">{{ t('common.fields.name') }}</th>
                                     <th scope="col">{{ t('common.fields.email') }}</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('admin.users.company') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.fields.type') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('staff.fields.roles') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.created') }}</th>
@@ -161,6 +162,7 @@ const activeTab = computed(() => {
                                     <td class="d-none d-md-table-cell">{{ user?.id }}</td>
                                     <td>{{ user?.user_name }}</td>
                                     <td>{{ user?.email }}</td>
+                                    <td class="d-none d-lg-table-cell">{{ user?.company_name || '-' }}</td>
                                     <td class="d-none d-xxl-table-cell">
                                       <span class="badge" :class="user?.type === 'user' ? 'bg-primary-transparent' : 'bg-info-transparent'">
                                         {{ user?.type === 'user' ? t('admin.users.type-admin') : t('admin.users.type-staff') }}

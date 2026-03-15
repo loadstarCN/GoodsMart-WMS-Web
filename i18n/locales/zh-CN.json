@@ -1090,7 +1090,8 @@
     "users": {
       "title": "用户管理",
       "type-admin": "管理员",
-      "type-staff": "员工"
+      "type-staff": "员工",
+      "company": "所属公司"
     },
     "roles": {
       "title": "角色管理",
