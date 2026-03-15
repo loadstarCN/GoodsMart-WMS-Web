@@ -40,83 +40,6 @@ const selectOptions = reactive({
 })
 
 
-// ------------------ 图片上传功能 Start----------------------
-// 组合式 FilePond 配置
-import vueFilePond from 'vue-filepond'
-import 'filepond/dist/filepond.min.css'
-import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.css'
-import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
-import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type'
-
-// 组件注册
-const FilePond = vueFilePond(
-  FilePondPluginImagePreview,
-  FilePondPluginFileValidateType
-)
-const pond = ref(null)
-// 文件上传配置
-const myFiles = ref([]) // 修正初始化方式为数组
-const acceptedFileTypes = ref(['image/png', 'image/jpeg']) // 声明为响应式数组
-
-const serverConfig = {
-  // 优化load方法处理本地文件
-  load: (source, load, error, progress, abort, headers) => {
-    if (!source || source === '[]') {
-      error(t('upload.upload-image-no-file'))
-      abort()
-      return () => {}
-    }
-
-    fetch(source)
-      .then(res => res.blob())
-      .then(load)
-      .catch(error)
-    return () => abort()
-  },
-  process: async (fieldName, file, metadata, load, error, progress, abort) => {
-    if (!acceptedFileTypes.value.includes(file.type)) {
-      error(t('upload.upload-image-type-error'))
-      return abort()
-    }
-
-    const controller = new AbortController()
-    const formData = new FormData()
-    formData.append('file', file, file.name)
-    
-    await httpRequest('/api/warehouse/company/image/upload', {
-      method: 'POST',
-      body: formData,
-      onSuccess: async (data) => {
-        load(data.file_url)   
-      },
-      onError: (error) => {
-        error(err.message || t('upload.upload-image-failed'))
-        abort()
-      }
-    })
-    
-    return { abort: () => controller.abort() }
-  }
-  
-}
-
-// 添加文件处理完成监听
-const handleProcessFile = (error, file) => {
-  
-  if (!error) {   
-    // 更新数据模型 
-    itemData.value.logo = file.serverId
-    
-  }
-}
-
-const handleRemoveFile = (error, file) => {
-  if (!error) {
-    // 更新数据模型
-    itemData.value.logo = null
-    
-  }
-}
 
 // ------------------ 提交保存 ----------------------
 const saveCompany = async () => {
@@ -168,16 +91,7 @@ const fetchData = async () => {
         method: 'GET',
         params: route.query,
         onSuccess: (data) => {
-          itemData.value = data;    
-          // 将图片数据转换为 FilePond 需要的格式
-          if(itemData.value.logo) {
-            myFiles.value = [{
-              source: itemData.value.logo,
-              options: { type: 'local' }
-            }]
-          } else {
-            myFiles.value = []
-          }      
+          itemData.value = data;
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -257,14 +171,11 @@ onMounted(async() => {
                         </VueMultiselect>
                       </div>
 
-                      <div class="col-xl-12 product-documents-container">
-                        <p class="fw-semibold mb-2 fs-14">{{ t('common.fields.logo')}}</p>
-                        <file-pond name="image" ref="pond"
-                          :label-idle="t('upload.description')"
-                          allow-multiple="false" max-files="1" :files="myFiles" :accepted-file-types="acceptedFileTypes"
-                          :allow-file-type-validation="true" :instant-upload="false" :server="serverConfig"
-                          @init="(instance) => pond = instance" @processfile="handleProcessFile"
-                          @removefile="handleRemoveFile" />
+                      <div class="col-xl-12">
+                        <label class="form-label">{{ t('common.fields.logo')}}</label>
+                        <ImageUploader v-model="itemData.logo"
+                          upload-url="/api/warehouse/company/image/upload"
+                          shape="square" :size="120" />
                       </div>
                     </div>
 

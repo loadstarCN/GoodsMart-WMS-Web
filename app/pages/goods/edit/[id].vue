@@ -67,85 +67,14 @@ const selectOptions = reactive({
   units: unitsOptions
 })
 
-// ------------------ 图片上传功能 Start----------------------
-// 组合式 FilePond 配置
-import vueFilePond from 'vue-filepond'
-import 'filepond/dist/filepond.min.css'
-import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.css'
-import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
-import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type'
-
-// 组件注册
-const FilePond = vueFilePond(
-  FilePondPluginImagePreview,
-  FilePondPluginFileValidateType
-)
-const pond = ref(null)
-// 文件上传配置
-const myFiles = ref([]) // 修正初始化方式为数组
-const acceptedFileTypes = ref(['image/png', 'image/jpeg']) // 声明为响应式数组
-
-const serverConfig = {
-  // 优化load方法处理本地文件
-  load: (source, load, error, progress, abort, headers) => {
-    if (!source || source === '[]') {
-      error(t('upload.upload-image-no-file'))
-      abort()
-      return () => {}
-    }
-
-    fetch(source)
-      .then(res => res.blob())
-      .then(load)
-      .catch(error)
-    return () => abort()
-  },
-  process: async (fieldName, file, metadata, load, error, progress, abort) => {
-    if (!acceptedFileTypes.value.includes(file.type)) {
-      error(t('upload.upload-image-type-error'))
-      return abort()
-    }
-
-    const controller = new AbortController()
-    const formData = new FormData()
-    formData.append('file', file, file.name)
-    
-    await httpRequest('/api/warehouse/goods/image/upload', {
-      method: 'POST',
-      body: formData,
-      onSuccess: async (data) => {
-        load(data.file_url)   
-      },
-      onError: (error) => {
-        error(err.message || t('upload.upload-image-failed'))
-        abort()
-      }
-    })
-    
-    return { abort: () => controller.abort() }
+// 图片上传 - 同步 image_url 和 thumbnail_url
+const imageUrl = computed({
+  get: () => itemData.value.image_url,
+  set: (val) => {
+    itemData.value.image_url = val
+    itemData.value.thumbnail_url = val
   }
-  
-}
-
-// 添加文件处理完成监听
-const handleProcessFile = (error, file) => {
-  
-  if (!error) {   
-    // 更新数据模型 
-    itemData.value.image_url = file.serverId
-    itemData.value.thumbnail_url = file.serverId
-    
-  }
-}
-
-const handleRemoveFile = (error, file) => {
-  if (!error) {
-    // 更新数据模型
-    itemData.value.image_url = null
-    itemData.value.thumbnail_url = null
-    
-  }
-}
+})
 
 // ------------------ 提交保存 ----------------------
 const saveProduct = async () => {
@@ -185,16 +114,6 @@ const fetchData = async () => {
           itemData.value = data;
           // 将tags字符串转换为数组
           itemData.value.tags = convert_tags_to_array(data.tags)
-          
-          // 将图片数据转换为 FilePond 需要的格式
-          if(itemData.value.image_url) {
-            myFiles.value = [{
-              source: itemData.value.image_url,
-              options: { type: 'local' }
-            }]
-          } else {
-            myFiles.value = []
-          }
           
         },
         onError: (error) => {
@@ -341,15 +260,11 @@ onMounted(async() => {
                         <label for="product-height" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{ t('goods.form.tips.dimensions')}}</label>
                       </div>
 
-                      <div class="col-xl-12 product-documents-container">
-                        <p class="fw-semibold mb-2 fs-14">{{ t('goods.fields.image')}}</p>
-                        <file-pond name="image" ref="pond"
-                          :label-idle="t('upload.description')"
-                          allow-multiple="false" max-files="1" :files="myFiles" :accepted-file-types="acceptedFileTypes"
-                          :allow-file-type-validation="true" :instant-upload="false" :server="serverConfig"
-                          @init="(instance) => pond = instance" @processfile="handleProcessFile"
-                          @removefile="handleRemoveFile" />
-
+                      <div class="col-xl-12">
+                        <label class="form-label">{{ t('goods.fields.image')}}</label>
+                        <ImageUploader v-model="imageUrl"
+                          upload-url="/api/warehouse/goods/image/upload"
+                          shape="square" :size="140" />
                       </div>
 
                       <div class="col-xl-6">

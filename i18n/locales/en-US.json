@@ -142,7 +142,11 @@
       "success": "Product image uploaded successfully",
       "delete-success": "Product image deleted successfully",
       "delete-failed": "Failed to delete image. Please try again later."
-    }
+    },
+    "upload-image-type-error": "Only PNG, JPEG and WebP files are allowed",
+    "upload-image-size-error": "File size must be less than {max}MB",
+    "upload-image-failed": "Image upload failed, please try again",
+    "image-uploader-hint": "Click or drag to upload"
   },
   "profile": {
     "current-password": "Current Password",

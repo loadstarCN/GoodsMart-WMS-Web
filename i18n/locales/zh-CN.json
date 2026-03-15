@@ -142,7 +142,11 @@
       "success": "商品图片上传成功",
       "delete-success": "商品图片删除成功",
       "delete-failed": "商品图片删除失败，请稍后重试。"
-    }
+    },
+    "upload-image-type-error": "仅支持 PNG、JPEG、WebP 格式的图片",
+    "upload-image-size-error": "文件大小不能超过 {max}MB",
+    "upload-image-failed": "图片上传失败，请重试",
+    "image-uploader-hint": "点击或拖拽上传"
   },
   "profile": {
     "current-password": "当前密码",

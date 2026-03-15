@@ -142,7 +142,11 @@
       "success": "商品画像が正常にアップロードされました",
       "delete-success": "商品画像が正常に削除されました",
       "delete-failed": "画像の削除に失敗しました。後ほど再度お試しください。"
-    }
+    },
+    "upload-image-type-error": "PNG、JPEG、WebP形式の画像のみ対応しています",
+    "upload-image-size-error": "ファイルサイズは{max}MB以内にしてください",
+    "upload-image-failed": "画像のアップロードに失敗しました。再試行してください",
+    "image-uploader-hint": "クリックまたはドラッグでアップロード"
   },
   "profile": {
     "current-password": "現在のパスワード",
