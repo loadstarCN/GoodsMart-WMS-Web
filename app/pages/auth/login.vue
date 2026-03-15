@@ -173,31 +173,35 @@ definePageMeta({
 
 
 <template>
-  <div class="row authentication mx-0">
+  <div class="row authentication mx-0 position-relative">
+
+      <!-- 语言切换 - 固定右上角 -->
+      <div class="position-absolute top-0 end-0 p-3" style="z-index: 10;">
+        <div class="dropdown">
+          <a href="javascript:void(0);" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
+            <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang" class="rounded-circle me-1" style="width:16px;height:16px;">{{ languages[currentLang] }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li v-for="lang in ['en', 'zh', 'ja']" :key="lang">
+              <a @click="setLocale(lang)" class="dropdown-item" href="javascript:void(0);">
+                <img :src="`/images/flags/${lang}_flag.jpg`" class="rounded-circle me-2" style="width:16px;height:16px;">{{ languages[lang] }}
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
 
       <div class="col-xxl-7 col-xl-7 col-lg-7">
           <div class="row justify-content-center align-items-center h-100">
               <div class="col-xxl-6 col-xl-7 col-lg-7 col-md-7 col-sm-8 col-12">
                   <div class="p-5">
-                      <div class="mb-3 d-flex justify-content-between align-items-center">
+                      <div class="mb-3">
                           <NuxtLink to='/'>
                               <img src="/images/brand-logos/desktop-logo.svg" alt=""
                                   class="authentication-brand desktop-logo">
                               <img src="/images/brand-logos/desktop-dark.svg" alt=""
                                   class="authentication-brand desktop-dark">
                           </NuxtLink>
-                          <div class="dropdown">
-                            <a href="javascript:void(0);" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
-                              <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang" class="rounded-circle me-1" style="width:16px;height:16px;">{{ languages[currentLang] }}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                              <li v-for="lang in ['en', 'zh', 'ja']" :key="lang">
-                                <a @click="setLocale(lang)" class="dropdown-item" href="javascript:void(0);">
-                                  <img :src="`/images/flags/${lang}_flag.jpg`" class="rounded-circle me-2" style="width:16px;height:16px;">{{ languages[lang] }}
-                                </a>
-                              </li>
-                            </ul>
-                          </div>
                       </div>
                       <p class="h5 fw-semibold mb-2">{{ $t('login.title') }}</p>
                       <p class="mb-3 text-muted op-7 fw-normal">{{ $t('login.welcome-message') }}</p>
