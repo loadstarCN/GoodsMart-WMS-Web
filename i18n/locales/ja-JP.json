@@ -154,6 +154,7 @@
     "password": "パスワード",
     "search": "検索",
     "search-placeholder": "検索...",
+    "select-placeholder": "選択してください...",
     "all-warehouse": "すべての倉庫",
     "status": {
       "active": "有効",
@@ -1048,6 +1049,43 @@
     "tips": {
       "key-warning": "このキーを安全に保管してください。閉じた後は再表示できません。",
       "no-keys": "APIキーはまだありません。上のボタンをクリックして作成してください。"
+    }
+  },
+  "options": {
+    "asn-types": {
+      "inbound": "入庫",
+      "return_from_customer": "顧客返品",
+      "transfer": "振替"
+    },
+    "dn-types": {
+      "shipping": "出庫",
+      "return_to_supplier": "仕入先返品",
+      "damage_to_supplier": "破損返品",
+      "transfer": "振替"
+    },
+    "transportation-modes": {
+      "express": "宅配便",
+      "pickup": "引取",
+      "courier": "専用便",
+      "air": "航空便",
+      "sea": "船便",
+      "land": "陸送",
+      "rail": "鉄道",
+      "drone": "ドローン"
+    },
+    "removal-reasons": {
+      "damaged": "破損",
+      "returned": "返品",
+      "transfer": "振替",
+      "picked": "ピッキング",
+      "expired": "期限切れ",
+      "lost": "紛失",
+      "other": "その他"
+    },
+    "location-types": {
+      "standard": "標準ロケーション",
+      "damaged": "破損ロケーション",
+      "return": "返品ロケーション"
     }
   }
 }

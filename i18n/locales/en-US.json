@@ -154,6 +154,7 @@
     "password": "Password",
     "search": "Search",
     "search-placeholder": "Search...",
+    "select-placeholder": "Select...",
     "all-warehouse": "All Warehouses",
     "status": {
       "active": "Active",
@@ -1048,6 +1049,43 @@
     "tips": {
       "key-warning": "Please save this key securely. It will not be shown again after closing.",
       "no-keys": "No API keys yet. Click the button above to create one."
+    }
+  },
+  "options": {
+    "asn-types": {
+      "inbound": "Inbound",
+      "return_from_customer": "Customer Return",
+      "transfer": "Transfer"
+    },
+    "dn-types": {
+      "shipping": "Shipping",
+      "return_to_supplier": "Return to Supplier",
+      "damage_to_supplier": "Damage Return",
+      "transfer": "Transfer"
+    },
+    "transportation-modes": {
+      "express": "Express",
+      "pickup": "Pickup",
+      "courier": "Courier",
+      "air": "Air Freight",
+      "sea": "Sea Freight",
+      "land": "Land Transport",
+      "rail": "Rail Transport",
+      "drone": "Drone"
+    },
+    "removal-reasons": {
+      "damaged": "Damaged",
+      "returned": "Returned",
+      "transfer": "Transfer",
+      "picked": "Picked",
+      "expired": "Expired",
+      "lost": "Lost",
+      "other": "Other"
+    },
+    "location-types": {
+      "standard": "Standard",
+      "damaged": "Damaged",
+      "return": "Return"
     }
   }
 }

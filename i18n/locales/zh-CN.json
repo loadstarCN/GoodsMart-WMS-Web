@@ -154,6 +154,7 @@
     "password": "密码",
     "search": "搜索",
     "search-placeholder": "搜索...",
+    "select-placeholder": "请选择...",
     "all-warehouse": "全部仓库",
     "status": {
       "active": "激活",
@@ -1048,6 +1049,43 @@
     "tips": {
       "key-warning": "请妥善保管此密钥，关闭后将无法再次查看",
       "no-keys": "暂无 API 密钥，点击上方按钮创建"
+    }
+  },
+  "options": {
+    "asn-types": {
+      "inbound": "入库",
+      "return_from_customer": "客户退货",
+      "transfer": "调拨"
+    },
+    "dn-types": {
+      "shipping": "出库",
+      "return_to_supplier": "供应商退货",
+      "damage_to_supplier": "报损退回",
+      "transfer": "调拨"
+    },
+    "transportation-modes": {
+      "express": "快递",
+      "pickup": "自提",
+      "courier": "专人专递",
+      "air": "空运",
+      "sea": "海运",
+      "land": "陆运",
+      "rail": "铁路",
+      "drone": "无人机"
+    },
+    "removal-reasons": {
+      "damaged": "损坏",
+      "returned": "退货",
+      "transfer": "调拨",
+      "picked": "拣货",
+      "expired": "过期",
+      "lost": "丢失",
+      "other": "其他"
+    },
+    "location-types": {
+      "standard": "标准库位",
+      "damaged": "损坏库位",
+      "return": "退货库位"
     }
   }
 }

@@ -10,8 +10,8 @@ import 'vue3-perfect-scrollbar/style.css';
 import { Tooltip, Popover } from "bootstrap/dist/js/bootstrap.js";
 import Vue3ColorPicker from "vue3-colorpicker";
 import "vue3-colorpicker/style.css";
-import VueMultiselect from 'vue-multiselect'
 import "vue-multiselect/dist/vue-multiselect.css";
+import AppMultiselect from '~/components/UI/AppMultiselect.vue';
 import { vMaska } from 'maska/vue';
 import Datepicker from "@vuepic/vue-datepicker";
 import '@vuepic/vue-datepicker/dist/main.css';
@@ -36,7 +36,7 @@ export default defineNuxtPlugin((nuxt) => {
   nuxt.vueApp.use(PerfectScrollbarPlugin);
   nuxt.vueApp.component("apexchart", VueApexCharts);
   nuxt.vueApp.component("Datepicker", Datepicker);
-  nuxt.vueApp.component("VueMultiselect", VueMultiselect);
+  nuxt.vueApp.component("VueMultiselect", AppMultiselect);
   nuxt.vueApp.provide("Popover", Popover);
   nuxt.vueApp.provide("Tooltip", Tooltip);
 });
