@@ -172,7 +172,7 @@ onMounted(async() => {
                       </div>
 
                       <div class="col-xl-12">
-                        <label class="form-label">{{ t('common.fields.logo')}}</label>
+                        <label class="form-label d-block">{{ t('common.fields.logo')}}</label>
                         <ImageUploader v-model="itemData.logo"
                           upload-url="/api/warehouse/company/image/upload"
                           shape="square" :size="120" />

@@ -1056,6 +1056,30 @@
       "no-keys": "暂无 API 密钥，点击上方按钮创建"
     }
   },
+  "forgot-password": {
+    "title": "重置密码",
+    "subtitle": "输入邮箱以接收验证码",
+    "email-placeholder": "请输入注册邮箱",
+    "email-required": "请输入邮箱地址",
+    "send-code": "发送验证码",
+    "code-sent": "验证码已发送至您的邮箱",
+    "code-sent-to": "验证码已发送至 {email}",
+    "verification-code": "验证码",
+    "code-placeholder": "输入6位验证码",
+    "code-required": "请输入验证码",
+    "new-password": "新密码",
+    "new-password-placeholder": "输入新密码",
+    "confirm-password": "确认密码",
+    "confirm-password-placeholder": "再次输入新密码",
+    "password-required": "请输入新密码",
+    "password-mismatch": "两次输入的密码不一致",
+    "reset-btn": "重置密码",
+    "reset-success": "密码已成功重置",
+    "resend": "重新发送",
+    "back-to-login": "返回登录",
+    "cover-title": "安全密码恢复",
+    "cover-text": "我们将向您的注册邮箱发送验证码，帮助您安全地重置密码。"
+  },
   "admin": {
     "title": "管理控制台",
     "nav": {
@@ -1067,7 +1091,8 @@
       "users": "用户管理",
       "roles": "角色管理",
       "permissions": "权限管理",
-      "logs": "操作日志"
+      "logs": "操作日志",
+      "settings": "系统设置"
     },
     "dashboard": {
       "total-tenants": "租户总数",
@@ -1179,6 +1204,33 @@
         "path": "请求路径",
         "status-code": "状态码",
         "ip": "IP 地址"
+      }
+    },
+    "settings": {
+      "title": "系统设置",
+      "smtp": {
+        "title": "SMTP 邮件配置",
+        "description": "配置 SMTP 服务器用于发送系统邮件（密码重置、通知等）",
+        "host": "SMTP 主机",
+        "host-placeholder": "例如 smtp.gmail.com",
+        "port": "SMTP 端口",
+        "port-placeholder": "例如 587",
+        "username": "用户名",
+        "username-placeholder": "SMTP 登录用户名",
+        "password": "密码",
+        "password-placeholder": "SMTP 登录密码",
+        "password-hint": "留空表示保持当前密码不变",
+        "sender": "发件人邮箱",
+        "sender-placeholder": "例如 noreply@example.com",
+        "use-tls": "启用 TLS",
+        "save-success": "SMTP 配置已保存",
+        "test-title": "测试邮件",
+        "test-description": "发送测试邮件以验证 SMTP 配置是否正确",
+        "test-recipient": "收件人邮箱",
+        "test-recipient-placeholder": "输入测试收件人邮箱",
+        "test-send": "发送测试邮件",
+        "test-success": "测试邮件发送成功",
+        "test-required": "请输入收件人邮箱"
       }
     }
   },

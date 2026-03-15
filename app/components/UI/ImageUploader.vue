@@ -30,14 +30,29 @@ const emit = defineEmits<{
   'update:modelValue': [value: string | null]
 }>()
 
+const inputId = `img-upload-${useId()}`
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const previewUrl = ref<string | null>(null) // Local preview before upload completes
 const dragOver = ref(false)
+const imgLoadError = ref(false) // Track if the remote image failed to load
 
-// Displayed image: local preview > uploaded URL > fallback
-const displaySrc = computed(() => previewUrl.value || props.modelValue || props.fallbackSrc)
-const hasImage = computed(() => !!(previewUrl.value || props.modelValue))
+// Displayed image: local preview > uploaded URL (if not broken) > fallback
+const displaySrc = computed(() => {
+  if (previewUrl.value) return previewUrl.value
+  if (props.modelValue && !imgLoadError.value) return props.modelValue
+  return props.fallbackSrc
+})
+const hasImage = computed(() => !!(previewUrl.value || (props.modelValue && !imgLoadError.value)))
+
+// Reset error state when modelValue changes (e.g. after new upload)
+watch(() => props.modelValue, () => {
+  imgLoadError.value = false
+})
+
+const handleImgError = () => {
+  imgLoadError.value = true
+}
 
 const triggerSelect = () => {
   if (!uploading.value) {
@@ -90,12 +105,22 @@ const processFile = async (file: File) => {
     method: 'POST',
     body: formData,
     onSuccess: (data: any) => {
-      emit('update:modelValue', data.file_url)
-      // Clean up local preview, the modelValue URL will display instead
-      if (previewUrl.value) {
-        URL.revokeObjectURL(previewUrl.value)
-        previewUrl.value = null
+      const fileUrl = data?.file_url
+      if (!fileUrl) return
+      // Preload the remote image before switching from local preview
+      const img = new Image()
+      img.onload = () => {
+        emit('update:modelValue', fileUrl)
+        if (previewUrl.value) {
+          URL.revokeObjectURL(previewUrl.value)
+          previewUrl.value = null
+        }
       }
+      img.onerror = () => {
+        // Still update the model value, but keep showing preview
+        emit('update:modelValue', fileUrl)
+      }
+      img.src = fileUrl
     },
     onError: (error: any) => {
       showToast(error.message || t('upload.upload-image-failed', 'Upload failed'), 'error')
@@ -129,19 +154,19 @@ onUnmounted(() => {
 
 <template>
   <div class="image-uploader">
-    <div
+    <label
+      :for="uploading ? undefined : inputId"
       class="image-uploader__preview"
       :class="[
         `image-uploader__preview--${shape}`,
         { 'image-uploader__preview--dragover': dragOver }
       ]"
       :style="{ width: `${size}px`, height: `${size}px` }"
-      @click="triggerSelect"
       @dragover.prevent="dragOver = true"
       @dragleave.prevent="dragOver = false"
       @drop.prevent="handleDrop"
     >
-      <img :src="displaySrc" :alt="t('common.fields.image', 'Image')" class="image-uploader__img" />
+      <img :src="displaySrc" :alt="t('common.fields.image', 'Image')" class="image-uploader__img" @error="handleImgError" />
 
       <!-- Overlay -->
       <div class="image-uploader__overlay">
@@ -154,18 +179,19 @@ onUnmounted(() => {
         v-if="hasImage && !uploading"
         type="button"
         class="image-uploader__remove"
-        @click.stop="removeImage"
+        @click.stop.prevent="removeImage"
         :title="t('button.delete', 'Remove')"
       >
         <i class="ri-close-line"></i>
       </button>
-    </div>
+    </label>
 
     <input
+      :id="inputId"
       ref="fileInput"
       type="file"
       :accept="accept"
-      class="d-none"
+      class="image-uploader__input"
       @change="handleFileChange"
     />
 
@@ -258,6 +284,18 @@ onUnmounted(() => {
 
 .image-uploader__remove:hover {
   background: rgba(220, 53, 69, 1);
+}
+
+.image-uploader__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .image-uploader__hint {

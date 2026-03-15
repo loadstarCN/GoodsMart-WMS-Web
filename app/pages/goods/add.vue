@@ -235,7 +235,7 @@ const addProduct = async () => {
                       </div>
 
                       <div class="col-xl-12">
-                        <label class="form-label">{{ t('goods.fields.image')}}</label>
+                        <label class="form-label d-block">{{ t('goods.fields.image')}}</label>
                         <ImageUploader v-model="imageUrl"
                           upload-url="/api/warehouse/goods/image/upload"
                           shape="square" :size="140" />

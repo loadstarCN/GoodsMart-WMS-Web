@@ -1056,6 +1056,30 @@
       "no-keys": "APIキーはまだありません。上のボタンをクリックして作成してください。"
     }
   },
+  "forgot-password": {
+    "title": "パスワードリセット",
+    "subtitle": "メールアドレスを入力して認証コードを受け取る",
+    "email-placeholder": "登録済みメールアドレスを入力",
+    "email-required": "メールアドレスを入力してください",
+    "send-code": "認証コードを送信",
+    "code-sent": "認証コードをメールに送信しました",
+    "code-sent-to": "認証コードを {email} に送信しました",
+    "verification-code": "認証コード",
+    "code-placeholder": "6桁のコードを入力",
+    "code-required": "認証コードを入力してください",
+    "new-password": "新しいパスワード",
+    "new-password-placeholder": "新しいパスワードを入力",
+    "confirm-password": "パスワード確認",
+    "confirm-password-placeholder": "新しいパスワードを再入力",
+    "password-required": "新しいパスワードを入力してください",
+    "password-mismatch": "パスワードが一致しません",
+    "reset-btn": "パスワードをリセット",
+    "reset-success": "パスワードが正常にリセットされました",
+    "resend": "再送信",
+    "back-to-login": "ログインに戻る",
+    "cover-title": "安全なパスワード回復",
+    "cover-text": "登録済みメールアドレスに認証コードを送信し、安全にパスワードをリセットします。"
+  },
   "admin": {
     "title": "管理コンソール",
     "nav": {
@@ -1067,7 +1091,8 @@
       "users": "ユーザー管理",
       "roles": "ロール管理",
       "permissions": "権限管理",
-      "logs": "操作ログ"
+      "logs": "操作ログ",
+      "settings": "システム設定"
     },
     "dashboard": {
       "total-tenants": "テナント数",
@@ -1179,6 +1204,33 @@
         "path": "パス",
         "status-code": "ステータスコード",
         "ip": "IPアドレス"
+      }
+    },
+    "settings": {
+      "title": "システム設定",
+      "smtp": {
+        "title": "SMTPメール設定",
+        "description": "システムメール送信用のSMTPサーバーを設定（パスワードリセット、通知など）",
+        "host": "SMTPホスト",
+        "host-placeholder": "例: smtp.gmail.com",
+        "port": "SMTPポート",
+        "port-placeholder": "例: 587",
+        "username": "ユーザー名",
+        "username-placeholder": "SMTPログインユーザー名",
+        "password": "パスワード",
+        "password-placeholder": "SMTPログインパスワード",
+        "password-hint": "空白のままにすると現在のパスワードを維持します",
+        "sender": "送信元メール",
+        "sender-placeholder": "例: noreply@example.com",
+        "use-tls": "TLSを有効化",
+        "save-success": "SMTP設定を保存しました",
+        "test-title": "テストメール",
+        "test-description": "テストメールを送信してSMTP設定を確認します",
+        "test-recipient": "受信者メール",
+        "test-recipient-placeholder": "テスト受信者メールを入力",
+        "test-send": "テストメールを送信",
+        "test-success": "テストメールの送信に成功しました",
+        "test-required": "受信者メールを入力してください"
       }
     }
   },

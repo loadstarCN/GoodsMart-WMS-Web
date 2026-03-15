@@ -10,8 +10,17 @@ import { Navigation, Pagination, Keyboard } from 'swiper/modules';
 import type { PaginationOptions } from 'swiper/types';
 import "swiper/swiper-bundle.css";
 
-// 获取国际化方法
-const { t } = useI18n();
+// 国际化与语言切换
+import { languages } from '~/data/headerData.js'
+const { t, setLocale: setI18nLocale } = useI18n();
+const cookieLang = useCookie('i18n_lang', { maxAge: 2592000 });
+const currentLang = ref(cookieLang.value || 'en');
+
+const setLocale = async (lang: string) => {
+  await setI18nLocale(lang);
+  cookieLang.value = lang;
+  currentLang.value = lang;
+};
 
 /********************
  * Swiper配置模块
@@ -170,13 +179,25 @@ definePageMeta({
           <div class="row justify-content-center align-items-center h-100">
               <div class="col-xxl-6 col-xl-7 col-lg-7 col-md-7 col-sm-8 col-12">
                   <div class="p-5">
-                      <div class="mb-3">
+                      <div class="mb-3 d-flex justify-content-between align-items-center">
                           <NuxtLink to='/'>
                               <img src="/images/brand-logos/desktop-logo.svg" alt=""
                                   class="authentication-brand desktop-logo">
                               <img src="/images/brand-logos/desktop-dark.svg" alt=""
                                   class="authentication-brand desktop-dark">
                           </NuxtLink>
+                          <div class="dropdown">
+                            <a href="javascript:void(0);" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
+                              <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang" class="rounded-circle me-1" style="width:16px;height:16px;">{{ languages[currentLang] }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                              <li v-for="lang in ['en', 'zh', 'ja']" :key="lang">
+                                <a @click="setLocale(lang)" class="dropdown-item" href="javascript:void(0);">
+                                  <img :src="`/images/flags/${lang}_flag.jpg`" class="rounded-circle me-2" style="width:16px;height:16px;">{{ languages[lang] }}
+                                </a>
+                              </li>
+                            </ul>
+                          </div>
                       </div>
                       <p class="h5 fw-semibold mb-2">{{ $t('login.title') }}</p>
                       <p class="mb-3 text-muted op-7 fw-normal">{{ $t('login.welcome-message') }}</p>
@@ -190,7 +211,7 @@ definePageMeta({
                           </div>
                           <div class="col-xl-12 mb-2">
                             <label for="signin-password" class="form-label text-default d-block">{{ $t('common.password') }}<NuxtLink
-                                to="/authentication/reset-password/basic" class="float-end text-danger">{{ $t('login.forgot-password') }}</NuxtLink></label>
+                                to="/auth/forgot-password" class="float-end text-danger">{{ $t('login.forgot-password') }}</NuxtLink></label>
                             <div class="input-group">
                               <passwordInput v-model="user.password" name="psw" id="password" :placeholder="$t('common.password')"  required />
                             </div>

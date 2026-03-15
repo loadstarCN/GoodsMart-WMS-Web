@@ -1056,6 +1056,30 @@
       "no-keys": "No API keys yet. Click the button above to create one."
     }
   },
+  "forgot-password": {
+    "title": "Reset Password",
+    "subtitle": "Enter your email to receive a verification code",
+    "email-placeholder": "Enter your registered email",
+    "email-required": "Please enter your email address",
+    "send-code": "Send Verification Code",
+    "code-sent": "Verification code sent to your email",
+    "code-sent-to": "Code sent to {email}",
+    "verification-code": "Verification Code",
+    "code-placeholder": "Enter 6-digit code",
+    "code-required": "Please enter the verification code",
+    "new-password": "New Password",
+    "new-password-placeholder": "Enter new password",
+    "confirm-password": "Confirm Password",
+    "confirm-password-placeholder": "Re-enter new password",
+    "password-required": "Please enter your new password",
+    "password-mismatch": "Passwords do not match",
+    "reset-btn": "Reset Password",
+    "reset-success": "Password has been reset successfully",
+    "resend": "Resend",
+    "back-to-login": "Back to Login",
+    "cover-title": "Secure Password Recovery",
+    "cover-text": "We'll send a verification code to your registered email to help you reset your password safely."
+  },
   "admin": {
     "title": "Admin Console",
     "nav": {
@@ -1067,7 +1091,8 @@
       "users": "Users",
       "roles": "Roles",
       "permissions": "Permissions",
-      "logs": "Operation Logs"
+      "logs": "Operation Logs",
+      "settings": "System Settings"
     },
     "dashboard": {
       "total-tenants": "Total Tenants",
@@ -1179,6 +1204,33 @@
         "path": "Path",
         "status-code": "Status Code",
         "ip": "IP Address"
+      }
+    },
+    "settings": {
+      "title": "System Settings",
+      "smtp": {
+        "title": "SMTP Email Configuration",
+        "description": "Configure the SMTP server for sending system emails (password reset, notifications, etc.)",
+        "host": "SMTP Host",
+        "host-placeholder": "e.g. smtp.gmail.com",
+        "port": "SMTP Port",
+        "port-placeholder": "e.g. 587",
+        "username": "Username",
+        "username-placeholder": "SMTP login username",
+        "password": "Password",
+        "password-placeholder": "SMTP login password",
+        "password-hint": "Leave empty to keep current password",
+        "sender": "Sender Email",
+        "sender-placeholder": "e.g. noreply@example.com",
+        "use-tls": "Enable TLS",
+        "save-success": "SMTP configuration saved",
+        "test-title": "Test Email",
+        "test-description": "Send a test email to verify SMTP configuration",
+        "test-recipient": "Recipient Email",
+        "test-recipient-placeholder": "Enter test recipient email",
+        "test-send": "Send Test Email",
+        "test-success": "Test email sent successfully",
+        "test-required": "Please enter recipient email"
       }
     }
   },

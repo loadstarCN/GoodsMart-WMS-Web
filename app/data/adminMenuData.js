@@ -62,4 +62,13 @@ export let adminMenuData = [
         active: false,
         dirchange: false,
     },
+    {
+        path: '/admin/settings/',
+        type: 'link',
+        title: 'admin.nav.settings',
+        icon: 'ri-settings-3-line',
+        selected: false,
+        active: false,
+        dirchange: false,
+    },
 ];
