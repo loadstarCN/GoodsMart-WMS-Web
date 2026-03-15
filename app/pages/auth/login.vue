@@ -203,12 +203,11 @@ definePageMeta({
                                   class="authentication-brand desktop-dark">
                           </NuxtLink>
                       </div>
-                      <p class="h5 fw-semibold mb-2">{{ $t('login.title') }}</p>
-                      <p class="mb-3 text-muted op-7 fw-normal">{{ $t('login.welcome-message') }}</p>
+                      <p class="h5 fw-semibold mb-3">{{ $t('login.title') }}</p>
                       
                       <div class="row gy-3">
                         <form @submit.prevent="login" class="col-12">
-                          <div class="col-xl-12">
+                          <div class="col-xl-12 mb-3">
                             <label for="signin-username" class="form-label text-default">{{ $t('common.account') }}</label>
                             <input v-model="user.account" name="uname" type="text" class="form-control form-control-lg"
                               id="signin-username" :placeholder="$t('common.account')" :required="true">

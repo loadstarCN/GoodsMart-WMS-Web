@@ -34,7 +34,8 @@ export default defineNuxtRouteMiddleware((to) => {
   }
 
   // if token doesn't exist redirect to log in
-  if (!token.value && to?.name !== 'auth-login') {
+  const publicPages = ['auth-login', 'auth-forgot-password'];
+  if (!token.value && !publicPages.includes(to?.name as string)) {
     return navigateTo('/auth/login');
   }
 });
