@@ -4,12 +4,18 @@ export default defineNuxtRouteMiddleware((to) => {
   const authStore = useAuthStore();
   const { authenticated } = storeToRefs(authStore);
   const token = useCookie('token');
+  const path = to?.path || '';
+
   if (token.value) {
     authenticated.value = true;
   }
 
+  // 公开页面（无需登录即可访问）
+  const publicPaths = ['/auth/login', '/auth/forgot-password'];
+  const isPublicPage = publicPaths.includes(path);
+
   // if token exists and url is /login redirect to homepage
-  if (token.value && to?.name === 'auth-login') {
+  if (token.value && path === '/auth/login') {
     // Admin users (type='user') go to admin console, staff go to WMS
     if (authStore.userInfo?.type === 'user') {
       return navigateTo('/admin/');
@@ -19,23 +25,20 @@ export default defineNuxtRouteMiddleware((to) => {
 
   // Admin users should not access WMS pages (non-admin routes)
   if (token.value && authStore.userInfo?.type === 'user') {
-    const path = to?.path || '';
-    if (!path.startsWith('/admin') && to?.name !== 'auth-login') {
+    if (!path.startsWith('/admin') && path !== '/auth/login') {
       return navigateTo('/admin/');
     }
   }
 
   // Staff users should not access admin pages
   if (token.value && authStore.userInfo?.type === 'staff') {
-    const path = to?.path || '';
     if (path.startsWith('/admin')) {
       return navigateTo('/');
     }
   }
 
   // if token doesn't exist redirect to log in
-  const publicPages = ['auth-login', 'auth-forgot-password'];
-  if (!token.value && !publicPages.includes(to?.name as string)) {
+  if (!token.value && !isPublicPage) {
     return navigateTo('/auth/login');
   }
 });
