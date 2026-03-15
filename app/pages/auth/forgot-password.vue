@@ -123,25 +123,25 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="row authentication mx-0 position-relative">
+  <div class="row authentication mx-0">
 
-    <!-- 语言切换 - 固定右上角 -->
-    <div class="position-absolute top-0 end-0 p-3" style="z-index: 10;">
-      <div class="dropdown">
-        <a href="javascript:void(0);" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
-          <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang" class="rounded-circle me-1" style="width:16px;height:16px;">{{ languages[currentLang] }}
-        </a>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li v-for="lang in ['en', 'zh', 'ja']" :key="lang">
-            <a @click="setLocale(lang)" class="dropdown-item" href="javascript:void(0);">
-              <img :src="`/images/flags/${lang}_flag.jpg`" class="rounded-circle me-2" style="width:16px;height:16px;">{{ languages[lang] }}
-            </a>
-          </li>
-        </ul>
+    <div class="col-xxl-7 col-xl-7 col-lg-7 position-relative">
+      <!-- 语言切换 - 右上角 -->
+      <div class="position-absolute top-0 end-0 p-3" style="z-index: 10;">
+        <div class="dropdown">
+          <a href="javascript:void(0);" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
+            <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang" class="rounded-circle me-1" style="width:16px;height:16px;">{{ languages[currentLang] }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li v-for="lang in ['en', 'zh', 'ja']" :key="lang">
+              <a @click="setLocale(lang)" class="dropdown-item" href="javascript:void(0);">
+                <img :src="`/images/flags/${lang}_flag.jpg`" class="rounded-circle me-2" style="width:16px;height:16px;">{{ languages[lang] }}
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
-    </div>
 
-    <div class="col-xxl-7 col-xl-7 col-lg-7">
       <div class="row justify-content-center align-items-center h-100">
         <div class="col-xxl-6 col-xl-7 col-lg-7 col-md-7 col-sm-8 col-12">
           <div class="p-5">
