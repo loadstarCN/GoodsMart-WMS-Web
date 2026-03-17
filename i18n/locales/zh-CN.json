@@ -36,7 +36,8 @@
     "ASNManger": "收货通知管理",
     "InventoryManger": "库存管理",
     "DNManger": "发货单管理",
-    "apikeys": "API 密钥"
+    "apikeys": "API 密钥",
+    "webhook-logs": "推送日志"
   },
   "button": {
     "back-to-home": "返回首页",
@@ -1054,6 +1055,36 @@
     "tips": {
       "key-warning": "请妥善保管此密钥，关闭后将无法再次查看",
       "no-keys": "暂无 API 密钥，点击上方按钮创建"
+    }
+  },
+  "webhook-logs": {
+    "title": "Webhook 推送日志",
+    "fields": {
+      "event-type": "事件类型",
+      "api-key": "API Key ID",
+      "attempts": "尝试次数",
+      "last-error": "最后错误",
+      "created-at": "创建时间",
+      "sent-at": "发送时间",
+      "next-retry": "下次重试",
+      "payload": "推送数据"
+    },
+    "status": {
+      "all": "全部",
+      "pending": "待发送",
+      "sent": "已发送",
+      "failed": "失败"
+    },
+    "filters": {
+      "all-types": "全部类型"
+    },
+    "operations": {
+      "detail": "查看详情",
+      "retry": "重试",
+      "retry-success": "重试已触发"
+    },
+    "tips": {
+      "no-events": "暂无推送日志"
     }
   },
   "forgot-password": {

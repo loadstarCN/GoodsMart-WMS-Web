@@ -36,7 +36,8 @@
     "ASNManger": "ASN Management",
     "InventoryManger": "Inventory Management",
     "DNManger": "DN Management",
-    "apikeys": "API Keys"
+    "apikeys": "API Keys",
+    "webhook-logs": "Push Logs"
   },
   "button": {
     "back-to-home": "Back to Home",
@@ -1054,6 +1055,36 @@
     "tips": {
       "key-warning": "Please save this key securely. It will not be shown again after closing.",
       "no-keys": "No API keys yet. Click the button above to create one."
+    }
+  },
+  "webhook-logs": {
+    "title": "Webhook Push Logs",
+    "fields": {
+      "event-type": "Event Type",
+      "api-key": "API Key ID",
+      "attempts": "Attempts",
+      "last-error": "Last Error",
+      "created-at": "Created At",
+      "sent-at": "Sent At",
+      "next-retry": "Next Retry",
+      "payload": "Payload"
+    },
+    "status": {
+      "all": "All",
+      "pending": "Pending",
+      "sent": "Sent",
+      "failed": "Failed"
+    },
+    "filters": {
+      "all-types": "All Types"
+    },
+    "operations": {
+      "detail": "View Detail",
+      "retry": "Retry",
+      "retry-success": "Retry triggered"
+    },
+    "tips": {
+      "no-events": "No push logs yet"
     }
   },
   "forgot-password": {

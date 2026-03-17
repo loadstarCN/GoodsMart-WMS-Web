@@ -194,5 +194,14 @@ export let menuData = [
         active: false,
         dirchange: false,
     },
+    {
+        path: '/webhook-logs/',
+        type: 'link',
+        title: 'nav.webhook-logs',
+        icon: 'ri-send-plane-line',
+        selected: false,
+        active: false,
+        dirchange: false,
+    },
 
 ];

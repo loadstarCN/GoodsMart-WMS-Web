@@ -36,7 +36,8 @@
     "ASNManger": "ASN管理",
     "InventoryManger": "在庫管理",
     "DNManger": "DN管理",
-    "apikeys": "APIキー"
+    "apikeys": "APIキー",
+    "webhook-logs": "プッシュログ"
   },
   "button": {
     "back-to-home": "ホームに戻る",
@@ -1054,6 +1055,36 @@
     "tips": {
       "key-warning": "このキーを安全に保管してください。閉じた後は再表示できません。",
       "no-keys": "APIキーはまだありません。上のボタンをクリックして作成してください。"
+    }
+  },
+  "webhook-logs": {
+    "title": "Webhookプッシュログ",
+    "fields": {
+      "event-type": "イベントタイプ",
+      "api-key": "API Key ID",
+      "attempts": "試行回数",
+      "last-error": "最後のエラー",
+      "created-at": "作成日時",
+      "sent-at": "送信日時",
+      "next-retry": "次回リトライ",
+      "payload": "ペイロード"
+    },
+    "status": {
+      "all": "すべて",
+      "pending": "待機中",
+      "sent": "送信済み",
+      "failed": "失敗"
+    },
+    "filters": {
+      "all-types": "すべてのタイプ"
+    },
+    "operations": {
+      "detail": "詳細を見る",
+      "retry": "リトライ",
+      "retry-success": "リトライを実行しました"
+    },
+    "tips": {
+      "no-events": "プッシュログはまだありません"
     }
   },
   "forgot-password": {
