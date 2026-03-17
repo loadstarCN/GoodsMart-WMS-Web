@@ -50,7 +50,21 @@ watch(() => route.query, async () => {
 })
 
 // ==================== 权限数据 ====================
+// API Key 只允许分配业务相关权限（不含系统管理类权限）
+const API_KEY_PERM_PREFIXES = [
+  'goods_', 'inventory_',
+  'asn_', 'putaway_',
+  'dn_', 'picking_', 'sorting_', 'packing_', 'delivery_', 'payment_',
+  'adjustment_', 'cycle_count_', 'transfer_', 'removal_',
+]
+
 const allPermissions = ref<any[]>([])
+
+const apiKeyPermissions = computed(() =>
+  allPermissions.value.filter((p: any) =>
+    API_KEY_PERM_PREFIXES.some(prefix => p.name.startsWith(prefix))
+  )
+)
 
 const loadPermissions = async () => {
   if (allPermissions.value.length > 0) return
@@ -466,8 +480,8 @@ const maskKey = (key: string) => {
               <div class="mb-3">
                 <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>
                 <PermissionSelector
-                  v-if="allPermissions.length > 0"
-                  :all-permissions="allPermissions"
+                  v-if="apiKeyPermissions.length > 0"
+                  :all-permissions="apiKeyPermissions"
                   v-model="createForm.permissions"
                 />
               </div>
@@ -521,8 +535,8 @@ const maskKey = (key: string) => {
             <div class="mb-3">
               <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>
               <PermissionSelector
-                v-if="allPermissions.length > 0"
-                :all-permissions="allPermissions"
+                v-if="apiKeyPermissions.length > 0"
+                :all-permissions="apiKeyPermissions"
                 v-model="editForm.permissions"
               />
             </div>

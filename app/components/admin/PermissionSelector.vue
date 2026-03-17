@@ -101,27 +101,25 @@ const permByName = computed(() => {
   return map;
 });
 
-// 构建分组数据
+// 构建分组数据（自动过滤空模块和空分类）
 const groupedData = computed(() => {
   return CATEGORIES.map(cat => ({
     label: cat.label,
     modules: cat.modules.map(mod => {
       if (mod.perms) {
-        // 显式列出的权限（全局类）
         const items = mod.perms
           .map(name => permByName.value[name])
           .filter(Boolean);
         return { label: mod.label, items, isSpecial: true };
       }
-      // 基于 prefix 的标准模块
       const ops = mod.ops || ['read', 'edit', 'delete'];
       const items = ops.map(op => ({
         op,
         perm: permByName.value[`${mod.prefix}_${op}`] || null,
       }));
       return { label: mod.label, items, isSpecial: false };
-    }),
-  }));
+    }).filter(mod => mod.isSpecial ? mod.items.length > 0 : mod.items.some(i => i.perm)),
+  })).filter(cat => cat.modules.length > 0);
 });
 
 const toggle = (permId) => {
