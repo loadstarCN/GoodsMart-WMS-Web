@@ -6,7 +6,7 @@
   "scripts": {
     "build": "nuxt build  --dotenv .env.prod",
     "build_test": "nuxt build  --dotenv .env.test",
-    "start": "PORT=3003 node .output/server/index.mjs",
+    "start": "PORT=3002 node .output/server/index.mjs",
     "dev": "nuxt dev --host 127.0.0.1 --dotenv .env.local",
     "generate": "nuxt generate",
     "preview": "nuxt preview --dotenv .env.prod",
