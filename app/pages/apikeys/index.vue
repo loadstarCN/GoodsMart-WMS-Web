@@ -49,11 +49,26 @@ watch(() => route.query, async () => {
   await fetchData()
 })
 
+// ==================== 权限数据 ====================
+const allPermissions = ref<any[]>([])
+
+const loadPermissions = async () => {
+  if (allPermissions.value.length > 0) return
+  await httpRequest<any>('/api/system/user/permissions', {
+    method: 'GET',
+    params: { per_page: 200 },
+    onSuccess: (data) => {
+      allPermissions.value = data.items || data
+    },
+  })
+}
+
 onMounted(async () => {
   if (!staffStore.staffInfo) {
     await staffStore.getCurrentStaffInfo()
   }
   await fetchData()
+  await loadPermissions()
 })
 
 // ==================== 创建 Modal ====================
@@ -65,6 +80,7 @@ const createForm = ref({
   system_name: '',
   webhook_url: '',
   webhook_secret: '',
+  permissions: [] as number[],
 })
 
 const createErrors = ref({
@@ -72,7 +88,7 @@ const createErrors = ref({
 })
 
 const openCreateModal = () => {
-  createForm.value = { system_name: '', webhook_url: '', webhook_secret: '' }
+  createForm.value = { system_name: '', webhook_url: '', webhook_secret: '', permissions: [] }
   createErrors.value = { system_name: null }
   newKeyResult.value = null
   showCreateModal.value = true
@@ -93,6 +109,10 @@ const submitCreate = async () => {
   }
 
   creating.value = true
+  // 将权限 ID 转换为权限名称
+  const createPermNames = allPermissions.value
+    .filter((p: any) => createForm.value.permissions.includes(p.id))
+    .map((p: any) => p.name)
   await httpRequest('/api/system/third-party/api-keys', {
     method: 'POST',
     body: {
@@ -100,6 +120,7 @@ const submitCreate = async () => {
       company_id: companyId,
       webhook_url: createForm.value.webhook_url || null,
       webhook_secret: createForm.value.webhook_secret || null,
+      permissions: createPermNames,
     },
     onSuccess: (data) => {
       newKeyResult.value = data.key
@@ -185,6 +206,79 @@ async function search() {
   await router.push({ query: { ...route.query, system_name: keyword.value.trim(), page: '1' } })
 }
 
+// ==================== 编辑 Modal ====================
+const showEditModal = ref(false)
+const editing = ref(false)
+const editingItem = ref<any>(null)
+
+const editForm = ref({
+  system_name: '',
+  webhook_url: '',
+  webhook_secret: '',
+  permissions: [] as number[],
+})
+
+const editErrors = ref({
+  system_name: null as string | null,
+})
+
+const openEditModal = (item: any) => {
+  editingItem.value = item
+  // 将权限名称转换为权限 ID
+  const permNames: string[] = item.permissions || []
+  const permIds = allPermissions.value
+    .filter((p: any) => permNames.includes(p.name))
+    .map((p: any) => p.id)
+
+  editForm.value = {
+    system_name: item.system_name || '',
+    webhook_url: item.webhook_url || '',
+    webhook_secret: '',
+    permissions: permIds,
+  }
+  editErrors.value = { system_name: null }
+  showEditModal.value = true
+}
+
+const submitEdit = async () => {
+  editErrors.value.system_name = !editForm.value.system_name?.trim()
+    ? t('common.validation.name-required')
+    : null
+
+  if (Object.values(editErrors.value).some(v => v)) return
+
+  editing.value = true
+  // 将权限 ID 转换回权限名称
+  const permNames = allPermissions.value
+    .filter((p: any) => editForm.value.permissions.includes(p.id))
+    .map((p: any) => p.name)
+  const body: any = {
+    system_name: editForm.value.system_name.trim(),
+    webhook_url: editForm.value.webhook_url || null,
+    permissions: permNames,
+  }
+  // 只在填写了新密钥时才提交
+  if (editForm.value.webhook_secret) {
+    body.webhook_secret = editForm.value.webhook_secret
+  }
+
+  await httpRequest(`/api/system/third-party/api-keys/${editingItem.value.id}`, {
+    method: 'PUT',
+    body,
+    onSuccess: () => {
+      showToast(t('action-results.success'), 'success')
+      showEditModal.value = false
+      fetchData()
+    },
+    onError: (error) => {
+      showToast(error.message, 'error')
+    },
+    onFinally: () => {
+      editing.value = false
+    }
+  })
+}
+
 // ==================== 遮蔽密钥 ====================
 const maskKey = (key: string) => {
   if (!key || key.length < 12) return key
@@ -242,14 +336,14 @@ const maskKey = (key: string) => {
 
           <!-- Table -->
           <div class="table-responsive">
-            <table class="table text-nowrap table-bordered table-hover">
+            <table class="table table-bordered table-hover">
               <thead>
                 <tr>
                   <th scope="col">{{ t('common.fields.id') }}</th>
                   <th scope="col">{{ t('apikeys.fields.system-name') }}</th>
                   <th scope="col">{{ t('apikeys.fields.key') }}</th>
-                  <th scope="col" class="d-none d-xxl-table-cell">{{ t('apikeys.fields.permissions') }}</th>
-                  <th scope="col" class="d-none d-xxl-table-cell">{{ t('apikeys.fields.webhook-url') }}</th>
+                  <th scope="col" class="">{{ t('apikeys.fields.permissions') }}</th>
+                  <th scope="col" class="">{{ t('apikeys.fields.webhook-url') }}</th>
                   <th scope="col">{{ t('common.fields.status') }}</th>
                   <th scope="col">{{ t('common.fields.action') }}</th>
                 </tr>
@@ -267,14 +361,14 @@ const maskKey = (key: string) => {
                       <i class="ri-file-copy-line"></i>
                     </button>
                   </td>
-                  <td class="d-none d-xxl-table-cell">
-                    <span v-if="item.permissions && item.permissions.length > 0">
-                      <span class="badge bg-primary-transparent me-1" v-for="perm in item.permissions" :key="perm">{{ perm }}</span>
-                    </span>
+                  <td class="">
+                    <div v-if="item.permissions && item.permissions.length > 0" class="d-flex flex-wrap gap-1">
+                      <span class="badge bg-primary-transparent" v-for="perm in item.permissions" :key="perm">{{ perm }}</span>
+                    </div>
                     <span v-else class="text-muted fs-12">—</span>
                   </td>
-                  <td class="d-none d-xxl-table-cell">
-                    <span v-if="item.webhook_url" class="text-truncate d-inline-block" style="max-width: 200px;">{{ item.webhook_url }}</span>
+                  <td class="">
+                    <span v-if="item.webhook_url" class="fs-12">{{ item.webhook_url }}</span>
                     <span v-else class="text-muted fs-12">—</span>
                   </td>
                   <td>
@@ -284,6 +378,11 @@ const maskKey = (key: string) => {
                   </td>
                   <td>
                     <div class="hstack gap-2 fs-15">
+                      <button @click="openEditModal(item)"
+                        class="btn btn-icon btn-sm btn-primary-light product-btn"
+                        :title="t('apikeys.operations.edit')">
+                        <i class="ri-pencil-line"></i>
+                      </button>
                       <button @click="toggleActive(item)"
                         class="btn btn-icon btn-sm btn-warning-light product-btn"
                         :title="item.is_active ? t('common.status.inactive') : t('common.status.active')">
@@ -319,7 +418,7 @@ const maskKey = (key: string) => {
   <Teleport to="body">
     <div class="modal fade" :class="{ show: showCreateModal }" :style="{ display: showCreateModal ? 'block' : 'none' }"
       tabindex="-1" role="dialog">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
           <div class="modal-header">
             <h6 class="modal-title">{{ t('apikeys.operations.add') }}</h6>
@@ -364,6 +463,14 @@ const maskKey = (key: string) => {
                 <input type="text" class="form-control" v-model="createForm.webhook_secret"
                   :placeholder="t('apikeys.form.placeholders.webhook-secret')">
               </div>
+              <div class="mb-3">
+                <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>
+                <PermissionSelector
+                  v-if="allPermissions.length > 0"
+                  :all-permissions="allPermissions"
+                  v-model="createForm.permissions"
+                />
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -380,6 +487,59 @@ const maskKey = (key: string) => {
       </div>
     </div>
     <div class="modal-backdrop fade show" v-if="showCreateModal" @click="showCreateModal = false"></div>
+  </Teleport>
+
+  <!-- ==================== Edit Modal ==================== -->
+  <Teleport to="body">
+    <div class="modal fade" :class="{ show: showEditModal }" :style="{ display: showEditModal ? 'block' : 'none' }"
+      tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h6 class="modal-title">{{ t('apikeys.operations.edit') }}</h6>
+            <button type="button" class="btn-close" @click="showEditModal = false"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">{{ t('apikeys.fields.system-name') }}
+                <abbr title="required" class="text-danger">*</abbr>
+              </label>
+              <input type="text" class="form-control" v-model="editForm.system_name"
+                :placeholder="t('apikeys.form.placeholders.system-name')">
+              <div v-if="editErrors.system_name" class="invalid-feedback d-block">{{ editErrors.system_name }}</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">{{ t('apikeys.fields.webhook-url') }}</label>
+              <input type="text" class="form-control" v-model="editForm.webhook_url"
+                :placeholder="t('apikeys.form.placeholders.webhook-url')">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">{{ t('apikeys.fields.webhook-secret') }}</label>
+              <input type="text" class="form-control" v-model="editForm.webhook_secret"
+                placeholder="留空则不修改">
+            </div>
+            <div class="mb-3">
+              <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>
+              <PermissionSelector
+                v-if="allPermissions.length > 0"
+                :all-permissions="allPermissions"
+                v-model="editForm.permissions"
+              />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" @click="showEditModal = false">
+              {{ t('button.cancel') }}
+            </button>
+            <button type="button" class="btn btn-primary" @click="submitEdit" :disabled="editing">
+              <span v-if="editing" class="spinner-border spinner-border-sm me-1"></span>
+              {{ t('button.save') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-backdrop fade show" v-if="showEditModal" @click="showEditModal = false"></div>
   </Teleport>
 </template>
 
