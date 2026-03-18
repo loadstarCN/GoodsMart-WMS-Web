@@ -594,6 +594,7 @@
     "entity": "Carrier",
     "fields": {
       "name": "Carrier Name",
+      "code": "Carrier Code",
       "description": "Carrier Description"
     },
     "operations": {

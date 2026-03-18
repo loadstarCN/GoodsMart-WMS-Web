@@ -121,6 +121,11 @@ onMounted(async() => {
                         <label for="carrier-name" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{t('common.tips.code')}}</label>
                         <div v-if="errors.name" class="invalid-feedback d-block">{{ errors.name }}</div>
                       </div>
+                      <div class="col-xl-6">
+                        <label for="carrier-code" class="form-label">{{t('carrier.fields.code')}}</label>
+                        <input type="text" class="form-control" id="carrier-code" :placeholder="t('carrier.fields.code')"
+                          v-model="itemData.code">
+                      </div>
 
                       <div class="col-xl-12">
                         <label for="carrier-address" class="form-label">{{t('common.fields.address')}}</label>

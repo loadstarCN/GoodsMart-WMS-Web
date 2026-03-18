@@ -594,6 +594,7 @@
     "entity": "承运商",
     "fields": {
       "name": "承运商名称",
+      "code": "承运商编码",
       "description": "承运商描述"
     },
     "operations": {

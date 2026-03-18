@@ -594,6 +594,7 @@
     "entity": "運送業者",
     "fields": {
       "name": "運送業者名",
+      "code": "運送業者コード",
       "description": "説明"
     },
     "operations": {

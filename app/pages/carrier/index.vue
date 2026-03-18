@@ -173,6 +173,7 @@ const activeTab = computed(() => {
                                 <tr>
                                     <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.id') }}</th>
                                     <th scope="col">{{ $t('common.fields.name') }}</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">{{ $t('carrier.fields.code') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.manager') }}</th>
                                     <th scope="col">{{ t('common.fields.action') }}</th>
@@ -185,6 +186,7 @@ const activeTab = computed(() => {
                                     <td>
                                       <NuxtLink :to="`/carrier/detail/${carrier?.id}`">{{ carrier?.name }}</NuxtLink>
                                     </td>
+                                    <td class="d-none d-lg-table-cell">{{ carrier?.code }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(carrier?.updated_at) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ carrier?.creator?.user_name }}</td>
                                     <td>
