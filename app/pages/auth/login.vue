@@ -215,9 +215,7 @@ definePageMeta({
                           <div class="col-xl-12 mb-2">
                             <label for="signin-password" class="form-label text-default d-block">{{ $t('common.password') }}<NuxtLink
                                 to="/auth/forgot-password" class="float-end text-danger">{{ $t('login.forgot-password') }}</NuxtLink></label>
-                            <div class="input-group">
-                              <passwordInput v-model="user.password" name="psw" id="password" :placeholder="$t('common.password')"  required />
-                            </div>
+                            <passwordInput v-model="user.password" name="psw" id="signin-password" :placeholder="$t('common.password')"  required />
                             <div class="mt-2" v-if="isStorageSupported">
                               <div class="form-check">
                                 <input 
@@ -236,7 +234,7 @@ definePageMeta({
                             </div>
                           </div>
                           <div class="col-xl-12 d-grid mt-2">
-                            <button type="submit" class="btn btn-lg btn-primary">{{ $t('login.sign-in') }}</button>
+                            <button type="submit" id="login-btn" class="btn btn-lg btn-primary">{{ $t('login.sign-in') }}</button>
                           </div>
                         </form>
                       </div>
