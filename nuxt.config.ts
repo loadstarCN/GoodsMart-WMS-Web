@@ -10,7 +10,7 @@ export default defineNuxtConfig({
   },
 
   devServer: {
-    port: 3000
+    port: 3002
   },
   nitro: {
   },
@@ -127,7 +127,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // 私有配置（仅服务端可见）
     public: {
-      apiBase: process.env.API_BASE_URL || 'http://127.0.0.1:5000',
+      apiBase: process.env.API_BASE_URL || 'http://127.0.0.1:5002',
       clientEncryptionKey: process.env.NUXT_PUBLIC_ENCRYPTION_KEY || 'default_dev_key',
     }
   },
