@@ -8,16 +8,41 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Create .env.prod
+        run: |
+          echo "API_BASE_URL=${{ secrets.API_BASE_URL }}" > .env.prod
+          echo "NUXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NUXT_PUBLIC_ENCRYPTION_KEY }}" >> .env.prod
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy .output to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: '.output/*'
+          target: '/var/www/admin_wms'
+          rm: true
+          strip_components: 0
+
+      - name: Restart PM2
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script_stop: true
-          script: |
-            cd /var/www/admin_wms
-            git pull origin main
-            npm install
-            npm run build
-            pm2 restart wms-admin
+          script: pm2 restart wms-admin
