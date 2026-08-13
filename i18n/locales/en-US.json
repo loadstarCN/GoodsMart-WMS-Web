@@ -93,7 +93,9 @@
     "generic-required": "{field} cannot be empty",
     "file-upload": "File upload failed. Please try again later.",
     "no-found-data": "No relevant data found. Please check your search criteria or try again later.",
-    "empty-items": "No items to process",
+    "empty-items": "Enter a quantity to pick.",
+    "picking-location-required": "Select an inventory location for every item being picked.",
+    "picking-location-stock": "The picked quantity exceeds stock in the selected location.",
     "check-quantities": "Please check the quantities entered. Ensure they are valid and within the allowed range."
   },
   "search": {

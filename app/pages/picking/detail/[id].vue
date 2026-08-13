@@ -83,7 +83,16 @@ const fetchData = async () => {
 
 
 const addPickedQTY = (item:any) => {
-    item.new_picked_quantity = item.quantity-item.picked_quantity-item.old_picked_quantity;
+    const remaining = Math.max(
+      0,
+      Number(item.quantity || 0)
+        - Number(item.picked_quantity || 0)
+        - Number(item.old_picked_quantity || 0),
+    );
+    const locationAvailable = Number(item.location_available_quantity);
+    item.new_picked_quantity = Number.isFinite(locationAvailable)
+      ? Math.min(remaining, Math.max(locationAvailable, 0))
+      : remaining;
 };
 
 const resetTask = () => {
@@ -93,8 +102,19 @@ const resetTask = () => {
 };
 
 const saveTask = async () => {
-  // 安全访问嵌套属性并处理空值
-  const details = (itemData.value?.dn?.details ?? [])
+  const selectedItems = (itemData.value?.dn?.details ?? []).filter(
+    (item: any) => (Number(item?.new_picked_quantity) || 0) > 0,
+  );
+  if (selectedItems.length === 0) {
+    showToast(t('error.empty-items'), 'error');
+    return;
+  }
+  if (selectedItems.some((item: any) => !item?.location_id)) {
+    showToast(t('error.picking-location-required'), 'error');
+    return;
+  }
+
+  const details = selectedItems
     .map((item: any) => {
       // 检查 new_picked_quantity 是否超过可用库存
       const available = Math.max(0, 
@@ -108,6 +128,13 @@ const saveTask = async () => {
         showToast(t('error.check-quantities'), 'error');
         return null; // 标记无效条目
       }
+      if (
+        Number.isFinite(Number(item?.location_available_quantity))
+        && newPicked > Number(item.location_available_quantity)
+      ) {
+        showToast(t('error.picking-location-stock'), 'error');
+        return null;
+      }
 
       return {
         goods_id: item?.goods_id ?? null,
@@ -119,7 +146,7 @@ const saveTask = async () => {
     .filter((item: any) => {
       // 同时满足三个条件才保留条目
       return (
-        item.goods_id !== undefined &&
+        item.goods_id != null &&
         item.location_id &&
         item.picked_quantity !== 0
       );
@@ -129,8 +156,7 @@ const saveTask = async () => {
   const payload = {
     details
   };
-  if (payload.details.length === 0) {
-    showToast(t('error.empty-items'), 'error');
+  if (payload.details.length !== selectedItems.length) {
     return;
   }
 
@@ -230,7 +256,11 @@ const fetchLocationData = async (goods_id: number, targetRef: Ref<any[]>) => {
   const data = await httpRequest<PaginationData>('/api/warehouse/goods/locations/', {
     method: 'GET',
     params: {warehouse_id:itemData.value.dn?.warehouse_id, all: true, goods_id: goods_id },
-    onSuccess: (data) => targetRef.value = data.items,
+    onSuccess: (data) => {
+      targetRef.value = (data.items ?? []).filter(
+        (item: any) => Number(item.quantity) > 0,
+      );
+    },
     onError: (error) => showToast(error.message, 'error'),
     onFinally: () => isLoading.value = false
   });
@@ -252,6 +282,17 @@ const addLocation = (item:any) => {
   }
   item.location_id = selectedLocation.value.location_id;
   item.location = selectedLocation.value.location;
+  item.location_available_quantity = Number(selectedLocation.value.quantity) || 0;
+  const remaining = Math.max(
+    0,
+    Number(item.quantity || 0)
+      - Number(item.picked_quantity || 0)
+      - Number(item.old_picked_quantity || 0),
+  );
+  item.new_picked_quantity = Math.min(
+    remaining,
+    item.location_available_quantity,
+  );
   selectedLocation.value = null;
 };
 

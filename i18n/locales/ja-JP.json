@@ -93,7 +93,9 @@
     "generic-required": "{field}は必須です",
     "file-upload": "ファイルアップロードに失敗しました。後で再試行してください。",
     "no-found-data": "関連データが見つかりません。検索条件を確認するか後で再試行してください。",
-    "empty-items": "処理する項目がありません。項目を追加してください。",
+    "empty-items": "ピッキング数量を入力してください。",
+    "picking-location-required": "ピッキングする商品の在庫ロケーションを選択してください。",
+    "picking-location-stock": "ピッキング数量が選択したロケーションの実在庫を超えています。",
     "check-quantities": "数量を確認してください。システム数量と実数量が一致しません。"
   },
   "search": {

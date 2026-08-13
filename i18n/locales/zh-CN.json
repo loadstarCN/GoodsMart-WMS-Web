@@ -93,7 +93,9 @@
     "generic-required": "{field}不能为空",
     "file-upload": "文件上传失败，请稍后重试。",
     "no-found-data": "未找到相关数据，请检查您的查询条件或稍后重试。",
-    "empty-items": "没有可用的项目",
+    "empty-items": "请输入要拣货的数量",
+    "picking-location-required": "请先为要拣货的商品选择库存仓位",
+    "picking-location-stock": "拣货数量超过所选仓位的实际库存",
     "check-quantities": "请检查数量是否正确"
   },
   "search": {
