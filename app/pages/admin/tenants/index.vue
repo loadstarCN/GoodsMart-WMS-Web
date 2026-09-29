@@ -22,7 +22,8 @@ const fetchData = async () => {
     loading.value = true;
     await httpRequest<PaginationData>('/api/warehouse/company/', {
         method: 'GET',
-        params: route.query,
+        // 默认展示启用中的租户，与下方 Tab 高亮保持一致
+        params: { is_active: 'true', ...route.query },
         onSuccess: async(data) => {
             pageData.value = data;
         },
@@ -40,15 +41,23 @@ watch(() => route.query, async () => {
 });
 
 async function search() {
-    await router.push({ query: { ...route.query, keyword: keyword.value.trim(), page: 1 } });
+    const query: Record<string, any> = { ...route.query, page: 1 };
+    if (keyword.value.trim()) {
+        query.keyword = keyword.value.trim();
+    } else {
+        delete query.keyword;
+    }
+    await router.push({ query });
 }
 
 onMounted(async() => {
+    keyword.value = (route.query.keyword as string) || '';
     fetchData();
 });
 
 const deleteItem = async (item_id: Number) => {
-    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm', { entity: t('admin.tenants.entity') }), t('button.confirm'), t('button.cancel'));
+    // 说明后果：同时停用该租户 API Key；存在员工/仓库/商品时后端返回 409 拒绝
+    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('admin.tenants.delete-confirm'), t('button.confirm'), t('button.cancel'));
     if (confirm) {
         await httpRequest(`/api/warehouse/company/${item_id}`, {
             method: 'DELETE',

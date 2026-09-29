@@ -33,14 +33,14 @@ export default defineNuxtConfig({
    baseURL: '', // Replace with your desired base path
   //  baseURL: '/nuxt', // Replace with your desired base path
    head: {
-     link: [{ rel: 'icon', type: 'image/x-icon', href: "/nuxt/ynex/preview/favicon.ico" }]
+     link: [{ rel: 'icon', type: 'image/x-icon', href: "/favicon.ico" }]
  },
  },
 
  ssr : false,
 
  build : {
-   transpile : ["vuetify", 'vue-countup-v3']
+   transpile : ["vuetify"]
  },
 
  devtools: { enabled: process.env.NODE_ENV !== 'production' },
@@ -87,13 +87,8 @@ export default defineNuxtConfig({
            if (id.includes('apexcharts') || id.includes('vue3-apexcharts')) return 'apexcharts'
            if (id.includes('sweetalert2')) return 'sweetalert2'
            if (id.includes('bootstrap/dist')) return 'bootstrap'
-           if (id.includes('echarts') || id.includes('zrender')) return 'echarts'
            if (id.includes('quill') || id.includes('tiptap') || id.includes('@vueup/vue-quill') || id.includes('element-tiptap')) return 'editor'
-           if (id.includes('leaflet')) return 'leaflet'
-           if (id.includes('@fullcalendar')) return 'fullcalendar'
            if (id.includes('filepond')) return 'filepond'
-           if (id.includes('lightgallery') || id.includes('photoswipe')) return 'gallery'
-           if (id.includes('codemirror')) return 'codemirror'
          }
        }
      }
@@ -125,9 +120,9 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    // 私有配置（仅服务端可见）
+    // 私有配置（仅服务端可见）：后端地址只在 server/api 代理里使用，不暴露给浏览器
+    apiBase: process.env.API_BASE_URL || 'http://127.0.0.1:5002',
     public: {
-      apiBase: process.env.API_BASE_URL || 'http://127.0.0.1:5002',
       clientEncryptionKey: process.env.NUXT_PUBLIC_ENCRYPTION_KEY || 'default_dev_key',
     }
   },

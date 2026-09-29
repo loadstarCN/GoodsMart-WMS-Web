@@ -69,7 +69,7 @@ export const httpRequest = async <T = any, K = any>(
       const errorBody = await response.json().catch(() => null)
       const error = {
         status: response.status,
-        message: errorBody?.message || '请求失败'
+        message: errorBody?.message || `Request failed (${response.status})`
       }
       onError?.(error)
       return null
@@ -79,7 +79,7 @@ export const httpRequest = async <T = any, K = any>(
     onSuccess?.(data)
     return data as T
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : '未知错误'
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error'
     onError?.({ status: -1, message: errorMsg })
     return null
   }

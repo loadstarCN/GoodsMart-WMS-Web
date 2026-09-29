@@ -33,6 +33,19 @@ const validateData = <T>(data: any): data is T => {
   return false;
 };
 
+// 会话数据不可用（如换密钥后解密失败）时，连同 token cookie 一起清掉，
+// 否则会出现"有 token 但无用户信息"的半登录状态且无法自愈
+const AUTH_COOKIES = ['token', 'refresh_token', 'token_exp'];
+const clearAuthCookies = () => {
+  try {
+    AUTH_COOKIES.forEach((name) => {
+      useCookie(name).value = null;
+    });
+  } catch {
+    // Nuxt 实例不可用时忽略
+  }
+};
+
 // 通用存储处理器（策略模式）
 const createStorageHandler = (storage: StorageType) => ({
   get: <T>(key: string): T | null => {
@@ -41,9 +54,15 @@ const createStorageHandler = (storage: StorageType) => ({
       if (!cipherText) return null;
 
       const decrypted = decryptData<T>(cipherText);
-      return decrypted && validateData<T>(decrypted) ? decrypted : null;
+      if (decrypted && validateData<T>(decrypted)) return decrypted;
+
+      // 密文存在但无法解密/校验失败：移除脏数据
+      storage.removeItem(key);
+      if (key === 'userInfo') clearAuthCookies();
+      return null;
     } catch (e) {
       storage.removeItem(key);
+      if (key === 'userInfo') clearAuthCookies();
       console.error(`[SecureStorage] 操作失败: ${(e as Error).message}`);
       return null;
     }

@@ -14,7 +14,7 @@ export const decodeJwtPayload = (token: string): JwtPayload | null => {
 
     // 明确声明 base64Payload 类型
     const base64Payload: string = parts[1];
-    
+
     // 处理 base64url 编码
     const paddedPayload = base64Payload
       .replace(/-/g, '+')
@@ -23,7 +23,7 @@ export const decodeJwtPayload = (token: string): JwtPayload | null => {
 
     // 安全解码
     const decoded = atob(paddedPayload);
-    
+
     return JSON.parse(decoded) as JwtPayload;
   } catch {
     return null;
@@ -40,14 +40,44 @@ export const isTokenValid = (token: string) => {
   }
 };
 
+// 刷新锁：多个并发请求同时发现 token 过期时，只触发一次刷新
+// authFetch / useAuthFetch / 定时监控统一走这里
+let _refreshPromise: Promise<string> | null = null
+
+export const refreshAccessToken = (): Promise<string> => {
+  if (_refreshPromise) return _refreshPromise
+
+  const authStore = useAuthStore()
+  const promise: Promise<string> = authStore.refreshToken()
+    .then((token: string | null) => {
+      if (!token) throw new Error('AUTH_REQUIRED')
+      return token
+    })
+    .finally(() => {
+      _refreshPromise = null
+    })
+
+  _refreshPromise = promise
+  return promise
+}
+
+// 会话失效统一处理：清本地并跳转登录页
+export const handleSessionExpired = async () => {
+  const authStore = useAuthStore()
+  await authStore.logUserOut()
+  const route = useRoute()
+  if (route.path !== '/auth/login') {
+    await navigateTo('/auth/login')
+  }
+}
+
 // 定时刷新任务（在 app.vue 中初始化，返回清理函数）
 export const startTokenRefreshMonitor = () => {
   const handle = setInterval(async () => {
     const tokenExp = useCookie('token_exp').value;
-    const authStore = useAuthStore();
 
     if (tokenExp && (Number(tokenExp) - Date.now()/1000 < 300)) {
-      await authStore.refreshToken();
+      await refreshAccessToken().catch(() => null);
     }
   }, 60_000); // 每分钟检查一次
 

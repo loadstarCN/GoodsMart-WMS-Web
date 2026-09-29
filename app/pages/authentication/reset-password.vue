@@ -5,6 +5,15 @@ import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
 
 definePageMeta({
+  // 平台管理员（type=user）使用 admin 布局，员工使用默认布局
+  middleware: [
+    () => {
+      const authStore = useAuthStore();
+      if (authStore.userInfo?.type === 'user') {
+        setPageLayout('admin');
+      }
+    },
+  ],
 })
 // 获取国际化方法
 const { t } = useI18n();
@@ -98,7 +107,8 @@ const handleSubmit = async () => {
         }, 1000);
       },
       onError: (error) => {
-        showToast(t('action-results.failed'), 'error')
+        // 展示后端返回的具体原因（如旧密码错误）
+        showToast(error.message || t('action-results.failed'), 'error')
       }
     });
   } catch (error) {
@@ -125,7 +135,7 @@ const handleSubmit = async () => {
                       <div class="col-xl-12">
                         <label for="reset-password" class="form-label text-default">{{ t('profile.current-password') }}</label>
                         <div class="input-group">
-                            <PasswordInput initialValue="" name="currentpassword" id="currentpassword" v-model="formState.currentPassword"
+                            <PasswordInput initialValue="" name="currentpassword" id="currentpassword" autocomplete="current-password" v-model="formState.currentPassword"
                                 :placeholder="t('profile.current-password')" />
                         </div>
                         <div v-if="errors.current_password" class="invalid-feedback d-block">{{ errors.current_password }}</div>
@@ -133,7 +143,7 @@ const handleSubmit = async () => {
                       <div class="col-xl-12">
                         <label for="reset-newpassword" class="form-label text-default">{{ t('profile.new-password') }}</label>
                         <div class="input-group">
-                            <PasswordInput initialValue="" name="newpassword" id="newpassword" v-model="formState.newPassword"
+                            <PasswordInput initialValue="" name="newpassword" id="newpassword" autocomplete="new-password" v-model="formState.newPassword"
                                 :placeholder="t('profile.new-password') " />
                         </div>
                         <div v-if="errors.new_password" class="invalid-feedback d-block">{{ errors.new_password }}</div>
@@ -141,7 +151,7 @@ const handleSubmit = async () => {
                       <div class="col-xl-12 mb-2">
                         <label for="reset-confirmpassword" class="form-label text-default">{{ t('profile.confirm-password') }}</label>
                         <div class="input-group">
-                            <PasswordInput initialValue="" name="confirmpassword" id="confirmpassword"  v-model="formState.confirmPassword" 
+                            <PasswordInput initialValue="" name="confirmpassword" id="confirmpassword" autocomplete="new-password"  v-model="formState.confirmPassword" 
                                 :placeholder="t('profile.confirm-password')" />
                         </div>
                         <div v-if="errors.confirm_password" class="invalid-feedback d-block">{{ errors.confirm_password }}</div>

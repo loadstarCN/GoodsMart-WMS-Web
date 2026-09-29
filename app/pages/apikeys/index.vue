@@ -32,7 +32,8 @@ const fetchData = async () => {
 
   await httpRequest<PaginationData>('/api/system/third-party/api-keys', {
     method: 'GET',
-    params: { ...route.query, company_id: companyId },
+    // 默认展示启用中的 Key，与下方 Tab 高亮保持一致
+    params: { is_active: 'true', ...route.query, company_id: companyId },
     onSuccess: (data) => {
       pageData.value = data
     },
@@ -78,6 +79,7 @@ const loadPermissions = async () => {
 }
 
 onMounted(async () => {
+  keyword.value = (route.query.keyword as string) || ''
   if (!staffStore.staffInfo) {
     await staffStore.getCurrentStaffInfo()
   }
@@ -156,7 +158,7 @@ const copyKey = async (key: string) => {
     await navigator.clipboard.writeText(key)
     showToast(t('apikeys.operations.copied'), 'success')
   } catch {
-    showToast('Copy failed', 'error')
+    showToast(t('apikeys.operations.copy-failed'), 'error')
   }
 }
 
@@ -217,7 +219,13 @@ const activeTab = computed(() => {
 
 // ==================== 搜索 ====================
 async function search() {
-  await router.push({ query: { ...route.query, system_name: keyword.value.trim(), page: '1' } })
+  const query: Record<string, any> = { ...route.query, page: '1' }
+  if (keyword.value.trim()) {
+    query.keyword = keyword.value.trim()
+  } else {
+    delete query.keyword
+  }
+  await router.push({ query })
 }
 
 // ==================== 编辑 Modal ====================
@@ -293,12 +301,6 @@ const submitEdit = async () => {
   })
 }
 
-// ==================== 遮蔽密钥 ====================
-const maskKey = (key: string) => {
-  if (!key || key.length < 12) return key
-  return key.slice(0, 8) + '••••••••' + key.slice(-4)
-}
-
 </script>
 
 <template>
@@ -369,11 +371,8 @@ const maskKey = (key: string) => {
                     <span class="fw-semibold">{{ item.system_name }}</span>
                   </td>
                   <td>
-                    <code class="fs-12">{{ maskKey(item.key) }}</code>
-                    <button class="btn btn-icon btn-sm btn-light ms-1" @click="copyKey(item.key)"
-                      :title="t('apikeys.operations.copy')">
-                      <i class="ri-file-copy-line"></i>
-                    </button>
+                    <!-- 后端只返回前缀，完整 key 仅在创建时显示一次 -->
+                    <code class="fs-12">{{ item.key_prefix }}…</code>
                   </td>
                   <td class="">
                     <div v-if="item.permissions && item.permissions.length > 0" class="d-flex flex-wrap gap-1">
@@ -530,7 +529,7 @@ const maskKey = (key: string) => {
             <div class="mb-3">
               <label class="form-label">{{ t('apikeys.fields.webhook-secret') }}</label>
               <input type="text" class="form-control" v-model="editForm.webhook_secret"
-                placeholder="留空则不修改">
+                :placeholder="editingItem?.has_webhook_secret ? t('apikeys.form.placeholders.webhook-secret-keep') : t('apikeys.form.placeholders.webhook-secret')">
             </div>
             <div class="mb-3">
               <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>

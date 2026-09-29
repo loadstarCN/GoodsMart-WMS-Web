@@ -408,7 +408,8 @@
       "path-to-success": "成功之旅从这里开始。让我们携手并进，共创辉煌未来。",
       "fearless-journey-title": "无畏之旅",
       "fearless-journey": "勇往直前，追求卓越。与我们共同开启新的商业旅程。"
-    }
+    },
+    "logged-in": "登录成功"
   },
   "inventory": {
     "title": "库存管理",
@@ -1044,7 +1045,8 @@
       "placeholders": {
         "system-name": "请输入系统名称（如：Shopify、ERP）",
         "webhook-url": "请输入 Webhook 回调地址",
-        "webhook-secret": "请输入 Webhook 签名密钥"
+        "webhook-secret": "请输入 Webhook 签名密钥",
+        "webhook-secret-keep": "留空则不修改"
       }
     },
     "operations": {
@@ -1053,7 +1055,8 @@
       "delete": "删除",
       "copy": "复制密钥",
       "copied": "已复制到剪贴板",
-      "regenerate": "重新生成"
+      "regenerate": "重新生成",
+      "copy-failed": "复制失败"
     },
     "tips": {
       "key-warning": "请妥善保管此密钥，关闭后将无法再次查看",
@@ -1112,7 +1115,8 @@
     "resend": "重新发送",
     "back-to-login": "返回登录",
     "cover-title": "安全密码恢复",
-    "cover-text": "我们将向您的注册邮箱发送验证码，帮助您安全地重置密码。"
+    "cover-text": "我们将向您的注册邮箱发送验证码，帮助您安全地重置密码。",
+    "code-sent-generic": "若邮箱存在，验证码已发送至该邮箱"
   },
   "admin": {
     "title": "管理控制台",
@@ -1144,13 +1148,25 @@
         "add": "添加租户",
         "edit": "编辑租户",
         "delete": "删除租户"
+      },
+      "delete-confirm": "确定删除该租户？将同时停用该租户的 API Key；若存在员工、仓库或商品将无法删除。",
+      "admin": {
+        "title": "初始管理员",
+        "hint": "可选。公司创建成功后为该租户创建首个员工账号。",
+        "create-failed": "公司已创建，但管理员创建失败：{message}",
+        "company-created-retry": "公司已创建。请修正下方管理员信息后再次提交。"
       }
     },
     "users": {
       "title": "用户管理",
       "type-admin": "管理员",
       "type-staff": "员工",
-      "company": "所属公司"
+      "company": "所属公司",
+      "operations": {
+        "add": "新增用户",
+        "edit": "编辑用户"
+      },
+      "password-keep-hint": "留空则不修改密码"
     },
     "roles": {
       "title": "角色管理",
@@ -1237,7 +1253,10 @@
         "method": "请求方法",
         "path": "请求路径",
         "status-code": "状态码",
-        "ip": "IP 地址"
+        "ip": "IP 地址",
+        "processing-time": "处理时间",
+        "request-data": "请求内容",
+        "response-data": "响应内容"
       }
     },
     "settings": {

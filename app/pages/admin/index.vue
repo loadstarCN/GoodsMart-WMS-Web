@@ -15,13 +15,13 @@ const dataToPass = computed(() => ({
 let loading = ref(true);
 
 interface DashboardStats {
-  tenants: { total: number; active: number; expired: number };
+  tenants: { total: number };
   users: { total: number };
   roles: { total: number };
 }
 
 let stats = ref<DashboardStats>({
-  tenants: { total: 0, active: 0, expired: 0 },
+  tenants: { total: 0 },
   users: { total: 0 },
   roles: { total: 0 },
 });

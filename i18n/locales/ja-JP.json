@@ -408,7 +408,8 @@
       "path-to-success": "成功への旅がここから始まります。共に輝かしい未来を創造しましょう。",
       "fearless-journey-title": "恐れない旅",
       "fearless-journey": "卓越を恐れず追求。新しいビジネスへの旅を共に始めましょう。"
-    }
+    },
+    "logged-in": "ログインしました"
   },
   "inventory": {
     "title": "在庫管理",
@@ -1044,7 +1045,8 @@
       "placeholders": {
         "system-name": "システム名を入力（例：Shopify、ERP）",
         "webhook-url": "Webhook コールバック URL を入力",
-        "webhook-secret": "Webhook 署名キーを入力"
+        "webhook-secret": "Webhook 署名キーを入力",
+        "webhook-secret-keep": "空欄の場合は変更しません"
       }
     },
     "operations": {
@@ -1053,7 +1055,8 @@
       "delete": "削除",
       "copy": "キーをコピー",
       "copied": "クリップボードにコピーしました",
-      "regenerate": "再生成"
+      "regenerate": "再生成",
+      "copy-failed": "コピーに失敗しました"
     },
     "tips": {
       "key-warning": "このキーを安全に保管してください。閉じた後は再表示できません。",
@@ -1112,7 +1115,8 @@
     "resend": "再送信",
     "back-to-login": "ログインに戻る",
     "cover-title": "安全なパスワード回復",
-    "cover-text": "登録済みメールアドレスに認証コードを送信し、安全にパスワードをリセットします。"
+    "cover-text": "登録済みメールアドレスに認証コードを送信し、安全にパスワードをリセットします。",
+    "code-sent-generic": "メールアドレスが存在する場合、認証コードを送信しました"
   },
   "admin": {
     "title": "管理コンソール",
@@ -1144,13 +1148,25 @@
         "add": "テナント追加",
         "edit": "テナント編集",
         "delete": "テナント削除"
+      },
+      "delete-confirm": "このテナントを削除しますか？関連する API キーは無効化されます。従業員・倉庫・商品が存在する場合は削除できません。",
+      "admin": {
+        "title": "初期管理者",
+        "hint": "任意。会社作成後にこのテナントの最初の従業員アカウントを作成します。",
+        "create-failed": "会社は作成されましたが、管理者の作成に失敗しました：{message}",
+        "company-created-retry": "会社は作成済みです。下の管理者情報を修正して再送信してください。"
       }
     },
     "users": {
       "title": "ユーザー管理",
       "type-admin": "管理者",
       "type-staff": "従業員",
-      "company": "所属会社"
+      "company": "所属会社",
+      "operations": {
+        "add": "ユーザー追加",
+        "edit": "ユーザー編集"
+      },
+      "password-keep-hint": "空欄の場合はパスワードを変更しません"
     },
     "roles": {
       "title": "ロール管理",
@@ -1237,7 +1253,10 @@
         "method": "メソッド",
         "path": "パス",
         "status-code": "ステータスコード",
-        "ip": "IPアドレス"
+        "ip": "IPアドレス",
+        "processing-time": "処理時間",
+        "request-data": "リクエスト内容",
+        "response-data": "レスポンス内容"
       }
     },
     "settings": {

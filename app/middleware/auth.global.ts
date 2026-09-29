@@ -1,18 +1,27 @@
 import { useAuthStore } from "~/stores/auth";
 
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to) => {
   const authStore = useAuthStore();
   const { authenticated } = storeToRefs(authStore);
   const token = useCookie('token');
   const path = to?.path || '';
 
-  if (token.value) {
-    authenticated.value = true;
-  }
-
   // 公开页面（无需登录即可访问）
   const publicPaths = ['/auth/login', '/auth/forgot-password'];
   const isPublicPage = publicPaths.includes(path);
+
+  // 有 token 但本地用户信息缺失/解密失败：会话不完整，清掉 token 回登录页，避免反复跳转
+  if (token.value && !authStore.userInfo) {
+    await authStore.logUserOut();
+    if (!isPublicPage) {
+      return navigateTo('/auth/login');
+    }
+    return;
+  }
+
+  if (token.value) {
+    authenticated.value = true;
+  }
 
   // if token exists and url is /login redirect to homepage
   if (token.value && path === '/auth/login') {
@@ -24,8 +33,10 @@ export default defineNuxtRouteMiddleware((to) => {
   }
 
   // Admin users should not access WMS pages (non-admin routes)
+  // 修改密码页对平台管理员同样开放
+  const adminAllowedPaths = ['/authentication/reset-password'];
   if (token.value && authStore.userInfo?.type === 'user') {
-    if (!path.startsWith('/admin') && path !== '/auth/login') {
+    if (!path.startsWith('/admin') && path !== '/auth/login' && !adminAllowedPaths.includes(path)) {
       return navigateTo('/admin/');
     }
   }

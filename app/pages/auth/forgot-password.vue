@@ -43,16 +43,19 @@ const sendCode = async () => {
     return;
   }
   loading.value = true;
+  // 无论邮箱是否存在都只显示通用文案，避免账号枚举
   await httpRequest('/api/system/user/forgot-password', {
     method: 'POST',
     body: { email: email.value.trim() },
     onSuccess: () => {
-      showToast(t('forgot-password.code-sent'), 'success');
+      showToast(t('forgot-password.code-sent-generic'), 'success');
       step.value = 2;
       startCountdown();
     },
-    onError: (error) => {
-      showToast(error.message, 'error');
+    onError: () => {
+      showToast(t('forgot-password.code-sent-generic'), 'success');
+      step.value = 2;
+      startCountdown();
     },
     onFinally: () => {
       loading.value = false;
@@ -67,11 +70,12 @@ const resendCode = async () => {
     method: 'POST',
     body: { email: email.value.trim() },
     onSuccess: () => {
-      showToast(t('forgot-password.code-sent'), 'success');
+      showToast(t('forgot-password.code-sent-generic'), 'success');
       startCountdown();
     },
-    onError: (error) => {
-      showToast(error.message, 'error');
+    onError: () => {
+      showToast(t('forgot-password.code-sent-generic'), 'success');
+      startCountdown();
     },
     onFinally: () => {
       loading.value = false;
@@ -186,11 +190,11 @@ onUnmounted(() => {
               </div>
               <div class="mb-3">
                 <label class="form-label text-default">{{ t('forgot-password.new-password') }}</label>
-                <passwordInput v-model="newPassword" id="new-password" :placeholder="t('forgot-password.new-password-placeholder')" required />
+                <passwordInput v-model="newPassword" id="new-password" autocomplete="new-password" :placeholder="t('forgot-password.new-password-placeholder')" required />
               </div>
               <div class="mb-3">
                 <label class="form-label text-default">{{ t('forgot-password.confirm-password') }}</label>
-                <passwordInput v-model="confirmPassword" id="confirm-password" :placeholder="t('forgot-password.confirm-password-placeholder')" required />
+                <passwordInput v-model="confirmPassword" id="confirm-password" autocomplete="new-password" :placeholder="t('forgot-password.confirm-password-placeholder')" required />
               </div>
               <div class="d-grid mb-3">
                 <button type="submit" class="btn btn-lg btn-primary" :disabled="loading">

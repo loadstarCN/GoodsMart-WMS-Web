@@ -67,7 +67,7 @@ onMounted(async() => {
                 <div class="col-xl-8 mt-xxl-0 mt-3">
                   <div>
                     <p class="fs-18 fw-semibold mb-3">{{ itemData?.name}}</p>
-                    <p class="fs-18 fw-semibold mb-3" v-html="itemData?.description"></p>
+                    <p class="fs-18 fw-semibold mb-3" v-html="sanitizeHtml(itemData?.description)"></p>
 
                     
                   </div>

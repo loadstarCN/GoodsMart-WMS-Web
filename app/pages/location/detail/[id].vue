@@ -355,7 +355,7 @@ onMounted(async() => {
 
                     <div class="mb-4" v-if="itemData?.description">
                       <p class="fs-15 fw-semibold mb-1">{{t('location.fields.description')}} :</p>
-                      <p class="text-muted mb-0" v-html="itemData.description">
+                      <p class="text-muted mb-0" v-html="sanitizeHtml(itemData.description)">
                       </p>
                     </div>
 

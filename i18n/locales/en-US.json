@@ -408,7 +408,8 @@
       "path-to-success": "Your journey to success starts here. Let's create a brilliant future together.",
       "fearless-journey-title": "Fearless Journey",
       "fearless-journey": "Pursue excellence without fear. Begin your new business journey with us."
-    }
+    },
+    "logged-in": "Logged in"
   },
   "inventory": {
     "title": "Inventory Management",
@@ -1044,7 +1045,8 @@
       "placeholders": {
         "system-name": "Enter system name (e.g. Shopify, ERP)",
         "webhook-url": "Enter Webhook callback URL",
-        "webhook-secret": "Enter Webhook signing secret"
+        "webhook-secret": "Enter Webhook signing secret",
+        "webhook-secret-keep": "Leave empty to keep current secret"
       }
     },
     "operations": {
@@ -1053,7 +1055,8 @@
       "delete": "Delete",
       "copy": "Copy Key",
       "copied": "Copied to clipboard",
-      "regenerate": "Regenerate"
+      "regenerate": "Regenerate",
+      "copy-failed": "Copy failed"
     },
     "tips": {
       "key-warning": "Please save this key securely. It will not be shown again after closing.",
@@ -1112,7 +1115,8 @@
     "resend": "Resend",
     "back-to-login": "Back to Login",
     "cover-title": "Secure Password Recovery",
-    "cover-text": "We'll send a verification code to your registered email to help you reset your password safely."
+    "cover-text": "We'll send a verification code to your registered email to help you reset your password safely.",
+    "code-sent-generic": "If the email exists, a verification code has been sent"
   },
   "admin": {
     "title": "Admin Console",
@@ -1144,13 +1148,25 @@
         "add": "Add Tenant",
         "edit": "Edit Tenant",
         "delete": "Delete Tenant"
+      },
+      "delete-confirm": "Delete this tenant? Its API keys will be deactivated. Tenants with existing staff, warehouses or goods cannot be deleted.",
+      "admin": {
+        "title": "Initial Administrator",
+        "hint": "Optional. Create the first staff account for this tenant once the company is created.",
+        "create-failed": "Company created, but failed to create administrator: {message}",
+        "company-created-retry": "Company has been created. Fix the administrator info below and submit again."
       }
     },
     "users": {
       "title": "User Management",
       "type-admin": "Admin",
       "type-staff": "Staff",
-      "company": "Company"
+      "company": "Company",
+      "operations": {
+        "add": "Add User",
+        "edit": "Edit User"
+      },
+      "password-keep-hint": "Leave empty to keep current password"
     },
     "roles": {
       "title": "Role Management",
@@ -1237,7 +1253,10 @@
         "method": "Method",
         "path": "Path",
         "status-code": "Status Code",
-        "ip": "IP Address"
+        "ip": "IP Address",
+        "processing-time": "Processing Time",
+        "request-data": "Request Data",
+        "response-data": "Response Data"
       }
     },
     "settings": {

@@ -7,6 +7,7 @@
       :name="name" 
       :id="id" 
       :placeholder="placeholder"
+      :autocomplete="autocomplete"
       class="form-control form-control-lg" 
       :required="required"
     >
@@ -47,6 +48,11 @@ export default {
     required: {
       type: Boolean,
       default: false,
+    },
+    // 登录用 current-password，改密/重置用 new-password
+    autocomplete: {
+      type: String,
+      default: 'current-password',
     },
   },
   emits: ['update:modelValue'],

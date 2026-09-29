@@ -1,5 +1,3 @@
-const localePath = useLocalePath();
-
 export let menuData = [
     {
         headTitle: 'nav.InventoryManger'

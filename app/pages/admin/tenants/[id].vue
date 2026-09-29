@@ -43,7 +43,8 @@ const fetchData = async () => {
         address: data.address || '',
         zip_code: data.zip_code || '',
         default_currency: data.default_currency || 'JPY',
-        expired_at: data.expired_at || null,
+        // 后端返回 ISO 时间串，date 输入框只接受 YYYY-MM-DD
+        expired_at: data.expired_at ? String(data.expired_at).slice(0, 10) : null,
         is_active: data.is_active ?? true,
       };
     },
@@ -74,7 +75,8 @@ const submitForm = async () => {
   saving.value = true;
   await httpRequest(`/api/warehouse/company/${itemId}`, {
     method: 'PUT',
-    body: itemData.value,
+    // 清空日期时提交 null 而不是空串
+    body: { ...itemData.value, expired_at: itemData.value.expired_at || null },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success');
       router.push('/admin/tenants/');

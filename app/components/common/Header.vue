@@ -148,7 +148,6 @@ onMounted(async () => {
     if (userStore.authenticated && userStore.userInfo) {
       if (userStore.userInfo?.type === 'staff') {
           if (!staffStore.staffInfo) {
-              console.log("Staff info not found, fetching...");
               await staffStore.getCurrentStaffInfo();
           }
       }

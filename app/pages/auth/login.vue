@@ -122,10 +122,11 @@ const login = async () => {
       // 处理记住密码逻辑
       handleRememberPassword();
       await router.push('/');
-      showToast('LoggedIn', 'success');
+      showToast(t('login.logged-in'), 'success');
     } else {
       clearCredentials()
-      showToast(t('login.errors.invalid-credentials'), 'error');
+      // 优先展示后端返回的失败原因（如账号被停用、租户过期）
+      showToast(data?.message || t('login.errors.invalid-credentials'), 'error');
     }
   } catch (error) {
     clearCredentials();
@@ -234,7 +235,10 @@ definePageMeta({
                             </div>
                           </div>
                           <div class="col-xl-12 d-grid mt-2">
-                            <button type="submit" id="login-btn" class="btn btn-lg btn-primary">{{ $t('login.sign-in') }}</button>
+                            <button type="submit" id="login-btn" class="btn btn-lg btn-primary" :disabled="authStore.loading">
+                              <span v-if="authStore.loading" class="spinner-border spinner-border-sm me-1"></span>
+                              {{ $t('login.sign-in') }}
+                            </button>
                           </div>
                         </form>
                       </div>

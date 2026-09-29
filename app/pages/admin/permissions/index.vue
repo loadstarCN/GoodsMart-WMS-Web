@@ -40,10 +40,17 @@ watch(() => route.query, async () => {
 });
 
 async function search() {
-    await router.push({ query: { ...route.query, keyword: keyword.value.trim(), page: 1 } });
+    const query: Record<string, any> = { ...route.query, page: 1 };
+    if (keyword.value.trim()) {
+        query.keyword = keyword.value.trim();
+    } else {
+        delete query.keyword;
+    }
+    await router.push({ query });
 }
 
 onMounted(async() => {
+    keyword.value = (route.query.keyword as string) || '';
     fetchData();
 });
 
