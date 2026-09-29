@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { currenciesOptions } from '~/data/selectOptions'
+import { hasNonAscii } from '~/composables/customs/customsDocuments'
 
 // 定义页面元数据
 definePageMeta({
@@ -26,6 +27,10 @@ const itemData = ref({
   manager: null,
   company_id: staffStore.staffInfo?.company_id,
   default_currency: staffStore.staffInfo?.company?.default_currency || 'JPY',
+  // 出口资料：仓库作为发货地（Ship From）印在海外出荷単証上
+  address_en: null,
+  country_code: null,
+  contact_name_en: null,
 })
 
 const errors = ref({
@@ -150,6 +155,27 @@ const addWarehouse = async () => {
                         <VueMultiselect id="product-currency" :show-labels="false" :options="selectOptions.currencies"
                           :multiple="false" v-model="itemData.default_currency">
                         </VueMultiselect>
+                      </div>
+
+                      <div class="col-xl-12 mt-4">
+                        <h6 class="fw-semibold mb-1"><i class="ri-earth-line me-1"></i>{{ t('warehouse.sections.export') }}</h6>
+                        <p class="fs-12 text-muted mb-0">{{ t('warehouse.tips.export') }}</p>
+                      </div>
+                      <div class="col-xl-12">
+                        <label for="warehouse-address-en" class="form-label">{{ t('warehouse.fields.address-en') }}</label>
+                        <textarea class="form-control" id="warehouse-address-en" rows="2" maxlength="500"
+                          :placeholder="t('warehouse.form.placeholders.address-en')" v-model="itemData.address_en"></textarea>
+                        <div class="form-text text-warning" v-if="hasNonAscii(itemData.address_en)">{{ t('common.tips.non-latin') }}</div>
+                      </div>
+                      <div class="col-xl-6">
+                        <label for="warehouse-country-code" class="form-label">{{ t('warehouse.fields.country-code') }}</label>
+                        <CountrySelect id="warehouse-country-code" v-model="itemData.country_code" />
+                      </div>
+                      <div class="col-xl-6">
+                        <label for="warehouse-contact-name-en" class="form-label">{{ t('warehouse.fields.contact-name-en') }}</label>
+                        <input type="text" class="form-control" id="warehouse-contact-name-en" maxlength="100"
+                          :placeholder="t('warehouse.form.placeholders.contact-name-en')" v-model="itemData.contact_name_en">
+                        <div class="form-text text-warning" v-if="hasNonAscii(itemData.contact_name_en)">{{ t('common.tips.non-latin') }}</div>
                       </div>
 
                     </div>

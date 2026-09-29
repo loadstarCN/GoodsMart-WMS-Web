@@ -343,7 +343,8 @@
       "name": "Max 100 characters",
       "code": "Max 50 characters",
       "country": "Two uppercase letters (e.g., CN/JP/US)",
-      "readonly": "Read-only"
+      "readonly": "Read-only",
+      "non-latin": "Contains non-Latin characters (documents will show a warning)"
     },
     "validation": {
       "name-required": "{entity} name cannot be empty",
@@ -452,18 +453,40 @@
     "fields": {
       "name": "Company Name",
       "description": "Company Description",
-      "address": "Company Address"
+      "address": "Company Address",
+      "legal-name-en": "Legal Name (English)",
+      "address-en": "Address (English)",
+      "country-code": "Country",
+      "tax-id-label": "Tax ID Label",
+      "tax-id": "Tax ID",
+      "export-contact-name": "Export Contact (English)",
+      "export-signatory-name": "Signatory Name (English)",
+      "export-signatory-title": "Signatory Title (English)"
     },
     "form": {
       "placeholders": {
         "name": "Enter company name",
-        "description": "Enter company description"
+        "description": "Enter company description",
+        "legal-name-en": "e.g. Example Trading Co., Ltd.",
+        "address-en": "e.g. 1-2-3 Example-cho, Example City, Example Prefecture 000-0000",
+        "tax-id-label": "e.g. Corporate Number / VAT No.",
+        "tax-id": "Enter tax ID",
+        "export-contact-name": "e.g. Taro Yamada",
+        "export-signatory-name": "e.g. Taro Yamada",
+        "export-signatory-title": "e.g. Export Manager"
       }
     },
     "operations": {
       "add": "Add Company",
       "edit": "Edit Company",
       "delete": "Delete Company"
+    },
+    "sections": {
+      "export": "Exporter Profile"
+    },
+    "tips": {
+      "export": "Printed in English on Commercial Invoices (CI) and Packing Lists (PL) for export shipments.",
+      "export-required": "Issuing documents requires the English legal name, English address, country and a phone number (warehouse or company)."
     }
   },
   "department": {
@@ -490,18 +513,29 @@
     "entity": "Warehouse",
     "fields": {
       "name": "Warehouse Name",
-      "description": "Warehouse Description"
+      "description": "Warehouse Description",
+      "address-en": "Address (English)",
+      "country-code": "Country",
+      "contact-name-en": "Contact Name (English)"
     },
     "form": {
       "placeholders": {
         "name": "Enter warehouse name",
-        "description": "Enter warehouse description"
+        "description": "Enter warehouse description",
+        "address-en": "Enter the warehouse address in English",
+        "contact-name-en": "e.g. Hanako Suzuki"
       }
     },
     "operations": {
       "add": "Add Warehouse",
       "edit": "Edit Warehouse",
       "delete": "Delete Warehouse"
+    },
+    "sections": {
+      "export": "Ship From (English)"
+    },
+    "tips": {
+      "export": "Printed on documents as Ship From when it differs from the company address."
     }
   },
   "location": {
@@ -643,7 +677,8 @@
       "volume": "Volume",
       "image": "Image",
       "product-date": "Production Date",
-      "expiry-date": "Expiry Date"
+      "expiry-date": "Expiry Date",
+      "origin-country": "Country of Origin"
     },
     "form": {
       "placeholders": {
@@ -669,7 +704,8 @@
       "tips": {
         "code": "Max 50 characters",
         "weight": "kg (3 decimals)",
-        "dimensions": "mm"
+        "dimensions": "mm",
+        "origin-country": "As printed on the package (\"MADE IN\"). Leave blank if unknown."
       }
     },
     "operations": {
@@ -694,6 +730,12 @@
     },
     "action-results": {
       "not-found": "Product not found. Verify code or name."
+    },
+    "filters": {
+      "origin-missing": "Origin not set"
+    },
+    "tips": {
+      "origin-missing": "Not set"
     }
   },
   "cyclecount": {
@@ -1039,7 +1081,8 @@
       "system-name": "System Name",
       "permissions": "Permissions",
       "webhook-url": "Webhook URL",
-      "webhook-secret": "Webhook Secret"
+      "webhook-secret": "Webhook Secret",
+      "webhook-subscriptions": "Webhook Subscriptions"
     },
     "form": {
       "placeholders": {
@@ -1060,7 +1103,13 @@
     },
     "tips": {
       "key-warning": "Please save this key securely. It will not be shown again after closing.",
-      "no-keys": "No API keys yet. Click the button above to create one."
+      "no-keys": "No API keys yet. Click the button above to create one.",
+      "subscriptions": "Existing events (e.g. ASN completed, DN delivered) are sent regardless of subscriptions.",
+      "subscriptions-need-url": "Set a Webhook URL to receive notifications"
+    },
+    "events": {
+      "goods_spec_updated": "Goods spec updated",
+      "goods_spec_updated_desc": "Sent when a product's weight, dimensions or country of origin changes"
     }
   },
   "webhook-logs": {
@@ -1323,5 +1372,156 @@
       "damaged": "Damaged",
       "return": "Return"
     }
+  },
+  "countries": {
+    "placeholder": "Select a country/region (search by code or name)",
+    "no-result": "No matching country/region",
+    "clear": "Clear"
+  },
+  "customs": {
+    "title": "Export Documents",
+    "packing-title": "Export shipment: packages",
+    "export-badge": "Export",
+    "errors": "Errors",
+    "warnings": "Warnings",
+    "sections": {
+      "summary": "Customs Summary",
+      "exporter": "Exporter",
+      "lines": "Lines",
+      "packages": "Packages",
+      "problems": "Issues",
+      "documents": "Documents"
+    },
+    "fields": {
+      "invoice-number": "Invoice No.",
+      "incoterm": "Incoterms",
+      "currency": "Currency",
+      "export-reason": "Reason for Export",
+      "recipient-country": "Destination",
+      "recipient-tax-id": "Recipient Tax ID",
+      "consignee": "Consignee",
+      "jan": "JAN",
+      "goods-name": "Name",
+      "description-en": "English Description",
+      "hs-code": "HS Code",
+      "origin": "Origin",
+      "packed-qty": "Packed / Planned",
+      "unit-value": "Unit Value",
+      "amount": "Amount",
+      "total-qty": "Total Qty",
+      "goods-value": "Goods Value",
+      "freight": "Freight",
+      "invoice-total": "Total Invoice Value",
+      "package-count": "Packages",
+      "gross-weight": "Gross Weight",
+      "net-weight": "Net Weight",
+      "doc-type": "Type",
+      "version": "Version",
+      "document-number": "Number",
+      "invoice-date": "Date",
+      "issued-at": "Issued At",
+      "size": "Size",
+      "status": "Status",
+      "void-reason": "Void Reason"
+    },
+    "doc-types": {
+      "commercial_invoice": "Commercial Invoice (CI)",
+      "packing_list": "Packing List (PL)"
+    },
+    "doc-status": {
+      "issued": "Issued",
+      "void": "Void"
+    },
+    "void-reasons": {
+      "packages_changed": "Packages changed"
+    },
+    "export-reasons": {
+      "SALE": "Sale"
+    },
+    "status": {
+      "ready": "Ready",
+      "not-ready": "Not ready",
+      "issued": "CI & PL issued",
+      "not-issued": "Not issued",
+      "locked": "Shipped (read-only)"
+    },
+    "operations": {
+      "issue": "Issue Documents",
+      "print-ci": "Print CI",
+      "print-pl": "Print PL",
+      "view": "View",
+      "download": "Download",
+      "history": "History",
+      "refresh": "Refresh",
+      "open-card": "Open export documents on the DN",
+      "edit-exporter": "Edit exporter profile"
+    },
+    "tips": {
+      "not-on-invoice": "Not on the invoice (packed quantity is 0)",
+      "origin-master": "Saved to the goods master",
+      "issue-need-packed": "Available after packing is completed (packed)",
+      "issue-not-ready": "Resolve the errors listed below first",
+      "issued-new": "Version {version} issued",
+      "issued-same": "No changes; version {version} kept",
+      "documents-voided": "{count} existing document(s) voided because packages changed. Please issue again.",
+      "no-documents": "No documents yet",
+      "no-problems": "No issues",
+      "no-snapshot": "This DN has no customs data",
+      "pdf-checksum-mismatch": "PDF checksum mismatch. Please reload and try again.",
+      "delivery-blocked-title": "Cannot complete shipment",
+      "delivery-requires-documents": "Export shipments can be completed only after a valid CI and PL are issued."
+    },
+    "packages": {
+      "box-no": "Box",
+      "gross-weight-kg": "Gross Weight (kg)",
+      "length-cm": "Length (cm)",
+      "width-cm": "Width (cm)",
+      "height-cm": "Height (cm)",
+      "remark": "Remark",
+      "add": "Add Box",
+      "remove": "Remove",
+      "save": "Save Packages",
+      "unsaved": "Unsaved",
+      "empty": "No packages yet",
+      "total": "{count} box(es), gross {weight} kg",
+      "tip": "Enter dimensions in cm and weight in kg (converted to mm when saved).",
+      "readonly-status": "Editable only while the DN is picked or packed",
+      "validation": {
+        "count": "Number of boxes must be 1–99",
+        "weight": "Gross weight must be 0.01–999.999 kg",
+        "dimension": "Dimensions must be 0.1–300 cm"
+      }
+    },
+    "problems": {
+      "NOT_PACKED": "Packing is not completed",
+      "PACKAGES_MISSING": "No packages recorded",
+      "EXPORTER_PROFILE_INCOMPLETE": "Exporter profile incomplete (English name, English address, phone, country)",
+      "INCOTERM_MISSING": "Incoterm missing",
+      "EXPORT_REASON_MISSING": "Reason for export missing",
+      "CURRENCY_INVALID": "Invalid currency",
+      "RECIPIENT_COUNTRY_MISSING": "Destination country missing",
+      "LINE_MISSING": "No customs line for this goods",
+      "HS_CODE_MISSING": "HS code missing or invalid (6–10 digits)",
+      "DESCRIPTION_MISSING": "English description missing",
+      "DESCRIPTION_NOT_ASCII": "English description contains non-ASCII characters",
+      "ORIGIN_MISSING": "Country of origin not set",
+      "UNIT_VALUE_MISSING": "Unit value missing or not greater than 0",
+      "RECIPIENT_TAX_ID_MISSING": "Recipient tax ID missing",
+      "NON_LATIN_TEXT": "Contains non-Latin characters",
+      "NET_WEIGHT_UNKNOWN": "Net weight unknown (some goods have no weight)",
+      "GROSS_LT_NET": "Gross weight is less than net weight"
+    }
+  },
+  "biz-errors": {
+    "code-10014": "Invalid country of origin (ISO 3166-1 alpha-2 code required)",
+    "code-16063": "Invalid customs data structure",
+    "code-16064": "Customs line JAN is not on the DN or is duplicated",
+    "code-16065": "Already shipped; cannot be changed",
+    "code-16066": "Invalid package data",
+    "code-16067": "Packages cannot be changed in the current status (only when picked or packed)",
+    "code-16068": "Document requirements are not met",
+    "code-16069": "Issue a valid Commercial Invoice (CI) and Packing List (PL) before shipping",
+    "code-16070": "Not an export shipment",
+    "code-16071": "Document not found"
   }
 }

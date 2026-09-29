@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { currenciesOptions } from '~/data/selectOptions'
+import { hasNonAscii } from '~/composables/customs/customsDocuments'
 
 // 定义页面元数据
 definePageMeta({
@@ -27,6 +28,25 @@ const itemData = ref({
   email: null,
   logo: null,
   default_currency: staffStore.staffInfo?.company?.default_currency || 'JPY',
+  // 出口资料（海外出荷単証 CI / PL 上以英文印出）
+  legal_name_en: null,
+  address_en: null,
+  country_code: null,
+  tax_id_label: null,
+  tax_id: null,
+  export_contact_name: null,
+  export_signatory_name: null,
+  export_signatory_title: null,
+})
+
+// 出口资料字段（英文）：含非拉丁字符时只提示，不拦截（单证上会给警告）
+const exportTextFields = [
+  'legal_name_en', 'address_en', 'tax_id_label', 'tax_id',
+  'export_contact_name', 'export_signatory_name', 'export_signatory_title',
+]
+const nonLatin = computed<Record<string, boolean>>(() => {
+  const data = itemData.value as Record<string, any>
+  return Object.fromEntries(exportTextFields.map((f) => [f, hasNonAscii(data?.[f])]))
 })
 
 const errors = ref({
@@ -71,7 +91,7 @@ const saveCompany = async () => {
       showToast(t('action-results.success'), 'success')
     },
     onError: (error) => {
-      showToast(t('action-results.failed'), 'error')
+      showToast(error.status === 400 && error.message ? error.message : t('action-results.failed'), 'error')
     }
   })
 }
@@ -179,6 +199,69 @@ onMounted(async() => {
                       </div>
                     </div>
 
+                  </div>
+                </div>
+              </div>
+
+              <!-- 出口资料 -->
+              <div class="col-xxl-6 col-xl-12">
+                <div class="card custom-card shadow-none mb-0 border-0">
+                  <div class="card-body p-0">
+                    <h6 class="fw-semibold mb-1"><i class="ri-earth-line me-1"></i>{{ t('company.sections.export') }}</h6>
+                    <p class="fs-12 text-muted mb-3">{{ t('company.tips.export') }}</p>
+                    <div class="row gy-3 mb-3">
+                      <div class="col-xl-12">
+                        <label for="company-legal-name-en" class="form-label">{{ t('company.fields.legal-name-en') }}</label>
+                        <input type="text" class="form-control" id="company-legal-name-en" maxlength="255"
+                          :placeholder="t('company.form.placeholders.legal-name-en')" v-model="itemData.legal_name_en">
+                        <div class="form-text text-warning" v-if="nonLatin.legal_name_en">{{ t('common.tips.non-latin') }}</div>
+                      </div>
+                      <div class="col-xl-12">
+                        <label for="company-address-en" class="form-label">{{ t('company.fields.address-en') }}</label>
+                        <textarea class="form-control" id="company-address-en" rows="2" maxlength="500"
+                          :placeholder="t('company.form.placeholders.address-en')" v-model="itemData.address_en"></textarea>
+                        <div class="form-text text-warning" v-if="nonLatin.address_en">{{ t('common.tips.non-latin') }}</div>
+                      </div>
+                      <div class="col-xl-6">
+                        <label for="company-country-code" class="form-label">{{ t('company.fields.country-code') }}</label>
+                        <CountrySelect id="company-country-code" v-model="itemData.country_code" />
+                      </div>
+                      <div class="col-xl-6 d-none d-xl-block"></div>
+                      <div class="col-xl-6">
+                        <label for="company-tax-id-label" class="form-label">{{ t('company.fields.tax-id-label') }}</label>
+                        <input type="text" class="form-control" id="company-tax-id-label" maxlength="40"
+                          :placeholder="t('company.form.placeholders.tax-id-label')" v-model="itemData.tax_id_label">
+                        <div class="form-text text-warning" v-if="nonLatin.tax_id_label">{{ t('common.tips.non-latin') }}</div>
+                      </div>
+                      <div class="col-xl-6">
+                        <label for="company-tax-id" class="form-label">{{ t('company.fields.tax-id') }}</label>
+                        <input type="text" class="form-control" id="company-tax-id" maxlength="40"
+                          :placeholder="t('company.form.placeholders.tax-id')" v-model="itemData.tax_id">
+                        <div class="form-text text-warning" v-if="nonLatin.tax_id">{{ t('common.tips.non-latin') }}</div>
+                      </div>
+                      <div class="col-xl-6">
+                        <label for="company-export-contact-name" class="form-label">{{ t('company.fields.export-contact-name') }}</label>
+                        <input type="text" class="form-control" id="company-export-contact-name" maxlength="100"
+                          :placeholder="t('company.form.placeholders.export-contact-name')" v-model="itemData.export_contact_name">
+                        <div class="form-text text-warning" v-if="nonLatin.export_contact_name">{{ t('common.tips.non-latin') }}</div>
+                      </div>
+                      <div class="col-xl-6 d-none d-xl-block"></div>
+                      <div class="col-xl-6">
+                        <label for="company-export-signatory-name" class="form-label">{{ t('company.fields.export-signatory-name') }}</label>
+                        <input type="text" class="form-control" id="company-export-signatory-name" maxlength="100"
+                          :placeholder="t('company.form.placeholders.export-signatory-name')" v-model="itemData.export_signatory_name">
+                        <div class="form-text text-warning" v-if="nonLatin.export_signatory_name">{{ t('common.tips.non-latin') }}</div>
+                      </div>
+                      <div class="col-xl-6">
+                        <label for="company-export-signatory-title" class="form-label">{{ t('company.fields.export-signatory-title') }}</label>
+                        <input type="text" class="form-control" id="company-export-signatory-title" maxlength="100"
+                          :placeholder="t('company.form.placeholders.export-signatory-title')" v-model="itemData.export_signatory_title">
+                        <div class="form-text text-warning" v-if="nonLatin.export_signatory_title">{{ t('common.tips.non-latin') }}</div>
+                      </div>
+                    </div>
+                    <p class="fs-12 text-muted mb-0">
+                      <i class="ri-information-line me-1"></i>{{ t('company.tips.export-required') }}
+                    </p>
                   </div>
                 </div>
               </div>

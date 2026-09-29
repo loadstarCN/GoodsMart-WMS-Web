@@ -12,6 +12,7 @@ import { categoriesOptions, currenciesOptions, unitsOptions,tagsOptions } from '
 
 // 获取国际化方法
 const { t } = useI18n()
+const { bizErrorMessage, hasBizMessage } = useBizError()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -38,6 +39,7 @@ const itemData = ref({
   length: null,
   width: null,
   height: null,
+  origin_country: null, // 原产国：不设默认值（按包装「MADE IN」录入）
   image_url: null,
   thumbnail_url: null,
   extra_data: {},
@@ -89,13 +91,14 @@ const addProduct = async () => {
   await httpRequest('/api/warehouse/goods/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: itemData.value,
+    // 原产国未选时传空串（后端约定：空串 = 不填）
+    body: { ...itemData.value, origin_country: itemData.value.origin_country || '' },
     onSuccess: async () => {
       showToast(t('action-results.op-success',{operation:t('goods.operations.add'),entity:itemData.value.name}), 'success')
       await router.push('/goods/')          
     },
     onError: (error) => {
-      showToast(t('action-results.op-failed',{operation:t('goods.operations.add'),entity:itemData.value.name}), 'error')
+      showToast(hasBizMessage(error) ? bizErrorMessage(error) : t('action-results.op-failed',{operation:t('goods.operations.add'),entity:itemData.value.name}), 'error')
       itemData.value.tags = convert_tags_to_array(itemData.value.tags)
     }
   })
@@ -232,6 +235,13 @@ const addProduct = async () => {
                           :placeholder="t('goods.form.placeholders.height')" v-model="itemData.height">
                         <label for="product-height" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{
                           t('goods.form.tips.dimensions')}}</label>
+                      </div>
+
+                      <div class="col-xl-6">
+                        <label for="product-origin-country" class="form-label">{{ t('goods.fields.origin-country')}}</label>
+                        <CountrySelect id="product-origin-country" v-model="itemData.origin_country" />
+                        <label for="product-origin-country" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{
+                          t('goods.form.tips.origin-country')}}</label>
                       </div>
 
                       <div class="col-xl-12">

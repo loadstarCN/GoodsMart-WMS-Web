@@ -343,7 +343,8 @@
       "name": "100文字以内",
       "code": "50文字以内",
       "country": "大文字2文字 (例: JP/US/CN)",
-      "readonly": "読取専用"
+      "readonly": "読取専用",
+      "non-latin": "半角英数字以外の文字が含まれています（単証では警告になります）"
     },
     "validation": {
       "name-required": "{entity}名称は必須です",
@@ -452,18 +453,40 @@
     "fields": {
       "name": "会社名",
       "description": "会社説明",
-      "address": "会社住所"
+      "address": "会社住所",
+      "legal-name-en": "英語社名（正式名称）",
+      "address-en": "英語住所",
+      "country-code": "所在国",
+      "tax-id-label": "税番号の名称",
+      "tax-id": "税番号",
+      "export-contact-name": "輸出担当者名（英語）",
+      "export-signatory-name": "署名者名（英語）",
+      "export-signatory-title": "署名者の役職（英語）"
     },
     "form": {
       "placeholders": {
         "name": "会社名入力",
-        "description": "会社説明入力"
+        "description": "会社説明入力",
+        "legal-name-en": "例: Example Trading Co., Ltd.",
+        "address-en": "例: 1-2-3 Example-cho, Example City, Example Prefecture 000-0000",
+        "tax-id-label": "例: Corporate Number / VAT No.",
+        "tax-id": "税番号を入力",
+        "export-contact-name": "例: Taro Yamada",
+        "export-signatory-name": "例: Taro Yamada",
+        "export-signatory-title": "例: Export Manager"
       }
     },
     "operations": {
       "add": "会社追加",
       "edit": "会社編集",
       "delete": "会社削除"
+    },
+    "sections": {
+      "export": "輸出者情報"
+    },
+    "tips": {
+      "export": "海外出荷のコマーシャルインボイス（CI）・パッキングリスト（PL）に英語で印字されます。",
+      "export-required": "単証の発行には英語社名・英語住所・所在国・電話番号（倉庫または会社）が必要です。"
     }
   },
   "department": {
@@ -490,18 +513,29 @@
     "entity": "倉庫",
     "fields": {
       "name": "倉庫名",
-      "description": "倉庫説明"
+      "description": "倉庫説明",
+      "address-en": "英語住所",
+      "country-code": "所在国",
+      "contact-name-en": "担当者名（英語）"
     },
     "form": {
       "placeholders": {
         "name": "倉庫名入力",
-        "description": "倉庫説明入力"
+        "description": "倉庫説明入力",
+        "address-en": "倉庫の英語住所を入力",
+        "contact-name-en": "例: Hanako Suzuki"
       }
     },
     "operations": {
       "add": "倉庫追加",
       "edit": "倉庫編集",
       "delete": "倉庫削除"
+    },
+    "sections": {
+      "export": "出荷元情報（英語）"
+    },
+    "tips": {
+      "export": "会社住所と異なる場合、単証に出荷元（Ship From）として印字されます。"
     }
   },
   "location": {
@@ -643,7 +677,8 @@
       "volume": "体積",
       "image": "画像",
       "product-date": "製造日",
-      "expiry-date": "有効期限"
+      "expiry-date": "有効期限",
+      "origin-country": "原産国"
     },
     "form": {
       "placeholders": {
@@ -669,7 +704,8 @@
       "tips": {
         "code": "50文字以内",
         "weight": "kg（小数点3位）",
-        "dimensions": "mm"
+        "dimensions": "mm",
+        "origin-country": "包装の「MADE IN」表記どおりに登録。不明なら空欄のまま"
       }
     },
     "operations": {
@@ -694,6 +730,12 @@
     },
     "action-results": {
       "not-found": "商品が見つかりません。コードまたは名称を確認してください。"
+    },
+    "filters": {
+      "origin-missing": "原産国未登録"
+    },
+    "tips": {
+      "origin-missing": "未登録"
     }
   },
   "cyclecount": {
@@ -1039,7 +1081,8 @@
       "system-name": "システム名",
       "permissions": "権限",
       "webhook-url": "Webhook URL",
-      "webhook-secret": "Webhook Secret"
+      "webhook-secret": "Webhook Secret",
+      "webhook-subscriptions": "Webhook 購読イベント"
     },
     "form": {
       "placeholders": {
@@ -1060,7 +1103,13 @@
     },
     "tips": {
       "key-warning": "このキーを安全に保管してください。閉じた後は再表示できません。",
-      "no-keys": "APIキーはまだありません。上のボタンをクリックして作成してください。"
+      "no-keys": "APIキーはまだありません。上のボタンをクリックして作成してください。",
+      "subscriptions": "入荷完了・出荷完了などの既存イベントは購読の有無に関係なく送信されます。",
+      "subscriptions-need-url": "通知を受け取るには Webhook URL を設定してください"
+    },
+    "events": {
+      "goods_spec_updated": "商品規格変更",
+      "goods_spec_updated_desc": "商品の重量・寸法・原産国が変わったときに通知します"
     }
   },
   "webhook-logs": {
@@ -1323,5 +1372,156 @@
       "damaged": "破損ロケーション",
       "return": "返品ロケーション"
     }
+  },
+  "countries": {
+    "placeholder": "国・地域を選択（コード・名称で検索）",
+    "no-result": "該当する国・地域がありません",
+    "clear": "クリア"
+  },
+  "customs": {
+    "title": "海外出荷単証",
+    "packing-title": "海外出荷：箱情報",
+    "export-badge": "海外",
+    "errors": "エラー",
+    "warnings": "警告",
+    "sections": {
+      "summary": "通関概要",
+      "exporter": "輸出者",
+      "lines": "明細",
+      "packages": "箱情報",
+      "problems": "確認事項",
+      "documents": "単証"
+    },
+    "fields": {
+      "invoice-number": "インボイス番号",
+      "incoterm": "貿易条件",
+      "currency": "通貨",
+      "export-reason": "輸出理由",
+      "recipient-country": "仕向国",
+      "recipient-tax-id": "受取人の税番号",
+      "consignee": "荷受人",
+      "jan": "JAN",
+      "goods-name": "品名",
+      "description-en": "英語品名",
+      "hs-code": "HS コード",
+      "origin": "原産国",
+      "packed-qty": "梱包済 / 予定",
+      "unit-value": "単価",
+      "amount": "金額",
+      "total-qty": "合計数量",
+      "goods-value": "商品金額",
+      "freight": "運賃",
+      "invoice-total": "インボイス合計",
+      "package-count": "箱数",
+      "gross-weight": "総重量",
+      "net-weight": "正味重量",
+      "doc-type": "種類",
+      "version": "版",
+      "document-number": "番号",
+      "invoice-date": "日付",
+      "issued-at": "発行日時",
+      "size": "サイズ",
+      "status": "状態",
+      "void-reason": "無効理由"
+    },
+    "doc-types": {
+      "commercial_invoice": "コマーシャルインボイス（CI）",
+      "packing_list": "パッキングリスト（PL）"
+    },
+    "doc-status": {
+      "issued": "有効",
+      "void": "無効"
+    },
+    "void-reasons": {
+      "packages_changed": "箱情報の変更"
+    },
+    "export-reasons": {
+      "SALE": "販売"
+    },
+    "status": {
+      "ready": "発行可能",
+      "not-ready": "未完了の項目あり",
+      "issued": "CI・PL 発行済み",
+      "not-issued": "未発行",
+      "locked": "出荷済み（変更不可）"
+    },
+    "operations": {
+      "issue": "単証を発行",
+      "print-ci": "CI を印刷",
+      "print-pl": "PL を印刷",
+      "view": "表示",
+      "download": "ダウンロード",
+      "history": "履歴",
+      "refresh": "再読み込み",
+      "open-card": "出荷指示の単証カードへ",
+      "edit-exporter": "会社の輸出者情報を編集"
+    },
+    "tips": {
+      "not-on-invoice": "梱包数 0 のためインボイスに載りません",
+      "origin-master": "商品マスタに保存されます",
+      "issue-need-packed": "梱包完了（packed）後に発行できます",
+      "issue-not-ready": "下の確認事項（エラー）を解消してください",
+      "issued-new": "第 {version} 版を発行しました",
+      "issued-same": "内容に変更がないため、第 {version} 版をそのまま使います",
+      "documents-voided": "箱情報が変わったため既存の単証 {count} 件を無効にしました。再発行してください",
+      "no-documents": "単証はまだありません",
+      "no-problems": "問題はありません",
+      "no-snapshot": "この出荷指示には通関データがありません",
+      "pdf-checksum-mismatch": "PDF のチェックサムが一致しません。再読み込みしてからもう一度お試しください",
+      "delivery-blocked-title": "出荷を完了できません",
+      "delivery-requires-documents": "海外出荷は、有効な CI と PL を発行してからでないと出荷完了できません。"
+    },
+    "packages": {
+      "box-no": "箱",
+      "gross-weight-kg": "総重量（kg）",
+      "length-cm": "長さ（cm）",
+      "width-cm": "幅（cm）",
+      "height-cm": "高さ（cm）",
+      "remark": "備考",
+      "add": "箱を追加",
+      "remove": "削除",
+      "save": "箱情報を保存",
+      "unsaved": "未保存",
+      "empty": "箱がまだありません",
+      "total": "{count} 箱・総重量 {weight} kg",
+      "tip": "寸法は cm、重量は kg で入力します（保存時に mm へ換算）。",
+      "readonly-status": "ピッキング完了または梱包完了のときだけ編集できます",
+      "validation": {
+        "count": "箱数は 1〜99 にしてください",
+        "weight": "総重量は 0.01〜999.999 kg で入力してください",
+        "dimension": "寸法は 0.1〜300 cm で入力してください"
+      }
+    },
+    "problems": {
+      "NOT_PACKED": "梱包が完了していません",
+      "PACKAGES_MISSING": "箱情報が登録されていません",
+      "EXPORTER_PROFILE_INCOMPLETE": "会社の輸出者情報（英語社名・英語住所・電話番号・所在国）が不足しています",
+      "INCOTERM_MISSING": "貿易条件（インコタームズ）がありません",
+      "EXPORT_REASON_MISSING": "輸出理由がありません",
+      "CURRENCY_INVALID": "通貨が正しくありません",
+      "RECIPIENT_COUNTRY_MISSING": "仕向国がありません",
+      "LINE_MISSING": "この商品の通関明細がありません",
+      "HS_CODE_MISSING": "HS コードがないか、形式が正しくありません（6〜10 桁の数字）",
+      "DESCRIPTION_MISSING": "英語品名がありません",
+      "DESCRIPTION_NOT_ASCII": "英語品名に半角英数字以外の文字が含まれています",
+      "ORIGIN_MISSING": "原産国が未登録です",
+      "UNIT_VALUE_MISSING": "単価がないか、0 以下です",
+      "RECIPIENT_TAX_ID_MISSING": "受取人の税番号がありません",
+      "NON_LATIN_TEXT": "ラテン文字以外の文字が含まれています",
+      "NET_WEIGHT_UNKNOWN": "重量未登録の商品があるため、正味重量を計算できません",
+      "GROSS_LT_NET": "総重量が正味重量より小さくなっています"
+    }
+  },
+  "biz-errors": {
+    "code-10014": "原産国コードが正しくありません（ISO 3166-1 の 2 文字コード）",
+    "code-16063": "通関データの形式が正しくありません",
+    "code-16064": "通関明細の JAN が出荷明細にないか、重複しています",
+    "code-16065": "出荷済みのため変更できません",
+    "code-16066": "箱情報が正しくありません",
+    "code-16067": "現在の状態では箱情報を変更できません（ピッキング完了・梱包完了のときのみ）",
+    "code-16068": "単証の発行条件がそろっていません",
+    "code-16069": "出荷前に有効なコマーシャルインボイス（CI）とパッキングリスト（PL）を発行してください",
+    "code-16070": "海外出荷ではありません",
+    "code-16071": "単証が見つかりません"
   }
 }

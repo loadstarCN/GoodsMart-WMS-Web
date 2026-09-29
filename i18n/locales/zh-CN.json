@@ -343,7 +343,8 @@
       "name": "长度≤100字符",
       "code": "长度≤50字符",
       "country": "两位大写字母，如CN/JP/US",
-      "readonly": "只读"
+      "readonly": "只读",
+      "non-latin": "含有非拉丁字符（单证上会给出警告）"
     },
     "validation": {
       "name-required": "{entity}名称不能为空",
@@ -452,18 +453,40 @@
     "fields": {
       "name": "公司名称",
       "description": "公司描述",
-      "address": "公司地址"
+      "address": "公司地址",
+      "legal-name-en": "英文名称（法定全称）",
+      "address-en": "英文地址",
+      "country-code": "所在国",
+      "tax-id-label": "税号名称",
+      "tax-id": "税号",
+      "export-contact-name": "出口联系人（英文）",
+      "export-signatory-name": "签字人（英文）",
+      "export-signatory-title": "签字人职务（英文）"
     },
     "form": {
       "placeholders": {
         "name": "请输入公司名称",
-        "description": "请输入公司描述"
+        "description": "请输入公司描述",
+        "legal-name-en": "例：Example Trading Co., Ltd.",
+        "address-en": "例：1-2-3 Example-cho, Example City, Example Prefecture 000-0000",
+        "tax-id-label": "例：Corporate Number / VAT No.",
+        "tax-id": "输入税号",
+        "export-contact-name": "例：Taro Yamada",
+        "export-signatory-name": "例：Taro Yamada",
+        "export-signatory-title": "例：Export Manager"
       }
     },
     "operations": {
       "add": "添加公司",
       "edit": "编辑公司",
       "delete": "删除公司"
+    },
+    "sections": {
+      "export": "出口资料"
+    },
+    "tips": {
+      "export": "用于海外发货的商业发票（CI）和装箱单（PL），以英文印出。",
+      "export-required": "生成单证需要英文名称、英文地址、所在国和电话（仓库或公司）。"
     }
   },
   "department": {
@@ -490,18 +513,29 @@
     "entity": "仓库",
     "fields": {
       "name": "仓库名称",
-      "description": "仓库描述"
+      "description": "仓库描述",
+      "address-en": "英文地址",
+      "country-code": "所在国",
+      "contact-name-en": "联系人（英文）"
     },
     "form": {
       "placeholders": {
         "name": "请输入仓库名称",
-        "description": "请输入仓库描述"
+        "description": "请输入仓库描述",
+        "address-en": "输入仓库英文地址",
+        "contact-name-en": "例：Hanako Suzuki"
       }
     },
     "operations": {
       "add": "添加仓库",
       "edit": "编辑仓库",
       "delete": "删除仓库"
+    },
+    "sections": {
+      "export": "发货地资料（英文）"
+    },
+    "tips": {
+      "export": "与公司地址不同时，作为发货地（Ship From）印在单证上。"
     }
   },
   "location": {
@@ -643,7 +677,8 @@
       "volume": "体积",
       "image": "图片",
       "product-date": "生产日期",
-      "expiry-date": "有效期至"
+      "expiry-date": "有效期至",
+      "origin-country": "原产国"
     },
     "form": {
       "placeholders": {
@@ -669,7 +704,8 @@
       "tips": {
         "code": "长度≤50字符",
         "weight": "千克，三位小数",
-        "dimensions": "毫米"
+        "dimensions": "毫米",
+        "origin-country": "按包装上的「MADE IN」录入；不确定就留空"
       }
     },
     "operations": {
@@ -694,6 +730,12 @@
     },
     "action-results": {
       "not-found": "没有找到商品，请检查商品编码或名称是否正确。"
+    },
+    "filters": {
+      "origin-missing": "原产国未录入"
+    },
+    "tips": {
+      "origin-missing": "未录入"
     }
   },
   "cyclecount": {
@@ -1039,7 +1081,8 @@
       "system-name": "系统名称",
       "permissions": "权限",
       "webhook-url": "Webhook URL",
-      "webhook-secret": "Webhook Secret"
+      "webhook-secret": "Webhook Secret",
+      "webhook-subscriptions": "Webhook 订阅事件"
     },
     "form": {
       "placeholders": {
@@ -1060,7 +1103,13 @@
     },
     "tips": {
       "key-warning": "请妥善保管此密钥，关闭后将无法再次查看",
-      "no-keys": "暂无 API 密钥，点击上方按钮创建"
+      "no-keys": "暂无 API 密钥，点击上方按钮创建",
+      "subscriptions": "入库完成、发货完成等既有事件不受订阅影响，照常推送。",
+      "subscriptions-need-url": "要接收推送，请先填写 Webhook URL"
+    },
+    "events": {
+      "goods_spec_updated": "商品规格变更",
+      "goods_spec_updated_desc": "商品的重量、尺寸、原产国变化时推送"
     }
   },
   "webhook-logs": {
@@ -1323,5 +1372,156 @@
       "damaged": "损坏库位",
       "return": "退货库位"
     }
+  },
+  "countries": {
+    "placeholder": "选择国家/地区（可按代码、名称搜索）",
+    "no-result": "没有匹配的国家/地区",
+    "clear": "清空"
+  },
+  "customs": {
+    "title": "海外发货单证",
+    "packing-title": "海外发货：箱子",
+    "export-badge": "海外",
+    "errors": "错误",
+    "warnings": "警告",
+    "sections": {
+      "summary": "报关概要",
+      "exporter": "出口方",
+      "lines": "明细",
+      "packages": "箱子",
+      "problems": "问题清单",
+      "documents": "单证"
+    },
+    "fields": {
+      "invoice-number": "发票号",
+      "incoterm": "贸易条款",
+      "currency": "币种",
+      "export-reason": "出口原因",
+      "recipient-country": "收货国",
+      "recipient-tax-id": "收货人税号",
+      "consignee": "收货人",
+      "jan": "JAN",
+      "goods-name": "品名",
+      "description-en": "英文品名",
+      "hs-code": "HS 编码",
+      "origin": "原产国",
+      "packed-qty": "已打包 / 计划",
+      "unit-value": "单价",
+      "amount": "金额",
+      "total-qty": "总数量",
+      "goods-value": "商品金额",
+      "freight": "运费",
+      "invoice-total": "发票总额",
+      "package-count": "箱数",
+      "gross-weight": "总毛重",
+      "net-weight": "总净重",
+      "doc-type": "类型",
+      "version": "版本",
+      "document-number": "编号",
+      "invoice-date": "日期",
+      "issued-at": "签发时间",
+      "size": "大小",
+      "status": "状态",
+      "void-reason": "作废原因"
+    },
+    "doc-types": {
+      "commercial_invoice": "商业发票（CI）",
+      "packing_list": "装箱单（PL）"
+    },
+    "doc-status": {
+      "issued": "有效",
+      "void": "已作废"
+    },
+    "void-reasons": {
+      "packages_changed": "箱子变更"
+    },
+    "export-reasons": {
+      "SALE": "销售"
+    },
+    "status": {
+      "ready": "可出单证",
+      "not-ready": "有未完成项",
+      "issued": "CI、PL 已生成",
+      "not-issued": "未生成",
+      "locked": "已发货（只读）"
+    },
+    "operations": {
+      "issue": "生成单证",
+      "print-ci": "打印 CI",
+      "print-pl": "打印 PL",
+      "view": "查看",
+      "download": "下载",
+      "history": "历史版本",
+      "refresh": "刷新",
+      "open-card": "前往出库单的单证卡片",
+      "edit-exporter": "编辑公司出口资料"
+    },
+    "tips": {
+      "not-on-invoice": "已打包数量为 0，不上发票",
+      "origin-master": "保存到商品主数据",
+      "issue-need-packed": "打包完成（packed）后才能生成",
+      "issue-not-ready": "请先处理下方问题清单中的错误",
+      "issued-new": "已生成第 {version} 版",
+      "issued-same": "数据未变，沿用第 {version} 版",
+      "documents-voided": "箱子已变更，{count} 份现有单证已作废，请重新生成",
+      "no-documents": "还没有单证",
+      "no-problems": "没有问题",
+      "no-snapshot": "该出库单没有报关数据",
+      "pdf-checksum-mismatch": "PDF 校验值不一致，请刷新后重试",
+      "delivery-blocked-title": "不能完成发货",
+      "delivery-requires-documents": "海外单必须先生成有效的 CI 和 PL，才能完成发货。"
+    },
+    "packages": {
+      "box-no": "箱",
+      "gross-weight-kg": "毛重（kg）",
+      "length-cm": "长（cm）",
+      "width-cm": "宽（cm）",
+      "height-cm": "高（cm）",
+      "remark": "备注",
+      "add": "添加箱子",
+      "remove": "删除",
+      "save": "保存箱子",
+      "unsaved": "未保存",
+      "empty": "还没有箱子",
+      "total": "共 {count} 箱，总毛重 {weight} kg",
+      "tip": "尺寸按 cm、重量按 kg 录入（保存时换算成 mm）。",
+      "readonly-status": "仅在已拣货或已打包状态可编辑",
+      "validation": {
+        "count": "箱数必须在 1–99 之间",
+        "weight": "毛重须在 0.01–999.999 kg 之间",
+        "dimension": "尺寸须在 0.1–300 cm 之间"
+      }
+    },
+    "problems": {
+      "NOT_PACKED": "尚未打包完成",
+      "PACKAGES_MISSING": "还没有录入箱子",
+      "EXPORTER_PROFILE_INCOMPLETE": "公司出口资料不全（英文名称、英文地址、电话、所在国）",
+      "INCOTERM_MISSING": "缺少贸易条款（Incoterms）",
+      "EXPORT_REASON_MISSING": "缺少出口原因",
+      "CURRENCY_INVALID": "币种不合法",
+      "RECIPIENT_COUNTRY_MISSING": "缺少收货国",
+      "LINE_MISSING": "该商品没有报关明细",
+      "HS_CODE_MISSING": "HS 编码缺失或格式不对（6–10 位数字）",
+      "DESCRIPTION_MISSING": "缺少英文品名",
+      "DESCRIPTION_NOT_ASCII": "英文品名含有非 ASCII 字符",
+      "ORIGIN_MISSING": "原产国未录入",
+      "UNIT_VALUE_MISSING": "单价缺失或不大于 0",
+      "RECIPIENT_TAX_ID_MISSING": "缺少收货人税号",
+      "NON_LATIN_TEXT": "含有非拉丁字符",
+      "NET_WEIGHT_UNKNOWN": "有商品未录重量，无法计算净重",
+      "GROSS_LT_NET": "总毛重小于净重"
+    }
+  },
+  "biz-errors": {
+    "code-10014": "原产国代码不合法（须为 ISO 3166-1 两位代码）",
+    "code-16063": "报关数据结构不合法",
+    "code-16064": "报关明细的 JAN 不在出库明细中或重复",
+    "code-16065": "已发货，不能再修改",
+    "code-16066": "箱子数据不合法",
+    "code-16067": "当前状态不能修改箱子（仅已拣货、已打包时可改）",
+    "code-16068": "单证条件不全",
+    "code-16069": "发货前必须先生成有效的商业发票（CI）和装箱单（PL）",
+    "code-16070": "不是海外单",
+    "code-16071": "单证不存在"
   }
 }

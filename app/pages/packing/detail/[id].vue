@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { DN_LOCKED_STATUSES, DN_PACKAGE_EDITABLE_STATUSES } from '~/composables/customs/customsDocuments'
 
 // 定义页面元数据
 definePageMeta({
@@ -235,6 +236,18 @@ onMounted(async() => {
   await fetchData();
 });
 
+// ------------------ 海外出荷：箱子录入 + 单证状态 ----------------------
+const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.value?.dn?.customs));
+const dnStatus = computed(() => String(itemData.value?.dn?.status || ''));
+const packagesEditable = computed(() => DN_PACKAGE_EDITABLE_STATUSES.includes(dnStatus.value));
+const packagesReadonlyReason = computed(() =>
+  DN_LOCKED_STATUSES.includes(dnStatus.value) ? t('customs.status.locked') : t('customs.packages.readonly-status')
+);
+const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
+const onPackagesSaved = async () => {
+  await docStatusRef.value?.reload();
+};
+
 </script>
 <template>
   <PageHeader :propData="dataToPass" />
@@ -435,6 +448,36 @@ onMounted(async() => {
     </div>
   </div>
   <!--End::row-1 -->
+
+  <!-- 海外出荷：箱子录入（打印在出库单的单证卡片） -->
+  <!-- 用 itemData 而非 loading 判断：刷新任务数据时不卸载，避免丢失未保存的箱子 -->
+  <div class="row" v-if="itemData && isExport">
+    <div class="col-xl-12">
+      <div class="card custom-card">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div class="card-title">
+            <i class="ri-earth-line me-1 align-middle"></i>{{ t('customs.packing-title') }}
+          </div>
+          <NuxtLink :to="`/dn/detail/${itemData?.dn_id}#customs-documents`" class="btn btn-sm btn-light">
+            <i class="ri-file-list-3-line me-1"></i>{{ t('customs.operations.open-card') }}
+          </NuxtLink>
+        </div>
+        <div class="card-body">
+          <div class="row gy-3">
+            <div class="col-xxl-8 col-xl-12">
+              <h6 class="fw-semibold mb-2">{{ t('customs.sections.packages') }}</h6>
+              <DnPackagesEditor :dn-id="itemData.dn_id" :editable="packagesEditable"
+                :readonly-reason="packagesReadonlyReason" @saved="onPackagesSaved" />
+            </div>
+            <div class="col-xxl-4 col-xl-12">
+              <h6 class="fw-semibold mb-2">{{ t('customs.sections.documents') }}</h6>
+              <CustomsDocStatus ref="docStatusRef" :dn-id="itemData.dn_id" :key="`docs-${itemData.dn_id}-${dnStatus}`" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="row" v-if="!loading">
     <div class="col-xl-12">

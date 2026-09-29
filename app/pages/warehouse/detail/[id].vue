@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { countryOptionLabel } from '~/data/countries'
 
 // 定义页面元数据
 definePageMeta({
@@ -11,7 +12,7 @@ const itemId = route.params.id;
 const itemData = ref(null);
 
 // 获取国际化方法
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -74,6 +75,12 @@ onMounted(async() => {
                       <p class="fs-15 fw-semibold mb-1">{{t('common.fields.address')}} :</p>
                       <p class="text-muted mb-0">{{ itemData.address }} {{ itemData.zip_code }}
                       </p>
+                    </div>
+                    <div class="mb-4" v-if="itemData?.address_en || itemData?.country_code || itemData?.contact_name_en">
+                      <p class="fs-15 fw-semibold mb-1">{{ t('warehouse.sections.export') }} :</p>
+                      <p class="text-muted mb-0" v-if="itemData.address_en">{{ itemData.address_en }}</p>
+                      <p class="text-muted mb-0" v-if="itemData.country_code">{{ countryOptionLabel(itemData.country_code, locale) }}</p>
+                      <p class="text-muted mb-0" v-if="itemData.contact_name_en">{{ itemData.contact_name_en }}</p>
                     </div>
                     <div class="mb-4" v-if="itemData?.phone">
                       <p class="fs-15 fw-semibold mb-1">{{t('common.fields.phone')}} :</p>

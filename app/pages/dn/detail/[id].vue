@@ -87,6 +87,9 @@ onMounted(async() => {
    fetchPackingData();
 });
 
+// 海外出荷（带报关快照）的 DN 显示单证卡片
+const isExport = computed(() => !!(itemData.value?.is_export || itemData.value?.customs));
+
 
 const closeDN = async () => {
     const data = await httpRequest(`/api/warehouse/dn/${dnId}/close/`, {
@@ -278,6 +281,9 @@ function getEarliestPackItem(itemPackingData: any) {
                                 <p class="mb-2 text-muted">
                                     <span class="fw-semibold text-default">{{t('dn.fields.type')}}</span>
                                     {{ t('dn.type.'+itemData?.dn_type) }}
+                                    <a href="#customs-documents" class="badge bg-info-transparent ms-1" v-if="isExport">
+                                        <i class="ri-earth-line me-1"></i>{{ t('customs.export-badge') }}
+                                    </a>
                                 </p>
                                 <p class="mb-2 text-muted">
                                     <span class="fw-semibold text-default">{{t('common.fields.status')}} :</span>
@@ -529,6 +535,13 @@ function getEarliestPackItem(itemPackingData: any) {
         </div>
     </div>
     <!--End::row-1 -->
+
+    <!-- 海外出荷単証 -->
+    <div class="row" v-if="itemData && isExport">
+        <div class="col-xl-12">
+            <DnCustomsCard :dn-id="dnId" :dn-status="itemData?.status" :key="`customs-${dnId}-${itemData?.status}`" />
+        </div>
+    </div>
 
 </template>
 <style scoped></style>

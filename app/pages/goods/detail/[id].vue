@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import {removalReasonsOptions}  from '~/data/selectOptions'
+import { countryName } from '~/data/countries'
 
 // 定义页面元数据
 definePageMeta({
@@ -16,7 +17,7 @@ const itemData = ref(null);
 const tabData = ref(null);
 
 // 获取国际化方法
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -387,8 +388,15 @@ onMounted(async() => {
                             <li class="text-muted mb-2" v-if="itemData?.unit">
                               {{ t('goods.fields.unit') }}: {{ itemData.unit }}
                             </li>
-                            <li class="text-muted" v-if="itemData?.weight">
+                            <li class="text-muted mb-2" v-if="itemData?.weight">
                               {{ t('goods.fields.weight') }}: {{ itemData.weight }} kg
+                            </li>
+                            <li class="text-muted" v-if="itemData">
+                              {{ t('goods.fields.origin-country') }}:
+                              <template v-if="itemData.origin_country">
+                                {{ String(itemData.origin_country).toUpperCase() }} {{ countryName(itemData.origin_country, locale) }}
+                              </template>
+                              <span class="badge bg-warning-transparent" v-else>{{ t('goods.tips.origin-missing') }}</span>
                             </li>
                           </ul>
                         </div>

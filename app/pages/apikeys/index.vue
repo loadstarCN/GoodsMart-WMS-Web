@@ -5,7 +5,7 @@ definePageMeta({
 })
 
 // 获取国际化方法
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 // 面包屑
 const dataToPass = computed(() => ({
@@ -61,6 +61,18 @@ const API_KEY_PERM_PREFIXES = [
 
 const allPermissions = ref<any[]>([])
 
+// ==================== Webhook 订阅事件 ====================
+// 需要勾选订阅才推送的事件（目前后端只允许 goods.spec_updated）；出入库完成等既有事件不受影响
+const WEBHOOK_SUBSCRIPTION_EVENTS = ['goods.spec_updated'] as const
+const eventLabelKey = (event: string) => `apikeys.events.${event.replace(/\./g, '_')}`
+const eventDescKey = (event: string) => `apikeys.events.${event.replace(/\./g, '_')}_desc`
+const eventLabel = (event: string) => (te(eventLabelKey(event)) ? t(eventLabelKey(event)) : event)
+const toggleSubscription = (list: string[], event: string) => {
+  const idx = list.indexOf(event)
+  if (idx >= 0) list.splice(idx, 1)
+  else list.push(event)
+}
+
 const apiKeyPermissions = computed(() =>
   allPermissions.value.filter((p: any) =>
     API_KEY_PERM_PREFIXES.some(prefix => p.name.startsWith(prefix))
@@ -97,6 +109,7 @@ const createForm = ref({
   webhook_url: '',
   webhook_secret: '',
   permissions: [] as number[],
+  webhook_subscriptions: [] as string[],
 })
 
 const createErrors = ref({
@@ -104,7 +117,7 @@ const createErrors = ref({
 })
 
 const openCreateModal = () => {
-  createForm.value = { system_name: '', webhook_url: '', webhook_secret: '', permissions: [] }
+  createForm.value = { system_name: '', webhook_url: '', webhook_secret: '', permissions: [], webhook_subscriptions: [] }
   createErrors.value = { system_name: null }
   newKeyResult.value = null
   showCreateModal.value = true
@@ -137,6 +150,7 @@ const submitCreate = async () => {
       webhook_url: createForm.value.webhook_url || null,
       webhook_secret: createForm.value.webhook_secret || null,
       permissions: createPermNames,
+      webhook_subscriptions: [...createForm.value.webhook_subscriptions],
     },
     onSuccess: (data) => {
       newKeyResult.value = data.key
@@ -238,6 +252,7 @@ const editForm = ref({
   webhook_url: '',
   webhook_secret: '',
   permissions: [] as number[],
+  webhook_subscriptions: [] as string[],
 })
 
 const editErrors = ref({
@@ -257,6 +272,7 @@ const openEditModal = (item: any) => {
     webhook_url: item.webhook_url || '',
     webhook_secret: '',
     permissions: permIds,
+    webhook_subscriptions: Array.isArray(item.webhook_subscriptions) ? [...item.webhook_subscriptions] : [],
   }
   editErrors.value = { system_name: null }
   showEditModal.value = true
@@ -278,6 +294,7 @@ const submitEdit = async () => {
     system_name: editForm.value.system_name.trim(),
     webhook_url: editForm.value.webhook_url || null,
     permissions: permNames,
+    webhook_subscriptions: [...editForm.value.webhook_subscriptions],
   }
   // 只在填写了新密钥时才提交
   if (editForm.value.webhook_secret) {
@@ -383,6 +400,11 @@ const submitEdit = async () => {
                   <td class="">
                     <span v-if="item.webhook_url" class="fs-12">{{ item.webhook_url }}</span>
                     <span v-else class="text-muted fs-12">—</span>
+                    <div v-if="item.webhook_subscriptions && item.webhook_subscriptions.length > 0" class="d-flex flex-wrap gap-1 mt-1">
+                      <span class="badge bg-info-transparent" v-for="ev in item.webhook_subscriptions" :key="ev" :title="ev">
+                        <i class="ri-notification-3-line me-1"></i>{{ eventLabel(ev) }}
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <span class="badge" :class="item.is_active ? 'bg-success-transparent' : 'bg-danger-transparent'">
@@ -477,6 +499,22 @@ const submitEdit = async () => {
                   :placeholder="t('apikeys.form.placeholders.webhook-secret')">
               </div>
               <div class="mb-3">
+                <label class="form-label mb-1">{{ t('apikeys.fields.webhook-subscriptions') }}</label>
+                <p class="fs-12 text-muted mb-2">{{ t('apikeys.tips.subscriptions') }}</p>
+                <div class="form-check mb-1" v-for="ev in WEBHOOK_SUBSCRIPTION_EVENTS" :key="ev">
+                  <input class="form-check-input" type="checkbox" :id="`createForm-sub-${ev}`"
+                    :checked="createForm.webhook_subscriptions.includes(ev)"
+                    @change="toggleSubscription(createForm.webhook_subscriptions, ev)">
+                  <label class="form-check-label" :for="`createForm-sub-${ev}`">
+                    {{ eventLabel(ev) }} <code class="fs-11 ms-1">{{ ev }}</code>
+                    <span class="d-block fs-12 text-muted" v-if="te(eventDescKey(ev))">{{ t(eventDescKey(ev)) }}</span>
+                  </label>
+                </div>
+                <div class="form-text text-warning" v-if="createForm.webhook_subscriptions.length > 0 && !createForm.webhook_url">
+                  {{ t('apikeys.tips.subscriptions-need-url') }}
+                </div>
+              </div>
+              <div class="mb-3">
                 <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>
                 <PermissionSelector
                   v-if="apiKeyPermissions.length > 0"
@@ -530,6 +568,22 @@ const submitEdit = async () => {
               <label class="form-label">{{ t('apikeys.fields.webhook-secret') }}</label>
               <input type="text" class="form-control" v-model="editForm.webhook_secret"
                 :placeholder="editingItem?.has_webhook_secret ? t('apikeys.form.placeholders.webhook-secret-keep') : t('apikeys.form.placeholders.webhook-secret')">
+            </div>
+            <div class="mb-3">
+              <label class="form-label mb-1">{{ t('apikeys.fields.webhook-subscriptions') }}</label>
+              <p class="fs-12 text-muted mb-2">{{ t('apikeys.tips.subscriptions') }}</p>
+              <div class="form-check mb-1" v-for="ev in WEBHOOK_SUBSCRIPTION_EVENTS" :key="ev">
+                <input class="form-check-input" type="checkbox" :id="`editForm-sub-${ev}`"
+                  :checked="editForm.webhook_subscriptions.includes(ev)"
+                  @change="toggleSubscription(editForm.webhook_subscriptions, ev)">
+                <label class="form-check-label" :for="`editForm-sub-${ev}`">
+                  {{ eventLabel(ev) }} <code class="fs-11 ms-1">{{ ev }}</code>
+                  <span class="d-block fs-12 text-muted" v-if="te(eventDescKey(ev))">{{ t(eventDescKey(ev)) }}</span>
+                </label>
+              </div>
+              <div class="form-text text-warning" v-if="editForm.webhook_subscriptions.length > 0 && !editForm.webhook_url">
+                {{ t('apikeys.tips.subscriptions-need-url') }}
+              </div>
             </div>
             <div class="mb-3">
               <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>

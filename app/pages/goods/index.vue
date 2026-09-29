@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-
+import { countryName } from '~/data/countries'
 
 // 定义页面元数据
 definePageMeta({
 });
 
 // 获取国际化方法
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -113,6 +113,19 @@ const setActiveFilter = (status: boolean | null) => {
   router.push({ query })
 }
 
+// 原产国未录入筛选（origin_missing=true）
+const originMissing = computed(() => route.query.origin_missing === 'true')
+const toggleOriginMissing = () => {
+  const query: Record<string, any> = { ...route.query }
+  if (originMissing.value) {
+    delete query.origin_missing
+  } else {
+    query.origin_missing = 'true'
+  }
+  query.page = '1'
+  router.push({ query })
+}
+
 // 修改：计算当前激活状态
 const activeTab = computed(() => {
   const statusParam = route.query.is_active
@@ -155,7 +168,7 @@ const activeTab = computed(() => {
                     </div>
                 </div>
                 <div class="card-body">
-                    <div>
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
                         <ul class="nav nav-pills nav-style-3 mb-3" role="tablist">
                             <li class="nav-item">
                                 <a class="nav-link" :class="{ active: activeTab === 'active' }" href="javascript:void(0);" @click="setActiveFilter(true)">{{ t('common.status.active') }}</a>
@@ -164,6 +177,10 @@ const activeTab = computed(() => {
                                 <a class="nav-link" :class="{ active: activeTab === 'inactive' }" href="javascript:void(0);" @click="setActiveFilter(false)">{{ t('common.status.inactive') }}</a>
                             </li>
                         </ul>
+                        <button type="button" class="btn btn-sm mb-3" :class="originMissing ? 'btn-warning' : 'btn-outline-warning'"
+                            :aria-pressed="originMissing" @click="toggleOriginMissing">
+                            <i :class="originMissing ? 'ri-checkbox-line' : 'ri-checkbox-blank-line'" class="me-1"></i>{{ t('goods.filters.origin-missing') }}
+                        </button>
                     </div>
                     
                     <div class="table-responsive">
@@ -175,6 +192,7 @@ const activeTab = computed(() => {
                                     <th scope="col" class="d-none d-lg-table-cell">{{ t('goods.fields.manufacturer') }}</th>
                                     <th scope="col" class="d-none d-md-table-cell">{{ t('goods.fields.brand') }}</th>
                                     <th scope="col" class="d-none d-xl-table-cell">{{ t('goods.fields.category') }}</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('goods.fields.origin-country') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.creator') }}</th>
                                     <th scope="col">{{ t('common.fields.action') }}</th>
@@ -205,6 +223,11 @@ const activeTab = computed(() => {
                                     <td class="d-none d-lg-table-cell">{{ goods?.manufacturer }}</td>
                                     <td class="d-none d-md-table-cell">{{ goods?.brand }}</td>
                                     <td class="d-none d-xl-table-cell">{{ goods?.category }}</td>
+                                    <td class="d-none d-lg-table-cell">
+                                        <!-- 列表模型没带该字段（undefined）时不显示，null 才是「未录入」 -->
+                                        <span v-if="goods?.origin_country" :title="countryName(goods.origin_country, locale)">{{ String(goods.origin_country).toUpperCase() }}</span>
+                                        <span class="badge bg-warning-transparent" v-else-if="goods && goods.origin_country === null">{{ t('goods.tips.origin-missing') }}</span>
+                                    </td>
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(goods?.updated_at) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ goods?.creator?.user_name }}</td>
                                     <td>

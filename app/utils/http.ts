@@ -1,13 +1,23 @@
 import { authFetch } from "~/composables/auth/authFetch"
 
 // 通用HTTP请求封装（支持TypeScript）
+
+// 请求失败时回调的错误对象：code/details/field 为后端业务错误的原样字段（可能不存在）
+export interface HttpRequestError {
+  status: number
+  message: string
+  code?: number
+  details?: any
+  field?: string
+}
+
 interface RequestConfig<T = any> {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   params?: Record<string, any>
   body?: T
   headers?: HeadersInit & { 'Content-Type'?: string }
   onSuccess?: (data: any) => void
-  onError?: (error: { status: number; message: string }) => void  
+  onError?: (error: HttpRequestError) => void
   onFinally?: () => void;  // 错误提示的缺失项
 
 }
@@ -67,9 +77,14 @@ export const httpRequest = async <T = any, K = any>(
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => null)
-      const error = {
+      const error: HttpRequestError = {
         status: response.status,
         message: errorBody?.message || `Request failed (${response.status})`
+      }
+      if (errorBody && typeof errorBody === 'object') {
+        if (errorBody.code !== undefined) error.code = errorBody.code
+        if (errorBody.details !== undefined) error.details = errorBody.details
+        if (errorBody.field !== undefined) error.field = errorBody.field
       }
       onError?.(error)
       return null

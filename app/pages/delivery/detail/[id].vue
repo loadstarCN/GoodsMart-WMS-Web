@@ -94,10 +94,18 @@ const completeTask = async () => {
         },
         onSuccess: (data) => {
             itemData.value = data;
+            customsBlockedReason.value = null;
             showToast(t('action-results.task-complete'), 'success')
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            // 16069：海外单没有当前有效的 CI 和 PL，后端拒绝完成发货
+            if (error.code === 16069) {
+                customsBlockedReason.value = bizErrorMessage(error);
+                docStatusRef.value?.reload();
+                showAlert(t('customs.tips.delivery-blocked-title'), customsBlockedReason.value, 'error');
+                return;
+            }
+            showToast(bizErrorMessage(error), 'error')
         }
     })
     return data;   
@@ -193,6 +201,12 @@ watch(
 onMounted(async() => {
   await fetchData();
 });
+
+// ------------------ 海外出荷：单证状态 ----------------------
+const { bizErrorMessage } = useBizError();
+const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.value?.dn?.customs));
+const customsBlockedReason = ref<string | null>(null);
+const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
 
 </script>
 <template>
@@ -399,6 +413,32 @@ onMounted(async() => {
     </div>
   </div>
   <!--End::row-1 -->
+
+  <!-- 海外出荷単証：没有当前有效的 CI 和 PL 时后端拒绝完成发货（16069） -->
+  <div class="row" v-if="itemData && isExport">
+    <div class="col-xl-12">
+      <div class="card custom-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="ri-earth-line me-1 align-middle"></i>{{ t('customs.title') }}
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-danger-transparent d-flex align-items-start gap-2" v-if="customsBlockedReason">
+            <i class="ri-error-warning-line fs-16"></i>
+            <div>
+              <div class="fw-semibold">{{ t('customs.tips.delivery-blocked-title') }}</div>
+              <div>{{ customsBlockedReason }}</div>
+            </div>
+          </div>
+          <p class="fs-12 text-muted mb-2" v-else-if="itemData?.status === 'pending' || itemData?.status === 'in_progress'">
+            <i class="ri-information-line me-1"></i>{{ t('customs.tips.delivery-requires-documents') }}
+          </p>
+          <CustomsDocStatus ref="docStatusRef" :dn-id="itemData.dn_id" :key="`docs-${itemData.dn_id}-${itemData.status}`" />
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="row" v-if="!loading">
     <div class="col-xl-12">
