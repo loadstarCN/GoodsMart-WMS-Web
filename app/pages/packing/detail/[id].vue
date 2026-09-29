@@ -245,7 +245,7 @@ const packagesReadonlyReason = computed(() =>
 );
 const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
 const onPackagesSaved = async () => {
-  await docStatusRef.value?.reload();
+  if (isExport.value) await docStatusRef.value?.reload();
 };
 
 </script>
@@ -449,27 +449,33 @@ const onPackagesSaved = async () => {
   </div>
   <!--End::row-1 -->
 
-  <!-- 海外出荷：箱子录入（打印在出库单的单证卡片） -->
+  <!-- 箱子录入：海外单必录（单证在出库单的单证卡片打印）；国内单可选录入 -->
   <!-- 用 itemData 而非 loading 判断：刷新任务数据时不卸载，避免丢失未保存的箱子 -->
-  <div class="row" v-if="itemData && isExport">
+  <div class="row" v-if="itemData && itemData.dn_id">
     <div class="col-xl-12">
       <div class="card custom-card">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div class="card-title">
-            <i class="ri-earth-line me-1 align-middle"></i>{{ t('customs.packing-title') }}
+            <template v-if="isExport">
+              <i class="ri-earth-line me-1 align-middle"></i>{{ t('customs.packing-title') }}
+            </template>
+            <template v-else>
+              <i class="ri-inbox-archive-line me-1 align-middle"></i>{{ t('customs.packages.title-domestic') }}
+            </template>
           </div>
-          <NuxtLink :to="`/dn/detail/${itemData?.dn_id}#customs-documents`" class="btn btn-sm btn-light">
+          <NuxtLink :to="`/dn/detail/${itemData?.dn_id}#customs-documents`" class="btn btn-sm btn-light" v-if="isExport">
             <i class="ri-file-list-3-line me-1"></i>{{ t('customs.operations.open-card') }}
           </NuxtLink>
         </div>
         <div class="card-body">
           <div class="row gy-3">
-            <div class="col-xxl-8 col-xl-12">
-              <h6 class="fw-semibold mb-2">{{ t('customs.sections.packages') }}</h6>
+            <div :class="isExport ? 'col-xxl-8 col-xl-12' : 'col-xl-12'">
+              <h6 class="fw-semibold mb-2" v-if="isExport">{{ t('customs.sections.packages') }}</h6>
+              <p class="fs-12 text-muted mb-2" v-else>{{ t('customs.packages.domestic-tip') }}</p>
               <DnPackagesEditor :dn-id="itemData.dn_id" :editable="packagesEditable"
                 :readonly-reason="packagesReadonlyReason" @saved="onPackagesSaved" />
             </div>
-            <div class="col-xxl-4 col-xl-12">
+            <div class="col-xxl-4 col-xl-12" v-if="isExport">
               <h6 class="fw-semibold mb-2">{{ t('customs.sections.documents') }}</h6>
               <CustomsDocStatus ref="docStatusRef" :dn-id="itemData.dn_id" :key="`docs-${itemData.dn_id}-${dnStatus}`" />
             </div>

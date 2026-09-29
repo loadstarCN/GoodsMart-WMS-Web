@@ -8,6 +8,7 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n()
+const { bizErrorMessage, hasBizMessage } = useBizError()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -107,7 +108,8 @@ const saveWarehouse = async () => {
       await router.push('/warehouse/')          
     },
     onError: (error) => {
-      showToast(t('action-results.failed'), 'error')
+      // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案
+      showToast(hasBizMessage(error) ? bizErrorMessage(error) : t('action-results.failed'), 'error')
     }
   })
 }

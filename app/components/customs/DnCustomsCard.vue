@@ -28,6 +28,8 @@ import {
 const props = defineProps<{
   dnId: number | string
   dnStatus?: string | null
+  /** DN 所属仓库：出口资料（电话、国家代码）仓库优先，不全时提供跳转 */
+  warehouseId?: number | string | null
 }>()
 
 const { t, te, locale } = useI18n()
@@ -84,7 +86,8 @@ const packagesReadonlyReason = computed(() =>
 )
 
 const customs = computed<Record<string, any>>(() => view.value?.customs || {})
-const consignee = computed<Record<string, any>>(() => customs.value?.consignee || {})
+const consignee = computed<Record<string, any>>(() => view.value?.consignee || customs.value?.consignee || {})
+const invoiceNumber = computed(() => view.value?.invoice_number || customs.value?.invoice_number || '')
 const currency = computed(() => String(customs.value?.currency || 'JPY'))
 const lines = computed<CustomsLine[]>(() => view.value?.lines || [])
 const totals = computed(() => view.value?.totals || null)
@@ -96,12 +99,19 @@ const ci = computed(() => pickCurrentDocument(view.value?.current_documents, 'co
 const pl = computed(() => pickCurrentDocument(view.value?.current_documents, 'packing_list'))
 const currentDocuments = computed(() => [ci.value, pl.value].filter((d): d is CustomsDocumentMeta => !!d))
 const packagesForEditor = computed(() => view.value?.packages || [])
-const recipientCountry = computed(() => String(customs.value?.recipient_country || consignee.value?.country || ''))
+const recipientCountry = computed(() =>
+  String(view.value?.recipient_country || customs.value?.recipient_country || consignee.value?.country || ''))
+/** 当前单证与最新数据（如新存的运单号）不一致 → 需要重新生成 */
+const outdated = computed(() => !locked.value && !!view.value?.documents_outdated && !!(ci.value || pl.value))
 
 const countryText = (code: string | null | undefined) => (code ? `${String(code).toUpperCase()} ${countryName(code, locale.value)}` : '')
 const money = (v: number | null | undefined) => formatMoney(v, currency.value)
 const weight = (v: number | null | undefined) =>
   v === null || v === undefined || isNaN(Number(v)) ? '—' : `${Number(v).toFixed(3)} kg`
+
+/** 该行是否有「輸出統計番号与 HS 不一致」警告 */
+const jpExportWarned = (line: CustomsLine) =>
+  problems.value.some((p: CustomsProblem) => p.code === 'JP_EXPORT_CODE_MISMATCH' && p.goods_code === line.goods_code)
 
 const problemText = (p: CustomsProblem) => {
   const key = `customs.problems.${p.code}`
@@ -120,6 +130,18 @@ const exportReasonText = (reason: string | null | undefined) => {
   if (!reason) return ''
   const key = `customs.export-reasons.${String(reason).toUpperCase()}`
   return te(key) ? `${reason}（${t(key)}）` : String(reason)
+}
+const EXPORTER_FIELD_KEYS: Record<string, string> = {
+  legal_name_en: 'company.fields.legal-name-en',
+  address_en: 'company.fields.address-en',
+  phone: 'common.fields.phone',
+  country_code: 'company.fields.country-code',
+}
+const problemFieldText = (p: CustomsProblem) => {
+  if (!p.field) return ''
+  const name = String(p.field).split('.').pop() || ''
+  if (p.code === 'EXPORTER_PROFILE_INCOMPLETE' && EXPORTER_FIELD_KEYS[name]) return t(EXPORTER_FIELD_KEYS[name])
+  return String(p.field)
 }
 const userText = (u: any) => (u && typeof u === 'object' ? (u.user_name || u.email || u.id) : (u ?? ''))
 
@@ -193,7 +215,8 @@ const saveOrigin = async (line: CustomsLine) => {
   const code = originDraft[key]
   if (!code) return
   originSaving[key] = true
-  await httpRequest(`/api/warehouse/goods/${line.goods_id}`, {
+  // 只改原产国的接口（goods_edit / sorting_edit / packing_edit 任一即可），与 PDA 一致
+  await httpRequest(`/api/warehouse/goods/${line.goods_id}/origin-country`, {
     method: 'PUT',
     body: { origin_country: code },
     onSuccess: async () => {
@@ -228,7 +251,10 @@ defineExpose({ reload: load })
           <span class="badge bg-secondary-transparent" v-if="locked">
             <i class="ri-lock-line me-1"></i>{{ t('customs.status.locked') }}
           </span>
-          <span class="badge bg-success-transparent" v-if="ci && pl">
+          <span class="badge bg-danger" v-if="outdated">
+            <i class="ri-error-warning-line me-1"></i>{{ t('customs.status.outdated') }}
+          </span>
+          <span class="badge bg-success-transparent" v-else-if="ci && pl">
             <i class="ri-checkbox-circle-line me-1"></i>{{ t('customs.status.issued') }}
           </span>
           <span class="badge bg-warning-transparent" v-else>{{ t('customs.status.not-issued') }}</span>
@@ -238,8 +264,8 @@ defineExpose({ reload: load })
         </template>
       </div>
       <div class="btn-list">
-        <button type="button" class="btn btn-sm btn-primary" v-if="!locked" :disabled="!canIssue || issuing"
-          :title="issueHint" @click="issue">
+        <button type="button" class="btn btn-sm" v-if="!locked" :class="outdated ? 'btn-danger btn-issue-outdated' : 'btn-primary'"
+          :disabled="!canIssue || issuing" :title="issueHint" @click="issue">
           <span v-if="issuing" class="spinner-border spinner-border-sm me-1"></span>
           <i v-else class="ri-file-add-line me-1"></i>{{ t('customs.operations.issue') }}
         </button>
@@ -272,6 +298,16 @@ defineExpose({ reload: load })
       <div class="alert alert-danger-transparent mb-0" v-else-if="loadError && !view">{{ loadError }}</div>
 
       <template v-else-if="view">
+        <div class="alert alert-danger d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert" v-if="outdated">
+          <div>
+            <i class="ri-error-warning-line me-1 fs-16 align-middle"></i>
+            <span class="fw-semibold">{{ t('customs.tips.documents-outdated') }}</span>
+          </div>
+          <button type="button" class="btn btn-sm btn-light" :disabled="!canIssue || issuing" @click="issue">
+            <span v-if="issuing" class="spinner-border spinner-border-sm me-1"></span>
+            <i v-else class="ri-file-add-line me-1"></i>{{ t('customs.operations.reissue') }}
+          </button>
+        </div>
         <p class="fs-12 text-muted mb-3" v-if="issueHint">
           <i class="ri-information-line me-1"></i>{{ issueHint }}
         </p>
@@ -284,7 +320,7 @@ defineExpose({ reload: load })
             <h6 class="fw-semibold mb-2">{{ t('customs.sections.summary') }}</h6>
             <dl class="row mb-0 fs-13 customs-dl">
               <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.invoice-number') }}</dt>
-              <dd class="col-7">{{ customs.invoice_number || '—' }}</dd>
+              <dd class="col-7">{{ invoiceNumber || '—' }}</dd>
               <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.incoterm') }}</dt>
               <dd class="col-7">
                 <span v-if="customs.incoterm">{{ customs.incoterm }}<template v-if="recipientCountry"> {{ recipientCountry.toUpperCase() }}</template></span>
@@ -334,7 +370,11 @@ defineExpose({ reload: load })
               <div class="text-muted fs-12" v-if="exporter.phone">{{ exporter.phone }}</div>
             </div>
             <div class="fs-12 text-muted" v-else>—</div>
+            <div class="fs-12 text-muted mt-1">{{ t('customs.tips.exporter-source') }}</div>
             <NuxtLink to="/company" class="fs-12"><i class="ri-edit-line me-1"></i>{{ t('customs.operations.edit-exporter') }}</NuxtLink>
+            <NuxtLink :to="`/warehouse/edit/${warehouseId}`" class="fs-12 ms-2" v-if="warehouseId">
+              <i class="ri-edit-line me-1"></i>{{ t('customs.operations.edit-warehouse') }}
+            </NuxtLink>
           </div>
 
           <!-- ===== 问题清单 ===== -->
@@ -351,10 +391,13 @@ defineExpose({ reload: load })
                 <li v-for="(p, i) in errorProblems" :key="`e-${i}`" :title="p.message || ''">
                   {{ problemText(p) }}
                   <span class="badge bg-light text-default ms-1" v-if="p.goods_code">{{ p.goods_code }}</span>
-                  <span class="text-muted fs-11 ms-1" v-if="p.field">({{ p.field }})</span>
-                  <NuxtLink to="/company" class="fs-12 ms-1" v-if="p.code === 'EXPORTER_PROFILE_INCOMPLETE'">
-                    {{ t('customs.operations.edit-exporter') }}
-                  </NuxtLink>
+                  <span class="text-muted fs-11 ms-1" v-if="p.field">({{ problemFieldText(p) }})</span>
+                  <template v-if="p.code === 'EXPORTER_PROFILE_INCOMPLETE'">
+                    <NuxtLink to="/company" class="fs-12 ms-1">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
+                    <NuxtLink :to="`/warehouse/edit/${warehouseId}`" class="fs-12 ms-2" v-if="warehouseId">
+                      {{ t('customs.operations.edit-warehouse') }}
+                    </NuxtLink>
+                  </template>
                 </li>
               </ul>
             </div>
@@ -366,7 +409,7 @@ defineExpose({ reload: load })
                 <li v-for="(p, i) in warningProblems" :key="`w-${i}`" :title="p.message || ''">
                   {{ problemText(p) }}
                   <span class="badge bg-light text-default ms-1" v-if="p.goods_code">{{ p.goods_code }}</span>
-                  <span class="text-muted fs-11 ms-1" v-if="p.field">({{ p.field }})</span>
+                  <span class="text-muted fs-11 ms-1" v-if="p.field">({{ problemFieldText(p) }})</span>
                 </li>
               </ul>
             </div>
@@ -383,6 +426,7 @@ defineExpose({ reload: load })
                     <th scope="col">{{ t('customs.fields.goods-name') }}</th>
                     <th scope="col">{{ t('customs.fields.description-en') }}</th>
                     <th scope="col">{{ t('customs.fields.hs-code') }}</th>
+                    <th scope="col" :title="t('customs.tips.jp-export-code')">{{ t('customs.fields.jp-export-code') }}</th>
                     <th scope="col">{{ t('customs.fields.origin') }}</th>
                     <th scope="col" class="text-end">{{ t('customs.fields.packed-qty') }}</th>
                     <th scope="col" class="text-end">{{ t('customs.fields.unit-value') }}</th>
@@ -408,6 +452,12 @@ defineExpose({ reload: load })
                     <td class="font-monospace">
                       <span v-if="line.hs_code">{{ line.hs_code_formatted || formatHsCode(line.hs_code) }}</span>
                       <span class="text-danger" v-else>—</span>
+                    </td>
+                    <td class="font-monospace text-nowrap">
+                      <span v-if="line.jp_export_code">{{ line.jp_export_code }}</span>
+                      <span class="text-muted" v-else>—</span>
+                      <i class="ri-error-warning-line text-warning ms-1" v-if="jpExportWarned(line)"
+                        :title="t('customs.problems.JP_EXPORT_CODE_MISMATCH')"></i>
                     </td>
                     <td style="min-width: 150px;">
                       <template v-if="line.origin_country">
@@ -442,7 +492,7 @@ defineExpose({ reload: load })
                     <td class="text-end text-nowrap">{{ Number(line.packed_quantity) ? money(line.amount) : '—' }}</td>
                   </tr>
                   <tr v-if="lines.length === 0">
-                    <td colspan="8" class="text-center text-muted py-3">{{ t('common.status.nothing-show') }}</td>
+                    <td colspan="9" class="text-center text-muted py-3">{{ t('common.status.nothing-show') }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -594,6 +644,9 @@ defineExpose({ reload: load })
 </template>
 
 <style scoped>
+.btn-issue-outdated {
+  box-shadow: 0 0 0 0.2rem rgba(var(--danger-rgb, 220, 53, 69), 0.35);
+}
 .customs-dl dt,
 .customs-dl dd {
   margin-bottom: 0.35rem;

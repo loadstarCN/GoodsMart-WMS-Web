@@ -486,7 +486,7 @@
     },
     "tips": {
       "export": "用于海外发货的商业发票（CI）和装箱单（PL），以英文印出。",
-      "export-required": "生成单证需要英文名称、英文地址、所在国和电话（仓库或公司）。"
+      "export-required": "生成单证需要英文名称、英文地址、电话和国家代码（电话与国家代码优先取仓库设置）。"
     }
   },
   "department": {
@@ -994,7 +994,15 @@
       "add": "添加配送任务",
       "edit": "编辑配送任务",
       "delete": "删除配送任务",
-      "back-to-list": "返回配送任务列表"
+      "back-to-list": "返回配送任务列表",
+      "save-tracking": "保存运单号"
+    },
+    "tips": {
+      "save-tracking": "可在完成发货前单独保存运单号",
+      "tracking-saved-reissue": "运单号已保存。要在单证上印出 AWB，请重新生成单证"
+    },
+    "validation": {
+      "tracking-too-long": "运单号不能超过 {max} 个字符"
     }
   },
   "action-results": {
@@ -1422,7 +1430,8 @@
       "issued-at": "签发时间",
       "size": "大小",
       "status": "状态",
-      "void-reason": "作废原因"
+      "void-reason": "作废原因",
+      "jp-export-code": "出口统计编号"
     },
     "doc-types": {
       "commercial_invoice": "商业发票（CI）",
@@ -1433,7 +1442,9 @@
       "void": "已作废"
     },
     "void-reasons": {
-      "packages_changed": "箱子变更"
+      "packages_changed": "箱子变更",
+      "customs_changed": "报关数据变更",
+      "data_changed": "数据变更（重新生成）"
     },
     "export-reasons": {
       "SALE": "销售"
@@ -1443,7 +1454,8 @@
       "not-ready": "有未完成项",
       "issued": "CI、PL 已生成",
       "not-issued": "未生成",
-      "locked": "已发货（只读）"
+      "locked": "已发货（只读）",
+      "outdated": "单证不是最新"
     },
     "operations": {
       "issue": "生成单证",
@@ -1454,7 +1466,9 @@
       "history": "历史版本",
       "refresh": "刷新",
       "open-card": "前往出库单的单证卡片",
-      "edit-exporter": "编辑公司出口资料"
+      "edit-exporter": "编辑公司出口资料",
+      "reissue": "重新生成单证",
+      "edit-warehouse": "编辑仓库出口资料"
     },
     "tips": {
       "not-on-invoice": "已打包数量为 0，不上发票",
@@ -1469,7 +1483,10 @@
       "no-snapshot": "该出库单没有报关数据",
       "pdf-checksum-mismatch": "PDF 校验值不一致，请刷新后重试",
       "delivery-blocked-title": "不能完成发货",
-      "delivery-requires-documents": "海外单必须先生成有效的 CI 和 PL，才能完成发货。"
+      "delivery-requires-documents": "海外单必须先生成有效的 CI 和 PL，才能完成发货。",
+      "documents-outdated": "单证与最新数据不一致，请重新生成",
+      "exporter-source": "电话与国家代码优先取仓库设置，其次取公司设置。",
+      "jp-export-code": "日本出口统计品目编号（9 位），仅供核对，不印在 CI 上"
     },
     "packages": {
       "box-no": "箱",
@@ -1490,12 +1507,14 @@
         "count": "箱数必须在 1–99 之间",
         "weight": "毛重须在 0.01–999.999 kg 之间",
         "dimension": "尺寸须在 0.1–300 cm 之间"
-      }
+      },
+      "title-domestic": "箱子（可选）",
+      "domestic-tip": "国内单可选录入，用于记录箱数、重量和尺寸。"
     },
     "problems": {
       "NOT_PACKED": "尚未打包完成",
       "PACKAGES_MISSING": "还没有录入箱子",
-      "EXPORTER_PROFILE_INCOMPLETE": "公司出口资料不全（英文名称、英文地址、电话、所在国）",
+      "EXPORTER_PROFILE_INCOMPLETE": "出口资料不全（英文名称、英文地址、电话、国家代码；电话与国家代码先看仓库、再看公司）",
       "INCOTERM_MISSING": "缺少贸易条款（Incoterms）",
       "EXPORT_REASON_MISSING": "缺少出口原因",
       "CURRENCY_INVALID": "币种不合法",
@@ -1509,7 +1528,16 @@
       "RECIPIENT_TAX_ID_MISSING": "缺少收货人税号",
       "NON_LATIN_TEXT": "含有非拉丁字符",
       "NET_WEIGHT_UNKNOWN": "有商品未录重量，无法计算净重",
-      "GROSS_LT_NET": "总毛重小于净重"
+      "GROSS_LT_NET": "总毛重小于净重",
+      "JP_EXPORT_CODE_MISMATCH": "出口统计编号格式不对，或前 6 位与 HS 编码不一致",
+      "JP_EXPORT_CODE_MISSING": "货值合计超过 20 万日元，日本出口申报需要 9 位出口统计编号"
+    },
+    "workflow": {
+      "step1": "打包时录入箱子（重量、尺寸）",
+      "step2": "在承运商系统建运单，取得运单号（AWB）",
+      "step3": "在本页保存运单号",
+      "step4": "在出库单生成并打印单证（CI / PL）",
+      "step5": "完成发货"
     }
   },
   "biz-errors": {
@@ -1522,6 +1550,8 @@
     "code-16068": "单证条件不全",
     "code-16069": "发货前必须先生成有效的商业发票（CI）和装箱单（PL）",
     "code-16070": "不是海外单",
-    "code-16071": "单证不存在"
+    "code-16071": "单证不存在",
+    "code-14019": "出口资料文本超长",
+    "code-14020": "公司/仓库国家代码不合法（须为 ISO 3166-1 两位代码）"
   }
 }

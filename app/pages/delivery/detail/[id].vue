@@ -208,6 +208,48 @@ const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.val
 const customsBlockedReason = ref<string | null>(null);
 const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
 
+// ------------------ 保存运单号（完成发货前） ----------------------
+// 任务 pending / in_progress 可存；已发货 409 16065。
+// 海外单：运单号（AWB）计入单证数据，已出的单证不会自动作废，需重新生成才能印上 AWB。
+const TRACKING_MAX_LENGTH = 100;
+const trackingEditable = computed(() => ['pending', 'in_progress'].includes(String(itemData.value?.status || '')));
+const savingTracking = ref(false);
+const saveTracking = async () => {
+  const tracking = String(itemData.value?.tracking_number ?? '').trim();
+  if (tracking.length > TRACKING_MAX_LENGTH) {
+    errors.value.tracking_number = t('delivery.validation.tracking-too-long', { max: TRACKING_MAX_LENGTH });
+    return;
+  }
+  errors.value.tracking_number = null;
+  savingTracking.value = true;
+  const body: Record<string, any> = { tracking_number: tracking };
+  if (itemData.value?.carrier_id) body.carrier_id = itemData.value.carrier_id;
+  await httpRequest<any>(`/api/warehouse/delivery/${taskId}/tracking`, {
+    method: 'PUT',
+    body,
+    onSuccess: (data) => {
+      // 只同步运单号与承运商，其余表单内容（运费、备注等）保持画面上的输入
+      itemData.value.tracking_number = data?.tracking_number ?? (tracking || null);
+      if (data?.carrier_id) {
+        itemData.value.carrier_id = data.carrier_id;
+        if (data.carrier) itemData.value.carrier = data.carrier;
+      }
+      if (isExport.value) {
+        showToast(t('delivery.tips.tracking-saved-reissue'), 'warning');
+        docStatusRef.value?.reload();
+      } else {
+        showToast(t('action-results.success'), 'success');
+      }
+    },
+    onError: (error) => {
+      showToast(bizErrorMessage(error), 'error');
+    },
+    onFinally: () => {
+      savingTracking.value = false;
+    },
+  });
+};
+
 </script>
 <template>
   <PageHeader :propData="dataToPass" />
@@ -313,7 +355,7 @@ const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
                     {{ itemData?.recipient?.phone }}
                   </p>
                 </div>
-                <div class="col-xl-6"  v-if="itemData?.status != 'pending'">
+                <div class="col-xl-6">
                   <div class="row gy-3">
                     <div class="col-xl-6">
                       <label for="product-price" class="form-label">{{t('common.fields.shipping-cost')}} ({{ itemData?.currency }})</label>
@@ -328,7 +370,7 @@ const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
                         <VueMultiselect :searchable="true" :show-labels="false" v-model="selectedCarrier"
                           :options="carrierSelectedOptions" :placeholder="t('common.search-placeholder')" :loading="isLoading"
                           :internal-search="false" label="name" track-by="id" :options-limit="100"
-                          @search-change="fetchCarrierData"  :disabled="itemData?.status != 'in_progress'" />
+                          @search-change="fetchCarrierData"  :disabled="!trackingEditable" />
                       </div>
                       <div v-if="errors.carrier" class="invalid-feedback d-block">{{ errors.carrier }}</div>
                     </div>
@@ -351,8 +393,16 @@ const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
                       <div class="form-group mb-3">
                         <label class="form-label">{{t('common.fields.tracking-number')}} <abbr title="required" aria-hidden="true"
                             class="text-danger">*</abbr></label>
-                        <input type="text" class="form-control" id="service-charges" :placeholder="t('common.placeholders.tracking-number')"
-                          v-model="itemData.tracking_number" :disabled="itemData?.status != 'in_progress'">
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="service-charges" :placeholder="t('common.placeholders.tracking-number')"
+                            v-model="itemData.tracking_number" :disabled="!trackingEditable" :maxlength="TRACKING_MAX_LENGTH">
+                          <button type="button" class="btn btn-info" v-if="trackingEditable" :disabled="savingTracking"
+                            :title="t('delivery.operations.save-tracking')" @click="saveTracking">
+                            <span v-if="savingTracking" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="ri-save-line me-1"></i>{{ t('delivery.operations.save-tracking') }}
+                          </button>
+                        </div>
+                        <div class="form-text" v-if="trackingEditable">{{ t('delivery.tips.save-tracking') }}</div>
                         <div v-if="errors.tracking_number" class="invalid-feedback d-block">{{ errors.tracking_number }}
                         </div>
                       </div>
@@ -431,9 +481,14 @@ const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
               <div>{{ customsBlockedReason }}</div>
             </div>
           </div>
-          <p class="fs-12 text-muted mb-2" v-else-if="itemData?.status === 'pending' || itemData?.status === 'in_progress'">
-            <i class="ri-information-line me-1"></i>{{ t('customs.tips.delivery-requires-documents') }}
-          </p>
+          <template v-else-if="itemData?.status === 'pending' || itemData?.status === 'in_progress'">
+            <p class="fs-12 text-muted mb-1">
+              <i class="ri-information-line me-1"></i>{{ t('customs.tips.delivery-requires-documents') }}
+            </p>
+            <ol class="fs-12 text-muted mb-3 ps-4">
+              <li v-for="n in 5" :key="n">{{ t(`customs.workflow.step${n}`) }}</li>
+            </ol>
+          </template>
           <CustomsDocStatus ref="docStatusRef" :dn-id="itemData.dn_id" :key="`docs-${itemData.dn_id}-${itemData.status}`" />
         </div>
       </div>

@@ -486,7 +486,7 @@
     },
     "tips": {
       "export": "Printed in English on Commercial Invoices (CI) and Packing Lists (PL) for export shipments.",
-      "export-required": "Issuing documents requires the English legal name, English address, country and a phone number (warehouse or company)."
+      "export-required": "Issuing documents requires the English legal name, English address, phone and country code (phone and country code are taken from the warehouse first)."
     }
   },
   "department": {
@@ -994,7 +994,15 @@
       "add": "Add Delivery Task",
       "edit": "Edit Delivery Task",
       "delete": "Delete Delivery Task",
-      "back-to-list": "Back to Delivery List"
+      "back-to-list": "Back to Delivery List",
+      "save-tracking": "Save Tracking No."
+    },
+    "tips": {
+      "save-tracking": "You can save the tracking number before completing the shipment",
+      "tracking-saved-reissue": "Tracking number saved. Re-issue the documents to print the AWB on them."
+    },
+    "validation": {
+      "tracking-too-long": "Tracking number must be at most {max} characters"
     }
   },
   "action-results": {
@@ -1422,7 +1430,8 @@
       "issued-at": "Issued At",
       "size": "Size",
       "status": "Status",
-      "void-reason": "Void Reason"
+      "void-reason": "Void Reason",
+      "jp-export-code": "JP Export Stat. Code"
     },
     "doc-types": {
       "commercial_invoice": "Commercial Invoice (CI)",
@@ -1433,7 +1442,9 @@
       "void": "Void"
     },
     "void-reasons": {
-      "packages_changed": "Packages changed"
+      "packages_changed": "Packages changed",
+      "customs_changed": "Customs data changed",
+      "data_changed": "Data changed (re-issued)"
     },
     "export-reasons": {
       "SALE": "Sale"
@@ -1443,7 +1454,8 @@
       "not-ready": "Not ready",
       "issued": "CI & PL issued",
       "not-issued": "Not issued",
-      "locked": "Shipped (read-only)"
+      "locked": "Shipped (read-only)",
+      "outdated": "Documents outdated"
     },
     "operations": {
       "issue": "Issue Documents",
@@ -1454,7 +1466,9 @@
       "history": "History",
       "refresh": "Refresh",
       "open-card": "Open export documents on the DN",
-      "edit-exporter": "Edit exporter profile"
+      "edit-exporter": "Edit exporter profile",
+      "reissue": "Re-issue Documents",
+      "edit-warehouse": "Edit warehouse export info"
     },
     "tips": {
       "not-on-invoice": "Not on the invoice (packed quantity is 0)",
@@ -1469,7 +1483,10 @@
       "no-snapshot": "This DN has no customs data",
       "pdf-checksum-mismatch": "PDF checksum mismatch. Please reload and try again.",
       "delivery-blocked-title": "Cannot complete shipment",
-      "delivery-requires-documents": "Export shipments can be completed only after a valid CI and PL are issued."
+      "delivery-requires-documents": "Export shipments can be completed only after a valid CI and PL are issued.",
+      "documents-outdated": "The documents do not match the latest data. Please issue them again.",
+      "exporter-source": "Phone and country code are taken from the warehouse first, then from the company.",
+      "jp-export-code": "Japanese export statistical code (9 digits). For reference only; not printed on the CI."
     },
     "packages": {
       "box-no": "Box",
@@ -1490,12 +1507,14 @@
         "count": "Number of boxes must be 1–99",
         "weight": "Gross weight must be 0.01–999.999 kg",
         "dimension": "Dimensions must be 0.1–300 cm"
-      }
+      },
+      "title-domestic": "Packages (optional)",
+      "domestic-tip": "Optional for domestic shipments; use it to record box count, weight and dimensions."
     },
     "problems": {
       "NOT_PACKED": "Packing is not completed",
       "PACKAGES_MISSING": "No packages recorded",
-      "EXPORTER_PROFILE_INCOMPLETE": "Exporter profile incomplete (English name, English address, phone, country)",
+      "EXPORTER_PROFILE_INCOMPLETE": "Exporter profile incomplete (English name, English address, phone, country code; phone and country code come from the warehouse first, then the company)",
       "INCOTERM_MISSING": "Incoterm missing",
       "EXPORT_REASON_MISSING": "Reason for export missing",
       "CURRENCY_INVALID": "Invalid currency",
@@ -1509,7 +1528,16 @@
       "RECIPIENT_TAX_ID_MISSING": "Recipient tax ID missing",
       "NON_LATIN_TEXT": "Contains non-Latin characters",
       "NET_WEIGHT_UNKNOWN": "Net weight unknown (some goods have no weight)",
-      "GROSS_LT_NET": "Gross weight is less than net weight"
+      "GROSS_LT_NET": "Gross weight is less than net weight",
+      "JP_EXPORT_CODE_MISMATCH": "Export statistical code is invalid or its first 6 digits differ from the HS code",
+      "JP_EXPORT_CODE_MISSING": "Invoice total exceeds JPY 200,000; the Japanese export declaration requires the 9-digit statistical code"
+    },
+    "workflow": {
+      "step1": "Record packages (weight, dimensions) when packing",
+      "step2": "Create the shipment in the carrier's system and get the tracking number (AWB)",
+      "step3": "Save the tracking number on this page",
+      "step4": "Issue and print the documents (CI / PL) on the DN",
+      "step5": "Complete the shipment"
     }
   },
   "biz-errors": {
@@ -1522,6 +1550,8 @@
     "code-16068": "Document requirements are not met",
     "code-16069": "Issue a valid Commercial Invoice (CI) and Packing List (PL) before shipping",
     "code-16070": "Not an export shipment",
-    "code-16071": "Document not found"
+    "code-16071": "Document not found",
+    "code-14019": "Exporter profile text is too long",
+    "code-14020": "Invalid company/warehouse country code (ISO 3166-1 alpha-2)"
   }
 }

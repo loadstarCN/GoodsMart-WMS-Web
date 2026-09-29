@@ -51,6 +51,7 @@ const pl = computed(() => pickCurrentDocument(view.value?.current_documents, 'pa
 const errorCount = computed(() => (view.value?.problems || []).filter((p: CustomsProblem) => p.level === 'error').length)
 const warningCount = computed(() => (view.value?.problems || []).filter((p: CustomsProblem) => p.level === 'warning').length)
 const hasDocuments = computed(() => !!ci.value && !!pl.value)
+const outdated = computed(() => !view.value?.locked && !!view.value?.documents_outdated && hasDocuments.value)
 
 defineExpose({ reload: load })
 </script>
@@ -65,7 +66,10 @@ defineExpose({ reload: load })
     <div class="alert alert-danger-transparent fs-12 mb-0" v-else-if="loadError">{{ loadError }}</div>
     <template v-else-if="view">
       <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-        <span class="badge" :class="hasDocuments ? 'bg-success-transparent' : 'bg-danger-transparent'">
+        <span class="badge bg-danger" v-if="outdated">
+          <i class="ri-error-warning-line me-1"></i>{{ t('customs.status.outdated') }}
+        </span>
+        <span class="badge" :class="hasDocuments ? 'bg-success-transparent' : 'bg-danger-transparent'" v-else>
           <i :class="hasDocuments ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" class="me-1"></i>
           {{ hasDocuments ? t('customs.status.issued') : t('customs.status.not-issued') }}
         </span>
@@ -78,6 +82,10 @@ defineExpose({ reload: load })
         <span class="badge bg-warning-transparent" v-if="warningCount > 0">
           {{ t('customs.warnings') }} {{ warningCount }}
         </span>
+      </div>
+
+      <div class="alert alert-danger py-2 fs-13 mb-2" role="alert" v-if="outdated">
+        <i class="ri-error-warning-line me-1"></i>{{ t('customs.tips.documents-outdated') }}
       </div>
 
       <ul class="list-unstyled mb-2 fs-13">

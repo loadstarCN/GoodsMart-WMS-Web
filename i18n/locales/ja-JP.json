@@ -486,7 +486,7 @@
     },
     "tips": {
       "export": "海外出荷のコマーシャルインボイス（CI）・パッキングリスト（PL）に英語で印字されます。",
-      "export-required": "単証の発行には英語社名・英語住所・所在国・電話番号（倉庫または会社）が必要です。"
+      "export-required": "単証の発行には英語社名・英語住所・電話番号・国コードが必要です（電話番号と国コードは倉庫の設定が優先）。"
     }
   },
   "department": {
@@ -994,7 +994,15 @@
       "add": "配送追加",
       "edit": "配送編集",
       "delete": "配送削除",
-      "back-to-list": "一覧に戻る"
+      "back-to-list": "一覧に戻る",
+      "save-tracking": "運送状番号を保存"
+    },
+    "tips": {
+      "save-tracking": "出荷完了の前に運送状番号だけを保存できます",
+      "tracking-saved-reissue": "運送状番号を保存しました。単証に AWB を印字するには単証を再発行してください"
+    },
+    "validation": {
+      "tracking-too-long": "運送状番号は {max} 文字以内で入力してください"
     }
   },
   "action-results": {
@@ -1422,7 +1430,8 @@
       "issued-at": "発行日時",
       "size": "サイズ",
       "status": "状態",
-      "void-reason": "無効理由"
+      "void-reason": "無効理由",
+      "jp-export-code": "輸出統計番号"
     },
     "doc-types": {
       "commercial_invoice": "コマーシャルインボイス（CI）",
@@ -1433,7 +1442,9 @@
       "void": "無効"
     },
     "void-reasons": {
-      "packages_changed": "箱情報の変更"
+      "packages_changed": "箱情報の変更",
+      "customs_changed": "通関データの変更",
+      "data_changed": "データの変更（再発行）"
     },
     "export-reasons": {
       "SALE": "販売"
@@ -1443,7 +1454,8 @@
       "not-ready": "未完了の項目あり",
       "issued": "CI・PL 発行済み",
       "not-issued": "未発行",
-      "locked": "出荷済み（変更不可）"
+      "locked": "出荷済み（変更不可）",
+      "outdated": "単証が最新ではありません"
     },
     "operations": {
       "issue": "単証を発行",
@@ -1454,7 +1466,9 @@
       "history": "履歴",
       "refresh": "再読み込み",
       "open-card": "出荷指示の単証カードへ",
-      "edit-exporter": "会社の輸出者情報を編集"
+      "edit-exporter": "会社の輸出者情報を編集",
+      "reissue": "単証を再発行",
+      "edit-warehouse": "倉庫の出荷元情報を編集"
     },
     "tips": {
       "not-on-invoice": "梱包数 0 のためインボイスに載りません",
@@ -1469,7 +1483,10 @@
       "no-snapshot": "この出荷指示には通関データがありません",
       "pdf-checksum-mismatch": "PDF のチェックサムが一致しません。再読み込みしてからもう一度お試しください",
       "delivery-blocked-title": "出荷を完了できません",
-      "delivery-requires-documents": "海外出荷は、有効な CI と PL を発行してからでないと出荷完了できません。"
+      "delivery-requires-documents": "海外出荷は、有効な CI と PL を発行してからでないと出荷完了できません。",
+      "documents-outdated": "単証が最新のデータと一致しません。再発行してください",
+      "exporter-source": "電話番号と国コードは倉庫の設定を優先し、なければ会社の設定を使います。",
+      "jp-export-code": "日本の輸出統計品目番号（9 桁）。確認用で、CI には印字しません"
     },
     "packages": {
       "box-no": "箱",
@@ -1490,12 +1507,14 @@
         "count": "箱数は 1〜99 にしてください",
         "weight": "総重量は 0.01〜999.999 kg で入力してください",
         "dimension": "寸法は 0.1〜300 cm で入力してください"
-      }
+      },
+      "title-domestic": "箱情報（任意）",
+      "domestic-tip": "国内出荷では任意入力です。箱数・重量・寸法の記録に使えます。"
     },
     "problems": {
       "NOT_PACKED": "梱包が完了していません",
       "PACKAGES_MISSING": "箱情報が登録されていません",
-      "EXPORTER_PROFILE_INCOMPLETE": "会社の輸出者情報（英語社名・英語住所・電話番号・所在国）が不足しています",
+      "EXPORTER_PROFILE_INCOMPLETE": "輸出者情報が不足しています（英語社名・英語住所・電話番号・国コード。電話番号と国コードは倉庫→会社の順に参照）",
       "INCOTERM_MISSING": "貿易条件（インコタームズ）がありません",
       "EXPORT_REASON_MISSING": "輸出理由がありません",
       "CURRENCY_INVALID": "通貨が正しくありません",
@@ -1509,7 +1528,16 @@
       "RECIPIENT_TAX_ID_MISSING": "受取人の税番号がありません",
       "NON_LATIN_TEXT": "ラテン文字以外の文字が含まれています",
       "NET_WEIGHT_UNKNOWN": "重量未登録の商品があるため、正味重量を計算できません",
-      "GROSS_LT_NET": "総重量が正味重量より小さくなっています"
+      "GROSS_LT_NET": "総重量が正味重量より小さくなっています",
+      "JP_EXPORT_CODE_MISMATCH": "輸出統計番号の形式が正しくないか、先頭 6 桁が HS コードと一致しません",
+      "JP_EXPORT_CODE_MISSING": "インボイス合計が 20 万円を超えるため、日本の輸出申告に 9 桁の輸出統計番号が必要です"
+    },
+    "workflow": {
+      "step1": "梱包で箱情報（重量・寸法）を登録",
+      "step2": "運送会社のシステムで運送状を作成し、運送状番号（AWB）を取得",
+      "step3": "この画面で運送状番号を保存",
+      "step4": "出荷指示で単証（CI / PL）を発行・印刷",
+      "step5": "出荷を完了"
     }
   },
   "biz-errors": {
@@ -1522,6 +1550,8 @@
     "code-16068": "単証の発行条件がそろっていません",
     "code-16069": "出荷前に有効なコマーシャルインボイス（CI）とパッキングリスト（PL）を発行してください",
     "code-16070": "海外出荷ではありません",
-    "code-16071": "単証が見つかりません"
+    "code-16071": "単証が見つかりません",
+    "code-14019": "輸出者情報の文字数が上限を超えています",
+    "code-14020": "会社・倉庫の国コードが正しくありません（ISO 3166-1 の 2 文字コード）"
   }
 }

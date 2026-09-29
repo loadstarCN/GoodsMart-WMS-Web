@@ -539,7 +539,7 @@ function getEarliestPackItem(itemPackingData: any) {
     <!-- 海外出荷単証 -->
     <div class="row" v-if="itemData && isExport">
         <div class="col-xl-12">
-            <DnCustomsCard :dn-id="dnId" :dn-status="itemData?.status" :key="`customs-${dnId}-${itemData?.status}`" />
+            <DnCustomsCard :dn-id="dnId" :dn-status="itemData?.status" :warehouse-id="itemData?.warehouse_id" :key="`customs-${dnId}-${itemData?.status}`" />
         </div>
     </div>
 

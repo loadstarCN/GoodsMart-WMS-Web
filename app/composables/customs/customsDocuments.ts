@@ -58,6 +58,8 @@ export interface CustomsLine {
   hs_code: string | null
   /** 后端格式化好的 HS（如 9503.00），没有时前端自行格式化 */
   hs_code_formatted?: string | null
+  /** 日本输出统计品目番号（9 位；只显示，不印在单证上） */
+  jp_export_code?: string | null
   origin_country: string | null
   origin_source?: string | null
 }
@@ -84,6 +86,12 @@ export interface CustomsView {
   problems: CustomsProblem[]
   ready: boolean
   current_documents: CustomsDocumentMeta[]
+  /** 当前单证与最新数据（如新存的运单号）不一致，需要重新生成 */
+  documents_outdated?: boolean
+  /** 后端解析好的发票号 / 收货国 / 收货人（快照优先，没有则退回 DN） */
+  invoice_number?: string | null
+  recipient_country?: string | null
+  consignee?: Record<string, any> | null
 }
 
 /** DN 发货后（及之后的状态）单证与箱子只读 */
