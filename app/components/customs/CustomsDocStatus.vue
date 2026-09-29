@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /**
  * 海外出荷単証的状态概要（打包详情、发货详情用）
- * 显示当前有效的 CI / PL 版本、问题数量，并可打印、跳到出库单的单证卡片。
+ * 显示当前有效的 CI / PL 版本、问题数量、运送申告价额，并可打印、跳到出库单的单证卡片。
  */
 import {
   pickCurrentDocument,
@@ -87,6 +87,9 @@ defineExpose({ reload: load })
       <div class="alert alert-danger py-2 fs-13 mb-2" role="alert" v-if="outdated">
         <i class="ri-error-warning-line me-1"></i>{{ t('customs.tips.documents-outdated') }}
       </div>
+
+      <!-- 运送申告价额：在承运商系统登记出货时要填 -->
+      <DeclaredValueNotice :customs="view.customs" compact />
 
       <ul class="list-unstyled mb-2 fs-13">
         <li class="mb-1">

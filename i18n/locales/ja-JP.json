@@ -1419,6 +1419,7 @@
       "total-qty": "合計数量",
       "goods-value": "商品金額",
       "freight": "運賃",
+      "insurance": "保険料",
       "invoice-total": "インボイス合計",
       "package-count": "箱数",
       "gross-weight": "総重量",
@@ -1431,7 +1432,8 @@
       "size": "サイズ",
       "status": "状態",
       "void-reason": "無効理由",
-      "jp-export-code": "輸出統計番号"
+      "jp-export-code": "輸出統計番号",
+      "declared-value-carriage": "運送申告価額"
     },
     "doc-types": {
       "commercial_invoice": "コマーシャルインボイス（CI）",
@@ -1486,7 +1488,10 @@
       "delivery-requires-documents": "海外出荷は、有効な CI と PL を発行してからでないと出荷完了できません。",
       "documents-outdated": "単証が最新のデータと一致しません。再発行してください",
       "exporter-source": "電話番号と国コードは倉庫の設定を優先し、なければ会社の設定を使います。",
-      "jp-export-code": "日本の輸出統計品目番号（9 桁）。確認用で、CI には印字しません"
+      "jp-export-code": "日本の輸出統計品目番号（9 桁）。確認用で、CI には印字しません",
+      "declared-value-carriage-heading": "運送申告価額（Declared Value for Carriage）",
+      "declared-value-carriage": "配送業者のシステムで出荷登録するときに、この金額を申告価額として入力してください。",
+      "no-declared-value": "申告価額なし（運送保険なし）"
     },
     "packages": {
       "box-no": "箱",
@@ -1534,7 +1539,7 @@
     },
     "workflow": {
       "step1": "梱包で箱情報（重量・寸法）を登録",
-      "step2": "運送会社のシステムで運送状を作成し、運送状番号（AWB）を取得",
+      "step2": "運送会社のシステムで運送状を作成し（運送申告価額があれば入力）、運送状番号（AWB）を取得",
       "step3": "この画面で運送状番号を保存",
       "step4": "出荷指示で単証（CI / PL）を発行・印刷",
       "step5": "出荷を完了"

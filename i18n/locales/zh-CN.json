@@ -1419,6 +1419,7 @@
       "total-qty": "总数量",
       "goods-value": "商品金额",
       "freight": "运费",
+      "insurance": "保险费",
       "invoice-total": "发票总额",
       "package-count": "箱数",
       "gross-weight": "总毛重",
@@ -1431,7 +1432,8 @@
       "size": "大小",
       "status": "状态",
       "void-reason": "作废原因",
-      "jp-export-code": "出口统计编号"
+      "jp-export-code": "出口统计编号",
+      "declared-value-carriage": "运送申告价额"
     },
     "doc-types": {
       "commercial_invoice": "商业发票（CI）",
@@ -1486,7 +1488,10 @@
       "delivery-requires-documents": "海外单必须先生成有效的 CI 和 PL，才能完成发货。",
       "documents-outdated": "单证与最新数据不一致，请重新生成",
       "exporter-source": "电话与国家代码优先取仓库设置，其次取公司设置。",
-      "jp-export-code": "日本出口统计品目编号（9 位），仅供核对，不印在 CI 上"
+      "jp-export-code": "日本出口统计品目编号（9 位），仅供核对，不印在 CI 上",
+      "declared-value-carriage-heading": "运送申告价额（Declared Value for Carriage）",
+      "declared-value-carriage": "在承运商系统登记出货时，请把这个金额填为申告价额。",
+      "no-declared-value": "无申告价额（未投保运送保险）"
     },
     "packages": {
       "box-no": "箱",
@@ -1534,7 +1539,7 @@
     },
     "workflow": {
       "step1": "打包时录入箱子（重量、尺寸）",
-      "step2": "在承运商系统建运单，取得运单号（AWB）",
+      "step2": "在承运商系统建运单（有运送申告价额时一并填写），取得运单号（AWB）",
       "step3": "在本页保存运单号",
       "step4": "在出库单生成并打印单证（CI / PL）",
       "step5": "完成发货"

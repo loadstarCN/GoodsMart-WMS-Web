@@ -68,6 +68,8 @@ export interface CustomsTotals {
   quantity: number | null
   goods_value: number | null
   freight: number | null
+  /** 运送保险费（没投保为 0；invoice_total = goods_value + freight + insurance） */
+  insurance?: number | null
   invoice_total: number | null
   package_count: number | null
   gross_weight_kg: number | null

@@ -1419,6 +1419,7 @@
       "total-qty": "Total Qty",
       "goods-value": "Goods Value",
       "freight": "Freight",
+      "insurance": "Insurance",
       "invoice-total": "Total Invoice Value",
       "package-count": "Packages",
       "gross-weight": "Gross Weight",
@@ -1431,7 +1432,8 @@
       "size": "Size",
       "status": "Status",
       "void-reason": "Void Reason",
-      "jp-export-code": "JP Export Stat. Code"
+      "jp-export-code": "JP Export Stat. Code",
+      "declared-value-carriage": "Declared Value for Carriage"
     },
     "doc-types": {
       "commercial_invoice": "Commercial Invoice (CI)",
@@ -1486,7 +1488,10 @@
       "delivery-requires-documents": "Export shipments can be completed only after a valid CI and PL are issued.",
       "documents-outdated": "The documents do not match the latest data. Please issue them again.",
       "exporter-source": "Phone and country code are taken from the warehouse first, then from the company.",
-      "jp-export-code": "Japanese export statistical code (9 digits). For reference only; not printed on the CI."
+      "jp-export-code": "Japanese export statistical code (9 digits). For reference only; not printed on the CI.",
+      "declared-value-carriage-heading": "Declared Value for Carriage",
+      "declared-value-carriage": "Enter this amount as the declared value when booking the shipment in the carrier's system.",
+      "no-declared-value": "No declared value (not insured)"
     },
     "packages": {
       "box-no": "Box",
@@ -1534,7 +1539,7 @@
     },
     "workflow": {
       "step1": "Record packages (weight, dimensions) when packing",
-      "step2": "Create the shipment in the carrier's system and get the tracking number (AWB)",
+      "step2": "Create the shipment in the carrier's system (enter the declared value for carriage if shown) and get the tracking number (AWB)",
       "step3": "Save the tracking number on this page",
       "step4": "Issue and print the documents (CI / PL) on the DN",
       "step5": "Complete the shipment"

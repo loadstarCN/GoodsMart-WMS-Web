@@ -2,7 +2,8 @@
 /**
  * 出库单详情 · 海外出荷単証卡片
  *
- * - 报关概要、逐行明细（缺原产国的行可就地选择并保存到商品主数据）、运费与发票总额
+ * - 报关概要、逐行明细（缺原产国的行可就地选择并保存到商品主数据）、运费 / 保险费与发票总额
+ * - 运送申告价额提示（有值时醒目提示在承运商系统登记出货时填写）
  * - 箱子编辑（cm / kg 录入，保存换算 mm）
  * - 问题清单（错误 / 警告）
  * - 生成单证、打印 CI / PL、历史版本
@@ -313,6 +314,7 @@ defineExpose({ reload: load })
         </p>
 
         <div class="alert alert-warning-transparent" v-if="!view.customs">{{ t('customs.tips.no-snapshot') }}</div>
+        <DeclaredValueNotice :customs="view.customs" v-else />
 
         <div class="row gy-3">
           <!-- ===== 报关概要 ===== -->
@@ -514,6 +516,13 @@ defineExpose({ reload: load })
                     <tr>
                       <td class="text-muted">{{ t('customs.fields.freight') }}</td>
                       <td class="text-end">{{ money(totals?.freight ?? customs.freight_charge) }}</td>
+                    </tr>
+                    <tr>
+                      <td class="text-muted">{{ t('customs.fields.insurance') }}</td>
+                      <td class="text-end">
+                        <span v-if="customs.insurance_charge !== null && customs.insurance_charge !== undefined">{{ money(totals?.insurance ?? customs.insurance_charge) }}</span>
+                        <span class="text-muted" v-else>—</span>
+                      </td>
                     </tr>
                     <tr class="fw-semibold">
                       <td>{{ t('customs.fields.invoice-total') }}</td>
