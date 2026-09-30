@@ -5,7 +5,8 @@
  * - 未启用：不显示按钮，只提示手工建运单
  * - 可建：「在 FedEx 建运单」+ 面单打印方式（A4 普通打印机 / 热敏标签机，记住上次的选择）；不可建时按钮置灰并列出 blockers
  * - 建单中显示进度；失败时显示 FedEx 的错误原文（errors[].code / message、交易 ID）
- * - 已建：运单号、服务、运费、面单格式；PDF 面单新标签页打开打印 / 下载，热敏面单（ZPLII / EPL2）下载指令文件；
+ * - 已建：运单号、服务、运费、面单格式；PDF 面单（A4、热敏默认）新标签页打开打印 / 下载，热敏标签机附打印设置提示；
+ *   后端配置成 ZPLII / EPL2 时下载指令文件；
  *   取消运单（二次确认；DN 已发货时不显示）
  * - 有运送申告价额时注明「已随运单提交」（后端按箱分摊成每箱 declaredValue）
  * - 成功建单 / 取消后通知父组件刷新单证（运单号计入 CI）
@@ -19,6 +20,7 @@ import {
   isActiveShipment,
   isCarrierTimeout,
   isPdfLabel,
+  isThermalLabel,
   LABEL_FORMATS,
   labelDocumentOf,
   labelFileExtension,
@@ -112,6 +114,7 @@ const busy = computed(() => creating.value || cancelling.value)
 const labelDoc = computed(() => labelDocumentOf(activeShipment.value))
 const labelImageType = computed(() => labelImageTypeOf(activeShipment.value))
 const pdfLabel = computed(() => isPdfLabel(activeShipment.value))
+const thermalLabel = computed(() => isThermalLabel(activeShipment.value))
 const labelFormatText = (format: string | null | undefined) => {
   const key = `customs.carrier.label-formats.${String(format || '').toUpperCase()}`
   return format && te(key) ? t(key) : (format || '')
@@ -232,7 +235,7 @@ const cancel = async () => {
   cancelling.value = false
 }
 
-// ------------------ 热敏面单：发送到标签机（扩展点，机型未定时不可用） ----------------------
+// ------------------ 指令文件面单（ZPL / EPL）：发送到标签机（扩展点，现在不可用） ----------------------
 const sendingToPrinter = ref(false)
 const sendToPrinter = async () => {
   const doc = labelDoc.value
@@ -315,7 +318,7 @@ defineExpose({ reload: load })
             <i class="ri-upload-cloud-2-line me-1"></i>{{ t('customs.carrier.tips.etd-submitted') }}
           </div>
           <div class="btn-list mt-3">
-            <!-- PDF 面单（A4 普通打印机）：新标签页打开打印 / 下载 -->
+            <!-- PDF 面单（A4 普通打印机、热敏标签机默认）：新标签页打开打印 / 下载 -->
             <template v-if="pdfLabel">
               <button type="button" class="btn btn-sm btn-primary" :disabled="!labelDoc || busyDocId !== null"
                 :title="t('customs.carrier.tips.label-open')" @click="viewDoc(dnId, labelDoc)">
@@ -327,7 +330,7 @@ defineExpose({ reload: load })
                 <i class="ri-download-line me-1"></i>{{ t('customs.carrier.operations.download-label') }}
               </button>
             </template>
-            <!-- 热敏面单（ZPLII / EPL2）：下载指令文件；直接发送到标签机是扩展点 -->
+            <!-- 指令文件面单（后端配置成 ZPLII / EPL2 时）：下载文件；直接发送到标签机是扩展点 -->
             <template v-else>
               <button type="button" class="btn btn-sm btn-primary" :disabled="!labelDoc || busyDocId !== null"
                 @click="downloadRawDoc(dnId, labelDoc)">
@@ -348,6 +351,9 @@ defineExpose({ reload: load })
             </button>
           </div>
           <div class="fs-12 text-muted mt-2" v-if="!labelDoc">{{ t('customs.carrier.tips.no-label') }}</div>
+          <div class="fs-12 text-warning mt-2" v-else-if="pdfLabel && thermalLabel">
+            <i class="ri-printer-line me-1"></i>{{ t('customs.carrier.tips.thermal-print') }}
+          </div>
           <div class="fs-12 text-muted mt-2" v-else-if="!pdfLabel">
             <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.thermal-file', { type: labelImageType }) }}
           </div>
@@ -378,6 +384,9 @@ defineExpose({ reload: load })
             </div>
             <span class="fs-12 text-muted" v-if="creating">{{ t('customs.carrier.tips.creating') }}</span>
           </div>
+          <p class="fs-12 text-warning mb-2" v-if="!locked && labelFormat === 'THERMAL'">
+            <i class="ri-printer-line me-1"></i>{{ t('customs.carrier.tips.thermal-print') }}
+          </p>
           <div class="mb-2" v-if="!locked && !status.can_create && blockers.length > 0">
             <div class="fw-semibold text-danger fs-13 mb-1">
               <i class="ri-close-circle-line me-1"></i>{{ t('customs.carrier.tips.blocked') }}

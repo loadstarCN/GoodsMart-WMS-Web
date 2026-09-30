@@ -1583,7 +1583,8 @@
         "etd-submitted": "CI 已通过电子贸易单证（ETD）提交给 FedEx",
         "declared-value-submitted": "申告价额 {amount} 已随运单提交",
         "thermal-file": "热敏面单是标签机的指令文件（{type}），需要用标签机的打印程序打开该文件打印。",
-        "send-to-printer-unavailable": "尚未接入标签机直接打印（机型未定）。请先下载面单文件，再用标签机的打印程序打开打印。"
+        "send-to-printer-unavailable": "尚未接入标签机直接打印指令文件。请先下载面单文件，再用标签机的打印程序打开打印。",
+        "thermal-print": "打印时选择标签机，纸张选 100×150mm，缩放选实际大小（100%）"
       },
       "created": "已在 FedEx 建运单：{tracking}",
       "cancelled": "运单 {tracking} 已取消",

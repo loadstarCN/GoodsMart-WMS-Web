@@ -5,7 +5,8 @@
  * POST /warehouse/dn/<dn_id>/carrier-shipment          建单（body.label_format；运单号自动保存到配送任务）
  * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   取消运单（DN 未发货时）
  * 面单文件与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file
- * （A4 = PDF；热敏标签机 = ZPLII / EPL2 指令文件，要用标签机的打印程序打开）
+ * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动；热敏为 4×6 英寸 / 100×150mm。
+ *   后端配置成 ZPLII / EPL2 时才是指令文件，要用标签机的打印程序打开）
  */
 import type { HttpRequestError } from '~/utils/http'
 import type { PdfDocumentRef } from '~/composables/customs/customsDocuments'
@@ -89,7 +90,7 @@ export const normalizeCarrierStatus = (data: any): CarrierShipmentStatus | null 
 }
 
 // ------------------ 面单打印方式 ----------------------
-/** A4 = 普通打印机（PDF）；THERMAL = 热敏标签机（ZPLII / EPL2 等指令文件） */
+/** A4 = 普通打印机；THERMAL = 热敏标签机（当普通打印机用，4×6 英寸 PDF）。文件格式看 image_type */
 export type LabelFormat = 'A4' | 'THERMAL'
 export const LABEL_FORMATS: LabelFormat[] = ['A4', 'THERMAL']
 const LABEL_FORMAT_STORAGE_KEY = 'wms.carrierShipment.labelFormat'
@@ -122,12 +123,12 @@ const LABEL_FILE_EXTENSIONS: Record<string, string> = {
   PNG: 'png',
 }
 
-/** 面单文件格式：后端没给时按打印方式推断（热敏默认 ZPLII，其余 PDF） */
-export const labelImageTypeOf = (shipment: CarrierShipment | null | undefined): string => {
-  const type = String(shipment?.image_type || '').trim().toUpperCase()
-  if (type) return type
-  return String(shipment?.label_format || '').toUpperCase() === 'THERMAL' ? 'ZPLII' : 'PDF'
-}
+/** 面单文件格式：后端没给时按 PDF（A4、热敏默认都是 PDF） */
+export const labelImageTypeOf = (shipment: CarrierShipment | null | undefined): string =>
+  String(shipment?.image_type || '').trim().toUpperCase() || 'PDF'
+
+export const isThermalLabel = (shipment: CarrierShipment | null | undefined): boolean =>
+  String(shipment?.label_format || '').toUpperCase() === 'THERMAL'
 
 export const isPdfLabel = (shipment: CarrierShipment | null | undefined): boolean => labelImageTypeOf(shipment) === 'PDF'
 
@@ -146,8 +147,9 @@ export const labelDocumentOf = (shipment: CarrierShipment | null | undefined): P
 }
 
 /**
- * 热敏标签机直接打印的扩展点。
- * 机型 / 打印程序未定，现在不接（available = false）：界面只提供下载指令文件，并提示用标签机的打印程序打开。
+ * 标签机直接打印指令文件（ZPLII / EPL2）的扩展点：只在后端把热敏面单配置成 ZPL / EPL 时用得到
+ * （默认热敏面单是 PDF，走浏览器打印）。现在不接（available = false）：界面只提供下载指令文件，
+ * 并提示用标签机的打印程序打开。
  * 接入时（如本机打印服务、厂商浏览器插件）在这里实现 send，并把 available 置为 true。
  */
 export const labelPrinterBridge: {

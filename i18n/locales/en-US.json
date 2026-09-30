@@ -1583,7 +1583,8 @@
         "etd-submitted": "The CI was submitted to FedEx as an Electronic Trade Document (ETD)",
         "declared-value-submitted": "Declared value {amount} submitted with the shipment",
         "thermal-file": "Thermal labels are printer command files ({type}). Open the file with the label printer's printing software to print it.",
-        "send-to-printer-unavailable": "Direct printing to a label printer is not connected yet (printer model not decided). Download the label file and open it with the label printer's printing software."
+        "send-to-printer-unavailable": "Sending command files directly to the label printer is not connected yet. Download the label file and open it with the label printer's printing software.",
+        "thermal-print": "When printing, choose the label printer, paper size 100×150 mm and scale Actual size (100%)"
       },
       "created": "FedEx shipment created: {tracking}",
       "cancelled": "Shipment {tracking} cancelled",

@@ -14,6 +14,7 @@ import {
   declaredValueModeOf,
   isActiveShipment,
   isPdfLabel,
+  isThermalLabel,
   labelDocumentOf,
   labelFileExtension,
   labelImageTypeOf,
@@ -86,6 +87,7 @@ const carrierShipment = computed(() => {
 const declaredValueMode = computed(() => declaredValueModeOf(carrierStatus.value))
 const labelDoc = computed(() => labelDocumentOf(carrierShipment.value))
 const pdfLabel = computed(() => isPdfLabel(carrierShipment.value))
+const thermalLabel = computed(() => isThermalLabel(carrierShipment.value))
 const labelExt = computed(() => labelFileExtension(labelImageTypeOf(carrierShipment.value)))
 
 defineExpose({ reload: load })
@@ -163,10 +165,11 @@ defineExpose({ reload: load })
             <span v-if="pl && busyDocId === pl.id" class="spinner-border spinner-border-sm me-1"></span>
             <i v-else class="ri-printer-line me-1"></i>{{ t('customs.operations.print-pl') }}
           </button>
-          <!-- 面单：PDF 新标签页打开打印；热敏面单下载指令文件（用标签机的打印程序打开） -->
+          <!-- 面单：PDF 新标签页打开打印（热敏标签机提示打印设置）；ZPL / EPL 指令文件下载（用标签机的打印程序打开） -->
           <template v-if="labelDoc">
             <button type="button" class="btn btn-sm btn-primary-light" v-if="pdfLabel" :disabled="busyDocId !== null"
-              :title="t('customs.carrier.tips.label-open')" @click="viewDoc(dnId, labelDoc)">
+              :title="thermalLabel ? t('customs.carrier.tips.thermal-print') : t('customs.carrier.tips.label-open')"
+              @click="viewDoc(dnId, labelDoc)">
               <span v-if="busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
               <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.print-label') }}
             </button>
@@ -181,6 +184,9 @@ defineExpose({ reload: load })
           <i class="ri-file-list-3-line me-1"></i>{{ t('customs.operations.open-card') }}
         </NuxtLink>
       </div>
+      <p class="fs-12 text-warning mt-2 mb-0" v-if="showPrint && labelDoc && pdfLabel && thermalLabel">
+        <i class="ri-printer-line me-1"></i>{{ t('customs.carrier.tips.thermal-print') }}
+      </p>
     </template>
   </div>
 </template>
