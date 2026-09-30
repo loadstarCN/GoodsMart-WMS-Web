@@ -14,10 +14,10 @@ import {
   declaredValueModeOf,
   isActiveShipment,
   isPdfLabel,
-  isThermalLabel,
   labelDocumentOf,
   labelFileExtension,
   labelImageTypeOf,
+  labelPrintHintKey,
   normalizeCarrierStatus,
   type CarrierShipmentStatus,
 } from '~/composables/customs/carrierShipment'
@@ -87,7 +87,11 @@ const carrierShipment = computed(() => {
 const declaredValueMode = computed(() => declaredValueModeOf(carrierStatus.value))
 const labelDoc = computed(() => labelDocumentOf(carrierShipment.value))
 const pdfLabel = computed(() => isPdfLabel(carrierShipment.value))
-const thermalLabel = computed(() => isThermalLabel(carrierShipment.value))
+/** PDF 面单的打印提示（A4 选「适合纸张」、热敏选 100×150mm 实际大小） */
+const labelPrintHint = computed(() => {
+  const s = carrierShipment.value
+  return s ? labelPrintHintKey(s.label_format || 'A4', labelImageTypeOf(s)) : null
+})
 const labelExt = computed(() => labelFileExtension(labelImageTypeOf(carrierShipment.value)))
 
 defineExpose({ reload: load })
@@ -168,7 +172,7 @@ defineExpose({ reload: load })
           <!-- 面单：PDF 新标签页打开打印（热敏标签机提示打印设置）；ZPL / EPL 指令文件下载（用标签机的打印程序打开） -->
           <template v-if="labelDoc">
             <button type="button" class="btn btn-sm btn-primary-light" v-if="pdfLabel" :disabled="busyDocId !== null"
-              :title="thermalLabel ? t('customs.carrier.tips.thermal-print') : t('customs.carrier.tips.label-open')"
+              :title="labelPrintHint ? t(labelPrintHint) : t('customs.carrier.tips.label-open')"
               @click="viewDoc(dnId, labelDoc)">
               <span v-if="busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
               <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.print-label') }}
@@ -184,8 +188,8 @@ defineExpose({ reload: load })
           <i class="ri-file-list-3-line me-1"></i>{{ t('customs.operations.open-card') }}
         </NuxtLink>
       </div>
-      <p class="fs-12 text-warning mt-2 mb-0" v-if="showPrint && labelDoc && pdfLabel && thermalLabel">
-        <i class="ri-printer-line me-1"></i>{{ t('customs.carrier.tips.thermal-print') }}
+      <p class="fs-12 text-warning mt-2 mb-0" v-if="showPrint && labelDoc && pdfLabel && labelPrintHint">
+        <i class="ri-printer-line me-1"></i>{{ t(labelPrintHint) }}
       </p>
     </template>
   </div>

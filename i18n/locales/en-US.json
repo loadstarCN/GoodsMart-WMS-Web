@@ -1594,7 +1594,10 @@
         "thermal-print": "When printing, choose the label printer, paper size 100×150 mm and scale Actual size (100%)",
         "alerts": "Notes from FedEx:",
         "etd-enabled": "Electronic Trade Documents (ETD) are enabled: the CI is submitted to FedEx electronically when the shipment is created.",
-        "permission-denied": "FedEx denied permission for this action. Check that the FedEx API project has the required API (e.g. Ship API) enabled."
+        "permission-denied": "FedEx denied permission for this action. Check that the FedEx API project has the required API (e.g. Ship API) enabled.",
+        "a4-print": "When printing on A4 paper, choose “Fit to page” (the FedEx label page is Letter size, 6 mm wider than A4; the label is on the upper half)",
+        "auxiliary": "The label PDF also contains FedEx AWB copy pages (FEDEX AWB COPY). Print all pages and follow the instructions on them.",
+        "warnings": "Please note:"
       },
       "created": "FedEx shipment created: {tracking} (tracking number saved, CI / PL updated)",
       "cancelled": "Shipment {tracking} cancelled",
@@ -1651,6 +1654,7 @@
     "code-16073": "FedEx returned an error",
     "code-16074": "FedEx timed out",
     "code-16075": "There is no valid shipment",
-    "code-16076": "A valid FedEx shipment exists; cancel it before changing the packages"
+    "code-16076": "A valid FedEx shipment exists; cancel it before changing the packages",
+    "code-16077": "Invalid label printing option (A4 or THERMAL only)"
   }
 }

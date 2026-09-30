@@ -1594,7 +1594,10 @@
         "thermal-print": "打印时选择标签机，纸张选 100×150mm，缩放选实际大小（100%）",
         "alerts": "FedEx 的提示：",
         "etd-enabled": "已启用电子贸易单证（ETD）：建单时 CI 会电子提交给 FedEx。",
-        "permission-denied": "FedEx 拒绝了该操作的权限：请确认 FedEx API 项目已开通相应接口（如 Ship API）。"
+        "permission-denied": "FedEx 拒绝了该操作的权限：请确认 FedEx API 项目已开通相应接口（如 Ship API）。",
+        "a4-print": "用 A4 纸打印时，缩放请选「适合纸张」（FedEx 面单页面是 Letter 尺寸，比 A4 宽 6mm；上半页是面单）",
+        "auxiliary": "面单 PDF 里还包含 FedEx AWB 副本页（FEDEX AWB COPY），请全部打印，并按页面上的说明处理。",
+        "warnings": "请注意："
       },
       "created": "已在 FedEx 建运单：{tracking}（运单号已保存，CI / PL 已更新）",
       "cancelled": "运单 {tracking} 已取消",
@@ -1651,6 +1654,7 @@
     "code-16073": "FedEx 返回错误",
     "code-16074": "FedEx 响应超时",
     "code-16075": "没有有效的运单",
-    "code-16076": "已有有效的 FedEx 运单，改箱子前请先取消运单"
+    "code-16076": "已有有效的 FedEx 运单，改箱子前请先取消运单",
+    "code-16077": "面单打印方式不合法（只能是 A4 或 THERMAL）"
   }
 }

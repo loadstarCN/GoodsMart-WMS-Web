@@ -3,7 +3,9 @@
  * 出库单单证卡片 · 承运商运单（FedEx 自动建单）
  *
  * - 未启用：不显示按钮，只提示手工建运单
- * - 可建：「在 FedEx 建运单」+ 面单打印方式（A4 普通打印机 / 热敏标签机，记住上次的选择）；不可建时按钮置灰并列出 blockers
+ * - 可建：「在 FedEx 建运单」+ 面单打印方式（A4 普通打印机 / 热敏标签机；上次的选择 → 后端默认 → A4）；
+ *   不可建时按钮置灰并列出 blockers
+ * - 状态附带的提醒（warnings）按 code 显示
  * - 建单中显示进度；成功时显示 FedEx 的提示（alerts）；失败时显示 FedEx 的错误原文（errors[].code / message、交易 ID）
  * - 已建：运单号、服务、运费、面单格式；PDF 面单（A4、热敏默认）新标签页打开打印 / 下载，热敏标签机附打印设置提示；
  *   后端配置成 ZPLII / EPL2 时下载指令文件；
@@ -17,23 +19,27 @@ import {
   carrierShipmentUrl,
   extractCarrierAlerts,
   extractCarrierErrors,
+  hasAuxiliaryLabel,
   formatServiceType,
   isActiveShipment,
   isCarrierTimeout,
   isPdfLabel,
-  isThermalLabel,
   LABEL_FORMATS,
   labelDocumentOf,
   labelFileExtension,
+  labelFormatImageType,
   labelImageTypeOf,
   labelPrinterBridge,
+  labelPrintHintKey,
   loadLabelFormat,
   normalizeCarrierStatus,
   saveLabelFormat,
+  toLabelFormat,
   type CarrierAlert,
   type CarrierRequestFailure,
   type CarrierShipmentBlocker,
   type CarrierShipmentStatus,
+  type CarrierWarning,
   type LabelFormat,
 } from '~/composables/customs/carrierShipment'
 
@@ -75,8 +81,10 @@ const cancelling = ref(false)
 const failure = ref<CarrierRequestFailure | null>(null)
 /** 建单成功时 FedEx 返回的提示（建议显示） */
 const alerts = ref<CarrierAlert[]>([])
-/** 面单打印方式：默认用上次的选择（localStorage，取不到就 A4） */
+/** 面单打印方式：上次的选择（localStorage）优先，没有时用后端默认，最后 A4 */
 const labelFormat = ref<LabelFormat>('A4')
+/** 用户自己选过（localStorage 里有）：后端默认不覆盖 */
+let labelFormatChosen = false
 
 // ------------------ 读取 ----------------------
 const load = async () => {
@@ -87,6 +95,8 @@ const load = async () => {
     onSuccess: (data) => {
       status.value = normalizeCarrierStatus(data)
       unsupported.value = false
+      const backendDefault = toLabelFormat(status.value?.default_label_format)
+      if (!labelFormatChosen && backendDefault) labelFormat.value = backendDefault
     },
     onError: (error) => {
       if (error.status === 404 && (error.code === undefined || error.code === null)) {
@@ -103,10 +113,19 @@ const load = async () => {
 }
 
 onMounted(() => {
-  labelFormat.value = loadLabelFormat()
+  const saved = loadLabelFormat()
+  if (saved) {
+    labelFormat.value = saved
+    labelFormatChosen = true
+  }
   load()
 })
-watch(labelFormat, (value: LabelFormat) => saveLabelFormat(value))
+/** 用户点选打印方式：记住，下次默认用它 */
+const chooseLabelFormat = (format: LabelFormat) => {
+  labelFormat.value = format
+  labelFormatChosen = true
+  saveLabelFormat(format)
+}
 watch(status, (value: CarrierShipmentStatus | null) => emit('status', value))
 
 // ------------------ 状态 ----------------------
@@ -121,7 +140,22 @@ const busy = computed(() => creating.value || cancelling.value)
 const labelDoc = computed(() => labelDocumentOf(activeShipment.value))
 const labelImageType = computed(() => labelImageTypeOf(activeShipment.value))
 const pdfLabel = computed(() => isPdfLabel(activeShipment.value))
-const thermalLabel = computed(() => isThermalLabel(activeShipment.value))
+/** 已建面单的打印提示（PDF：A4 选「适合纸张」、热敏选 100×150mm 实际大小） */
+const labelPrintHint = computed(() =>
+  activeShipment.value ? labelPrintHintKey(activeShipment.value.label_format || 'A4', labelImageType.value) : null)
+const auxiliaryLabel = computed(() => hasAuxiliaryLabel(activeShipment.value))
+/** 选中的打印方式建单后得到的文件格式与打印提示 */
+const selectedImageType = computed(() => labelFormatImageType(status.value, labelFormat.value))
+const selectedPrintHint = computed(() => labelPrintHintKey(labelFormat.value, selectedImageType.value))
+const labelFormatTitle = (format: string) => {
+  const cfg = status.value?.label_formats?.[format]
+  return cfg ? [cfg.image_type, cfg.stock_type].filter(Boolean).join(' / ') : ''
+}
+const warnings = computed<CarrierWarning[]>(() => status.value?.warnings || [])
+const warningText = (w: CarrierWarning) => {
+  const key = `customs.carrier.warnings.${w.code}`
+  return w.code && te(key) ? t(key) : (w.message || w.code || '')
+}
 const labelFormatText = (format: string | null | undefined) => {
   const key = `customs.carrier.label-formats.${String(format || '').toUpperCase()}`
   return format && te(key) ? t(key) : (format || '')
@@ -306,6 +340,14 @@ defineExpose({ reload: load })
     <div class="alert alert-danger-transparent fs-13 mb-0" v-else-if="loadError && !status">{{ loadError }}</div>
 
     <template v-else-if="status">
+      <!-- 后端附带的提醒（如申告价额已按货值调整） -->
+      <div class="alert alert-warning-transparent fs-12 py-2 mb-2" role="alert" v-if="enabled && warnings.length > 0">
+        <div class="fw-semibold mb-1"><i class="ri-error-warning-line me-1"></i>{{ t('customs.carrier.tips.warnings') }}</div>
+        <ul class="mb-0 ps-3">
+          <li v-for="(w, i) in warnings" :key="`w-${i}`" :title="w.message || ''" class="text-break">{{ warningText(w) }}</li>
+        </ul>
+      </div>
+
       <!-- 未启用：只提示手工建运单 -->
       <p class="fs-12 text-muted mb-0" v-if="!enabled">
         <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.disabled') }}
@@ -402,12 +444,17 @@ defineExpose({ reload: load })
             </button>
           </div>
           <div class="fs-12 text-muted mt-2" v-if="!labelDoc">{{ t('customs.carrier.tips.no-label') }}</div>
-          <div class="fs-12 text-warning mt-2" v-else-if="pdfLabel && thermalLabel">
-            <i class="ri-printer-line me-1"></i>{{ t('customs.carrier.tips.thermal-print') }}
-          </div>
-          <div class="fs-12 text-muted mt-2" v-else-if="!pdfLabel">
-            <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.thermal-file', { type: labelImageType }) }}
-          </div>
+          <template v-else>
+            <div class="fs-12 text-warning mt-2" v-if="labelPrintHint">
+              <i class="ri-printer-line me-1"></i>{{ t(labelPrintHint) }}
+            </div>
+            <div class="fs-12 text-muted mt-2" v-else-if="!pdfLabel">
+              <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.thermal-file', { type: labelImageType }) }}
+            </div>
+            <div class="fs-12 text-muted mt-1" v-if="pdfLabel && auxiliaryLabel">
+              <i class="ri-file-copy-2-line me-1"></i>{{ t('customs.carrier.tips.auxiliary') }}
+            </div>
+          </template>
         </div>
 
         <!-- 还没有有效运单 -->
@@ -427,17 +474,22 @@ defineExpose({ reload: load })
             <div class="btn-group btn-group-sm" role="group" :aria-label="t('customs.carrier.fields.label-format-choice')">
               <template v-for="f in LABEL_FORMATS" :key="f">
                 <input type="radio" class="btn-check" :id="`label-format-${dnId}-${f}`" :value="f"
-                  v-model="labelFormat" :disabled="busy" autocomplete="off">
-                <label class="btn btn-outline-primary" :for="`label-format-${dnId}-${f}`">
+                  :checked="labelFormat === f" :disabled="busy" autocomplete="off" @change="chooseLabelFormat(f)">
+                <label class="btn btn-outline-primary" :for="`label-format-${dnId}-${f}`" :title="labelFormatTitle(f)">
                   <i class="me-1" :class="f === 'THERMAL' ? 'ri-barcode-box-line' : 'ri-file-paper-2-line'"></i>{{ labelFormatText(f) }}
                 </label>
               </template>
             </div>
             <span class="fs-12 text-muted" v-if="creating">{{ t('customs.carrier.tips.creating') }}</span>
           </div>
-          <p class="fs-12 text-warning mb-2" v-if="!locked && labelFormat === 'THERMAL'">
-            <i class="ri-printer-line me-1"></i>{{ t('customs.carrier.tips.thermal-print') }}
-          </p>
+          <template v-if="!locked">
+            <p class="fs-12 text-warning mb-2" v-if="selectedPrintHint">
+              <i class="ri-printer-line me-1"></i>{{ t(selectedPrintHint) }}
+            </p>
+            <p class="fs-12 text-muted mb-2" v-else>
+              <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.thermal-file', { type: selectedImageType }) }}
+            </p>
+          </template>
           <div class="mb-2" v-if="!locked && !status.can_create && blockers.length > 0">
             <div class="fw-semibold text-danger fs-13 mb-1">
               <i class="ri-close-circle-line me-1"></i>{{ t('customs.carrier.tips.blocked') }}

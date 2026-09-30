@@ -6,10 +6,10 @@
  *                                                      运单号存到配送任务，CI / PL 自动带运单号重新签发
  * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   取消运单（DN 未发货时）→ 200 状态
  * 失败：409 16072（details.blockers）/ 502 16073（FedEx 报错，details.errors / transaction_id / action）/
- *       504 16074（超时，details.maybe_processed）/ 409 16075（没有有效运单）
+ *       504 16074（超时，details.maybe_processed）/ 409 16075（没有有效运单）/ 400 16077（label_format 不合法）
  * 面单文件与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file（doc_type = shipping_label）
- * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动；热敏为 4×6 英寸 / 100×150mm。
- *   后端配置成 ZPLII / EPL2 时才是指令文件，要用标签机的打印程序打开）
+ * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动：A4 = Letter 页上半页面单（A4 纸选「适合纸张」），
+ *   热敏 = 4×6 英寸页面（100×150mm 纸）。后端配置成 ZPLII / EPL2 时才是指令文件，要用标签机的打印程序打开）
  */
 import type { HttpRequestError } from '~/utils/http'
 import type { PdfDocumentRef } from '~/composables/customs/customsDocuments'
@@ -43,13 +43,36 @@ export interface CarrierShipment {
   /** 面单文件格式（PDF / ZPLII / EPL2 …） */
   image_type?: string | null
   etd_document_id?: number | null
+  label_stock_type?: string | null
   /** 面单文件名 / 校验值（没有时下载用 label_<运单号>.<扩展名>，校验看响应头 X-Content-SHA256） */
   label_file_name?: string | null
+  label_content_type?: string | null
   label_sha256?: string | null
+  /** 面单 PDF 的组成（每箱面单、国际件的 AWB 副本 AUXILIARY 等） */
+  label_parts?: CarrierLabelPart[] | null
   created_at: string | null
   created_by: any
   cancelled_at: string | null
   cancelled_by?: any
+}
+
+export interface CarrierLabelPart {
+  source?: string | null
+  package_sequence?: number | null
+  tracking_number?: string | null
+  /** LABEL / AUXILIARY … */
+  content_type?: string | null
+  doc_type?: string | null
+  copies?: number | null
+  pages?: number | null
+  archived?: boolean | null
+  note?: string | null
+}
+
+/** 状态接口附带的提醒（按 code 做文案，未知 code 显示 message） */
+export interface CarrierWarning {
+  code: string | null
+  message: string | null
 }
 
 export interface CarrierShipmentStatus {
@@ -65,6 +88,11 @@ export interface CarrierShipmentStatus {
   /** 报关快照的运送申告价额：有值时自动建单按箱分摊随运单提交 */
   declared_value_carriage?: number | null
   delivery_task_id?: number | null
+  /** 后端配置的默认面单打印方式 */
+  default_label_format?: string | null
+  /** 各打印方式对应的文件格式 / 纸张类型 */
+  label_formats?: Record<string, { image_type?: string | null; stock_type?: string | null }> | null
+  warnings?: CarrierWarning[]
 }
 
 /** 建单成功时 FedEx 返回的提示（如 CUSTOMVALUE.GREATER.THAN.DECLAREDVALUE） */
@@ -109,6 +137,16 @@ export interface CarrierRequestFailure {
   permissionDenied: boolean
 }
 
+/** 提醒列表（warnings）：只留有 code 或 message 的项 */
+export const extractCarrierWarnings = (data: any): CarrierWarning[] =>
+  (Array.isArray(data?.warnings) ? data.warnings : [])
+    .map((w: any) =>
+      w && typeof w === 'object'
+        ? { code: w.code != null ? String(w.code) : null, message: w.message != null ? String(w.message) : null }
+        : { code: null, message: w != null ? String(w) : null }
+    )
+    .filter((w: CarrierWarning) => w.code || w.message)
+
 export const carrierShipmentUrl = (dnId: number | string) => `/api/warehouse/dn/${dnId}/carrier-shipment`
 
 export const isActiveShipment = (shipment: CarrierShipment | null | undefined): shipment is CarrierShipment =>
@@ -129,6 +167,9 @@ export const normalizeCarrierStatus = (data: any): CarrierShipmentStatus | null 
     etd_enabled: !!data.etd_enabled,
     declared_value_carriage: data.declared_value_carriage ?? null,
     delivery_task_id: data.delivery_task_id ?? null,
+    default_label_format: data.default_label_format ?? null,
+    label_formats: data.label_formats && typeof data.label_formats === 'object' ? data.label_formats : null,
+    warnings: extractCarrierWarnings(data),
   }
 }
 
@@ -148,15 +189,20 @@ export type LabelFormat = 'A4' | 'THERMAL'
 export const LABEL_FORMATS: LabelFormat[] = ['A4', 'THERMAL']
 const LABEL_FORMAT_STORAGE_KEY = 'wms.carrierShipment.labelFormat'
 
-/** 上次选的面单打印方式（取不到或不认识 → A4） */
-export const loadLabelFormat = (): LabelFormat => {
+/** 认识的打印方式（大小写不敏感），否则 null */
+export const toLabelFormat = (value: unknown): LabelFormat | null => {
+  const v = String(value ?? '').trim().toUpperCase()
+  return (LABEL_FORMATS as string[]).includes(v) ? (v as LabelFormat) : null
+}
+
+/** 上次选的面单打印方式；没选过 / 取不到 / 不认识 → null（调用方再用后端默认，最后 A4） */
+export const loadLabelFormat = (): LabelFormat | null => {
   try {
-    const saved = localStorage.getItem(LABEL_FORMAT_STORAGE_KEY)
-    if (saved && (LABEL_FORMATS as string[]).includes(saved)) return saved as LabelFormat
+    return toLabelFormat(localStorage.getItem(LABEL_FORMAT_STORAGE_KEY))
   } catch {
-    // 无痕模式等取不到 localStorage 时用默认值
+    // 无痕模式等取不到 localStorage
+    return null
   }
-  return 'A4'
 }
 
 export const saveLabelFormat = (format: LabelFormat): void => {
@@ -180,10 +226,28 @@ const LABEL_FILE_EXTENSIONS: Record<string, string> = {
 export const labelImageTypeOf = (shipment: CarrierShipment | null | undefined): string =>
   String(shipment?.image_type || '').trim().toUpperCase() || 'PDF'
 
-export const isThermalLabel = (shipment: CarrierShipment | null | undefined): boolean =>
-  String(shipment?.label_format || '').toUpperCase() === 'THERMAL'
+/** PNG 面单后端也存成 PDF */
+const isPdfImageType = (imageType: string | null | undefined): boolean =>
+  ['PDF', 'PNG'].includes(String(imageType || 'PDF').toUpperCase())
 
-export const isPdfLabel = (shipment: CarrierShipment | null | undefined): boolean => labelImageTypeOf(shipment) === 'PDF'
+export const isPdfLabel = (shipment: CarrierShipment | null | undefined): boolean => isPdfImageType(labelImageTypeOf(shipment))
+
+/** 某个打印方式建单后会得到的文件格式（按状态里的 label_formats，没有时按 PDF） */
+export const labelFormatImageType = (status: CarrierShipmentStatus | null | undefined, format: string): string =>
+  String(status?.label_formats?.[format]?.image_type || 'PDF').toUpperCase()
+
+/**
+ * PDF 面单的打印提示：热敏 = 选标签机、100×150mm、实际大小；A4 = Letter 页，A4 纸选「适合纸张」。
+ * 指令文件（ZPL / EPL）返回 null（另有提示）。
+ */
+export const labelPrintHintKey = (format: string | null | undefined, imageType: string | null | undefined): string | null => {
+  if (!isPdfImageType(imageType)) return null
+  return String(format || '').toUpperCase() === 'THERMAL' ? 'customs.carrier.tips.thermal-print' : 'customs.carrier.tips.a4-print'
+}
+
+/** 面单 PDF 里是否含国际件的 AWB 副本页（AUXILIARY） */
+export const hasAuxiliaryLabel = (shipment: CarrierShipment | null | undefined): boolean =>
+  (shipment?.label_parts || []).some((p) => String(p?.content_type || '').toUpperCase() === 'AUXILIARY')
 
 export const labelFileExtension = (imageType: string): string =>
   LABEL_FILE_EXTENSIONS[String(imageType).toUpperCase()] || String(imageType).toLowerCase() || 'bin'
@@ -191,7 +255,7 @@ export const labelFileExtension = (imageType: string): string =>
 /** 有效运单的面单文档（取文件用）；没有面单返回 null */
 export const labelDocumentOf = (shipment: CarrierShipment | null | undefined): PdfDocumentRef | null => {
   if (!isActiveShipment(shipment) || !shipment.label_document_id) return null
-  const ext = labelFileExtension(labelImageTypeOf(shipment))
+  const ext = isPdfLabel(shipment) ? 'pdf' : labelFileExtension(labelImageTypeOf(shipment))
   return {
     id: Number(shipment.label_document_id),
     sha256: shipment.label_sha256 || null,
