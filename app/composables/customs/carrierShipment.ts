@@ -153,8 +153,8 @@ export const extractCarrierWarnings = (data: any): CarrierWarning[] =>
         ? {
             code: w.code != null ? String(w.code) : null,
             message: w.message != null ? String(w.message) : null,
-            requested: toNumberOrNull(w.requested ?? w.declared_value_carriage),
-            applied: toNumberOrNull(w.applied ?? w.declared_value),
+            requested: toNumberOrNull(w.requested),
+            applied: toNumberOrNull(w.applied),
           }
         : { code: null, message: w != null ? String(w) : null }
     )
