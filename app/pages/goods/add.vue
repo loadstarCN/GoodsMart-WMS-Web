@@ -206,8 +206,9 @@ const addProduct = async () => {
                       </div>
                       <div class="col-xl-6">
                         <label for="product-weight" class="form-label">{{ t('goods.fields.weight')}}</label>
+                        <!-- 重量是三位小数（kg） -->
                         <input v-maska:[] type="text" class="form-control number-format" id="product-weight"
-                          data-maska="0.99" data-maska-tokens="0:\d:multiple|9:\d:optional"
+                          data-maska="0.999" data-maska-tokens="0:\d:multiple|9:\d:optional"
                           :placeholder="t('goods.form.placeholders.weight')" v-model="itemData.weight">
                         <label for="product-weight" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{
                           t('goods.form.tips.weight')}}</label>

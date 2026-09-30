@@ -7,6 +7,7 @@ definePageMeta({
 import { QuillEditor } from '@vueup/vue-quill'
 import 'quill/dist/quill.snow.css'
 import { categoriesOptions, currenciesOptions, unitsOptions,tagsOptions } from '~/data/selectOptions'
+import { buildGoodsUpdatePayload, snapshotGoodsForm } from '~/utils/goodsForm'
 
 
 // 获取国际化方法
@@ -55,6 +56,10 @@ const errors = ref({
   code: null
 })
 
+// 打开时的原值：保存时只提交改过的字段（见 utils/goodsForm.ts），
+// 避免把别处在这之后更新的原产国 / 实测重量尺寸用画面上的旧值盖掉
+let originalData = null
+
 // 标签处理方法
 const addTag = (newTag) => {
   selectOptions.tagOptions.push(newTag)
@@ -87,20 +92,24 @@ const saveProduct = async () => {
 
   if (Object.values(errors.value).some(v => v)) return
 
-  itemData.value.tags = convert_tags_to_string(itemData.value.tags)
+  // 只带改过的字段：原产国没动就不带（用户明确清空才传 ''），重量尺寸没动也不带
+  const body = originalData ? buildGoodsUpdatePayload(originalData, itemData.value) : null
+  if (!body) return
+  if (Object.keys(body).length === 0) {
+    showToast(t('goods.form.tips.no-changes'), 'warning')
+    return
+  }
 
   await httpRequest(`/api/warehouse/goods/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    // 原产国清空时传空串（后端约定：空串 = 清空）
-    body: { ...itemData.value, origin_country: itemData.value.origin_country || '' },
+    body,
     onSuccess: async () => {
       showToast(t('action-results.op-success',{operation:t('goods.operations.edit'),entity:itemData.value.name}), 'success')
       await router.push('/goods/')          
     },
     onError: (error) => {
       showToast(hasBizMessage(error) ? bizErrorMessage(error) : t('action-results.op-failed',{operation:t('goods.operations.edit'),entity:itemData.value.name}), 'error')
-      itemData.value.tags = convert_tags_to_array(itemData.value.tags)
     }
   })
 }
@@ -117,7 +126,7 @@ const fetchData = async () => {
           itemData.value = data;
           // 将tags字符串转换为数组
           itemData.value.tags = convert_tags_to_array(data.tags)
-          
+          originalData = snapshotGoodsForm(itemData.value)
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -236,8 +245,9 @@ onMounted(async() => {
                       </div>
                       <div class="col-xl-6">
                         <label for="product-weight" class="form-label">{{ t('goods.fields.weight')}}</label>
+                        <!-- 重量是三位小数（kg）：掩码只放两位会在加载时把 0.125 截成 0.12，并被当成修改提交 -->
                         <input v-maska:[] type="text" class="form-control number-format" id="product-weight"
-                          data-maska="0.99" data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('goods.form.placeholders.weight')"
+                          data-maska="0.999" data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('goods.form.placeholders.weight')"
                           v-model="itemData.weight">
                         <label for="product-weight" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{ t('goods.form.tips.weight')}}</label>
                       </div>
