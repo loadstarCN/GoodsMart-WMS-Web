@@ -574,7 +574,7 @@ defineExpose({ reload: reloadAll })
           <!-- ===== 承运商运单 ===== -->
           <div class="col-12">
             <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" :locked="locked" :customs="view.customs"
-              :package-count="totals?.package_count ?? packagesForEditor.length"
+              :warehouse-id="warehouseId" :package-count="totals?.package_count ?? packagesForEditor.length"
               @status="carrierStatus = $event" @changed="onCarrierChanged" />
           </div>
 

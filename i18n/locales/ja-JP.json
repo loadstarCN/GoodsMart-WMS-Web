@@ -1437,7 +1437,8 @@
     },
     "doc-types": {
       "commercial_invoice": "コマーシャルインボイス（CI）",
-      "packing_list": "パッキングリスト（PL）"
+      "packing_list": "パッキングリスト（PL）",
+      "shipping_label": "ラベル"
     },
     "doc-status": {
       "issued": "有効",
@@ -1446,7 +1447,8 @@
     "void-reasons": {
       "packages_changed": "箱情報の変更",
       "customs_changed": "通関データの変更",
-      "data_changed": "データの変更（再発行）"
+      "data_changed": "データの変更（再発行）",
+      "shipment_cancelled": "運送状の取り消し"
     },
     "export-reasons": {
       "SALE": "販売"
@@ -1560,7 +1562,11 @@
         "created": "作成日時",
         "transaction-id": "FedEx トランザクション ID",
         "label-format": "ラベル",
-        "label-format-choice": "ラベルの印刷方法："
+        "label-format-choice": "ラベルの印刷方法：",
+        "package-count": "{count} 箱",
+        "ship-date": "出荷日",
+        "package-tracking-numbers": "箱ごとの運送状番号",
+        "action": "FedEx の操作"
       },
       "operations": {
         "create": "FedEx で運送状を作成",
@@ -1568,15 +1574,16 @@
         "download-label": "ラベルをダウンロード",
         "cancel": "運送状を取り消す",
         "download-label-file": "ラベルファイルをダウンロード（.{ext}）",
-        "send-to-printer": "ラベルプリンターへ送信"
+        "send-to-printer": "ラベルプリンターへ送信",
+        "open-delivery": "配送タスクへ"
       },
       "tips": {
         "disabled": "FedEx の自動作成は無効です（バックエンドの設定で有効にできます）。運送会社のシステムで運送状を作成し、配送タスクで運送状番号を保存してください。",
-        "auto": "この画面の箱情報・通関明細・輸出者情報で作成します。有効な単証がないときは先に CI / PL を発行します。作成すると運送状番号は配送タスクに自動保存されます。FedEx が使えないときは、運送会社のシステムで手動作成し、配送タスクで運送状番号を保存してください。",
+        "auto": "この画面の箱情報・通関明細・輸出者情報で作成します。作成すると運送状番号は配送タスクに自動保存され、CI / PL も運送状番号入りで自動的に再発行されます。FedEx が使えないときは、運送会社のシステムで手動作成し、配送タスクで運送状番号を保存してください。",
         "creating": "FedEx で運送状を作成しています。数十秒かかることがあります。画面を閉じないでください…",
         "blocked": "現在は自動作成できません：",
         "carrier-errors": "FedEx からのエラー：",
-        "timeout": "FedEx の応答がタイムアウトしました。運送状が FedEx 側で作成済みの可能性があります。二重作成を避けるため、再試行の前にこの欄を再読み込みするか、FedEx のサイトで確認してください。",
+        "timeout": "FedEx の応答がタイムアウトしました。運送状が FedEx 側で作成済みの可能性があります。二重作成を避けるため、再試行の前に FedEx Ship Manager で確認してください。",
         "last-cancelled": "前回の運送状 {tracking} は {time} に取り消されました",
         "no-label": "ラベルのファイルがありません",
         "label-open": "ラベル PDF を新しいタブで開きます（印刷・ダウンロードできます）",
@@ -1584,9 +1591,12 @@
         "declared-value-submitted": "申告価額 {amount} は運送状とともに送信済みです",
         "thermal-file": "感熱ラベルはラベルプリンター用のコマンドファイル（{type}）です。ラベルプリンターの印刷ソフトでこのファイルを開いて印刷してください。",
         "send-to-printer-unavailable": "ラベルプリンターへのコマンドファイルの直接送信はまだ接続していません。ラベルファイルをダウンロードし、ラベルプリンターの印刷ソフトで開いて印刷してください。",
-        "thermal-print": "印刷時はラベルプリンターを選び、用紙は 100×150mm、倍率は実際のサイズ（100%）を選んでください"
+        "thermal-print": "印刷時はラベルプリンターを選び、用紙は 100×150mm、倍率は実際のサイズ（100%）を選んでください",
+        "alerts": "FedEx からの注意事項：",
+        "etd-enabled": "電子貿易書類（ETD）が有効です。作成時に CI を FedEx へ電子送信します。",
+        "permission-denied": "FedEx でこの操作の権限が拒否されました。FedEx API プロジェクトで該当 API（Ship API など）が有効になっているか確認してください。"
       },
-      "created": "FedEx で運送状を作成しました：{tracking}",
+      "created": "FedEx で運送状を作成しました：{tracking}（運送状番号を保存し、CI / PL を更新しました）",
       "cancelled": "運送状 {tracking} を取り消しました",
       "create-confirm-title": "FedEx で運送状を作成しますか？",
       "create-confirm": "この出荷指示の運送状を FedEx で作成します（ラベル：{format}）。運送状番号は配送タスクに自動保存されます。",
@@ -1594,22 +1604,33 @@
       "cancel-confirm-title": "運送状を取り消しますか？",
       "cancel-confirm": "FedEx の運送状 {tracking} を取り消します。配送タスクの運送状番号は消去され、ラベルは無効になり、単証もそれに合わせて更新されます。元に戻せません。",
       "blockers": {
-        "CARRIER_DISABLED": "FedEx の自動作成が有効になっていません",
+        "FEDEX_NOT_CONFIGURED": "FedEx が設定されていません（自動作成は無効）",
+        "FEDEX_CONFIG_INVALID": "FedEx の設定が正しくありません。バックエンドの設定を確認してください",
         "NOT_EXPORT": "海外出荷ではありません",
+        "DN_SHIPPED": "出荷済みです",
         "NOT_PACKED": "梱包完了（packed）後に作成できます",
         "DELIVERY_TASK_MISSING": "配送タスクがまだありません",
-        "CARRIER_NOT_FEDEX": "配送タスクの運送会社が FedEx ではありません",
+        "CARRIER_NOT_FEDEX": "配送タスクの運送業者が FedEx ではありません",
+        "DELIVERY_TASK_COMPLETED": "配送タスクは完了済みです",
         "SHIPMENT_EXISTS": "有効な運送状がすでにあります",
+        "TRACKING_NUMBER_EXISTS": "配送タスクに運送状番号が手動で保存されています（自動作成するには先に運送状番号を消去してください）",
         "PACKAGES_MISSING": "箱情報が未登録です",
+        "TOO_MANY_PACKAGES": "箱数が 1 件の運送状の上限（30 箱）を超えています",
         "PACKAGE_INCOMPLETE": "重量または寸法が未入力の箱があります",
-        "CUSTOMS_PROBLEMS": "通関データにエラーがあります。先に確認事項を解消してください",
-        "CUSTOMS_MISSING": "この出荷指示には通関データがありません",
-        "EXPORTER_PROFILE_INCOMPLETE": "輸出者情報が不足しています（英文名称・英文住所・電話番号・担当者・税番号など）",
-        "DOCUMENTS_NOT_READY": "単証（CI / PL）の発行条件がそろっていないため、先に単証を発行できません"
+        "DECLARED_VALUE_EXCEEDS_CUSTOMS_VALUE": "運送申告価額が梱包済み商品の金額を超えています（FedEx で拒否されます）。申告価額か梱包数を確認してください",
+        "SHIPPER_ADDRESS_INVALID": "出荷元（倉庫・会社）の英文住所を FedEx の形式に変換できません。番地と市区町村をカンマで区切ってください",
+        "RECIPIENT_ADDRESS_INVALID": "お届け先住所が不完全か、FedEx の形式に変換できません",
+        "RECIPIENT_NAME_MISSING": "受取人の氏名または会社名がありません",
+        "RECIPIENT_PHONE_MISSING": "受取人の電話番号がありません"
       },
       "label-formats": {
         "A4": "A4 普通紙プリンター",
         "THERMAL": "感熱ラベルプリンター"
+      },
+      "actions": {
+        "create": "作成",
+        "etd_upload": "電子貿易書類（ETD）のアップロード",
+        "cancel": "取り消し"
       }
     }
   },
@@ -1625,6 +1646,11 @@
     "code-16070": "海外出荷ではありません",
     "code-16071": "単証が見つかりません",
     "code-14019": "輸出者情報の文字数が上限を超えています",
-    "code-14020": "会社・倉庫の国コードが正しくありません（ISO 3166-1 の 2 文字コード）"
+    "code-14020": "会社・倉庫の国コードが正しくありません（ISO 3166-1 の 2 文字コード）",
+    "code-16072": "FedEx で運送状を作成する条件がそろっていません",
+    "code-16073": "FedEx からエラーが返されました",
+    "code-16074": "FedEx の応答がタイムアウトしました",
+    "code-16075": "有効な運送状がありません",
+    "code-16076": "有効な FedEx の運送状があります。箱情報を変更する前に運送状を取り消してください"
   }
 }

@@ -1437,7 +1437,8 @@
     },
     "doc-types": {
       "commercial_invoice": "商业发票（CI）",
-      "packing_list": "装箱单（PL）"
+      "packing_list": "装箱单（PL）",
+      "shipping_label": "面单"
     },
     "doc-status": {
       "issued": "有效",
@@ -1446,7 +1447,8 @@
     "void-reasons": {
       "packages_changed": "箱子变更",
       "customs_changed": "报关数据变更",
-      "data_changed": "数据变更（重新生成）"
+      "data_changed": "数据变更（重新生成）",
+      "shipment_cancelled": "运单已取消"
     },
     "export-reasons": {
       "SALE": "销售"
@@ -1560,7 +1562,11 @@
         "created": "建单时间",
         "transaction-id": "FedEx 交易 ID",
         "label-format": "面单",
-        "label-format-choice": "面单打印方式："
+        "label-format-choice": "面单打印方式：",
+        "package-count": "共 {count} 箱",
+        "ship-date": "发货日期",
+        "package-tracking-numbers": "各箱运单号",
+        "action": "FedEx 操作"
       },
       "operations": {
         "create": "在 FedEx 建运单",
@@ -1568,15 +1574,16 @@
         "download-label": "下载面单",
         "cancel": "取消运单",
         "download-label-file": "下载面单文件（.{ext}）",
-        "send-to-printer": "发送到标签机"
+        "send-to-printer": "发送到标签机",
+        "open-delivery": "前往配送任务"
       },
       "tips": {
         "disabled": "FedEx 自动建单未启用（可在后端配置中启用）。请在承运商系统手工建运单，再到配送任务保存运单号。",
-        "auto": "建单时使用本页的箱子、报关明细和出口资料；还没有有效单证时会先生成 CI / PL。成功后运单号自动保存到配送任务。FedEx 不可用时，可在承运商系统手工建运单，再到配送任务保存运单号。",
+        "auto": "建单时使用本页的箱子、报关明细和出口资料。成功后运单号自动保存到配送任务，CI / PL 自动带上运单号重新生成。FedEx 不可用时，可在承运商系统手工建运单，再到配送任务保存运单号。",
         "creating": "正在向 FedEx 建运单，可能需要几十秒，请不要关闭页面…",
         "blocked": "暂时不能自动建单：",
         "carrier-errors": "FedEx 返回的错误：",
-        "timeout": "FedEx 响应超时，运单可能已经在 FedEx 生成。重试前请先刷新本区域，或到 FedEx 网站确认，避免重复建单。",
+        "timeout": "FedEx 响应超时，运单可能已经在 FedEx 生成。重试前请先到 FedEx Ship Manager 确认，避免重复建单。",
         "last-cancelled": "上一张运单 {tracking} 已于 {time} 取消",
         "no-label": "没有面单文件",
         "label-open": "在新标签页打开面单 PDF，可打印或下载",
@@ -1584,9 +1591,12 @@
         "declared-value-submitted": "申告价额 {amount} 已随运单提交",
         "thermal-file": "热敏面单是标签机的指令文件（{type}），需要用标签机的打印程序打开该文件打印。",
         "send-to-printer-unavailable": "尚未接入标签机直接打印指令文件。请先下载面单文件，再用标签机的打印程序打开打印。",
-        "thermal-print": "打印时选择标签机，纸张选 100×150mm，缩放选实际大小（100%）"
+        "thermal-print": "打印时选择标签机，纸张选 100×150mm，缩放选实际大小（100%）",
+        "alerts": "FedEx 的提示：",
+        "etd-enabled": "已启用电子贸易单证（ETD）：建单时 CI 会电子提交给 FedEx。",
+        "permission-denied": "FedEx 拒绝了该操作的权限：请确认 FedEx API 项目已开通相应接口（如 Ship API）。"
       },
-      "created": "已在 FedEx 建运单：{tracking}",
+      "created": "已在 FedEx 建运单：{tracking}（运单号已保存，CI / PL 已更新）",
       "cancelled": "运单 {tracking} 已取消",
       "create-confirm-title": "在 FedEx 建运单？",
       "create-confirm": "将为本出库单在 FedEx 建运单（面单：{format}），运单号会自动保存到配送任务。",
@@ -1594,22 +1604,33 @@
       "cancel-confirm-title": "取消运单？",
       "cancel-confirm": "将在 FedEx 取消运单 {tracking}：配送任务上的运单号会被清除，面单作废，单证随之更新。此操作不能撤销。",
       "blockers": {
-        "CARRIER_DISABLED": "未启用 FedEx 自动建单",
+        "FEDEX_NOT_CONFIGURED": "未配置 FedEx（未启用自动建单）",
+        "FEDEX_CONFIG_INVALID": "FedEx 配置不正确，请检查后端配置",
         "NOT_EXPORT": "不是海外单",
+        "DN_SHIPPED": "已发货",
         "NOT_PACKED": "打包完成（packed）后才能建运单",
         "DELIVERY_TASK_MISSING": "还没有配送任务",
         "CARRIER_NOT_FEDEX": "配送任务的承运商不是 FedEx",
+        "DELIVERY_TASK_COMPLETED": "配送任务已完成",
         "SHIPMENT_EXISTS": "已经有有效的运单",
+        "TRACKING_NUMBER_EXISTS": "配送任务上已手工保存了运单号（要自动建单，请先清空运单号）",
         "PACKAGES_MISSING": "还没有录入箱子",
+        "TOO_MANY_PACKAGES": "箱数超过一票运单的上限（30 箱）",
         "PACKAGE_INCOMPLETE": "有箱子缺少毛重或尺寸",
-        "CUSTOMS_PROBLEMS": "报关数据有错误，请先处理问题清单",
-        "CUSTOMS_MISSING": "该出库单没有报关数据",
-        "EXPORTER_PROFILE_INCOMPLETE": "出口资料不全（英文名称、英文地址、电话、联系人、税号等）",
-        "DOCUMENTS_NOT_READY": "单证（CI / PL）条件不全，无法先生成单证"
+        "DECLARED_VALUE_EXCEEDS_CUSTOMS_VALUE": "运送申告价额超过已打包的货物金额（FedEx 会拒绝），请核对申告价额或打包数量",
+        "SHIPPER_ADDRESS_INVALID": "发货方（仓库 / 公司）的英文地址无法转换成 FedEx 格式：请用逗号分隔街道和城市",
+        "RECIPIENT_ADDRESS_INVALID": "收货地址不完整，或无法转换成 FedEx 格式",
+        "RECIPIENT_NAME_MISSING": "缺少收货人姓名或公司名",
+        "RECIPIENT_PHONE_MISSING": "缺少收货人电话"
       },
       "label-formats": {
         "A4": "A4 普通打印机",
         "THERMAL": "热敏标签机"
+      },
+      "actions": {
+        "create": "建单",
+        "etd_upload": "上传电子单证（ETD）",
+        "cancel": "取消运单"
       }
     }
   },
@@ -1625,6 +1646,11 @@
     "code-16070": "不是海外单",
     "code-16071": "单证不存在",
     "code-14019": "出口资料文本超长",
-    "code-14020": "公司/仓库国家代码不合法（须为 ISO 3166-1 两位代码）"
+    "code-14020": "公司/仓库国家代码不合法（须为 ISO 3166-1 两位代码）",
+    "code-16072": "不满足在 FedEx 建运单的条件",
+    "code-16073": "FedEx 返回错误",
+    "code-16074": "FedEx 响应超时",
+    "code-16075": "没有有效的运单",
+    "code-16076": "已有有效的 FedEx 运单，改箱子前请先取消运单"
   }
 }

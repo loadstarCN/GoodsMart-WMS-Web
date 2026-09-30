@@ -1437,7 +1437,8 @@
     },
     "doc-types": {
       "commercial_invoice": "Commercial Invoice (CI)",
-      "packing_list": "Packing List (PL)"
+      "packing_list": "Packing List (PL)",
+      "shipping_label": "Shipping Label"
     },
     "doc-status": {
       "issued": "Issued",
@@ -1446,7 +1447,8 @@
     "void-reasons": {
       "packages_changed": "Packages changed",
       "customs_changed": "Customs data changed",
-      "data_changed": "Data changed (re-issued)"
+      "data_changed": "Data changed (re-issued)",
+      "shipment_cancelled": "Shipment cancelled"
     },
     "export-reasons": {
       "SALE": "Sale"
@@ -1560,7 +1562,11 @@
         "created": "Created",
         "transaction-id": "FedEx Transaction ID",
         "label-format": "Label",
-        "label-format-choice": "Label printing:"
+        "label-format-choice": "Label printing:",
+        "package-count": "{count} package(s)",
+        "ship-date": "Ship date",
+        "package-tracking-numbers": "Package tracking numbers",
+        "action": "FedEx action"
       },
       "operations": {
         "create": "Create FedEx Shipment",
@@ -1568,15 +1574,16 @@
         "download-label": "Download Label",
         "cancel": "Cancel Shipment",
         "download-label-file": "Download Label File (.{ext})",
-        "send-to-printer": "Send to Label Printer"
+        "send-to-printer": "Send to Label Printer",
+        "open-delivery": "Open delivery task"
       },
       "tips": {
         "disabled": "Automatic FedEx shipment creation is not enabled (it can be enabled in the backend configuration). Create the shipment in the carrier's system and save the tracking number on the delivery task.",
-        "auto": "Uses the packages, customs lines and exporter profile on this page. If there are no valid documents yet, the CI / PL are issued first. The tracking number is saved to the delivery task automatically. If FedEx is unavailable, create the shipment manually in the carrier's system and save the tracking number on the delivery task.",
+        "auto": "Uses the packages, customs lines and exporter profile on this page. The tracking number is saved to the delivery task automatically, and the CI / PL are re-issued with it. If FedEx is unavailable, create the shipment manually in the carrier's system and save the tracking number on the delivery task.",
         "creating": "Creating the shipment in FedEx. This may take a few dozen seconds; please keep this page open…",
         "blocked": "Cannot create the shipment automatically yet:",
         "carrier-errors": "Errors returned by FedEx:",
-        "timeout": "FedEx timed out. The shipment may have been created in FedEx anyway. Before retrying, refresh this section or check on the FedEx website to avoid a duplicate shipment.",
+        "timeout": "FedEx timed out. The shipment may have been created in FedEx anyway. Check in FedEx Ship Manager before retrying to avoid a duplicate shipment.",
         "last-cancelled": "The previous shipment {tracking} was cancelled at {time}",
         "no-label": "No label file",
         "label-open": "Opens the label PDF in a new tab, where you can print or download it",
@@ -1584,9 +1591,12 @@
         "declared-value-submitted": "Declared value {amount} submitted with the shipment",
         "thermal-file": "Thermal labels are printer command files ({type}). Open the file with the label printer's printing software to print it.",
         "send-to-printer-unavailable": "Sending command files directly to the label printer is not connected yet. Download the label file and open it with the label printer's printing software.",
-        "thermal-print": "When printing, choose the label printer, paper size 100×150 mm and scale Actual size (100%)"
+        "thermal-print": "When printing, choose the label printer, paper size 100×150 mm and scale Actual size (100%)",
+        "alerts": "Notes from FedEx:",
+        "etd-enabled": "Electronic Trade Documents (ETD) are enabled: the CI is submitted to FedEx electronically when the shipment is created.",
+        "permission-denied": "FedEx denied permission for this action. Check that the FedEx API project has the required API (e.g. Ship API) enabled."
       },
-      "created": "FedEx shipment created: {tracking}",
+      "created": "FedEx shipment created: {tracking} (tracking number saved, CI / PL updated)",
       "cancelled": "Shipment {tracking} cancelled",
       "create-confirm-title": "Create FedEx shipment?",
       "create-confirm": "A FedEx shipment will be created for this DN (label: {format}). The tracking number is saved to the delivery task automatically.",
@@ -1594,22 +1604,33 @@
       "cancel-confirm-title": "Cancel shipment?",
       "cancel-confirm": "Shipment {tracking} will be cancelled in FedEx: the tracking number is cleared from the delivery task, the label is voided and the documents are updated accordingly. This cannot be undone.",
       "blockers": {
-        "CARRIER_DISABLED": "Automatic FedEx shipment creation is not enabled",
+        "FEDEX_NOT_CONFIGURED": "FedEx is not configured (automatic creation disabled)",
+        "FEDEX_CONFIG_INVALID": "FedEx configuration is invalid; check the backend configuration",
         "NOT_EXPORT": "Not an export shipment",
+        "DN_SHIPPED": "Already shipped",
         "NOT_PACKED": "Available after packing is completed (packed)",
         "DELIVERY_TASK_MISSING": "There is no delivery task yet",
         "CARRIER_NOT_FEDEX": "The carrier of the delivery task is not FedEx",
+        "DELIVERY_TASK_COMPLETED": "The delivery task is already completed",
         "SHIPMENT_EXISTS": "A valid shipment already exists",
+        "TRACKING_NUMBER_EXISTS": "A tracking number was saved manually on the delivery task (clear it first to create the shipment automatically)",
         "PACKAGES_MISSING": "No packages recorded yet",
+        "TOO_MANY_PACKAGES": "Too many packages for one shipment (max 30)",
         "PACKAGE_INCOMPLETE": "Some packages are missing weight or dimensions",
-        "CUSTOMS_PROBLEMS": "The customs data has errors; resolve the issues listed above first",
-        "CUSTOMS_MISSING": "This DN has no customs data",
-        "EXPORTER_PROFILE_INCOMPLETE": "Exporter profile is incomplete (English name, English address, phone, contact, tax ID, etc.)",
-        "DOCUMENTS_NOT_READY": "Document (CI / PL) requirements are not met, so they cannot be issued first"
+        "DECLARED_VALUE_EXCEEDS_CUSTOMS_VALUE": "The declared value for carriage exceeds the value of the packed goods (FedEx rejects this); check the declared value or packed quantities",
+        "SHIPPER_ADDRESS_INVALID": "The shipper's (warehouse / company) English address cannot be converted to the FedEx format; separate the street and city with commas",
+        "RECIPIENT_ADDRESS_INVALID": "The recipient address is incomplete or cannot be converted to the FedEx format",
+        "RECIPIENT_NAME_MISSING": "Recipient name or company is missing",
+        "RECIPIENT_PHONE_MISSING": "Recipient phone number is missing"
       },
       "label-formats": {
         "A4": "A4 printer",
         "THERMAL": "Thermal label printer"
+      },
+      "actions": {
+        "create": "Create",
+        "etd_upload": "Upload electronic trade documents (ETD)",
+        "cancel": "Cancel"
       }
     }
   },
@@ -1625,6 +1646,11 @@
     "code-16070": "Not an export shipment",
     "code-16071": "Document not found",
     "code-14019": "Exporter profile text is too long",
-    "code-14020": "Invalid company/warehouse country code (ISO 3166-1 alpha-2)"
+    "code-14020": "Invalid company/warehouse country code (ISO 3166-1 alpha-2)",
+    "code-16072": "Requirements for creating the FedEx shipment are not met",
+    "code-16073": "FedEx returned an error",
+    "code-16074": "FedEx timed out",
+    "code-16075": "There is no valid shipment",
+    "code-16076": "A valid FedEx shipment exists; cancel it before changing the packages"
   }
 }

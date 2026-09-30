@@ -4,17 +4,18 @@
  *
  * - 未启用：不显示按钮，只提示手工建运单
  * - 可建：「在 FedEx 建运单」+ 面单打印方式（A4 普通打印机 / 热敏标签机，记住上次的选择）；不可建时按钮置灰并列出 blockers
- * - 建单中显示进度；失败时显示 FedEx 的错误原文（errors[].code / message、交易 ID）
+ * - 建单中显示进度；成功时显示 FedEx 的提示（alerts）；失败时显示 FedEx 的错误原文（errors[].code / message、交易 ID）
  * - 已建：运单号、服务、运费、面单格式；PDF 面单（A4、热敏默认）新标签页打开打印 / 下载，热敏标签机附打印设置提示；
  *   后端配置成 ZPLII / EPL2 时下载指令文件；
  *   取消运单（二次确认；DN 已发货时不显示）
  * - 有运送申告价额时注明「已随运单提交」（后端按箱分摊成每箱 declaredValue）
- * - 成功建单 / 取消后通知父组件刷新单证（运单号计入 CI）
+ * - 成功建单 / 取消后通知父组件刷新单证（后端已让 CI / PL 带上 / 去掉运单号重新签发）
  */
 import type { HttpRequestError } from '~/utils/http'
 import { formatMoney, useCustomsPdfActions } from '~/composables/customs/customsDocuments'
 import {
   carrierShipmentUrl,
+  extractCarrierAlerts,
   extractCarrierErrors,
   formatServiceType,
   isActiveShipment,
@@ -29,6 +30,7 @@ import {
   loadLabelFormat,
   normalizeCarrierStatus,
   saveLabelFormat,
+  type CarrierAlert,
   type CarrierRequestFailure,
   type CarrierShipmentBlocker,
   type CarrierShipmentStatus,
@@ -43,10 +45,13 @@ const props = withDefaults(defineProps<{
   packageCount?: number | null
   /** 报关快照：有运送申告价额时，自动建单会随运单提交 */
   customs?: Record<string, any> | null
+  /** DN 所属仓库：发货方地址不合格时提供跳转 */
+  warehouseId?: number | string | null
 }>(), {
   locked: false,
   packageCount: null,
   customs: null,
+  warehouseId: null,
 })
 
 const emit = defineEmits<{
@@ -68,6 +73,8 @@ const status = ref<CarrierShipmentStatus | null>(null)
 const creating = ref(false)
 const cancelling = ref(false)
 const failure = ref<CarrierRequestFailure | null>(null)
+/** 建单成功时 FedEx 返回的提示（建议显示） */
+const alerts = ref<CarrierAlert[]>([])
 /** 面单打印方式：默认用上次的选择（localStorage，取不到就 A4） */
 const labelFormat = ref<LabelFormat>('A4')
 
@@ -120,6 +127,23 @@ const labelFormatText = (format: string | null | undefined) => {
   return format && te(key) ? t(key) : (format || '')
 }
 
+const deliveryTaskId = computed(() => status.value?.delivery_task_id || null)
+const packageTrackingNumbers = computed(() => {
+  const list = activeShipment.value?.package_tracking_numbers
+  return Array.isArray(list) ? list.filter(Boolean) : []
+})
+
+/** 要到配送任务处理的 blocker（设承运商、清掉手工保存的运单号等） */
+const DELIVERY_TASK_BLOCKERS = ['CARRIER_NOT_FEDEX', 'TRACKING_NUMBER_EXISTS', 'DELIVERY_TASK_COMPLETED']
+/** 要改公司 / 仓库出口资料的 blocker */
+const EXPORTER_BLOCKERS = ['SHIPPER_ADDRESS_INVALID', 'EXPORTER_PROFILE_INCOMPLETE']
+
+const actionText = (action: string | null) => {
+  if (!action) return ''
+  const key = `customs.carrier.actions.${action}`
+  return te(key) ? t(key) : action
+}
+
 const blockerText = (b: CarrierShipmentBlocker) => {
   // 专门的承运商文案优先；签发单证的条件不全时后端直接复用单证问题码
   for (const key of [`customs.carrier.blockers.${b.code}`, `customs.problems.${b.code}`]) {
@@ -129,8 +153,10 @@ const blockerText = (b: CarrierShipmentBlocker) => {
 }
 const userText = (u: any) => (u && typeof u === 'object' ? (u.user_name || u.email || u.id) : (u ?? ''))
 const declaredValueText = computed(() => {
-  const v = props.customs?.declared_value_carriage
-  if (v === null || v === undefined || v === '' || isNaN(Number(v))) return ''
+  // 运单上记的申告价额优先，其次状态 / 报关快照上的
+  const candidates = [activeShipment.value?.declared_value, status.value?.declared_value_carriage, props.customs?.declared_value_carriage]
+  const v = candidates.find((x) => x !== null && x !== undefined && (x as any) !== '' && !isNaN(Number(x)))
+  if (v === undefined) return ''
   return formatMoney(Number(v), props.customs?.currency || 'JPY')
 })
 const chargeText = computed(() => {
@@ -147,15 +173,17 @@ const handleFailure = (error: HttpRequestError) => {
   if (Array.isArray(latest) && status.value) {
     status.value = { ...status.value, blockers: latest, can_create: false }
   }
-  const { errors, transactionId } = extractCarrierErrors(error.details)
+  const { errors, transactionId, action, permissionDenied, maybeProcessed } = extractCarrierErrors(error.details)
   const timeout = isCarrierTimeout(error)
   if (errors.length > 0 || transactionId || timeout || error.status === 502) {
     failure.value = {
       summary,
-      // 没有逐条错误时把后端原文也带上（业务码文案可能盖住了承运商的说明）
+      // 没有逐条错误时把后端原文也带上（后端 message 里带着 FedEx 原文，业务码文案会盖住它）
       errors: errors.length > 0 || !error.message || error.message === summary ? errors : [{ code: null, message: error.message }],
       transactionId,
-      timeout,
+      timeout: timeout && maybeProcessed,
+      action,
+      permissionDenied,
     }
   }
   showToast(summary, 'error')
@@ -174,6 +202,7 @@ const create = async () => {
 
   creating.value = true
   failure.value = null
+  alerts.value = []
   let created: any = null
   await httpRequest<any>(carrierShipmentUrl(props.dnId), {
     method: 'POST',
@@ -190,6 +219,7 @@ const create = async () => {
     } else {
       await load()
     }
+    alerts.value = extractCarrierAlerts(created)
     const tracking = created?.shipment?.tracking_number || created?.tracking_number || activeShipment.value?.tracking_number || ''
     showToast(t('customs.carrier.created', { tracking }), 'success')
     emit('changed')
@@ -211,6 +241,7 @@ const cancel = async () => {
 
   cancelling.value = true
   failure.value = null
+  alerts.value = []
   let done = false
   let result: any = null
   await httpRequest<any>(`${carrierShipmentUrl(props.dnId)}/cancel`, {
@@ -287,6 +318,9 @@ defineExpose({ reload: load })
             <div class="col-sm-6 col-lg">
               <div class="text-muted fs-12">{{ t('customs.carrier.fields.tracking-number') }}</div>
               <div class="fw-semibold fs-15 font-monospace">{{ activeShipment.tracking_number || '—' }}</div>
+              <div class="fs-12 text-muted" v-if="activeShipment.package_count">
+                {{ t('customs.carrier.fields.package-count', { count: activeShipment.package_count }) }}
+              </div>
             </div>
             <div class="col-sm-6 col-lg">
               <div class="text-muted fs-12">{{ t('customs.carrier.fields.service') }}</div>
@@ -309,13 +343,30 @@ defineExpose({ reload: load })
                 {{ $dayjs(activeShipment.created_at, 'YYYY-MM-DD HH:mm') || '—' }}
                 <span class="text-muted ms-1" v-if="activeShipment.created_by">{{ userText(activeShipment.created_by) }}</span>
               </div>
+              <div class="fs-12 text-muted" v-if="activeShipment.ship_date">
+                {{ t('customs.carrier.fields.ship-date') }}: {{ activeShipment.ship_date }}
+              </div>
             </div>
+          </div>
+          <div class="fs-12 text-muted mt-2" v-if="packageTrackingNumbers.length > 1">
+            {{ t('customs.carrier.fields.package-tracking-numbers') }}:
+            <span class="font-monospace">{{ packageTrackingNumbers.join(', ') }}</span>
           </div>
           <div class="fs-12 text-success mt-2" v-if="declaredValueText">
             <i class="ri-shield-check-line me-1"></i>{{ t('customs.carrier.tips.declared-value-submitted', { amount: declaredValueText }) }}
           </div>
           <div class="fs-12 text-muted mt-2" v-if="activeShipment.etd_document_id">
             <i class="ri-upload-cloud-2-line me-1"></i>{{ t('customs.carrier.tips.etd-submitted') }}
+          </div>
+          <!-- 建单时 FedEx 返回的提示 -->
+          <div class="alert alert-warning-transparent fs-12 py-2 mt-2 mb-0" v-if="alerts.length > 0">
+            <div class="fw-semibold mb-1">{{ t('customs.carrier.tips.alerts') }}</div>
+            <ul class="mb-0 ps-3">
+              <li v-for="(a, i) in alerts" :key="`al-${i}`" class="text-break">
+                <span class="badge bg-light text-default me-1" v-if="a.alert_type">{{ a.alert_type }}</span>
+                <code class="me-1" v-if="a.code">{{ a.code }}</code>{{ a.message }}
+              </li>
+            </ul>
           </div>
           <div class="btn-list mt-3">
             <!-- PDF 面单（A4 普通打印机、热敏标签机默认）：新标签页打开打印 / 下载 -->
@@ -396,11 +447,27 @@ defineExpose({ reload: load })
                 {{ blockerText(b) }}
                 <span class="badge bg-light text-default ms-1" v-if="b.goods_code">{{ b.goods_code }}</span>
                 <span class="text-muted fs-11 ms-1" v-if="b.field">({{ b.field }})</span>
+                <NuxtLink :to="`/delivery/detail/${deliveryTaskId}`" class="fs-12 ms-2"
+                  v-if="deliveryTaskId && DELIVERY_TASK_BLOCKERS.includes(b.code)">
+                  {{ t('customs.carrier.operations.open-delivery') }}
+                </NuxtLink>
+                <template v-if="EXPORTER_BLOCKERS.includes(b.code)">
+                  <NuxtLink to="/company" class="fs-12 ms-2">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
+                  <NuxtLink :to="`/warehouse/edit/${warehouseId}`" class="fs-12 ms-2" v-if="warehouseId">
+                    {{ t('customs.operations.edit-warehouse') }}
+                  </NuxtLink>
+                </template>
               </li>
             </ul>
           </div>
+          <p class="fs-12 text-muted mb-1" v-if="!locked && status.etd_enabled">
+            <i class="ri-upload-cloud-2-line me-1"></i>{{ t('customs.carrier.tips.etd-enabled') }}
+          </p>
           <p class="fs-12 text-muted mb-0" v-if="!locked">
             <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.auto') }}
+            <NuxtLink :to="`/delivery/detail/${deliveryTaskId}`" class="ms-1" v-if="deliveryTaskId">
+              {{ t('customs.carrier.operations.open-delivery') }}
+            </NuxtLink>
           </p>
         </template>
       </template>
@@ -422,8 +489,10 @@ defineExpose({ reload: load })
           </ul>
         </div>
         <div class="fs-12 mt-1" v-if="failure.timeout">{{ t('customs.carrier.tips.timeout') }}</div>
-        <div class="fs-11 text-muted mt-1 font-monospace" v-if="failure.transactionId">
-          {{ t('customs.carrier.fields.transaction-id') }}: {{ failure.transactionId }}
+        <div class="fs-12 mt-1" v-if="failure.permissionDenied">{{ t('customs.carrier.tips.permission-denied') }}</div>
+        <div class="fs-11 text-muted mt-1 font-monospace" v-if="failure.action || failure.transactionId">
+          <span v-if="failure.action">{{ t('customs.carrier.fields.action') }}: {{ actionText(failure.action) }}</span>
+          <span class="ms-2" v-if="failure.transactionId">{{ t('customs.carrier.fields.transaction-id') }}: {{ failure.transactionId }}</span>
         </div>
       </div>
     </template>

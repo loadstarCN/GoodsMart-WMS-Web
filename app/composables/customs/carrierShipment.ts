@@ -1,10 +1,13 @@
 /**
  * 承运商运单（FedEx 自动建单）相关的类型与工具
  *
- * GET  /warehouse/dn/<dn_id>/carrier-shipment          状态（是否启用、能否建单、blockers、当前运单）
- * POST /warehouse/dn/<dn_id>/carrier-shipment          建单（body.label_format；运单号自动保存到配送任务）
- * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   取消运单（DN 未发货时）
- * 面单文件与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file
+ * GET  /warehouse/dn/<dn_id>/carrier-shipment          状态（是否启用、能否建单、blockers、最近一张运单）
+ * POST /warehouse/dn/<dn_id>/carrier-shipment          建单（body.label_format）→ 201 状态 + alerts；
+ *                                                      运单号存到配送任务，CI / PL 自动带运单号重新签发
+ * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   取消运单（DN 未发货时）→ 200 状态
+ * 失败：409 16072（details.blockers）/ 502 16073（FedEx 报错，details.errors / transaction_id / action）/
+ *       504 16074（超时，details.maybe_processed）/ 409 16075（没有有效运单）
+ * 面单文件与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file（doc_type = shipping_label）
  * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动；热敏为 4×6 英寸 / 100×150mm。
  *   后端配置成 ZPLII / EPL2 时才是指令文件，要用标签机的打印程序打开）
  */
@@ -28,6 +31,13 @@ export interface CarrierShipment {
   net_charge: number | string | null
   currency: string | null
   label_document_id: number | null
+  /** 多箱时每箱的运单号（第一个是主运单号） */
+  package_tracking_numbers?: string[] | null
+  package_count?: number | null
+  ship_date?: string | null
+  /** 随运单提交的申告价额（按箱分摊前的合计） */
+  declared_value?: number | null
+  transaction_id?: string | null
   /** 建单时选的面单打印方式（A4 / THERMAL） */
   label_format?: string | null
   /** 面单文件格式（PDF / ZPLII / EPL2 …） */
@@ -48,9 +58,35 @@ export interface CarrierShipmentStatus {
   carrier: string | null
   can_create: boolean
   blockers: CarrierShipmentBlocker[]
-  /** 最近一张运单（可能已取消）；从未建过为 null */
+  /** 最近一张运单（有效的优先，可能已取消）；从未建过为 null */
   shipment: CarrierShipment | null
+  /** 开了电子贸易单证（ETD）：建单时 CI 电子提交给 FedEx */
+  etd_enabled?: boolean
+  /** 报关快照的运送申告价额：有值时自动建单按箱分摊随运单提交 */
+  declared_value_carriage?: number | null
+  delivery_task_id?: number | null
 }
+
+/** 建单成功时 FedEx 返回的提示（如 CUSTOMVALUE.GREATER.THAN.DECLAREDVALUE） */
+export interface CarrierAlert {
+  code: string | null
+  alert_type: string | null
+  message: string | null
+}
+
+/** 承运商对接的业务码 */
+export const CARRIER_BIZ_CODES = {
+  /** 409：建单前置条件不满足（details.blockers） */
+  BLOCKED: 16072,
+  /** 502：FedEx 报错 */
+  CARRIER_ERROR: 16073,
+  /** 504：FedEx 超时 */
+  CARRIER_TIMEOUT: 16074,
+  /** 409：没有有效运单（取消时） */
+  NO_ACTIVE_SHIPMENT: 16075,
+  /** 409：有有效运单时不能改箱子 */
+  PACKAGES_LOCKED: 16076,
+} as const
 
 /** 承运商返回的错误原文（FedEx errors[].code / message） */
 export interface CarrierApiErrorItem {
@@ -67,6 +103,10 @@ export interface CarrierRequestFailure {
   transactionId: string | null
   /** 承运商超时：运单可能已生成，重试前要先确认 */
   timeout: boolean
+  /** FedEx 侧的动作（create / etd_upload / cancel） */
+  action: string | null
+  /** FedEx 拒绝权限（API 项目没开通相应接口） */
+  permissionDenied: boolean
 }
 
 export const carrierShipmentUrl = (dnId: number | string) => `/api/warehouse/dn/${dnId}/carrier-shipment`
@@ -86,8 +126,21 @@ export const normalizeCarrierStatus = (data: any): CarrierShipmentStatus | null 
     can_create: !!data.can_create,
     blockers: Array.isArray(data.blockers) ? data.blockers : [],
     shipment: data.shipment && typeof data.shipment === 'object' ? data.shipment : null,
+    etd_enabled: !!data.etd_enabled,
+    declared_value_carriage: data.declared_value_carriage ?? null,
+    delivery_task_id: data.delivery_task_id ?? null,
   }
 }
+
+/** 建单返回的 FedEx 提示 */
+export const extractCarrierAlerts = (data: any): CarrierAlert[] =>
+  (Array.isArray(data?.alerts) ? data.alerts : [])
+    .filter((a: any) => a && typeof a === 'object' && (a.code || a.message))
+    .map((a: any) => ({
+      code: a.code != null ? String(a.code) : null,
+      alert_type: a.alert_type != null ? String(a.alert_type) : null,
+      message: a.message != null ? String(a.message) : null,
+    }))
 
 // ------------------ 面单打印方式 ----------------------
 /** A4 = 普通打印机；THERMAL = 热敏标签机（当普通打印机用，4×6 英寸 PDF）。文件格式看 image_type */
@@ -173,11 +226,20 @@ export const formatServiceType = (code: string | null | undefined): string => {
 }
 
 /**
- * 从错误 details 里取出承运商的错误原文与交易 ID。
+ * 从错误 details 里取出承运商的错误原文、交易 ID、动作等。
  * 兼容 errors / carrier_errors / fedex_errors，transaction_id / transactionId。
  */
-export const extractCarrierErrors = (details: any): { errors: CarrierApiErrorItem[]; transactionId: string | null } => {
-  if (!details || typeof details !== 'object') return { errors: [], transactionId: null }
+export const extractCarrierErrors = (details: any): {
+  errors: CarrierApiErrorItem[]
+  transactionId: string | null
+  action: string | null
+  permissionDenied: boolean
+  /** 超时时 FedEx 侧可能已经处理（默认按可能已处理） */
+  maybeProcessed: boolean
+} => {
+  if (!details || typeof details !== 'object') {
+    return { errors: [], transactionId: null, action: null, permissionDenied: false, maybeProcessed: true }
+  }
   const raw = [details.errors, details.carrier_errors, details.fedex_errors].find((v) => Array.isArray(v)) || []
   const errors: CarrierApiErrorItem[] = (raw as any[])
     .map((e) =>
@@ -187,12 +249,18 @@ export const extractCarrierErrors = (details: any): { errors: CarrierApiErrorIte
     )
     .filter((e) => e.code || e.message)
   const tid = details.transaction_id ?? details.transactionId ?? details.carrier_transaction_id ?? null
-  return { errors, transactionId: tid != null && tid !== '' ? String(tid) : null }
+  return {
+    errors,
+    transactionId: tid != null && tid !== '' ? String(tid) : null,
+    action: details.action ? String(details.action) : null,
+    permissionDenied: !!details.permission_denied,
+    maybeProcessed: details.maybe_processed !== false,
+  }
 }
 
-/** 承运商超时（后端 504） */
+/** 承运商超时（后端 504 / 16074） */
 export const isCarrierTimeout = (error: HttpRequestError | null | undefined): boolean =>
-  !!error && error.status === 504
+  !!error && (error.status === 504 || error.code === CARRIER_BIZ_CODES.CARRIER_TIMEOUT)
 
 /** 申告价额提示的模式：manual=手工建单时填写；auto=自动建单会随运单提交；submitted=已随运单提交 */
 export type DeclaredValueMode = 'manual' | 'auto' | 'submitted'
