@@ -2,7 +2,7 @@ import type { HttpRequestError } from '~/utils/http'
 
 /**
  * 业务错误文案：优先按后端业务码（error.code）取三语文案，取不到时用后端原文。
- * 文案放在 i18n 的 biz-errors.code-<业务码>。
+ * 文案放在 i18n 的 biz-errors.code-<业务码>；文案里可用 {字段名} 引用 error.details 的同名字段（如 {tracking_number}）。
  */
 export const useBizError = () => {
   const { t, te } = useI18n()
@@ -18,7 +18,11 @@ export const useBizError = () => {
 
   const bizErrorMessage = (error: Partial<HttpRequestError> | null | undefined): string => {
     if (!error) return t('action-results.failed')
-    if (hasBizMessage(error)) return t(bizKey(error))
+    if (hasBizMessage(error)) {
+      const details = error.details
+      const named = details && typeof details === 'object' && !Array.isArray(details) ? details : {}
+      return t(bizKey(error), named)
+    }
     return error.message || t('action-results.failed')
   }
 

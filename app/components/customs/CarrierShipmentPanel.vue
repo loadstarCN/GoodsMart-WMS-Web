@@ -140,7 +140,7 @@ const busy = computed(() => creating.value || cancelling.value)
 const labelDoc = computed(() => labelDocumentOf(activeShipment.value))
 const labelImageType = computed(() => labelImageTypeOf(activeShipment.value))
 const pdfLabel = computed(() => isPdfLabel(activeShipment.value))
-/** 已建面单的打印提示（PDF：A4 选「适合纸张」、热敏选 100×150mm 实际大小） */
+/** 已建面单的打印提示（PDF：A4 纸 / 热敏 100×150mm，都按实际大小 100% 打印） */
 const labelPrintHint = computed(() =>
   activeShipment.value ? labelPrintHintKey(activeShipment.value.label_format || 'A4', labelImageType.value) : null)
 const auxiliaryLabel = computed(() => hasAuxiliaryLabel(activeShipment.value))
@@ -154,7 +154,11 @@ const labelFormatTitle = (format: string) => {
 const warnings = computed<CarrierWarning[]>(() => status.value?.warnings || [])
 const warningText = (w: CarrierWarning) => {
   const key = `customs.carrier.warnings.${w.code}`
-  return w.code && te(key) ? t(key) : (w.message || w.code || '')
+  if (!w.code || !te(key)) return w.message || w.code || ''
+  return t(key, {
+    original: isAmount(w.requested) ? money(w.requested) : '—',
+    amount: isAmount(w.applied) ? money(w.applied) : '—',
+  })
 }
 const labelFormatText = (format: string | null | undefined) => {
   const key = `customs.carrier.label-formats.${String(format || '').toUpperCase()}`
@@ -186,12 +190,25 @@ const blockerText = (b: CarrierShipmentBlocker) => {
   return b.message || b.code
 }
 const userText = (u: any) => (u && typeof u === 'object' ? (u.user_name || u.email || u.id) : (u ?? ''))
+const money = (v: unknown) => formatMoney(Number(v), props.customs?.currency || 'JPY')
+const isAmount = (x: unknown) => x !== null && x !== undefined && x !== '' && !isNaN(Number(x))
+/** 已建运单的申告价额说明：运单上记的是实际提交值，比报关快照小时注明已自动调整 */
 const declaredValueText = computed(() => {
-  // 运单上记的申告价额优先，其次状态 / 报关快照上的
-  const candidates = [activeShipment.value?.declared_value, status.value?.declared_value_carriage, props.customs?.declared_value_carriage]
-  const v = candidates.find((x) => x !== null && x !== undefined && (x as any) !== '' && !isNaN(Number(x)))
-  if (v === undefined) return ''
-  return formatMoney(Number(v), props.customs?.currency || 'JPY')
+  const submitted = activeShipment.value?.declared_value
+  const original = isAmount(status.value?.declared_value_carriage)
+    ? status.value?.declared_value_carriage
+    : props.customs?.declared_value_carriage
+  if (isAmount(submitted)) {
+    if (isAmount(original) && Number(original) !== Number(submitted)) {
+      return t('customs.carrier.tips.declared-value-submitted-capped', { amount: money(submitted), original: money(original) })
+    }
+    return t('customs.carrier.tips.declared-value-submitted', { amount: money(submitted) })
+  }
+  // 旧数据没有 declared_value 时按快照显示
+  if (submitted === undefined && isAmount(original)) {
+    return t('customs.carrier.tips.declared-value-submitted', { amount: money(original) })
+  }
+  return ''
 })
 const chargeText = computed(() => {
   const s = activeShipment.value
@@ -395,7 +412,7 @@ defineExpose({ reload: load })
             <span class="font-monospace">{{ packageTrackingNumbers.join(', ') }}</span>
           </div>
           <div class="fs-12 text-success mt-2" v-if="declaredValueText">
-            <i class="ri-shield-check-line me-1"></i>{{ t('customs.carrier.tips.declared-value-submitted', { amount: declaredValueText }) }}
+            <i class="ri-shield-check-line me-1"></i>{{ declaredValueText }}
           </div>
           <div class="fs-12 text-muted mt-2" v-if="activeShipment.etd_document_id">
             <i class="ri-upload-cloud-2-line me-1"></i>{{ t('customs.carrier.tips.etd-submitted') }}
@@ -451,7 +468,8 @@ defineExpose({ reload: load })
             <div class="fs-12 text-muted mt-2" v-else-if="!pdfLabel">
               <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.thermal-file', { type: labelImageType }) }}
             </div>
-            <div class="fs-12 text-muted mt-1" v-if="pdfLabel && auxiliaryLabel">
+            <!-- A4 的打印提示已包含「运单副本页一起打印」 -->
+            <div class="fs-12 text-muted mt-1" v-if="pdfLabel && auxiliaryLabel && labelPrintHint !== 'customs.carrier.tips.a4-print'">
               <i class="ri-file-copy-2-line me-1"></i>{{ t('customs.carrier.tips.auxiliary') }}
             </div>
           </template>

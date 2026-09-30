@@ -6,6 +6,7 @@
  *   manual（手工建单）：在承运商系统登记出货时填这个申告价额
  *   auto（已启用自动建单、还没建）：自动建单会随运单提交；手工建单时仍要填写
  *   submitted（已自动建单）：申告价额已随运单提交
+ * - 自动建单时申告价额高于已打包货值会被压到货值：carrierValue 给出实际（将）提交的值，另起一行说明
  * - 没有 → 「无申告价额（未投保运送保险）」
  * - 没有报关快照（国内件）不显示
  */
@@ -17,6 +18,8 @@ const props = withDefaults(defineProps<{
   /** 紧凑显示（单证概要里用） */
   compact?: boolean
   mode?: DeclaredValueMode
+  /** 随 FedEx 运单实际（将）提交的申告价额，与快照不同时才传；null = 不提交 */
+  carrierValue?: number | null
 }>(), {
   compact: false,
   mode: 'manual',
@@ -37,6 +40,13 @@ const TIP_KEYS: Record<DeclaredValueMode, string> = {
   submitted: 'customs.tips.declared-value-carriage-submitted',
 }
 const tipKey = computed(() => TIP_KEYS[props.mode as DeclaredValueMode] || TIP_KEYS.manual)
+/** 自动建单时的实际提交值（被压到已打包货值）：手工建单模式不显示 */
+const cappedText = computed(() => {
+  if (props.mode === 'manual' || props.carrierValue === undefined) return ''
+  const amount = props.carrierValue === null ? '—' : formatMoney(Number(props.carrierValue), currency.value)
+  return t(props.mode === 'submitted' ? 'customs.tips.declared-value-capped-submitted' : 'customs.tips.declared-value-capped-auto',
+    { amount })
+})
 </script>
 
 <template>
@@ -49,6 +59,7 @@ const tipKey = computed(() => TIP_KEYS[props.mode as DeclaredValueMode] || TIP_K
           {{ t('customs.tips.declared-value-carriage-heading') }}：<span class="fs-16 font-monospace">{{ formatMoney(declaredValue, currency) }}</span>
         </div>
         <div>{{ t(tipKey) }}</div>
+        <div class="fw-semibold mt-1" v-if="cappedText">{{ cappedText }}</div>
         <div class="fs-12 mt-1" v-if="insuranceCharge">
           {{ t('customs.fields.insurance') }}：{{ formatMoney(insuranceCharge, currency) }}
         </div>

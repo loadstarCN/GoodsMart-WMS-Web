@@ -1495,7 +1495,9 @@
       "declared-value-carriage": "在承运商系统登记出货时，请把这个金额填为申告价额。",
       "no-declared-value": "无申告价额（未投保运送保险）",
       "declared-value-carriage-auto": "在 FedEx 自动建单时会随运单一并提交，无需手工填写；手工建运单时，请把这个金额填为申告价额。",
-      "declared-value-carriage-submitted": "申告价额已随运单提交（FedEx 自动建单），无需再手工填写。"
+      "declared-value-carriage-submitted": "申告价额已随运单提交（FedEx 自动建单），无需再手工填写。",
+      "declared-value-capped-submitted": "实际随运单提交：{amount}（高于已打包的货物金额，已自动调整）",
+      "declared-value-capped-auto": "自动建单时将按 {amount} 提交（高于已打包的货物金额，会自动调整）"
     },
     "packages": {
       "box-no": "箱",
@@ -1595,9 +1597,10 @@
         "alerts": "FedEx 的提示：",
         "etd-enabled": "已启用电子贸易单证（ETD）：建单时 CI 会电子提交给 FedEx。",
         "permission-denied": "FedEx 拒绝了该操作的权限：请确认 FedEx API 项目已开通相应接口（如 Ship API）。",
-        "a4-print": "用 A4 纸打印时，缩放请选「适合纸张」（FedEx 面单页面是 Letter 尺寸，比 A4 宽 6mm；上半页是面单）",
+        "a4-print": "打印时纸张选 A4，缩放选实际大小（100%）；国际件的运单副本页也要一起打印",
         "auxiliary": "面单 PDF 里还包含 FedEx AWB 副本页（FEDEX AWB COPY），请全部打印，并按页面上的说明处理。",
-        "warnings": "请注意："
+        "warnings": "请注意：",
+        "declared-value-submitted-capped": "申告价额 {amount} 已随运单提交（报关数据为 {original}，高于已打包的货物金额，已自动调整）"
       },
       "created": "已在 FedEx 建运单：{tracking}（运单号已保存，CI / PL 已更新）",
       "cancelled": "运单 {tracking} 已取消",
@@ -1620,7 +1623,6 @@
         "PACKAGES_MISSING": "还没有录入箱子",
         "TOO_MANY_PACKAGES": "箱数超过一票运单的上限（30 箱）",
         "PACKAGE_INCOMPLETE": "有箱子缺少毛重或尺寸",
-        "DECLARED_VALUE_EXCEEDS_CUSTOMS_VALUE": "运送申告价额超过已打包的货物金额（FedEx 会拒绝），请核对申告价额或打包数量",
         "SHIPPER_ADDRESS_INVALID": "发货方（仓库 / 公司）的英文地址无法转换成 FedEx 格式：请用逗号分隔街道和城市",
         "RECIPIENT_ADDRESS_INVALID": "收货地址不完整，或无法转换成 FedEx 格式",
         "RECIPIENT_NAME_MISSING": "缺少收货人姓名或公司名",
@@ -1634,6 +1636,9 @@
         "create": "建单",
         "etd_upload": "上传电子单证（ETD）",
         "cancel": "取消运单"
+      },
+      "warnings": {
+        "DECLARED_VALUE_CAPPED": "运送申告价额 {original} 高于已打包的货物金额，随运单提交的申告价额为 {amount}"
       }
     }
   },
@@ -1655,6 +1660,7 @@
     "code-16074": "FedEx 响应超时",
     "code-16075": "没有有效的运单",
     "code-16076": "已有有效的 FedEx 运单，改箱子前请先取消运单",
-    "code-16077": "面单打印方式不合法（只能是 A4 或 THERMAL）"
+    "code-16077": "面单打印方式不合法（只能是 A4 或 THERMAL）",
+    "code-16078": "该出库单已有 FedEx 自动运单 {tracking_number}，要换运单号请先在出库单的单证卡片取消自动运单"
   }
 }

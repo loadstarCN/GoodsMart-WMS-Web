@@ -7,8 +7,10 @@
  * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   取消运单（DN 未发货时）→ 200 状态
  * 失败：409 16072（details.blockers）/ 502 16073（FedEx 报错，details.errors / transaction_id / action）/
  *       504 16074（超时，details.maybe_processed）/ 409 16075（没有有效运单）/ 400 16077（label_format 不合法）
+ * 申告价额高于已打包货值时后端自动压到货值：warnings 里 DECLARED_VALUE_CAPPED（GET 预告 / POST 实际），
+ * 运单上的 declared_value 是实际提交值。有有效自动运单时改配送任务的运单号 → 409 16078。
  * 面单文件与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file（doc_type = shipping_label）
- * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动：A4 = Letter 页上半页面单（A4 纸选「适合纸张」），
+ * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动：A4 = Letter 页上半页面单（A4 纸、实际大小 100%），
  *   热敏 = 4×6 英寸页面（100×150mm 纸）。后端配置成 ZPLII / EPL2 时才是指令文件，要用标签机的打印程序打开）
  */
 import type { HttpRequestError } from '~/utils/http'
@@ -73,6 +75,9 @@ export interface CarrierLabelPart {
 export interface CarrierWarning {
   code: string | null
   message: string | null
+  /** DECLARED_VALUE_CAPPED：报关快照的申告价额 / 实际随运单提交的值（null = 不提交） */
+  requested?: number | null
+  applied?: number | null
 }
 
 export interface CarrierShipmentStatus {
@@ -138,11 +143,19 @@ export interface CarrierRequestFailure {
 }
 
 /** 提醒列表（warnings）：只留有 code 或 message 的项 */
+const toNumberOrNull = (v: unknown): number | null =>
+  v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v)
+
 export const extractCarrierWarnings = (data: any): CarrierWarning[] =>
   (Array.isArray(data?.warnings) ? data.warnings : [])
     .map((w: any) =>
       w && typeof w === 'object'
-        ? { code: w.code != null ? String(w.code) : null, message: w.message != null ? String(w.message) : null }
+        ? {
+            code: w.code != null ? String(w.code) : null,
+            message: w.message != null ? String(w.message) : null,
+            requested: toNumberOrNull(w.requested ?? w.declared_value_carriage),
+            applied: toNumberOrNull(w.applied ?? w.declared_value),
+          }
         : { code: null, message: w != null ? String(w) : null }
     )
     .filter((w: CarrierWarning) => w.code || w.message)
@@ -237,7 +250,8 @@ export const labelFormatImageType = (status: CarrierShipmentStatus | null | unde
   String(status?.label_formats?.[format]?.image_type || 'PDF').toUpperCase()
 
 /**
- * PDF 面单的打印提示：热敏 = 选标签机、100×150mm、实际大小；A4 = Letter 页，A4 纸选「适合纸张」。
+ * PDF 面单的打印提示：热敏 = 选标签机、100×150mm、实际大小；A4 = A4 纸、实际大小（100%），运单副本页一起打印。
+ * 条码按原尺寸打印最稳，不建议缩放。
  * 指令文件（ZPL / EPL）返回 null（另有提示）。
  */
 export const labelPrintHintKey = (format: string | null | undefined, imageType: string | null | undefined): string | null => {
@@ -325,6 +339,23 @@ export const extractCarrierErrors = (details: any): {
 /** 承运商超时（后端 504 / 16074） */
 export const isCarrierTimeout = (error: HttpRequestError | null | undefined): boolean =>
   !!error && (error.status === 504 || error.code === CARRIER_BIZ_CODES.CARRIER_TIMEOUT)
+
+/**
+ * 随 FedEx 运单提交（或自动建单时将提交）的申告价额与报关快照不同时，返回实际值（null = 不提交申告价额）；
+ * 相同或无从判断时返回 undefined（照快照显示）。
+ */
+export const carrierDeclaredValueOverride = (status: CarrierShipmentStatus | null | undefined): number | null | undefined => {
+  if (!status?.enabled) return undefined
+  const snapshot = toNumberOrNull(status.declared_value_carriage)
+  const shipment = status.shipment
+  if (isActiveShipment(shipment)) {
+    if (shipment.declared_value === undefined) return undefined
+    const applied = toNumberOrNull(shipment.declared_value)
+    return applied !== snapshot ? applied : undefined
+  }
+  const capped = (status.warnings || []).find((w) => w.code === 'DECLARED_VALUE_CAPPED')
+  return capped ? (capped.applied ?? null) : undefined
+}
 
 /** 申告价额提示的模式：manual=手工建单时填写；auto=自动建单会随运单提交；submitted=已随运单提交 */
 export type DeclaredValueMode = 'manual' | 'auto' | 'submitted'

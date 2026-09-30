@@ -26,7 +26,11 @@ import {
   type CustomsProblem,
   type CustomsView,
 } from '~/composables/customs/customsDocuments'
-import { declaredValueModeOf, type CarrierShipmentStatus } from '~/composables/customs/carrierShipment'
+import {
+  carrierDeclaredValueOverride,
+  declaredValueModeOf,
+  type CarrierShipmentStatus,
+} from '~/composables/customs/carrierShipment'
 
 const props = defineProps<{
   dnId: number | string
@@ -114,6 +118,8 @@ const recipientCountry = computed(() =>
   String(view.value?.recipient_country || customs.value?.recipient_country || consignee.value?.country || ''))
 /** 申告价额提示：未启用自动建单 = 手工填写；已自动建单 = 已随运单提交 */
 const declaredValueMode = computed(() => declaredValueModeOf(carrierStatus.value))
+/** 自动建单实际（将）提交的申告价额与快照不同时（被压到已打包货值） */
+const carrierDeclaredValue = computed(() => carrierDeclaredValueOverride(carrierStatus.value))
 /** 当前单证与最新数据（如新存的运单号）不一致 → 需要重新生成 */
 const outdated = computed(() => !locked.value && !!view.value?.documents_outdated && !!(ci.value || pl.value))
 
@@ -332,7 +338,7 @@ defineExpose({ reload: reloadAll })
         </p>
 
         <div class="alert alert-warning-transparent" v-if="!view.customs">{{ t('customs.tips.no-snapshot') }}</div>
-        <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" v-else />
+        <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" :carrier-value="carrierDeclaredValue" v-else />
 
         <div class="row gy-3">
           <!-- ===== 报关概要 ===== -->

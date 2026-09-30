@@ -1495,7 +1495,9 @@
       "declared-value-carriage": "配送業者のシステムで出荷登録するときに、この金額を申告価額として入力してください。",
       "no-declared-value": "申告価額なし（運送保険なし）",
       "declared-value-carriage-auto": "FedEx で自動作成するときは運送状とともに送信されるため、手入力は不要です。手動で運送状を作成するときは、この金額を申告価額として入力してください。",
-      "declared-value-carriage-submitted": "申告価額は運送状とともに送信済みです（FedEx 自動作成）。手入力は不要です。"
+      "declared-value-carriage-submitted": "申告価額は運送状とともに送信済みです（FedEx 自動作成）。手入力は不要です。",
+      "declared-value-capped-submitted": "運送状で送信した申告価額：{amount}（梱包済み商品の金額を超えるため自動調整）",
+      "declared-value-capped-auto": "自動作成時は {amount} で送信します（梱包済み商品の金額を超えるため自動調整）"
     },
     "packages": {
       "box-no": "箱",
@@ -1595,9 +1597,10 @@
         "alerts": "FedEx からの注意事項：",
         "etd-enabled": "電子貿易書類（ETD）が有効です。作成時に CI を FedEx へ電子送信します。",
         "permission-denied": "FedEx でこの操作の権限が拒否されました。FedEx API プロジェクトで該当 API（Ship API など）が有効になっているか確認してください。",
-        "a4-print": "A4 用紙に印刷するときは、倍率で「用紙に合わせる」を選んでください（FedEx のラベルは Letter サイズで A4 より 6mm 幅が広く、上半分がラベルです）",
+        "a4-print": "印刷時は用紙を A4、倍率を実際のサイズ（100%）にしてください。国際便の運送状控えページも一緒に印刷してください",
         "auxiliary": "ラベル PDF には FedEx AWB の控えページ（FEDEX AWB COPY）も含まれています。すべて印刷し、ページの指示に従ってください。",
-        "warnings": "ご注意："
+        "warnings": "ご注意：",
+        "declared-value-submitted-capped": "申告価額 {amount} を運送状とともに送信済みです（通関データの {original} は梱包済み商品の金額を超えるため自動調整）"
       },
       "created": "FedEx で運送状を作成しました：{tracking}（運送状番号を保存し、CI / PL を更新しました）",
       "cancelled": "運送状 {tracking} を取り消しました",
@@ -1620,7 +1623,6 @@
         "PACKAGES_MISSING": "箱情報が未登録です",
         "TOO_MANY_PACKAGES": "箱数が 1 件の運送状の上限（30 箱）を超えています",
         "PACKAGE_INCOMPLETE": "重量または寸法が未入力の箱があります",
-        "DECLARED_VALUE_EXCEEDS_CUSTOMS_VALUE": "運送申告価額が梱包済み商品の金額を超えています（FedEx で拒否されます）。申告価額か梱包数を確認してください",
         "SHIPPER_ADDRESS_INVALID": "出荷元（倉庫・会社）の英文住所を FedEx の形式に変換できません。番地と市区町村をカンマで区切ってください",
         "RECIPIENT_ADDRESS_INVALID": "お届け先住所が不完全か、FedEx の形式に変換できません",
         "RECIPIENT_NAME_MISSING": "受取人の氏名または会社名がありません",
@@ -1634,6 +1636,9 @@
         "create": "作成",
         "etd_upload": "電子貿易書類（ETD）のアップロード",
         "cancel": "取り消し"
+      },
+      "warnings": {
+        "DECLARED_VALUE_CAPPED": "運送申告価額 {original} は梱包済み商品の金額を超えるため、運送状の申告価額は {amount} になります"
       }
     }
   },
@@ -1655,6 +1660,7 @@
     "code-16074": "FedEx の応答がタイムアウトしました",
     "code-16075": "有効な運送状がありません",
     "code-16076": "有効な FedEx の運送状があります。箱情報を変更する前に運送状を取り消してください",
-    "code-16077": "ラベルの印刷方法が正しくありません（A4 または THERMAL のみ）"
+    "code-16077": "ラベルの印刷方法が正しくありません（A4 または THERMAL のみ）",
+    "code-16078": "この出荷指示には FedEx で自動作成した運送状 {tracking_number} があります。運送状番号を変更するには、先に出荷指示の単証カードで運送状を取り消してください"
   }
 }

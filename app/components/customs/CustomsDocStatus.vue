@@ -10,6 +10,7 @@ import {
   type CustomsView,
 } from '~/composables/customs/customsDocuments'
 import {
+  carrierDeclaredValueOverride,
   carrierShipmentUrl,
   declaredValueModeOf,
   isActiveShipment,
@@ -85,9 +86,10 @@ const carrierShipment = computed(() => {
   return isActiveShipment(s) ? s : null
 })
 const declaredValueMode = computed(() => declaredValueModeOf(carrierStatus.value))
+const carrierDeclaredValue = computed(() => carrierDeclaredValueOverride(carrierStatus.value))
 const labelDoc = computed(() => labelDocumentOf(carrierShipment.value))
 const pdfLabel = computed(() => isPdfLabel(carrierShipment.value))
-/** PDF 面单的打印提示（A4 选「适合纸张」、热敏选 100×150mm 实际大小） */
+/** PDF 面单的打印提示（A4 纸 / 热敏 100×150mm，都按实际大小 100% 打印） */
 const labelPrintHint = computed(() => {
   const s = carrierShipment.value
   return s ? labelPrintHintKey(s.label_format || 'A4', labelImageTypeOf(s)) : null
@@ -130,7 +132,7 @@ defineExpose({ reload: load })
       </div>
 
       <!-- 运送申告价额：手工建单时在承运商系统填写；FedEx 自动建单时随运单提交 -->
-      <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" compact />
+      <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" :carrier-value="carrierDeclaredValue" compact />
 
       <ul class="list-unstyled mb-2 fs-13">
         <li class="mb-1">
