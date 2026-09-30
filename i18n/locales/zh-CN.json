@@ -1491,7 +1491,9 @@
       "jp-export-code": "日本出口统计品目编号（9 位），仅供核对，不印在 CI 上",
       "declared-value-carriage-heading": "运送申告价额（Declared Value for Carriage）",
       "declared-value-carriage": "在承运商系统登记出货时，请把这个金额填为申告价额。",
-      "no-declared-value": "无申告价额（未投保运送保险）"
+      "no-declared-value": "无申告价额（未投保运送保险）",
+      "declared-value-carriage-auto": "在 FedEx 自动建单时会随运单一并提交，无需手工填写；手工建运单时，请把这个金额填为申告价额。",
+      "declared-value-carriage-submitted": "申告价额已随运单提交（FedEx 自动建单），无需再手工填写。"
     },
     "packages": {
       "box-no": "箱",
@@ -1539,10 +1541,65 @@
     },
     "workflow": {
       "step1": "打包时录入箱子（重量、尺寸）",
-      "step2": "在承运商系统建运单（有运送申告价额时一并填写），取得运单号（AWB）",
-      "step3": "在本页保存运单号",
-      "step4": "在出库单生成并打印单证（CI / PL）",
+      "step2": "建运单：优先在出库单的单证卡片点「在 FedEx 建运单」自动建单（运单号自动保存，申告价额随运单提交）；FedEx 不可用时，再在承运商系统手工建运单（有运送申告价额时一并填写），取得运单号（AWB）",
+      "step3": "手工建运单时，在本页保存运单号（自动建单时已自动保存）",
+      "step4": "在出库单生成并打印单证（CI / PL）；自动建单时一并打印面单",
       "step5": "完成发货"
+    },
+    "carrier": {
+      "title": "承运商运单",
+      "status": {
+        "active": "已建运单",
+        "auto-created": "FedEx 自动建单",
+        "not-created": "尚未在 FedEx 建运单"
+      },
+      "fields": {
+        "tracking-number": "运单号",
+        "service": "服务",
+        "net-charge": "运费",
+        "created": "建单时间",
+        "transaction-id": "FedEx 交易 ID"
+      },
+      "operations": {
+        "create": "在 FedEx 建运单",
+        "print-label": "打印 / 下载面单",
+        "download-label": "下载面单",
+        "cancel": "取消运单"
+      },
+      "tips": {
+        "disabled": "FedEx 自动建单未启用（可在后端配置中启用）。请在承运商系统手工建运单，再到配送任务保存运单号。",
+        "auto": "建单时使用本页的箱子、报关明细和出口资料；还没有有效单证时会先生成 CI / PL。成功后运单号自动保存到配送任务。FedEx 不可用时，可在承运商系统手工建运单，再到配送任务保存运单号。",
+        "creating": "正在向 FedEx 建运单，可能需要几十秒，请不要关闭页面…",
+        "blocked": "暂时不能自动建单：",
+        "carrier-errors": "FedEx 返回的错误：",
+        "timeout": "FedEx 响应超时，运单可能已经在 FedEx 生成。重试前请先刷新本区域，或到 FedEx 网站确认，避免重复建单。",
+        "last-cancelled": "上一张运单 {tracking} 已于 {time} 取消",
+        "no-label": "没有面单文件",
+        "label-open": "在新标签页打开面单 PDF，可打印或下载",
+        "etd-submitted": "CI 已通过电子贸易单证（ETD）提交给 FedEx",
+        "declared-value-submitted": "申告价额 {amount} 已随运单提交"
+      },
+      "created": "已在 FedEx 建运单：{tracking}",
+      "cancelled": "运单 {tracking} 已取消",
+      "create-confirm-title": "在 FedEx 建运单？",
+      "create-confirm": "将为本出库单在 FedEx 建运单，运单号会自动保存到配送任务。",
+      "create-confirm-packages": "将用本出库单的 {count} 个箱子在 FedEx 建运单，运单号会自动保存到配送任务。",
+      "cancel-confirm-title": "取消运单？",
+      "cancel-confirm": "将在 FedEx 取消运单 {tracking}：配送任务上的运单号会被清除，面单作废，单证随之更新。此操作不能撤销。",
+      "blockers": {
+        "CARRIER_DISABLED": "未启用 FedEx 自动建单",
+        "NOT_EXPORT": "不是海外单",
+        "NOT_PACKED": "打包完成（packed）后才能建运单",
+        "DELIVERY_TASK_MISSING": "还没有配送任务",
+        "CARRIER_NOT_FEDEX": "配送任务的承运商不是 FedEx",
+        "SHIPMENT_EXISTS": "已经有有效的运单",
+        "PACKAGES_MISSING": "还没有录入箱子",
+        "PACKAGE_INCOMPLETE": "有箱子缺少毛重或尺寸",
+        "CUSTOMS_PROBLEMS": "报关数据有错误，请先处理问题清单",
+        "CUSTOMS_MISSING": "该出库单没有报关数据",
+        "EXPORTER_PROFILE_INCOMPLETE": "出口资料不全（英文名称、英文地址、电话、联系人、税号等）",
+        "DOCUMENTS_NOT_READY": "单证（CI / PL）条件不全，无法先生成单证"
+      }
     }
   },
   "biz-errors": {

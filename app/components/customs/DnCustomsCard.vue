@@ -3,8 +3,9 @@
  * 出库单详情 · 海外出荷単証卡片
  *
  * - 报关概要、逐行明细（缺原产国的行可就地选择并保存到商品主数据）、运费 / 保险费与发票总额
- * - 运送申告价额提示（有值时醒目提示在承运商系统登记出货时填写）
+ * - 运送申告价额提示（手工建单时提示在承运商系统填写；自动建单时注明已随运单提交）
  * - 箱子编辑（cm / kg 录入，保存换算 mm）
+ * - 承运商运单（FedEx 自动建单、面单、取消）
  * - 问题清单（错误 / 警告）
  * - 生成单证、打印 CI / PL、历史版本
  * - DN 发货后只读（仍可查看、打印）
@@ -25,6 +26,7 @@ import {
   type CustomsProblem,
   type CustomsView,
 } from '~/composables/customs/customsDocuments'
+import { declaredValueModeOf, type CarrierShipmentStatus } from '~/composables/customs/carrierShipment'
 
 const props = defineProps<{
   dnId: number | string
@@ -42,6 +44,8 @@ const loading = ref(false)
 const loadError = ref<string | null>(null)
 const view = ref<CustomsView | null>(null)
 const issuing = ref(false)
+const carrierRef = ref<{ reload: () => Promise<void> } | null>(null)
+const carrierStatus = ref<CarrierShipmentStatus | null>(null)
 let scrolled = false
 
 // ------------------ 读取 ----------------------
@@ -69,6 +73,12 @@ const load = async () => {
 }
 
 onMounted(load)
+
+/** 单证数据与承运商运单一起刷新（箱子、单证变了，建单的前置条件也会变） */
+const reloadAll = async () => {
+  await load()
+  await carrierRef.value?.reload()
+}
 
 // ------------------ 状态 ----------------------
 const locked = computed(() => !!view.value?.locked || DN_LOCKED_STATUSES.includes(String(props.dnStatus || '')))
@@ -102,6 +112,8 @@ const currentDocuments = computed(() => [ci.value, pl.value].filter((d): d is Cu
 const packagesForEditor = computed(() => view.value?.packages || [])
 const recipientCountry = computed(() =>
   String(view.value?.recipient_country || customs.value?.recipient_country || consignee.value?.country || ''))
+/** 申告价额提示：未启用自动建单 = 手工填写；已自动建单 = 已随运单提交 */
+const declaredValueMode = computed(() => declaredValueModeOf(carrierStatus.value))
 /** 当前单证与最新数据（如新存的运单号）不一致 → 需要重新生成 */
 const outdated = computed(() => !locked.value && !!view.value?.documents_outdated && !!(ci.value || pl.value))
 
@@ -161,7 +173,7 @@ const issue = async () => {
       } else {
         showToast(t('customs.tips.issued-new', { version }), 'success')
       }
-      await load()
+      await reloadAll()
       if (historyOpen.value) await loadHistory()
     },
     onError: (error) => {
@@ -223,7 +235,7 @@ const saveOrigin = async (line: CustomsLine) => {
     onSuccess: async () => {
       showToast(t('action-results.op-success', { operation: t('goods.operations.edit'), entity: line.goods_code }), 'success')
       delete originDraft[key]
-      await load()
+      await reloadAll()
     },
     onError: (error) => {
       showToast(bizErrorMessage(error), 'error')
@@ -236,11 +248,17 @@ const saveOrigin = async (line: CustomsLine) => {
 
 // ------------------ 箱子保存后 ----------------------
 const onPackagesSaved = async () => {
+  await reloadAll()
+  if (historyOpen.value) await loadHistory()
+}
+
+// ------------------ 承运商运单：建单 / 取消后运单号变了，单证随之更新 ----------------------
+const onCarrierChanged = async () => {
   await load()
   if (historyOpen.value) await loadHistory()
 }
 
-defineExpose({ reload: load })
+defineExpose({ reload: reloadAll })
 </script>
 
 <template>
@@ -284,7 +302,7 @@ defineExpose({ reload: load })
           <i class="ri-history-line me-1"></i>{{ t('customs.operations.history') }}
         </button>
         <button type="button" class="btn btn-sm btn-light" :disabled="loading" :title="t('customs.operations.refresh')"
-          @click="load">
+          @click="reloadAll">
           <i class="ri-refresh-line"></i>
         </button>
       </div>
@@ -314,7 +332,7 @@ defineExpose({ reload: load })
         </p>
 
         <div class="alert alert-warning-transparent" v-if="!view.customs">{{ t('customs.tips.no-snapshot') }}</div>
-        <DeclaredValueNotice :customs="view.customs" v-else />
+        <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" v-else />
 
         <div class="row gy-3">
           <!-- ===== 报关概要 ===== -->
@@ -551,6 +569,13 @@ defineExpose({ reload: load })
             <h6 class="fw-semibold mb-2">{{ t('customs.sections.packages') }}</h6>
             <DnPackagesEditor :dn-id="dnId" :packages="packagesForEditor" :editable="canEditPackages"
               :readonly-reason="packagesReadonlyReason" @saved="onPackagesSaved" />
+          </div>
+
+          <!-- ===== 承运商运单 ===== -->
+          <div class="col-12">
+            <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" :locked="locked" :customs="view.customs"
+              :package-count="totals?.package_count ?? packagesForEditor.length"
+              @status="carrierStatus = $event" @changed="onCarrierChanged" />
           </div>
 
           <!-- ===== 单证 ===== -->

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /**
  * 海外出荷単証的状态概要（打包详情、发货详情用）
- * 显示当前有效的 CI / PL 版本、问题数量、运送申告价额，并可打印、跳到出库单的单证卡片。
+ * 显示当前有效的 CI / PL 版本、问题数量、运送申告价额、FedEx 自动建的运单，并可打印、跳到出库单的单证卡片。
  */
 import {
   pickCurrentDocument,
@@ -9,6 +9,14 @@ import {
   type CustomsProblem,
   type CustomsView,
 } from '~/composables/customs/customsDocuments'
+import {
+  carrierShipmentUrl,
+  declaredValueModeOf,
+  isActiveShipment,
+  labelDocumentOf,
+  normalizeCarrierStatus,
+  type CarrierShipmentStatus,
+} from '~/composables/customs/carrierShipment'
 
 const props = withDefaults(defineProps<{
   dnId: number | string
@@ -19,28 +27,43 @@ const props = withDefaults(defineProps<{
 
 const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
-const { busyDocId, printDoc } = useCustomsPdfActions()
+const { busyDocId, printDoc, viewDoc } = useCustomsPdfActions()
 
 const loading = ref(false)
 const view = ref<CustomsView | null>(null)
 const loadError = ref<string | null>(null)
+/** 承运商运单状态（读不到时当作未启用，不影响单证概要） */
+const carrierStatus = ref<CarrierShipmentStatus | null>(null)
+
+const loadCarrier = async () => {
+  await httpRequest<CarrierShipmentStatus>(carrierShipmentUrl(props.dnId), {
+    method: 'GET',
+    onSuccess: (data) => {
+      carrierStatus.value = normalizeCarrierStatus(data)
+    },
+    onError: () => {
+      carrierStatus.value = null
+    },
+  })
+}
 
 const load = async () => {
   if (!props.dnId) return
   loading.value = true
   loadError.value = null
-  await httpRequest<CustomsView>(`/api/warehouse/dn/${props.dnId}/customs`, {
-    method: 'GET',
-    onSuccess: (data) => {
-      view.value = data
-    },
-    onError: (error) => {
-      loadError.value = bizErrorMessage(error)
-    },
-    onFinally: () => {
-      loading.value = false
-    },
-  })
+  await Promise.all([
+    httpRequest<CustomsView>(`/api/warehouse/dn/${props.dnId}/customs`, {
+      method: 'GET',
+      onSuccess: (data) => {
+        view.value = data
+      },
+      onError: (error) => {
+        loadError.value = bizErrorMessage(error)
+      },
+    }),
+    loadCarrier(),
+  ])
+  loading.value = false
 }
 
 onMounted(load)
@@ -52,6 +75,13 @@ const errorCount = computed(() => (view.value?.problems || []).filter((p: Custom
 const warningCount = computed(() => (view.value?.problems || []).filter((p: CustomsProblem) => p.level === 'warning').length)
 const hasDocuments = computed(() => !!ci.value && !!pl.value)
 const outdated = computed(() => !view.value?.locked && !!view.value?.documents_outdated && hasDocuments.value)
+const carrierEnabled = computed(() => !!carrierStatus.value?.enabled)
+const carrierShipment = computed(() => {
+  const s = carrierStatus.value?.shipment
+  return isActiveShipment(s) ? s : null
+})
+const declaredValueMode = computed(() => declaredValueModeOf(carrierStatus.value))
+const labelDoc = computed(() => labelDocumentOf(carrierShipment.value))
 
 defineExpose({ reload: load })
 </script>
@@ -88,8 +118,8 @@ defineExpose({ reload: load })
         <i class="ri-error-warning-line me-1"></i>{{ t('customs.tips.documents-outdated') }}
       </div>
 
-      <!-- 运送申告价额：在承运商系统登记出货时要填 -->
-      <DeclaredValueNotice :customs="view.customs" compact />
+      <!-- 运送申告价额：手工建单时在承运商系统填写；FedEx 自动建单时随运单提交 -->
+      <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" compact />
 
       <ul class="list-unstyled mb-2 fs-13">
         <li class="mb-1">
@@ -106,6 +136,14 @@ defineExpose({ reload: load })
           </template>
           <span class="text-danger ms-1" v-else>{{ t('customs.status.not-issued') }}</span>
         </li>
+        <li class="mt-1" v-if="carrierEnabled">
+          <span class="fw-semibold">{{ t('customs.carrier.title') }} :</span>
+          <template v-if="carrierShipment">
+            <span class="font-monospace ms-1">{{ carrierShipment.tracking_number }}</span>
+            <span class="badge bg-success-transparent ms-1">{{ t('customs.carrier.status.auto-created') }}</span>
+          </template>
+          <span class="text-muted ms-1" v-else>{{ t('customs.carrier.status.not-created') }}</span>
+        </li>
       </ul>
 
       <div class="btn-list">
@@ -119,6 +157,11 @@ defineExpose({ reload: load })
             @click="printDoc(dnId, pl)">
             <span v-if="pl && busyDocId === pl.id" class="spinner-border spinner-border-sm me-1"></span>
             <i v-else class="ri-printer-line me-1"></i>{{ t('customs.operations.print-pl') }}
+          </button>
+          <button type="button" class="btn btn-sm btn-primary-light" v-if="labelDoc" :disabled="busyDocId !== null"
+            :title="t('customs.carrier.tips.label-open')" @click="viewDoc(dnId, labelDoc)">
+            <span v-if="busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
+            <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.print-label') }}
           </button>
         </template>
         <NuxtLink :to="`/dn/detail/${dnId}#customs-documents`" class="btn btn-sm btn-light">

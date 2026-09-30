@@ -1491,7 +1491,9 @@
       "jp-export-code": "Japanese export statistical code (9 digits). For reference only; not printed on the CI.",
       "declared-value-carriage-heading": "Declared Value for Carriage",
       "declared-value-carriage": "Enter this amount as the declared value when booking the shipment in the carrier's system.",
-      "no-declared-value": "No declared value (not insured)"
+      "no-declared-value": "No declared value (not insured)",
+      "declared-value-carriage-auto": "When the shipment is created automatically in FedEx, this amount is submitted with it; no manual entry needed. If you create the shipment manually, enter this amount as the declared value.",
+      "declared-value-carriage-submitted": "The declared value has been submitted with the shipment (created automatically in FedEx); no manual entry needed."
     },
     "packages": {
       "box-no": "Box",
@@ -1539,10 +1541,65 @@
     },
     "workflow": {
       "step1": "Record packages (weight, dimensions) when packing",
-      "step2": "Create the shipment in the carrier's system (enter the declared value for carriage if shown) and get the tracking number (AWB)",
-      "step3": "Save the tracking number on this page",
-      "step4": "Issue and print the documents (CI / PL) on the DN",
+      "step2": "Create the shipment: preferably click “Create FedEx Shipment” on the DN's export documents card (the tracking number is saved and the declared value is submitted automatically). If FedEx is unavailable, create it manually in the carrier's system (enter the declared value for carriage if shown) and get the tracking number (AWB)",
+      "step3": "If created manually, save the tracking number on this page (already saved when created automatically)",
+      "step4": "Issue and print the documents (CI / PL) on the DN, plus the shipping label if created automatically",
       "step5": "Complete the shipment"
+    },
+    "carrier": {
+      "title": "Carrier Shipment",
+      "status": {
+        "active": "Created",
+        "auto-created": "Created in FedEx",
+        "not-created": "Not created in FedEx yet"
+      },
+      "fields": {
+        "tracking-number": "Tracking No.",
+        "service": "Service",
+        "net-charge": "Shipping Charge",
+        "created": "Created",
+        "transaction-id": "FedEx Transaction ID"
+      },
+      "operations": {
+        "create": "Create FedEx Shipment",
+        "print-label": "Print / Download Label",
+        "download-label": "Download Label",
+        "cancel": "Cancel Shipment"
+      },
+      "tips": {
+        "disabled": "Automatic FedEx shipment creation is not enabled (it can be enabled in the backend configuration). Create the shipment in the carrier's system and save the tracking number on the delivery task.",
+        "auto": "Uses the packages, customs lines and exporter profile on this page. If there are no valid documents yet, the CI / PL are issued first. The tracking number is saved to the delivery task automatically. If FedEx is unavailable, create the shipment manually in the carrier's system and save the tracking number on the delivery task.",
+        "creating": "Creating the shipment in FedEx. This may take a few dozen seconds; please keep this page open…",
+        "blocked": "Cannot create the shipment automatically yet:",
+        "carrier-errors": "Errors returned by FedEx:",
+        "timeout": "FedEx timed out. The shipment may have been created in FedEx anyway. Before retrying, refresh this section or check on the FedEx website to avoid a duplicate shipment.",
+        "last-cancelled": "The previous shipment {tracking} was cancelled at {time}",
+        "no-label": "No label file",
+        "label-open": "Opens the label PDF in a new tab, where you can print or download it",
+        "etd-submitted": "The CI was submitted to FedEx as an Electronic Trade Document (ETD)",
+        "declared-value-submitted": "Declared value {amount} submitted with the shipment"
+      },
+      "created": "FedEx shipment created: {tracking}",
+      "cancelled": "Shipment {tracking} cancelled",
+      "create-confirm-title": "Create FedEx shipment?",
+      "create-confirm": "A FedEx shipment will be created for this DN. The tracking number is saved to the delivery task automatically.",
+      "create-confirm-packages": "A FedEx shipment will be created with the {count} package(s) of this DN. The tracking number is saved to the delivery task automatically.",
+      "cancel-confirm-title": "Cancel shipment?",
+      "cancel-confirm": "Shipment {tracking} will be cancelled in FedEx: the tracking number is cleared from the delivery task, the label is voided and the documents are updated accordingly. This cannot be undone.",
+      "blockers": {
+        "CARRIER_DISABLED": "Automatic FedEx shipment creation is not enabled",
+        "NOT_EXPORT": "Not an export shipment",
+        "NOT_PACKED": "Available after packing is completed (packed)",
+        "DELIVERY_TASK_MISSING": "There is no delivery task yet",
+        "CARRIER_NOT_FEDEX": "The carrier of the delivery task is not FedEx",
+        "SHIPMENT_EXISTS": "A valid shipment already exists",
+        "PACKAGES_MISSING": "No packages recorded yet",
+        "PACKAGE_INCOMPLETE": "Some packages are missing weight or dimensions",
+        "CUSTOMS_PROBLEMS": "The customs data has errors; resolve the issues listed above first",
+        "CUSTOMS_MISSING": "This DN has no customs data",
+        "EXPORTER_PROFILE_INCOMPLETE": "Exporter profile is incomplete (English name, English address, phone, contact, tax ID, etc.)",
+        "DOCUMENTS_NOT_READY": "Document (CI / PL) requirements are not met, so they cannot be issued first"
+      }
     }
   },
   "biz-errors": {

@@ -146,6 +146,9 @@ export const hasNonAscii = (text: string | null | undefined): boolean =>
 const toHex = (buf: ArrayBuffer) =>
   Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
 
+/** 取 PDF 所需的最少信息（单证 meta，或只知道 id 的面单等 dn_documents 文档） */
+export type PdfDocumentRef = Pick<CustomsDocumentMeta, 'id' | 'sha256' | 'file_name'>
+
 export interface FetchedPdf {
   blob: Blob
   fileName: string
@@ -160,7 +163,7 @@ export interface FetchedPdf {
  */
 export const fetchCustomsPdf = async (
   dnId: number | string,
-  doc: Pick<CustomsDocumentMeta, 'id' | 'sha256' | 'file_name'>
+  doc: PdfDocumentRef
 ): Promise<FetchedPdf> => {
   let res: Response
   try {
@@ -288,7 +291,7 @@ export const normalizeDocumentList = (data: any): CustomsDocumentMeta[] => {
 }
 
 /**
- * 查看 / 打印 / 下载单证 PDF 的页面动作（统一处理错误提示与校验）
+ * 查看 / 打印 / 下载单证（及面单）PDF 的页面动作（统一处理错误提示与校验）
  */
 export const useCustomsPdfActions = () => {
   const { t } = useI18n()
@@ -296,7 +299,7 @@ export const useCustomsPdfActions = () => {
   /** 正在处理的文档 id（按钮转圈用） */
   const busyDocId = ref<number | null>(null)
 
-  const load = async (dnId: number | string, doc: CustomsDocumentMeta): Promise<FetchedPdf | null> => {
+  const load = async (dnId: number | string, doc: PdfDocumentRef): Promise<FetchedPdf | null> => {
     busyDocId.value = doc.id
     try {
       const pdf = await fetchCustomsPdf(dnId, doc)
@@ -313,13 +316,13 @@ export const useCustomsPdfActions = () => {
     }
   }
 
-  const printDoc = async (dnId: number | string, doc: CustomsDocumentMeta | null) => {
+  const printDoc = async (dnId: number | string, doc: PdfDocumentRef | null) => {
     if (!doc) return
     const pdf = await load(dnId, doc)
     if (pdf) printPdfBlob(pdf.blob)
   }
 
-  const viewDoc = async (dnId: number | string, doc: CustomsDocumentMeta | null) => {
+  const viewDoc = async (dnId: number | string, doc: PdfDocumentRef | null) => {
     if (!doc) return
     // 先同步开窗，避免异步取数后被弹窗拦截
     const win = window.open('', '_blank')
@@ -331,7 +334,7 @@ export const useCustomsPdfActions = () => {
     }
   }
 
-  const downloadDoc = async (dnId: number | string, doc: CustomsDocumentMeta | null) => {
+  const downloadDoc = async (dnId: number | string, doc: PdfDocumentRef | null) => {
     if (!doc) return
     const pdf = await load(dnId, doc)
     if (pdf) downloadPdfBlob(pdf.blob, pdf.fileName)
