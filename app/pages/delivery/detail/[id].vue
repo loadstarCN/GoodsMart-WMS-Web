@@ -98,11 +98,18 @@ const completeTask = async () => {
             showToast(t('action-results.task-complete'), 'success')
         },
         onError: (error) => {
-            // 16069：海外单没有当前有效的 CI 和 PL，后端拒绝完成发货
+            // 16069：海外单没有当前有效的 CI 和 PL（details.missing_documents）或单证已过期（details.outdated），
+            // 后端拒绝完成发货；文案按缺失 / 过期区分（见 useBizError）
             if (error.code === 16069) {
                 customsBlockedReason.value = bizErrorMessage(error);
                 docStatusRef.value?.reload();
                 showAlert(t('customs.tips.delivery-blocked-title'), customsBlockedReason.value, 'error');
+                return;
+            }
+            // 16078（自动运单锁定运单号 / 承运商）、16079（有结果不明的自动运单）、16080（CI 上的运单号与填写的不同）：
+            // 需要按文案处理，用弹窗而不是一闪而过的提示
+            if (SHIPPING_BLOCK_CODES.includes(Number(error.code))) {
+                showAlert(t('customs.tips.delivery-blocked-title'), bizErrorMessage(error), 'error');
                 return;
             }
             showToast(bizErrorMessage(error), 'error')
@@ -208,6 +215,9 @@ const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.val
 const customsBlockedReason = ref<string | null>(null);
 const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
 
+/** 完成发货 / 保存运单号时要弹窗说明的业务码：自动运单锁定（16078）/ 结果不明（16079）/ 与 CI 上的运单号不一致（16080） */
+const SHIPPING_BLOCK_CODES = [16078, 16079, 16080];
+
 // ------------------ 保存运单号（完成发货前） ----------------------
 // 任务 pending / in_progress 可存；已发货 409 16065。
 // 海外单：运单号（AWB）计入单证数据，已出的单证不会自动作废，需重新生成才能印上 AWB。
@@ -242,6 +252,10 @@ const saveTracking = async () => {
       }
     },
     onError: (error) => {
+      if (SHIPPING_BLOCK_CODES.includes(Number(error.code))) {
+        showAlert(t('delivery.tips.tracking-blocked-title'), bizErrorMessage(error), 'error');
+        return;
+      }
       showToast(bizErrorMessage(error), 'error');
     },
     onFinally: () => {

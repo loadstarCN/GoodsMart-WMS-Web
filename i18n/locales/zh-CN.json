@@ -705,7 +705,8 @@
         "code": "长度≤50字符",
         "weight": "千克，三位小数",
         "dimensions": "毫米",
-        "origin-country": "按包装上的「MADE IN」录入；不确定就留空"
+        "origin-country": "按包装上的「MADE IN」录入；不确定就留空",
+        "no-changes": "没有修改"
       }
     },
     "operations": {
@@ -999,7 +1000,8 @@
     },
     "tips": {
       "save-tracking": "可在完成发货前单独保存运单号",
-      "tracking-saved-reissue": "运单号已保存。要在单证上印出 AWB，请重新生成单证"
+      "tracking-saved-reissue": "运单号已保存。要在单证上印出 AWB，请重新生成单证",
+      "tracking-blocked-title": "不能保存运单号"
     },
     "validation": {
       "tracking-too-long": "运单号不能超过 {max} 个字符"
@@ -1577,7 +1579,9 @@
         "cancel": "取消运单",
         "download-label-file": "下载面单文件（.{ext}）",
         "send-to-printer": "发送到标签机",
-        "open-delivery": "前往配送任务"
+        "open-delivery": "前往配送任务",
+        "dismiss": "已核对：FedEx 上没有 / 已取消",
+        "refresh": "重新读取"
       },
       "tips": {
         "disabled": "FedEx 自动建单未启用（可在后端配置中启用）。请在承运商系统手工建运单，再到配送任务保存运单号。",
@@ -1597,7 +1601,7 @@
         "alerts": "FedEx 的提示：",
         "etd-enabled": "已启用电子贸易单证（ETD）：建单时 CI 会电子提交给 FedEx。",
         "permission-denied": "FedEx 拒绝了该操作的权限：请确认 FedEx API 项目已开通相应接口（如 Ship API）。",
-        "a4-print": "打印时纸张选 A4，缩放选实际大小（100%）；国际件的运单副本页也要一起打印",
+        "a4-print": "打印时纸张选 A4，缩放选实际大小（100%）；国际件的运单副本页也要一起打印。面单文件是 Letter 尺寸（比 A4 宽约 6mm），打印预览里页面稍宽或提示超出边距都属正常，面单区域不会被裁，不要改成「适合页面」",
         "auxiliary": "面单 PDF 里还包含 FedEx AWB 副本页（FEDEX AWB COPY），请全部打印，并按页面上的说明处理。",
         "warnings": "请注意：",
         "declared-value-submitted-capped": "申告价额 {amount} 已随运单提交（报关数据为 {original}，高于已打包的货物金额，已自动调整）"
@@ -1639,6 +1643,32 @@
       },
       "warnings": {
         "DECLARED_VALUE_CAPPED": "运送申告价额 {original} 高于已打包的货物金额，随运单提交的申告价额为 {amount}"
+      },
+      "unresolved": {
+        "title": "FedEx 建单结果不明，暂时不能再建单",
+        "description": "WMS 没能确认这次建单的结果，运单可能已经在 FedEx 生成。为避免重复建单和重复计费，请先到 FedEx 上核对。",
+        "in-progress-title": "正在 FedEx 建运单…",
+        "in-progress": "这张出库单的运单正在建（可能是其他人或其他画面发起的），结束前不能再建。本页会自动刷新。",
+        "fields": {
+          "reason": "原因",
+          "tracking-number": "已知运单号",
+          "started": "发起时间"
+        },
+        "no-tracking": "未知",
+        "steps-title": "处理步骤：",
+        "step1": "登录 FedEx Ship Manager，用上面的交易 ID、运单号，或收件人和发货日期查找这张运单",
+        "step2": "如果找到了，在 FedEx Ship Manager 取消（作废）这张运单",
+        "step3": "确认 FedEx 上没有这张运单或已经取消后，点「已核对」解除，再重新建单",
+        "dismiss-confirm-title": "解除结果不明的运单？",
+        "dismiss-confirm": "请确认已在 FedEx Ship Manager 核对过（交易 ID：{transaction}，运单号：{tracking}）：FedEx 上没有这张运单，或已经手工取消。解除后可以重新建单；如果 FedEx 上其实还有这张运单，会产生重复运单和运费。",
+        "dismissed": "已解除，可以重新建单",
+        "reasons": {
+          "in_progress": "建单进行中",
+          "timeout": "FedEx 响应超时",
+          "compensation_failed": "FedEx 已建单但 WMS 保存失败，自动取消也没有成功（FedEx 上很可能有这张运单）",
+          "bad_response": "FedEx 返回的内容无法识别",
+          "stale": "建单长时间没有结束（可能中途中断）"
+        }
       }
     }
   },
@@ -1651,6 +1681,7 @@
     "code-16067": "当前状态不能修改箱子（仅已拣货、已打包时可改）",
     "code-16068": "单证条件不全",
     "code-16069": "发货前必须先生成有效的商业发票（CI）和装箱单（PL）",
+    "code-16069-outdated": "商业发票（CI）/ 装箱单（PL）已过期（签发后报关数据、箱子或运单号有变动），请在出库单的单证卡片重新生成后再发货",
     "code-16070": "不是海外单",
     "code-16071": "单证不存在",
     "code-14019": "出口资料文本超长",
@@ -1658,9 +1689,12 @@
     "code-16072": "不满足在 FedEx 建运单的条件",
     "code-16073": "FedEx 返回错误",
     "code-16074": "FedEx 响应超时",
-    "code-16075": "没有有效的运单",
-    "code-16076": "已有有效的 FedEx 运单，改箱子前请先取消运单",
+    "code-16075": "没有有效的运单（或已没有需要解除的结果不明运单）",
+    "code-16076": "这张出库单已有 FedEx 自动运单，不能修改箱子或报关数据；要修改请先在出库单的单证卡片取消运单",
     "code-16077": "面单打印方式不合法（只能是 A4 或 THERMAL）",
-    "code-16078": "该出库单已有 FedEx 自动运单 {tracking_number}，要换运单号请先在出库单的单证卡片取消自动运单"
+    "code-16078": "该出库单有 FedEx 自动运单 {tracking_number}：运单号和承运商不能更改，也不能新建或删除发货任务。要更改请先在出库单的单证卡片取消自动运单",
+    "code-16078-no-tracking": "该出库单有 FedEx 自动运单：运单号和承运商不能更改，也不能新建或删除发货任务。要更改请先在出库单的单证卡片取消自动运单",
+    "code-16079": "该出库单有一张结果不明的 FedEx 自动运单（FedEx 上可能已生成）。请先在出库单的单证卡片按提示到 FedEx Ship Manager 核对并处理，处理前不能建运单或修改运单号",
+    "code-16080": "商业发票（CI）上印的运单号是 {document_tracking_number}，与本次填写的 {tracking_number} 不一致。请用 CI 上的运单号发货；如果运单号确实变了，请先保存新运单号并重新生成 CI / PL"
   }
 }

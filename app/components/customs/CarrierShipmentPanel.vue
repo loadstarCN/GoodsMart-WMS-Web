@@ -7,6 +7,9 @@
  *   不可建时按钮置灰并列出 blockers
  * - 状态附带的提醒（warnings）按 code 显示
  * - 建单中显示进度；成功时显示 FedEx 的提示（alerts）；失败时显示 FedEx 的错误原文（errors[].code / message、交易 ID）
+ * - 结果不明（unresolved：FedEx 超时 / 补偿失败 / 响应异常）：醒目显示原因、交易 ID、已知运单号，建议先到
+ *   FedEx Ship Manager 核对并取消；此时不能建单。can_dismiss 时给「已核对」按钮（二次确认后解除）；
+ *   pending（别人正在建）只显示进行中并定时刷新。建单 504 16074 / 409 16079 / 5xx / 断网后立即重新读取状态
  * - 已建：运单号、服务、运费、面单格式；PDF 面单（A4、热敏默认）新标签页打开打印 / 下载，热敏标签机附打印设置提示；
  *   后端配置成 ZPLII / EPL2 时下载指令文件；
  *   取消运单（二次确认；DN 已发货时不显示）
@@ -24,6 +27,7 @@ import {
   isActiveShipment,
   isCarrierTimeout,
   isPdfLabel,
+  isUnresolvedInProgress,
   LABEL_FORMATS,
   labelDocumentOf,
   labelFileExtension,
@@ -34,7 +38,9 @@ import {
   loadLabelFormat,
   normalizeCarrierStatus,
   saveLabelFormat,
+  shouldReloadAfterCreateFailure,
   toLabelFormat,
+  unresolvedFromError,
   type CarrierAlert,
   type CarrierRequestFailure,
   type CarrierShipmentBlocker,
@@ -78,6 +84,7 @@ const unsupported = ref(false)
 const status = ref<CarrierShipmentStatus | null>(null)
 const creating = ref(false)
 const cancelling = ref(false)
+const dismissing = ref(false)
 const failure = ref<CarrierRequestFailure | null>(null)
 /** 建单成功时 FedEx 返回的提示（建议显示） */
 const alerts = ref<CarrierAlert[]>([])
@@ -134,8 +141,49 @@ const shipment = computed(() => status.value?.shipment || null)
 const activeShipment = computed(() => (isActiveShipment(shipment.value) ? shipment.value : null))
 const lastCancelled = computed(() => (shipment.value && !isActiveShipment(shipment.value) ? shipment.value : null))
 const blockers = computed<CarrierShipmentBlocker[]>(() => status.value?.blockers || [])
-const canCreate = computed(() => enabled.value && !props.locked && !!status.value?.can_create && !activeShipment.value)
-const busy = computed(() => creating.value || cancelling.value)
+/** 结果不明的运单（FedEx 上可能已生成）：有它时不能建单 */
+const unresolved = computed(() => status.value?.unresolved || null)
+/** 别人正在建（pending 且不能解除）：只显示进行中 */
+const unresolvedInProgress = computed(() => isUnresolvedInProgress(status.value))
+const canDismiss = computed(() => !!unresolved.value && !!status.value?.can_dismiss && !props.locked)
+const canCreate = computed(() =>
+  enabled.value && !props.locked && !!status.value?.can_create && !activeShipment.value && !unresolved.value)
+const busy = computed(() => creating.value || cancelling.value || dismissing.value)
+const unresolvedReasonText = computed(() => {
+  const reason = unresolved.value?.reason
+  if (!reason) return '—'
+  const key = `customs.carrier.unresolved.reasons.${reason}`
+  return te(key) ? t(key) : reason
+})
+
+// 别人正在建单（pending）：定时重新读取，直到有结果（最多约 5 分钟，之后手动刷新）
+const IN_PROGRESS_POLL_MS = 10000
+const IN_PROGRESS_POLL_MAX = 30
+let pollTimer: ReturnType<typeof setTimeout> | null = null
+let pollCount = 0
+const stopPolling = () => {
+  if (pollTimer) clearTimeout(pollTimer)
+  pollTimer = null
+}
+const schedulePoll = () => {
+  stopPolling()
+  if (!unresolvedInProgress.value || pollCount >= IN_PROGRESS_POLL_MAX) return
+  pollTimer = setTimeout(async () => {
+    pollTimer = null
+    pollCount += 1
+    if (!busy.value) await load()
+    schedulePoll()
+  }, IN_PROGRESS_POLL_MS)
+}
+watch(unresolvedInProgress, (value: boolean) => {
+  if (value) {
+    pollCount = 0
+    schedulePoll()
+  } else {
+    stopPolling()
+  }
+})
+onBeforeUnmount(stopPolling)
 
 const labelDoc = computed(() => labelDocumentOf(activeShipment.value))
 const labelImageType = computed(() => labelImageTypeOf(activeShipment.value))
@@ -224,6 +272,11 @@ const handleFailure = (error: HttpRequestError) => {
   if (Array.isArray(latest) && status.value) {
     status.value = { ...status.value, blockers: latest, can_create: false }
   }
+  // 504 16074 / 409 16079：details.unresolved 是结果不明的运单，先锁住建单按钮（随后重新读取状态）
+  const pending = unresolvedFromError(error)
+  if (pending && status.value) {
+    status.value = { ...status.value, unresolved: pending, can_create: false }
+  }
   const { errors, transactionId, action, permissionDenied, maybeProcessed } = extractCarrierErrors(error.details)
   const timeout = isCarrierTimeout(error)
   if (errors.length > 0 || transactionId || timeout || error.status === 502) {
@@ -255,14 +308,23 @@ const create = async () => {
   failure.value = null
   alerts.value = []
   let created: any = null
+  // 在回调里赋值：用 as 声明，避免 TS 把它收窄成 null
+  let failedWith = null as HttpRequestError | null
   await httpRequest<any>(carrierShipmentUrl(props.dnId), {
     method: 'POST',
     body: { label_format: format },
     onSuccess: (data) => {
       created = data ?? {}
     },
-    onError: handleFailure,
+    onError: (error) => {
+      failedWith = error
+      handleFailure(error)
+    },
   })
+  // 超时 / 结果不明 / 5xx / 断网：运单可能已在 FedEx 生成，立刻按后端最新状态（unresolved、can_create）刷新按钮
+  if (failedWith && shouldReloadAfterCreateFailure(failedWith)) {
+    await load()
+  }
   if (created) {
     const next = normalizeCarrierStatus(created)
     if (next) {
@@ -315,6 +377,47 @@ const cancel = async () => {
     emit('changed')
   }
   cancelling.value = false
+}
+
+// ------------------ 解除结果不明的运单（操作员已在 FedEx Ship Manager 核对） ----------------------
+const dismiss = async () => {
+  const u = unresolved.value
+  if (!u || !canDismiss.value || busy.value) return
+  const confirmed = await showConfirm(
+    t('customs.carrier.unresolved.dismiss-confirm-title'),
+    t('customs.carrier.unresolved.dismiss-confirm', {
+      transaction: u.transaction_id || '—',
+      tracking: u.tracking_number || '—',
+    }),
+    t('customs.carrier.operations.dismiss'),
+    t('button.cancel'),
+  )
+  if (!confirmed) return
+
+  dismissing.value = true
+  failure.value = null
+  let done = false
+  let result: any = null
+  await httpRequest<any>(`${carrierShipmentUrl(props.dnId)}/dismiss`, {
+    method: 'POST',
+    body: { confirm: true },
+    onSuccess: (data) => {
+      done = true
+      result = data
+    },
+    onError: (error) => {
+      showToast(bizErrorMessage(error), 'error')
+    },
+  })
+  // 成功返回与 GET 同形；失败（如 16075 已没有可解除的运单）也重新读取，按最新状态显示
+  const next = done ? normalizeCarrierStatus(result) : null
+  if (next) {
+    status.value = next
+  } else {
+    await load()
+  }
+  if (done) showToast(t('customs.carrier.unresolved.dismissed'), 'success')
+  dismissing.value = false
 }
 
 // ------------------ 指令文件面单（ZPL / EPL）：发送到标签机（扩展点，现在不可用） ----------------------
@@ -371,6 +474,57 @@ defineExpose({ reload: load })
       </p>
 
       <template v-else>
+        <!-- 结果不明的运单：FedEx 上可能已生成，核对并处理之前不能再建单 -->
+        <div class="alert mb-2" role="alert" v-if="unresolved"
+          :class="unresolvedInProgress ? 'alert-warning-transparent' : 'alert-danger'">
+          <div class="fw-semibold d-flex align-items-center gap-2" v-if="unresolvedInProgress">
+            <span class="spinner-border spinner-border-sm" role="status"></span>{{ t('customs.carrier.unresolved.in-progress-title') }}
+          </div>
+          <div class="fw-semibold" v-else>
+            <i class="ri-alarm-warning-line me-1 fs-16 align-middle"></i>{{ t('customs.carrier.unresolved.title') }}
+          </div>
+          <div class="fs-12 mt-1">
+            {{ unresolvedInProgress ? t('customs.carrier.unresolved.in-progress') : t('customs.carrier.unresolved.description') }}
+          </div>
+          <div class="row gy-1 fs-12 mt-2">
+            <div class="col-sm-6 col-lg-3">
+              <span class="opacity-75">{{ t('customs.carrier.unresolved.fields.reason') }}:</span>
+              <span class="ms-1" :title="unresolved.reason || ''">{{ unresolvedReasonText }}</span>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <span class="opacity-75">{{ t('customs.carrier.fields.transaction-id') }}:</span>
+              <span class="ms-1 font-monospace text-break">{{ unresolved.transaction_id || '—' }}</span>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <span class="opacity-75">{{ t('customs.carrier.unresolved.fields.tracking-number') }}:</span>
+              <span class="ms-1 font-monospace">{{ unresolved.tracking_number || t('customs.carrier.unresolved.no-tracking') }}</span>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <span class="opacity-75">{{ t('customs.carrier.unresolved.fields.started') }}:</span>
+              <span class="ms-1">{{ $dayjs(unresolved.created_at, 'YYYY-MM-DD HH:mm') || '—' }}</span>
+            </div>
+          </div>
+          <template v-if="!unresolvedInProgress">
+            <div class="fs-12 fw-semibold mt-2">{{ t('customs.carrier.unresolved.steps-title') }}</div>
+            <ol class="fs-12 mb-0 ps-3">
+              <li>{{ t('customs.carrier.unresolved.step1') }}</li>
+              <li>{{ t('customs.carrier.unresolved.step2') }}</li>
+              <li>{{ t('customs.carrier.unresolved.step3') }}</li>
+            </ol>
+          </template>
+          <div class="btn-list mt-2">
+            <button type="button" class="btn btn-sm btn-light" v-if="canDismiss" :disabled="busy" @click="dismiss">
+              <span v-if="dismissing" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="ri-check-double-line me-1"></i>{{ t('customs.carrier.operations.dismiss') }}
+            </button>
+            <button type="button" class="btn btn-sm" :class="unresolvedInProgress ? 'btn-outline-secondary' : 'btn-outline-light'"
+              :disabled="loading || busy" @click="load">
+              <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="ri-refresh-line me-1"></i>{{ t('customs.carrier.operations.refresh') }}
+            </button>
+          </div>
+        </div>
+
         <!-- 已建运单 -->
         <div class="border rounded p-3 mb-2" v-if="activeShipment">
           <div class="row gy-2 fs-13">

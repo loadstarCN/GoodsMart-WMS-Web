@@ -705,7 +705,8 @@
         "code": "Max 50 characters",
         "weight": "kg (3 decimals)",
         "dimensions": "mm",
-        "origin-country": "As printed on the package (\"MADE IN\"). Leave blank if unknown."
+        "origin-country": "As printed on the package (\"MADE IN\"). Leave blank if unknown.",
+        "no-changes": "No changes"
       }
     },
     "operations": {
@@ -999,7 +1000,8 @@
     },
     "tips": {
       "save-tracking": "You can save the tracking number before completing the shipment",
-      "tracking-saved-reissue": "Tracking number saved. Re-issue the documents to print the AWB on them."
+      "tracking-saved-reissue": "Tracking number saved. Re-issue the documents to print the AWB on them.",
+      "tracking-blocked-title": "Cannot save the tracking number"
     },
     "validation": {
       "tracking-too-long": "Tracking number must be at most {max} characters"
@@ -1577,7 +1579,9 @@
         "cancel": "Cancel Shipment",
         "download-label-file": "Download Label File (.{ext})",
         "send-to-printer": "Send to Label Printer",
-        "open-delivery": "Open delivery task"
+        "open-delivery": "Open delivery task",
+        "dismiss": "Checked: not in FedEx / cancelled",
+        "refresh": "Reload"
       },
       "tips": {
         "disabled": "Automatic FedEx shipment creation is not enabled (it can be enabled in the backend configuration). Create the shipment in the carrier's system and save the tracking number on the delivery task.",
@@ -1597,7 +1601,7 @@
         "alerts": "Notes from FedEx:",
         "etd-enabled": "Electronic Trade Documents (ETD) are enabled: the CI is submitted to FedEx electronically when the shipment is created.",
         "permission-denied": "FedEx denied permission for this action. Check that the FedEx API project has the required API (e.g. Ship API) enabled.",
-        "a4-print": "When printing, choose A4 paper and scale Actual size (100%); for international shipments, also print the AWB copy pages",
+        "a4-print": "When printing, choose A4 paper and scale Actual size (100%); for international shipments, also print the AWB copy pages. The label file is Letter size (about 6 mm wider than A4), so a slightly wider page or a margin warning in the print preview is normal; the label area is not cut off. Do not switch to Fit to page.",
         "auxiliary": "The label PDF also contains FedEx AWB copy pages (FEDEX AWB COPY). Print all pages and follow the instructions on them.",
         "warnings": "Please note:",
         "declared-value-submitted-capped": "Declared value {amount} submitted with the shipment (the customs data has {original}, which exceeds the packed goods value, so it was adjusted automatically)"
@@ -1639,6 +1643,32 @@
       },
       "warnings": {
         "DECLARED_VALUE_CAPPED": "The declared value for carriage {original} exceeds the value of the packed goods, so {amount} is submitted with the shipment"
+      },
+      "unresolved": {
+        "title": "The FedEx shipment result is unknown; a new shipment cannot be created yet",
+        "description": "WMS could not confirm the result of this shipment request. The shipment may have been created in FedEx. To avoid a duplicate shipment and duplicate charges, check in FedEx first.",
+        "in-progress-title": "Creating the shipment in FedEx…",
+        "in-progress": "A shipment for this DN is being created (possibly by someone else or from another screen). You cannot create another one until it finishes. This page refreshes automatically.",
+        "fields": {
+          "reason": "Reason",
+          "tracking-number": "Known tracking number",
+          "started": "Started"
+        },
+        "no-tracking": "Unknown",
+        "steps-title": "What to do:",
+        "step1": "Sign in to FedEx Ship Manager and look up the shipment by the transaction ID or tracking number above, or by recipient and ship date",
+        "step2": "If you find it, cancel (void) the shipment in FedEx Ship Manager",
+        "step3": "Once you have confirmed that the shipment does not exist in FedEx or has been cancelled, click \"Checked\" to clear it, then create the shipment again",
+        "dismiss-confirm-title": "Clear the unresolved shipment?",
+        "dismiss-confirm": "Confirm that you have checked in FedEx Ship Manager (transaction ID: {transaction}, tracking number: {tracking}) that the shipment does not exist in FedEx or has been cancelled manually. After clearing, you can create the shipment again; if the shipment actually still exists in FedEx, you will get a duplicate shipment and charges.",
+        "dismissed": "Cleared. You can create the shipment again.",
+        "reasons": {
+          "in_progress": "Creation in progress",
+          "timeout": "FedEx timed out",
+          "compensation_failed": "Created in FedEx, but saving it in WMS failed and the automatic cancellation also failed (the shipment very likely exists in FedEx)",
+          "bad_response": "The FedEx response could not be understood",
+          "stale": "The request has not finished for a long time (it may have been interrupted)"
+        }
       }
     }
   },
@@ -1651,6 +1681,7 @@
     "code-16067": "Packages cannot be changed in the current status (only when picked or packed)",
     "code-16068": "Document requirements are not met",
     "code-16069": "Issue a valid Commercial Invoice (CI) and Packing List (PL) before shipping",
+    "code-16069-outdated": "The Commercial Invoice (CI) / Packing List (PL) is outdated (customs data, packages or the tracking number changed after issuing). Re-issue them on the DN's export documents card before shipping.",
     "code-16070": "Not an export shipment",
     "code-16071": "Document not found",
     "code-14019": "Exporter profile text is too long",
@@ -1658,9 +1689,12 @@
     "code-16072": "Requirements for creating the FedEx shipment are not met",
     "code-16073": "FedEx returned an error",
     "code-16074": "FedEx timed out",
-    "code-16075": "There is no valid shipment",
-    "code-16076": "A valid FedEx shipment exists; cancel it before changing the packages",
+    "code-16075": "There is no valid shipment (or no unresolved shipment to clear)",
+    "code-16076": "This DN has an automatically created FedEx shipment, so the packages and customs data cannot be changed. To change them, cancel the shipment on the DN's export documents card first.",
     "code-16077": "Invalid label printing option (A4 or THERMAL only)",
-    "code-16078": "This DN has an automatically created FedEx shipment {tracking_number}. To change the tracking number, cancel that shipment on the DN's export documents card first."
+    "code-16078": "This DN has an automatically created FedEx shipment {tracking_number}. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. To change them, cancel that shipment on the DN's export documents card first.",
+    "code-16078-no-tracking": "This DN has an automatically created FedEx shipment. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. To change them, cancel that shipment on the DN's export documents card first.",
+    "code-16079": "This DN has a FedEx shipment whose result is unknown (it may exist in FedEx). Until it is checked in FedEx Ship Manager and resolved as described on the DN's export documents card, shipments cannot be created and the tracking number cannot be changed.",
+    "code-16080": "The tracking number printed on the Commercial Invoice (CI) is {document_tracking_number}, which differs from the entered {tracking_number}. Ship with the tracking number on the CI; if the tracking number really changed, save the new one and re-issue the CI / PL first."
   }
 }
