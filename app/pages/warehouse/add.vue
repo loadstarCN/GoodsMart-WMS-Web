@@ -30,7 +30,7 @@ const itemData = ref({
   default_currency: staffStore.staffInfo?.company?.default_currency || 'JPY',
   // 出口资料：仓库作为发货地（Ship From）印在海外出荷単証上
   address_en: null,
-  country_code: null,
+  country_code: 'JP',  // 后端输出不再默认 JP，新建时前端默认选日本
   contact_name_en: null,
 })
 

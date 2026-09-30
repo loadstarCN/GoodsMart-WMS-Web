@@ -1540,10 +1540,11 @@
       "UNIT_VALUE_MISSING": "Unit value missing or not greater than 0",
       "RECIPIENT_TAX_ID_MISSING": "Recipient tax ID missing",
       "NON_LATIN_TEXT": "Contains non-Latin characters",
+      "EXPORTER_NON_LATIN_TEXT": "An exporter field printed on the documents (company / warehouse) contains non-Latin characters. Enter it in English; documents cannot be issued until then.",
       "NET_WEIGHT_UNKNOWN": "Net weight unknown (some goods have no weight)",
       "GROSS_LT_NET": "Gross weight is less than net weight",
       "JP_EXPORT_CODE_MISMATCH": "Export statistical code is invalid or its first 6 digits differ from the HS code",
-      "JP_EXPORT_CODE_MISSING": "Invoice total exceeds JPY 200,000; the Japanese export declaration requires the 9-digit statistical code"
+      "JP_EXPORT_CODE_MISSING": "Goods value (FOB) exceeds JPY 200,000; the Japanese export declaration requires the 9-digit statistical code"
     },
     "workflow": {
       "step1": "Record packages (weight, dimensions) when packing",

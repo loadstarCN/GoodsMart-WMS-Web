@@ -1540,6 +1540,7 @@
       "UNIT_VALUE_MISSING": "单价缺失或不大于 0",
       "RECIPIENT_TAX_ID_MISSING": "缺少收货人税号",
       "NON_LATIN_TEXT": "含有非拉丁字符",
+      "EXPORTER_NON_LATIN_TEXT": "出口方（公司 / 仓库）印在单证上的项目含有非拉丁字符，请改成英文写法（否则无法签发单证）",
       "NET_WEIGHT_UNKNOWN": "有商品未录重量，无法计算净重",
       "GROSS_LT_NET": "总毛重小于净重",
       "JP_EXPORT_CODE_MISMATCH": "出口统计编号格式不对，或前 6 位与 HS 编码不一致",

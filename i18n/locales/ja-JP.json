@@ -1540,10 +1540,11 @@
       "UNIT_VALUE_MISSING": "単価がないか、0 以下です",
       "RECIPIENT_TAX_ID_MISSING": "受取人の税番号がありません",
       "NON_LATIN_TEXT": "ラテン文字以外の文字が含まれています",
+      "EXPORTER_NON_LATIN_TEXT": "輸出者（会社・倉庫）の単証に印字する項目にラテン文字以外の文字があります。英語表記に直してください（単証を発行できません）",
       "NET_WEIGHT_UNKNOWN": "重量未登録の商品があるため、正味重量を計算できません",
       "GROSS_LT_NET": "総重量が正味重量より小さくなっています",
       "JP_EXPORT_CODE_MISMATCH": "輸出統計番号の形式が正しくないか、先頭 6 桁が HS コードと一致しません",
-      "JP_EXPORT_CODE_MISSING": "インボイス合計が 20 万円を超えるため、日本の輸出申告に 9 桁の輸出統計番号が必要です"
+      "JP_EXPORT_CODE_MISSING": "商品の価額（FOB）が 20 万円を超えるため、日本の輸出申告に 9 桁の輸出統計番号が必要です"
     },
     "workflow": {
       "step1": "梱包で箱情報（重量・寸法）を登録",
