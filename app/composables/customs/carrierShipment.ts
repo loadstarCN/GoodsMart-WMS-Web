@@ -2,9 +2,10 @@
  * 承运商运单（FedEx 自动建单）相关的类型与工具
  *
  * GET  /warehouse/dn/<dn_id>/carrier-shipment          状态（是否启用、能否建单、blockers、当前运单）
- * POST /warehouse/dn/<dn_id>/carrier-shipment          建单（运单号自动保存到配送任务）
+ * POST /warehouse/dn/<dn_id>/carrier-shipment          建单（body.label_format；运单号自动保存到配送任务）
  * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   取消运单（DN 未发货时）
- * 面单 PDF 与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file
+ * 面单文件与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file
+ * （A4 = PDF；热敏标签机 = ZPLII / EPL2 指令文件，要用标签机的打印程序打开）
  */
 import type { HttpRequestError } from '~/utils/http'
 import type { PdfDocumentRef } from '~/composables/customs/customsDocuments'
@@ -26,8 +27,12 @@ export interface CarrierShipment {
   net_charge: number | string | null
   currency: string | null
   label_document_id: number | null
+  /** 建单时选的面单打印方式（A4 / THERMAL） */
+  label_format?: string | null
+  /** 面单文件格式（PDF / ZPLII / EPL2 …） */
+  image_type?: string | null
   etd_document_id?: number | null
-  /** 面单文件名 / 校验值（没有时下载用 label_<运单号>.pdf，校验看响应头 X-Content-SHA256） */
+  /** 面单文件名 / 校验值（没有时下载用 label_<运单号>.<扩展名>，校验看响应头 X-Content-SHA256） */
   label_file_name?: string | null
   label_sha256?: string | null
   created_at: string | null
@@ -83,14 +88,76 @@ export const normalizeCarrierStatus = (data: any): CarrierShipmentStatus | null 
   }
 }
 
-/** 有效运单的面单文档（取 PDF 用）；没有面单返回 null */
+// ------------------ 面单打印方式 ----------------------
+/** A4 = 普通打印机（PDF）；THERMAL = 热敏标签机（ZPLII / EPL2 等指令文件） */
+export type LabelFormat = 'A4' | 'THERMAL'
+export const LABEL_FORMATS: LabelFormat[] = ['A4', 'THERMAL']
+const LABEL_FORMAT_STORAGE_KEY = 'wms.carrierShipment.labelFormat'
+
+/** 上次选的面单打印方式（取不到或不认识 → A4） */
+export const loadLabelFormat = (): LabelFormat => {
+  try {
+    const saved = localStorage.getItem(LABEL_FORMAT_STORAGE_KEY)
+    if (saved && (LABEL_FORMATS as string[]).includes(saved)) return saved as LabelFormat
+  } catch {
+    // 无痕模式等取不到 localStorage 时用默认值
+  }
+  return 'A4'
+}
+
+export const saveLabelFormat = (format: LabelFormat): void => {
+  try {
+    localStorage.setItem(LABEL_FORMAT_STORAGE_KEY, format)
+  } catch {
+    // 存不了就只在本次画面有效
+  }
+}
+
+const LABEL_FILE_EXTENSIONS: Record<string, string> = {
+  PDF: 'pdf',
+  ZPLII: 'zpl',
+  ZPL: 'zpl',
+  EPL2: 'epl',
+  EPL: 'epl',
+  PNG: 'png',
+}
+
+/** 面单文件格式：后端没给时按打印方式推断（热敏默认 ZPLII，其余 PDF） */
+export const labelImageTypeOf = (shipment: CarrierShipment | null | undefined): string => {
+  const type = String(shipment?.image_type || '').trim().toUpperCase()
+  if (type) return type
+  return String(shipment?.label_format || '').toUpperCase() === 'THERMAL' ? 'ZPLII' : 'PDF'
+}
+
+export const isPdfLabel = (shipment: CarrierShipment | null | undefined): boolean => labelImageTypeOf(shipment) === 'PDF'
+
+export const labelFileExtension = (imageType: string): string =>
+  LABEL_FILE_EXTENSIONS[String(imageType).toUpperCase()] || String(imageType).toLowerCase() || 'bin'
+
+/** 有效运单的面单文档（取文件用）；没有面单返回 null */
 export const labelDocumentOf = (shipment: CarrierShipment | null | undefined): PdfDocumentRef | null => {
   if (!isActiveShipment(shipment) || !shipment.label_document_id) return null
+  const ext = labelFileExtension(labelImageTypeOf(shipment))
   return {
     id: Number(shipment.label_document_id),
     sha256: shipment.label_sha256 || null,
-    file_name: shipment.label_file_name || `label_${shipment.tracking_number || shipment.label_document_id}.pdf`,
+    file_name: shipment.label_file_name || `label_${shipment.tracking_number || shipment.label_document_id}.${ext}`,
   }
+}
+
+/**
+ * 热敏标签机直接打印的扩展点。
+ * 机型 / 打印程序未定，现在不接（available = false）：界面只提供下载指令文件，并提示用标签机的打印程序打开。
+ * 接入时（如本机打印服务、厂商浏览器插件）在这里实现 send，并把 available 置为 true。
+ */
+export const labelPrinterBridge: {
+  available: boolean
+  send: (file: Blob, imageType: string) => Promise<void>
+} = {
+  available: false,
+  send: async () => {
+    throw new Error('Label printer is not configured')
+  },
 }
 
 /** FedEx 服务类型显示：INTERNATIONAL_ECONOMY → International Economy */

@@ -1558,13 +1558,17 @@
         "service": "Service",
         "net-charge": "Shipping Charge",
         "created": "Created",
-        "transaction-id": "FedEx Transaction ID"
+        "transaction-id": "FedEx Transaction ID",
+        "label-format": "Label",
+        "label-format-choice": "Label printing:"
       },
       "operations": {
         "create": "Create FedEx Shipment",
         "print-label": "Print / Download Label",
         "download-label": "Download Label",
-        "cancel": "Cancel Shipment"
+        "cancel": "Cancel Shipment",
+        "download-label-file": "Download Label File (.{ext})",
+        "send-to-printer": "Send to Label Printer"
       },
       "tips": {
         "disabled": "Automatic FedEx shipment creation is not enabled (it can be enabled in the backend configuration). Create the shipment in the carrier's system and save the tracking number on the delivery task.",
@@ -1577,13 +1581,15 @@
         "no-label": "No label file",
         "label-open": "Opens the label PDF in a new tab, where you can print or download it",
         "etd-submitted": "The CI was submitted to FedEx as an Electronic Trade Document (ETD)",
-        "declared-value-submitted": "Declared value {amount} submitted with the shipment"
+        "declared-value-submitted": "Declared value {amount} submitted with the shipment",
+        "thermal-file": "Thermal labels are printer command files ({type}). Open the file with the label printer's printing software to print it.",
+        "send-to-printer-unavailable": "Direct printing to a label printer is not connected yet (printer model not decided). Download the label file and open it with the label printer's printing software."
       },
       "created": "FedEx shipment created: {tracking}",
       "cancelled": "Shipment {tracking} cancelled",
       "create-confirm-title": "Create FedEx shipment?",
-      "create-confirm": "A FedEx shipment will be created for this DN. The tracking number is saved to the delivery task automatically.",
-      "create-confirm-packages": "A FedEx shipment will be created with the {count} package(s) of this DN. The tracking number is saved to the delivery task automatically.",
+      "create-confirm": "A FedEx shipment will be created for this DN (label: {format}). The tracking number is saved to the delivery task automatically.",
+      "create-confirm-packages": "A FedEx shipment will be created with the {count} package(s) of this DN (label: {format}). The tracking number is saved to the delivery task automatically.",
       "cancel-confirm-title": "Cancel shipment?",
       "cancel-confirm": "Shipment {tracking} will be cancelled in FedEx: the tracking number is cleared from the delivery task, the label is voided and the documents are updated accordingly. This cannot be undone.",
       "blockers": {
@@ -1599,6 +1605,10 @@
         "CUSTOMS_MISSING": "This DN has no customs data",
         "EXPORTER_PROFILE_INCOMPLETE": "Exporter profile is incomplete (English name, English address, phone, contact, tax ID, etc.)",
         "DOCUMENTS_NOT_READY": "Document (CI / PL) requirements are not met, so they cannot be issued first"
+      },
+      "label-formats": {
+        "A4": "A4 printer",
+        "THERMAL": "Thermal label printer"
       }
     }
   },

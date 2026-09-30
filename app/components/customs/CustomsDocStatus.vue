@@ -13,7 +13,10 @@ import {
   carrierShipmentUrl,
   declaredValueModeOf,
   isActiveShipment,
+  isPdfLabel,
   labelDocumentOf,
+  labelFileExtension,
+  labelImageTypeOf,
   normalizeCarrierStatus,
   type CarrierShipmentStatus,
 } from '~/composables/customs/carrierShipment'
@@ -27,7 +30,7 @@ const props = withDefaults(defineProps<{
 
 const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
-const { busyDocId, printDoc, viewDoc } = useCustomsPdfActions()
+const { busyDocId, printDoc, viewDoc, downloadRawDoc } = useCustomsPdfActions()
 
 const loading = ref(false)
 const view = ref<CustomsView | null>(null)
@@ -82,6 +85,8 @@ const carrierShipment = computed(() => {
 })
 const declaredValueMode = computed(() => declaredValueModeOf(carrierStatus.value))
 const labelDoc = computed(() => labelDocumentOf(carrierShipment.value))
+const pdfLabel = computed(() => isPdfLabel(carrierShipment.value))
+const labelExt = computed(() => labelFileExtension(labelImageTypeOf(carrierShipment.value)))
 
 defineExpose({ reload: load })
 </script>
@@ -158,11 +163,19 @@ defineExpose({ reload: load })
             <span v-if="pl && busyDocId === pl.id" class="spinner-border spinner-border-sm me-1"></span>
             <i v-else class="ri-printer-line me-1"></i>{{ t('customs.operations.print-pl') }}
           </button>
-          <button type="button" class="btn btn-sm btn-primary-light" v-if="labelDoc" :disabled="busyDocId !== null"
-            :title="t('customs.carrier.tips.label-open')" @click="viewDoc(dnId, labelDoc)">
-            <span v-if="busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
-            <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.print-label') }}
-          </button>
+          <!-- 面单：PDF 新标签页打开打印；热敏面单下载指令文件（用标签机的打印程序打开） -->
+          <template v-if="labelDoc">
+            <button type="button" class="btn btn-sm btn-primary-light" v-if="pdfLabel" :disabled="busyDocId !== null"
+              :title="t('customs.carrier.tips.label-open')" @click="viewDoc(dnId, labelDoc)">
+              <span v-if="busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.print-label') }}
+            </button>
+            <button type="button" class="btn btn-sm btn-primary-light" v-else :disabled="busyDocId !== null"
+              :title="t('customs.carrier.tips.send-to-printer-unavailable')" @click="downloadRawDoc(dnId, labelDoc)">
+              <span v-if="busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="ri-download-line me-1"></i>{{ t('customs.carrier.operations.download-label-file', { ext: labelExt }) }}
+            </button>
+          </template>
         </template>
         <NuxtLink :to="`/dn/detail/${dnId}#customs-documents`" class="btn btn-sm btn-light">
           <i class="ri-file-list-3-line me-1"></i>{{ t('customs.operations.open-card') }}

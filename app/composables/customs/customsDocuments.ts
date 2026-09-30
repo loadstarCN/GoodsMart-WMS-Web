@@ -158,12 +158,14 @@ export interface FetchedPdf {
 }
 
 /**
- * 取单证 PDF（authFetch → 二进制）。
+ * 取单证 / 面单文件（authFetch → 二进制）。
+ * pdf=true（默认）只接受 application/pdf；pdf=false 接受任意文件（热敏面单的 ZPL / EPL 指令文件等），JSON 视为错误体。
  * 失败时抛出 HttpRequestError（含后端业务码）。
  */
-export const fetchCustomsPdf = async (
+export const fetchDocumentFile = async (
   dnId: number | string,
-  doc: PdfDocumentRef
+  doc: PdfDocumentRef,
+  pdf = true
 ): Promise<FetchedPdf> => {
   let res: Response
   try {
@@ -187,7 +189,7 @@ export const fetchCustomsPdf = async (
 
   // 代理（server/api/[...].ts → h3 proxyRequest）原样透传 Content-Type / X-Content-SHA256
   const contentType = (res.headers.get('Content-Type') || '').toLowerCase()
-  if (contentType && !contentType.includes('application/pdf')) {
+  if (contentType && (pdf ? !contentType.includes('application/pdf') : contentType.includes('json'))) {
     const body = contentType.includes('json') ? await res.json().catch(() => null) : null
     const err: HttpRequestError = { status: res.status, message: body?.message || `Unexpected content type: ${contentType}` }
     if (body?.code !== undefined) err.code = body.code
@@ -208,12 +210,16 @@ export const fetchCustomsPdf = async (
   }
 
   return {
-    blob: new Blob([buf], { type: 'application/pdf' }),
+    blob: new Blob([buf], { type: pdf ? 'application/pdf' : (contentType || 'application/octet-stream') }),
     fileName: doc.file_name || `document-${doc.id}.pdf`,
     sha256: expected,
     verified,
   }
 }
+
+/** 取单证 PDF */
+export const fetchCustomsPdf = (dnId: number | string, doc: PdfDocumentRef): Promise<FetchedPdf> =>
+  fetchDocumentFile(dnId, doc, true)
 
 const revokeLater = (url: string, ms = 10 * 60 * 1000) => {
   setTimeout(() => URL.revokeObjectURL(url), ms)
@@ -260,7 +266,7 @@ export const showPdfInWindow = (blob: Blob, win: Window | null): void => {
   revokeLater(url)
 }
 
-/** 以文件名下载 PDF */
+/** 以文件名下载（PDF，或热敏面单等其他文件） */
 export const downloadPdfBlob = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -299,10 +305,10 @@ export const useCustomsPdfActions = () => {
   /** 正在处理的文档 id（按钮转圈用） */
   const busyDocId = ref<number | null>(null)
 
-  const load = async (dnId: number | string, doc: PdfDocumentRef): Promise<FetchedPdf | null> => {
+  const load = async (dnId: number | string, doc: PdfDocumentRef, pdfOnly = true): Promise<FetchedPdf | null> => {
     busyDocId.value = doc.id
     try {
-      const pdf = await fetchCustomsPdf(dnId, doc)
+      const pdf = await fetchDocumentFile(dnId, doc, pdfOnly)
       if (pdf.verified === false) {
         showToast(t('customs.tips.pdf-checksum-mismatch'), 'error')
         return null
@@ -340,5 +346,12 @@ export const useCustomsPdfActions = () => {
     if (pdf) downloadPdfBlob(pdf.blob, pdf.fileName)
   }
 
-  return { busyDocId, printDoc, viewDoc, downloadDoc }
+  /** 下载任意格式的文件（热敏面单的 ZPL / EPL 等，不做 PDF 类型检查） */
+  const downloadRawDoc = async (dnId: number | string, doc: PdfDocumentRef | null) => {
+    if (!doc) return
+    const file = await load(dnId, doc, false)
+    if (file) downloadPdfBlob(file.blob, file.fileName)
+  }
+
+  return { busyDocId, printDoc, viewDoc, downloadDoc, downloadRawDoc, fetchFile: load }
 }

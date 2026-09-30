@@ -1558,13 +1558,17 @@
         "service": "服务",
         "net-charge": "运费",
         "created": "建单时间",
-        "transaction-id": "FedEx 交易 ID"
+        "transaction-id": "FedEx 交易 ID",
+        "label-format": "面单",
+        "label-format-choice": "面单打印方式："
       },
       "operations": {
         "create": "在 FedEx 建运单",
         "print-label": "打印 / 下载面单",
         "download-label": "下载面单",
-        "cancel": "取消运单"
+        "cancel": "取消运单",
+        "download-label-file": "下载面单文件（.{ext}）",
+        "send-to-printer": "发送到标签机"
       },
       "tips": {
         "disabled": "FedEx 自动建单未启用（可在后端配置中启用）。请在承运商系统手工建运单，再到配送任务保存运单号。",
@@ -1577,13 +1581,15 @@
         "no-label": "没有面单文件",
         "label-open": "在新标签页打开面单 PDF，可打印或下载",
         "etd-submitted": "CI 已通过电子贸易单证（ETD）提交给 FedEx",
-        "declared-value-submitted": "申告价额 {amount} 已随运单提交"
+        "declared-value-submitted": "申告价额 {amount} 已随运单提交",
+        "thermal-file": "热敏面单是标签机的指令文件（{type}），需要用标签机的打印程序打开该文件打印。",
+        "send-to-printer-unavailable": "尚未接入标签机直接打印（机型未定）。请先下载面单文件，再用标签机的打印程序打开打印。"
       },
       "created": "已在 FedEx 建运单：{tracking}",
       "cancelled": "运单 {tracking} 已取消",
       "create-confirm-title": "在 FedEx 建运单？",
-      "create-confirm": "将为本出库单在 FedEx 建运单，运单号会自动保存到配送任务。",
-      "create-confirm-packages": "将用本出库单的 {count} 个箱子在 FedEx 建运单，运单号会自动保存到配送任务。",
+      "create-confirm": "将为本出库单在 FedEx 建运单（面单：{format}），运单号会自动保存到配送任务。",
+      "create-confirm-packages": "将用本出库单的 {count} 个箱子在 FedEx 建运单（面单：{format}），运单号会自动保存到配送任务。",
       "cancel-confirm-title": "取消运单？",
       "cancel-confirm": "将在 FedEx 取消运单 {tracking}：配送任务上的运单号会被清除，面单作废，单证随之更新。此操作不能撤销。",
       "blockers": {
@@ -1599,6 +1605,10 @@
         "CUSTOMS_MISSING": "该出库单没有报关数据",
         "EXPORTER_PROFILE_INCOMPLETE": "出口资料不全（英文名称、英文地址、电话、联系人、税号等）",
         "DOCUMENTS_NOT_READY": "单证（CI / PL）条件不全，无法先生成单证"
+      },
+      "label-formats": {
+        "A4": "A4 普通打印机",
+        "THERMAL": "热敏标签机"
       }
     }
   },

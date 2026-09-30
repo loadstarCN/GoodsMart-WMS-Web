@@ -1558,13 +1558,17 @@
         "service": "サービス",
         "net-charge": "運賃",
         "created": "作成日時",
-        "transaction-id": "FedEx トランザクション ID"
+        "transaction-id": "FedEx トランザクション ID",
+        "label-format": "ラベル",
+        "label-format-choice": "ラベルの印刷方法："
       },
       "operations": {
         "create": "FedEx で運送状を作成",
         "print-label": "ラベルを印刷 / ダウンロード",
         "download-label": "ラベルをダウンロード",
-        "cancel": "運送状を取り消す"
+        "cancel": "運送状を取り消す",
+        "download-label-file": "ラベルファイルをダウンロード（.{ext}）",
+        "send-to-printer": "ラベルプリンターへ送信"
       },
       "tips": {
         "disabled": "FedEx の自動作成は無効です（バックエンドの設定で有効にできます）。運送会社のシステムで運送状を作成し、配送タスクで運送状番号を保存してください。",
@@ -1577,13 +1581,15 @@
         "no-label": "ラベルのファイルがありません",
         "label-open": "ラベル PDF を新しいタブで開きます（印刷・ダウンロードできます）",
         "etd-submitted": "CI は電子貿易書類（ETD）で FedEx に送信済みです",
-        "declared-value-submitted": "申告価額 {amount} は運送状とともに送信済みです"
+        "declared-value-submitted": "申告価額 {amount} は運送状とともに送信済みです",
+        "thermal-file": "感熱ラベルはラベルプリンター用のコマンドファイル（{type}）です。ラベルプリンターの印刷ソフトでこのファイルを開いて印刷してください。",
+        "send-to-printer-unavailable": "ラベルプリンターへの直接印刷はまだ接続していません（機種未定）。ラベルファイルをダウンロードし、ラベルプリンターの印刷ソフトで開いて印刷してください。"
       },
       "created": "FedEx で運送状を作成しました：{tracking}",
       "cancelled": "運送状 {tracking} を取り消しました",
       "create-confirm-title": "FedEx で運送状を作成しますか？",
-      "create-confirm": "この出荷指示の運送状を FedEx で作成します。運送状番号は配送タスクに自動保存されます。",
-      "create-confirm-packages": "この出荷指示の {count} 個の箱で FedEx の運送状を作成します。運送状番号は配送タスクに自動保存されます。",
+      "create-confirm": "この出荷指示の運送状を FedEx で作成します（ラベル：{format}）。運送状番号は配送タスクに自動保存されます。",
+      "create-confirm-packages": "この出荷指示の {count} 個の箱で FedEx の運送状を作成します（ラベル：{format}）。運送状番号は配送タスクに自動保存されます。",
       "cancel-confirm-title": "運送状を取り消しますか？",
       "cancel-confirm": "FedEx の運送状 {tracking} を取り消します。配送タスクの運送状番号は消去され、ラベルは無効になり、単証もそれに合わせて更新されます。元に戻せません。",
       "blockers": {
@@ -1599,6 +1605,10 @@
         "CUSTOMS_MISSING": "この出荷指示には通関データがありません",
         "EXPORTER_PROFILE_INCOMPLETE": "輸出者情報が不足しています（英文名称・英文住所・電話番号・担当者・税番号など）",
         "DOCUMENTS_NOT_READY": "単証（CI / PL）の発行条件がそろっていないため、先に単証を発行できません"
+      },
+      "label-formats": {
+        "A4": "A4 普通紙プリンター",
+        "THERMAL": "感熱ラベルプリンター"
       }
     }
   },

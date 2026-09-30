@@ -3,9 +3,10 @@
  * 出库单单证卡片 · 承运商运单（FedEx 自动建单）
  *
  * - 未启用：不显示按钮，只提示手工建运单
- * - 可建：「在 FedEx 建运单」；不可建时按钮置灰并列出 blockers
+ * - 可建：「在 FedEx 建运单」+ 面单打印方式（A4 普通打印机 / 热敏标签机，记住上次的选择）；不可建时按钮置灰并列出 blockers
  * - 建单中显示进度；失败时显示 FedEx 的错误原文（errors[].code / message、交易 ID）
- * - 已建：运单号、服务、运费、面单打印 / 下载、取消运单（二次确认；DN 已发货时不显示）
+ * - 已建：运单号、服务、运费、面单格式；PDF 面单新标签页打开打印 / 下载，热敏面单（ZPLII / EPL2）下载指令文件；
+ *   取消运单（二次确认；DN 已发货时不显示）
  * - 有运送申告价额时注明「已随运单提交」（后端按箱分摊成每箱 declaredValue）
  * - 成功建单 / 取消后通知父组件刷新单证（运单号计入 CI）
  */
@@ -17,11 +18,19 @@ import {
   formatServiceType,
   isActiveShipment,
   isCarrierTimeout,
+  isPdfLabel,
+  LABEL_FORMATS,
   labelDocumentOf,
+  labelFileExtension,
+  labelImageTypeOf,
+  labelPrinterBridge,
+  loadLabelFormat,
   normalizeCarrierStatus,
+  saveLabelFormat,
   type CarrierRequestFailure,
   type CarrierShipmentBlocker,
   type CarrierShipmentStatus,
+  type LabelFormat,
 } from '~/composables/customs/carrierShipment'
 
 const props = withDefaults(defineProps<{
@@ -47,7 +56,7 @@ const emit = defineEmits<{
 
 const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
-const { busyDocId, viewDoc, downloadDoc } = useCustomsPdfActions()
+const { busyDocId, viewDoc, downloadDoc, downloadRawDoc, fetchFile } = useCustomsPdfActions()
 
 const loading = ref(false)
 const loadError = ref<string | null>(null)
@@ -57,6 +66,8 @@ const status = ref<CarrierShipmentStatus | null>(null)
 const creating = ref(false)
 const cancelling = ref(false)
 const failure = ref<CarrierRequestFailure | null>(null)
+/** 面单打印方式：默认用上次的选择（localStorage，取不到就 A4） */
+const labelFormat = ref<LabelFormat>('A4')
 
 // ------------------ 读取 ----------------------
 const load = async () => {
@@ -82,7 +93,11 @@ const load = async () => {
   })
 }
 
-onMounted(load)
+onMounted(() => {
+  labelFormat.value = loadLabelFormat()
+  load()
+})
+watch(labelFormat, (value: LabelFormat) => saveLabelFormat(value))
 watch(status, (value: CarrierShipmentStatus | null) => emit('status', value))
 
 // ------------------ 状态 ----------------------
@@ -95,6 +110,12 @@ const canCreate = computed(() => enabled.value && !props.locked && !!status.valu
 const busy = computed(() => creating.value || cancelling.value)
 
 const labelDoc = computed(() => labelDocumentOf(activeShipment.value))
+const labelImageType = computed(() => labelImageTypeOf(activeShipment.value))
+const pdfLabel = computed(() => isPdfLabel(activeShipment.value))
+const labelFormatText = (format: string | null | undefined) => {
+  const key = `customs.carrier.label-formats.${String(format || '').toUpperCase()}`
+  return format && te(key) ? t(key) : (format || '')
+}
 
 const blockerText = (b: CarrierShipmentBlocker) => {
   // 专门的承运商文案优先；签发单证的条件不全时后端直接复用单证问题码
@@ -140,9 +161,11 @@ const handleFailure = (error: HttpRequestError) => {
 // ------------------ 建单 ----------------------
 const create = async () => {
   if (!canCreate.value || busy.value) return
+  const format = labelFormat.value
+  const formatText = labelFormatText(format)
   const text = props.packageCount
-    ? t('customs.carrier.create-confirm-packages', { count: props.packageCount })
-    : t('customs.carrier.create-confirm')
+    ? t('customs.carrier.create-confirm-packages', { count: props.packageCount, format: formatText })
+    : t('customs.carrier.create-confirm', { format: formatText })
   const confirmed = await showConfirm(t('customs.carrier.create-confirm-title'), text, t('button.confirm'), t('button.cancel'))
   if (!confirmed) return
 
@@ -151,7 +174,7 @@ const create = async () => {
   let created: any = null
   await httpRequest<any>(carrierShipmentUrl(props.dnId), {
     method: 'POST',
-    body: {},
+    body: { label_format: format },
     onSuccess: (data) => {
       created = data ?? {}
     },
@@ -209,6 +232,25 @@ const cancel = async () => {
   cancelling.value = false
 }
 
+// ------------------ 热敏面单：发送到标签机（扩展点，机型未定时不可用） ----------------------
+const sendingToPrinter = ref(false)
+const sendToPrinter = async () => {
+  const doc = labelDoc.value
+  if (!doc || !labelPrinterBridge.available || sendingToPrinter.value) return
+  sendingToPrinter.value = true
+  try {
+    const file = await fetchFile(props.dnId, doc, false)
+    if (file) {
+      await labelPrinterBridge.send(file.blob, labelImageType.value)
+      showToast(t('action-results.success'), 'success')
+    }
+  } catch (e) {
+    showToast(e instanceof Error ? e.message : t('action-results.failed'), 'error')
+  } finally {
+    sendingToPrinter.value = false
+  }
+}
+
 defineExpose({ reload: load })
 </script>
 
@@ -239,19 +281,26 @@ defineExpose({ reload: load })
         <!-- 已建运单 -->
         <div class="border rounded p-3 mb-2" v-if="activeShipment">
           <div class="row gy-2 fs-13">
-            <div class="col-md-4">
+            <div class="col-sm-6 col-lg">
               <div class="text-muted fs-12">{{ t('customs.carrier.fields.tracking-number') }}</div>
               <div class="fw-semibold fs-15 font-monospace">{{ activeShipment.tracking_number || '—' }}</div>
             </div>
-            <div class="col-md-3">
+            <div class="col-sm-6 col-lg">
               <div class="text-muted fs-12">{{ t('customs.carrier.fields.service') }}</div>
               <div :title="activeShipment.service_type || ''">{{ formatServiceType(activeShipment.service_type) || '—' }}</div>
             </div>
-            <div class="col-md-2">
+            <div class="col-sm-6 col-lg">
               <div class="text-muted fs-12">{{ t('customs.carrier.fields.net-charge') }}</div>
               <div class="font-monospace">{{ chargeText }}</div>
             </div>
-            <div class="col-md-3">
+            <div class="col-sm-6 col-lg">
+              <div class="text-muted fs-12">{{ t('customs.carrier.fields.label-format') }}</div>
+              <div>
+                <template v-if="activeShipment.label_format">{{ labelFormatText(activeShipment.label_format) }}</template>
+                <span class="badge bg-light text-default ms-1">{{ labelImageType }}</span>
+              </div>
+            </div>
+            <div class="col-sm-6 col-lg">
               <div class="text-muted fs-12">{{ t('customs.carrier.fields.created') }}</div>
               <div>
                 {{ $dayjs(activeShipment.created_at, 'YYYY-MM-DD HH:mm') || '—' }}
@@ -266,21 +315,42 @@ defineExpose({ reload: load })
             <i class="ri-upload-cloud-2-line me-1"></i>{{ t('customs.carrier.tips.etd-submitted') }}
           </div>
           <div class="btn-list mt-3">
-            <button type="button" class="btn btn-sm btn-primary" :disabled="!labelDoc || busyDocId !== null"
-              :title="t('customs.carrier.tips.label-open')" @click="viewDoc(dnId, labelDoc)">
-              <span v-if="labelDoc && busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.print-label') }}
-            </button>
-            <button type="button" class="btn btn-sm btn-light" :disabled="!labelDoc || busyDocId !== null"
-              @click="downloadDoc(dnId, labelDoc)">
-              <i class="ri-download-line me-1"></i>{{ t('customs.carrier.operations.download-label') }}
-            </button>
+            <!-- PDF 面单（A4 普通打印机）：新标签页打开打印 / 下载 -->
+            <template v-if="pdfLabel">
+              <button type="button" class="btn btn-sm btn-primary" :disabled="!labelDoc || busyDocId !== null"
+                :title="t('customs.carrier.tips.label-open')" @click="viewDoc(dnId, labelDoc)">
+                <span v-if="labelDoc && busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.print-label') }}
+              </button>
+              <button type="button" class="btn btn-sm btn-light" :disabled="!labelDoc || busyDocId !== null"
+                @click="downloadDoc(dnId, labelDoc)">
+                <i class="ri-download-line me-1"></i>{{ t('customs.carrier.operations.download-label') }}
+              </button>
+            </template>
+            <!-- 热敏面单（ZPLII / EPL2）：下载指令文件；直接发送到标签机是扩展点 -->
+            <template v-else>
+              <button type="button" class="btn btn-sm btn-primary" :disabled="!labelDoc || busyDocId !== null"
+                @click="downloadRawDoc(dnId, labelDoc)">
+                <span v-if="labelDoc && busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else class="ri-download-line me-1"></i>{{ t('customs.carrier.operations.download-label-file', { ext: labelFileExtension(labelImageType) }) }}
+              </button>
+              <button type="button" class="btn btn-sm btn-light"
+                :disabled="!labelDoc || !labelPrinterBridge.available || sendingToPrinter || busyDocId !== null"
+                :title="labelPrinterBridge.available ? '' : t('customs.carrier.tips.send-to-printer-unavailable')"
+                @click="sendToPrinter">
+                <span v-if="sendingToPrinter" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.send-to-printer') }}
+              </button>
+            </template>
             <button type="button" class="btn btn-sm btn-outline-danger" v-if="!locked" :disabled="busy" @click="cancel">
               <span v-if="cancelling" class="spinner-border spinner-border-sm me-1"></span>
               <i v-else class="ri-close-circle-line me-1"></i>{{ t('customs.carrier.operations.cancel') }}
             </button>
           </div>
           <div class="fs-12 text-muted mt-2" v-if="!labelDoc">{{ t('customs.carrier.tips.no-label') }}</div>
+          <div class="fs-12 text-muted mt-2" v-else-if="!pdfLabel">
+            <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.thermal-file', { type: labelImageType }) }}
+          </div>
         </div>
 
         <!-- 还没有有效运单 -->
@@ -296,6 +366,16 @@ defineExpose({ reload: load })
               <span v-if="creating" class="spinner-border spinner-border-sm me-1"></span>
               <i v-else class="ri-truck-line me-1"></i>{{ t('customs.carrier.operations.create') }}
             </button>
+            <span class="fs-12 text-muted ms-2">{{ t('customs.carrier.fields.label-format-choice') }}</span>
+            <div class="btn-group btn-group-sm" role="group" :aria-label="t('customs.carrier.fields.label-format-choice')">
+              <template v-for="f in LABEL_FORMATS" :key="f">
+                <input type="radio" class="btn-check" :id="`label-format-${dnId}-${f}`" :value="f"
+                  v-model="labelFormat" :disabled="busy" autocomplete="off">
+                <label class="btn btn-outline-primary" :for="`label-format-${dnId}-${f}`">
+                  <i class="me-1" :class="f === 'THERMAL' ? 'ri-barcode-box-line' : 'ri-file-paper-2-line'"></i>{{ labelFormatText(f) }}
+                </label>
+              </template>
+            </div>
             <span class="fs-12 text-muted" v-if="creating">{{ t('customs.carrier.tips.creating') }}</span>
           </div>
           <div class="mb-2" v-if="!locked && !status.can_create && blockers.length > 0">
