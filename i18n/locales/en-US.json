@@ -1723,6 +1723,8 @@
     "code-16087": "Sorting tasks of a received ASN cannot be deleted",
     "code-16090": "This DN already has an unfinished delivery task (#{delivery_task_id}); only one unfinished delivery task is allowed per DN",
     "code-16091": "This is not the current delivery task of this export DN; use the current task (#{delivery_task_id}) instead",
-    "code-16092": "The commercial invoice shows carrier \"{document_carrier}\"; the carrier cannot be changed when shipping. To change it, update the carrier and re-issue the documents first"
+    "code-16092": "The commercial invoice shows carrier \"{document_carrier}\"; the carrier cannot be changed when shipping. To change it, update the carrier and re-issue the documents first",
+    "code-16088": "This task has been deactivated because its document was cancelled; it can no longer be operated",
+    "code-16089": "Nothing has been picked; the picking task cannot be completed. If the goods cannot be picked, cancel the DN instead"
   }
 }

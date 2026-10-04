@@ -287,7 +287,8 @@ function getEarliestPackItem(itemPackingData: any) {
                                 <button class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='pending'"
                                     :title="t('button.close')" @click="closeDN()"><i
                                         class="ri-close-line me-1 align-middle"></i>{{ t('button.close') }}</button>
-                                <button type="button" class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='in_progress'"
+                                <button type="button" class="btn btn-danger btn-wave btn-sm"
+                                    v-if="itemData?.status =='in_progress' || (itemData?.status == 'picked' && !Number(itemData?.total_picked_quantity))"
                                     :title="t('dn.operations.cancel')" :disabled="canceling" @click="cancelDN()">
                                     <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
                                     <i v-else class="ri-arrow-go-back-line me-1 align-middle"></i>{{ t('dn.operations.cancel') }}</button>
