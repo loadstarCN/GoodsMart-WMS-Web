@@ -60,7 +60,8 @@
     "approved": "批准",
     "next": "下一步",
     "previous": "上一步",
-    "replenish": "补充拣货"
+    "replenish": "补充拣货",
+    "dont-cancel": "不取消"
   },
   "welcome-wms": {
     "title": "欢迎使用仓储管理系统 (WMS)",
@@ -371,7 +372,8 @@
       "confirm-password-required": "请确认您的新密码",
       "password-complexity": "密码必须至少包含{min}个字符，并包括大写字母、小写字母、数字和特殊字符",
       "password-mismatch": "新密码和确认密码不匹配",
-      "password-same-as-old": "新密码不能与当前密码相同"
+      "password-same-as-old": "新密码不能与当前密码相同",
+      "quantity-exceeds-available": "数量超出可用量（最多 {max}）"
     },
     "statistics": {
       "title": "统计信息",
@@ -768,7 +770,8 @@
       "back-to-list": "返回盘点列表"
     },
     "validation": {
-      "no-valid-records": "没有需要调整的有效记录。"
+      "no-valid-records": "没有需要调整的有效记录。",
+      "no-quantity": "请先录入盘点数量"
     }
   },
   "adjustment": {
@@ -826,7 +829,8 @@
       "delete": "删除收货通知",
       "back-to-list": "返回收货通知列表",
       "sorting": "分拣",
-      "receive": "接收"
+      "receive": "接收",
+      "cancel": "取消收货通知"
     },
     "type": {
       "inbound": "正常入库",
@@ -837,7 +841,9 @@
       "created-successfully": "收货通知由{creator}创建成功。",
       "started-successfully": "收货通知开始处理。",
       "received-successfully": "已接收了包裹。",
-      "sorting-operation-message": "{operator} 在分拣操作中分拣了 {sortedQuantity} 件物品，以及{damagedQuantity}件损毁，共计{allQuantity}件物品，（预期 {expectedQuantity} 件）。"
+      "sorting-operation-message": "{operator} 在分拣操作中分拣了 {sortedQuantity} 件物品，以及{damagedQuantity}件损毁，共计{allQuantity}件物品，（预期 {expectedQuantity} 件）。",
+      "cancel-confirm-title": "取消收货通知？",
+      "cancel-confirm": "将取消 ASN-{id}：已签收的数量会从签收库存中扣回，对应的分拣任务停用，单据关闭。分拣已经开始的不能取消。此操作不能撤销。"
     }
   },
   "sorting": {
@@ -899,7 +905,8 @@
       "picking": "拣货",
       "packing": "打包",
       "delivery": "配送",
-      "sign": "签收"
+      "sign": "签收",
+      "cancel": "取消发货单"
     },
     "type": {
       "shipping": "正常出库",
@@ -921,7 +928,9 @@
       "created-successfully": "发货单由{creator}创建成功。",
       "started-successfully": "发货单开始处理。",
       "picking-operation-message": "{creator} 在拣货操作中拣选了 {pickedQuantity} 件物品（预期 {expectedQuantity} 件）。",
-      "packing-operation-message": "{operator} 在打包操作中打包了 {packedQuantity} 件物品。"
+      "packing-operation-message": "{operator} 在打包操作中打包了 {packedQuantity} 件物品。",
+      "cancel-confirm-title": "取消发货单？",
+      "cancel-confirm": "将取消 DN-{id}：释放该单预占的库存，停用拣货任务，单据关闭。拣货已经开始的不能取消。此操作不能撤销。"
     }
   },
   "picking": {
@@ -1138,7 +1147,9 @@
       "all": "全部",
       "pending": "待发送",
       "sent": "已发送",
-      "failed": "失败"
+      "failed": "失败",
+      "sending": "推送中",
+      "superseded": "已作废"
     },
     "filters": {
       "all-types": "全部类型"
@@ -1696,6 +1707,22 @@
     "code-16078": "该出库单有 FedEx 自动运单 {tracking_number}：运单号和承运商不能更改，也不能新建或删除发货任务。要更改请先在出库单的单证卡片取消自动运单",
     "code-16078-no-tracking": "该出库单有 FedEx 自动运单：运单号和承运商不能更改，也不能新建或删除发货任务。要更改请先在出库单的单证卡片取消自动运单",
     "code-16079": "该出库单有一张结果不明的 FedEx 自动运单（FedEx 上可能已生成）。请先在出库单的单证卡片按提示到 FedEx Ship Manager 核对并处理，处理前不能建运单或修改运单号",
-    "code-16080": "商业发票（CI）上印的运单号是 {document_tracking_number}，与本次填写的 {tracking_number} 不一致。请用 CI 上的运单号发货；如果运单号确实变了，请先保存新运单号并重新生成 CI / PL"
+    "code-16080": "商业发票（CI）上印的运单号是 {document_tracking_number}，与本次填写的 {tracking_number} 不一致。请用 CI 上的运单号发货；如果运单号确实变了，请先保存新运单号并重新生成 CI / PL",
+    "code-16081": "快递费用必须是非负数字",
+    "code-16052": "发货单当前状态不能取消：只有待处理，或处理中且尚未开始拣货的发货单可以取消",
+    "code-16053": "拣货已经开始，发货单不能取消",
+    "code-16059": "收货通知当前状态不能取消：只有待处理，或已签收且尚未开始分拣的收货通知可以取消",
+    "code-16060": "分拣已经开始，收货通知不能取消",
+    "code-16017": "盘点明细已完成，不能再修改",
+    "code-16078-cancelled": "运单号 {cancelled_tracking_number} 对应的自动运单已取消，不能再使用。请重新建运单或填写其它运单号",
+    "code-16082": "尚未打包任何商品，不能完成打包任务",
+    "code-16083": "下架原因无效",
+    "code-16084": "库位上仍有库存，不能停用、修改类型或删除，请先移走库存",
+    "code-16085": "目标库位已停用，不能上架或移入",
+    "code-16086": "该盘点单已生成调整单（#{adjustment_id}），不能重复生成",
+    "code-16087": "已收货入库单的分拣任务不能删除",
+    "code-16090": "该出库单已有未完成的发货任务（#{delivery_task_id}），同一出库单只能有一条未完成的发货任务",
+    "code-16091": "这不是该海外出库单的当前发货任务，请在当前任务（#{delivery_task_id}）上操作",
+    "code-16092": "商业发票上印的承运商是「{document_carrier}」，完成发货时不能换承运商。确实要换，请先修改承运商并重新生成单证"
   }
 }

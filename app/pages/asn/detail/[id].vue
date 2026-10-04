@@ -11,6 +11,7 @@ const asnId = route.params.id;
 const itemData = ref(null);
 const itemSortingData = ref(null);
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 // 计算属性转换
 const dataToPass = computed(() => ({
   current: t('nav.ASN'),
@@ -87,6 +88,38 @@ const closeASN = async () => {
         }
     })
     return data;   
+};
+// 取消ASN（已签收、分拣尚未开始）：后端回滚签收库存、停用分拣任务并关闭单据；待处理的 ASN 用「关闭」
+const canceling = ref(false);
+const cancelASN = async () => {
+    if (canceling.value) return;
+    const confirmed = await showConfirm(
+        t('asn.tips.cancel-confirm-title'),
+        t('asn.tips.cancel-confirm', { id: asnId }),
+        t('asn.operations.cancel'),
+        t('button.dont-cancel'),
+    );
+    if (!confirmed) return;
+    canceling.value = true;
+    let done = false;
+    let conflict = false;
+    await httpRequest(`/api/warehouse/asn/${asnId}/cancel/`, {
+        method: 'PUT',
+        onSuccess: () => {
+            done = true;
+        },
+        onError: (error) => {
+            // 16059 状态已变 / 16060 分拣已开始
+            conflict = error.status === 409;
+            showToast(bizErrorMessage(error), 'error')
+        }
+    })
+    if (done) showToast(t('action-results.success'), 'success')
+    // 成功或状态已变（409）：重新读取单据与分拣任务
+    if (done || conflict) {
+        await Promise.all([fetchData(), fetchSortingData()]);
+    }
+    canceling.value = false;
 };
 function getEarliestStartedItem(itemSortingData: any) {
   const items = itemSortingData?.items;
@@ -249,6 +282,10 @@ function getEarliestStartedItem(itemSortingData: any) {
                                 <button class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='pending'"
                                     :title="t('button.close')" @click="closeASN()"><i
                                         class="ri-close-line me-1 align-middle"></i>{{ t('button.close') }}</button>
+                                <button type="button" class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='received'"
+                                    :title="t('asn.operations.cancel')" :disabled="canceling" @click="cancelASN()">
+                                    <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
+                                    <i v-else class="ri-arrow-go-back-line me-1 align-middle"></i>{{ t('asn.operations.cancel') }}</button>
                             </div>
                         </div>
                     </div>

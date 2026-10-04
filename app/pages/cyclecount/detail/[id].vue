@@ -11,6 +11,13 @@ const taskId = route.params.id;
 const itemData = ref(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
+const router = useRouter();
+// 防重复提交：保存明细 / 生成调整单进行中
+const saving = ref(false);
+const creatingAdjustment = ref(false);
+// 本页已生成过调整单（拿不到调整单 ID 无法跳转时，隐藏按钮防止再生成）
+const adjustmentCreated = ref(false);
 // 计算属性转换
 const dataToPass = computed(() => ({
   current: t('nav.cyclecount'),
@@ -65,8 +72,11 @@ const resetTask = () => {
 };
 
 const saveTask = async () => {
-  // 安全访问嵌套属性并处理空值
+  if (saving.value) return;
+  // 只提交本次有录入且未完成的行：先按录入值过滤再映射（映射后的对象没有 new_cyclecount_quantity，
+  // 之前过滤写在 map 之后永远不生效，整单按打开页面时的旧值提交，会覆盖别人刚录的结果）；已完成的行后端也会拒绝
   const details = (itemData.value?.task_details ?? [])
+    .filter((item: any) => item?.status !== 'completed' && (Number(item?.new_cyclecount_quantity) || 0) !== 0)
     .map((item: any) => {
       const newQuantity = Number(item?.new_cyclecount_quantity) || 0;
       const actualQuantity = newQuantity + (Number(item.actual_quantity) || 0);
@@ -74,8 +84,7 @@ const saveTask = async () => {
         id: item.id,
         actual_quantity: actualQuantity,
       };
-    })
-    .filter((item: any) => item.new_cyclecount_quantity !== 0);
+    });
 
   // 组合请求参数（保持原逻辑不变）
   const payload = {
@@ -83,29 +92,37 @@ const saveTask = async () => {
     details:details
   };
   if (payload.details.length === 0) {
-    showToast('Please add cycle count quantity', 'error');
+    showToast(t('cyclecount.validation.no-quantity'), 'error');
     return;
   }
 
+  saving.value = true;
   try {
+    let done = false;
     const data = await httpRequest(`/api/warehouse/cyclecount/${taskId}/details-batch-save/`, {
         method: 'POST',
         body: payload,
         headers: { 'Content-Type': 'application/json' }, // 明确设置类型
-        onSuccess: async(data) => {
-            await fetchData();
-            await resetTask();
-            showToast(t('action-results.success'), 'success')
+        onSuccess: () => {
+            done = true;
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            showToast(bizErrorMessage(error), 'error')
         }
     })
+    // 重新读取完、清掉本次录入后再解锁：否则读取期间录入值还在，再点保存会把同一批数量再加一次
+    if (done) {
+        await fetchData();
+        await resetTask();
+        showToast(t('action-results.success'), 'success')
+    }
     return data; 
     
     // 处理成功逻辑
   } catch (err) {
     // 处理错误逻辑
+  } finally {
+    saving.value = false;
   }
 };
 
@@ -196,35 +213,57 @@ const validDetails = computed(() => {
     ?? []
 })
 const carete_adjustmentFn = async () => {
+  if (creatingAdjustment.value || adjustmentCreated.value) return null
   // 如果无有效记录，直接提示并返回
   if (validDetails.value.length === 0) {
     showToast(t('cyclecount.validation.no-valid-records'), 'warning')
     return null
   }
   // 使用封装的确认对话框
-  showConfirm(
+  const confirmed = await showConfirm(
     t('action-results.create-confirm-title'),
     t('action-results.create-confirm'),
     t('button.confirm'),
     t('button.cancel'),
-  ).then((confirmed) => {
-    if (confirmed) {
-      // 执行创建调整
-      carete_adjustment();
-    }
-  });
-  
+  )
+  if (confirmed) {
+    // 执行创建调整
+    await carete_adjustment();
+  }
+  return null
 };
 
 const carete_adjustment = async () => {
- 
+  // 提交锁：连点只生成一张调整单（同一盘点单重复生成后端返回 409）
+  if (creatingAdjustment.value || adjustmentCreated.value) return null
+  creatingAdjustment.value = true
+  // 在回调里赋值：用 as 声明，避免 TS 把它收窄成 null
+  let createdId = null as number | string | null
 
   const data = await httpRequest(`/api/warehouse/adjustment/create_adjustment_by_cyclecount/${taskId}`, {
     method: 'POST',
-    onSuccess: (data) => showToast(t('action-results.success'), 'success'),
-    onError: (error) => showToast(error.message, 'error'),
+    onSuccess: (data) => {
+      adjustmentCreated.value = true
+      createdId = data?.id ?? null
+      showToast(t('action-results.success'), 'success')
+    },
+    onError: (error) => {
+      showToast(bizErrorMessage(error), 'error')
+      // 16086：该盘点单已生成过调整单，details.adjustment_id 是已有的那张，直接跳过去
+      if (Number(error?.code) === 16086 && error?.details?.adjustment_id) {
+        adjustmentCreated.value = true
+        createdId = error.details.adjustment_id
+      }
+    },
+    onFinally: () => {
+      creatingAdjustment.value = false
+    },
   });
 
+  // 成功后跳到新建的调整单（审批在调整单详情页进行）
+  if (createdId !== null) {
+    await router.push(`/adjustment/detail/${createdId}`)
+  }
   return data;
 };
 
@@ -419,13 +458,17 @@ onMounted(async() => {
                 <NuxtLink class="btn btn-warning btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.reset')"
                   @click="resetTask()"><i class="ri-reset-left-line me-1 align-middle"></i>{{t('button.reset')}}</NuxtLink>
                 <button class="btn btn-info btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.save')"
-                  @click="saveTask()" :disabled="!hasUnsavedChanges"><i class="ri-draft-line me-1 align-middle"></i>{{t('button.save')}}</button>
+                  @click="saveTask()" :disabled="!hasUnsavedChanges || saving">
+                  <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
+                  <i v-else class="ri-draft-line me-1 align-middle"></i>{{t('button.save')}}</button>
 
                 <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.complete')"
                   @click="completeFn()" :disabled="hasUnsavedChanges || !allItemsCompleted"><i class="ri-save-line me-1 align-middle"></i>{{t('button.complete')}}
                 </button>
-                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='completed' && validDetails.length > 0" title="Create Adjustment"
-                    @click="carete_adjustmentFn()"><i class="ri-save-line me-1 align-middle"></i>{{t('adjustment.operations.add')}}
+                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='completed' && validDetails.length > 0 && !adjustmentCreated" title="Create Adjustment"
+                    @click="carete_adjustmentFn()" :disabled="creatingAdjustment">
+                    <span v-if="creatingAdjustment" class="spinner-border spinner-border-sm me-1"></span>
+                    <i v-else class="ri-save-line me-1 align-middle"></i>{{t('adjustment.operations.add')}}
                 </button>
 
               </div>

@@ -12,6 +12,7 @@ const itemData = ref(null);
 const itemPickingData = ref(null);
 const itemPackingData = ref(null);
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 // 计算属性转换
 const dataToPass = computed(() => ({
   current: t('nav.DN'),
@@ -103,6 +104,38 @@ const closeDN = async () => {
         }
     })
     return data;   
+};
+// 取消DN（处理中、拣货尚未开始）：后端释放预占库存、停用拣货任务并关闭单据；待处理的 DN 用「关闭」
+const canceling = ref(false);
+const cancelDN = async () => {
+    if (canceling.value) return;
+    const confirmed = await showConfirm(
+        t('dn.tips.cancel-confirm-title'),
+        t('dn.tips.cancel-confirm', { id: dnId }),
+        t('dn.operations.cancel'),
+        t('button.dont-cancel'),
+    );
+    if (!confirmed) return;
+    canceling.value = true;
+    let done = false;
+    let conflict = false;
+    await httpRequest(`/api/warehouse/dn/${dnId}/cancel/`, {
+        method: 'PUT',
+        onSuccess: () => {
+            done = true;
+        },
+        onError: (error) => {
+            // 16052 状态已变 / 16053 拣货已开始
+            conflict = error.status === 409;
+            showToast(bizErrorMessage(error), 'error')
+        }
+    })
+    if (done) showToast(t('action-results.success'), 'success')
+    // 成功或状态已变（409）：重新读取单据与拣货任务
+    if (done || conflict) {
+        await Promise.all([fetchData(), fetchPickingData()]);
+    }
+    canceling.value = false;
 };
 function getEarliestPickItem(itemPickingData: any) {
   const items = itemPickingData?.items;
@@ -254,6 +287,10 @@ function getEarliestPackItem(itemPackingData: any) {
                                 <button class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='pending'"
                                     :title="t('button.close')" @click="closeDN()"><i
                                         class="ri-close-line me-1 align-middle"></i>{{ t('button.close') }}</button>
+                                <button type="button" class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='in_progress'"
+                                    :title="t('dn.operations.cancel')" :disabled="canceling" @click="cancelDN()">
+                                    <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
+                                    <i v-else class="ri-arrow-go-back-line me-1 align-middle"></i>{{ t('dn.operations.cancel') }}</button>
                             </div>
                         </div>
                     </div>

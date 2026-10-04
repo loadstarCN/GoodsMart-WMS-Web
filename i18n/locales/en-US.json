@@ -60,7 +60,8 @@
     "approved": "Approved",
     "next": "Next",
     "previous": "Previous",
-    "replenish": "Replenish Picking"
+    "replenish": "Replenish Picking",
+    "dont-cancel": "Don't cancel"
   },
   "welcome-wms": {
     "title": "Welcome to Warehouse Management System (WMS)",
@@ -371,7 +372,8 @@
       "confirm-password-required": "Please confirm your new password",
       "password-complexity": "Password must be at least {min} characters and include uppercase, lowercase, number, and special character",
       "password-mismatch": "New password and confirmation do not match",
-      "password-same-as-old": "New password cannot be the same as the current password"
+      "password-same-as-old": "New password cannot be the same as the current password",
+      "quantity-exceeds-available": "Quantity exceeds the available stock (max {max})"
     },
     "statistics": {
       "title": "Statistics",
@@ -768,7 +770,8 @@
       "back-to-list": "Back to Count List"
     },
     "validation": {
-      "no-valid-records": "No valid records to adjust."
+      "no-valid-records": "No valid records to adjust.",
+      "no-quantity": "Please enter the counted quantity first"
     }
   },
   "adjustment": {
@@ -826,7 +829,8 @@
       "delete": "Delete ASN",
       "back-to-list": "Back to ASN List",
       "sorting": "Sorting",
-      "receive": "Receive"
+      "receive": "Receive",
+      "cancel": "Cancel ASN"
     },
     "type": {
       "inbound": "Standard Inbound",
@@ -837,7 +841,9 @@
       "created-successfully": "ASN created by {creator} successfully.",
       "started-successfully": "ASN processing started.",
       "received-successfully": "Package received.",
-      "sorting-operation-message": "{operator} sorted {sortedQuantity} items with {damagedQuantity} damaged (expected {expectedQuantity})."
+      "sorting-operation-message": "{operator} sorted {sortedQuantity} items with {damagedQuantity} damaged (expected {expectedQuantity}).",
+      "cancel-confirm-title": "Cancel ASN?",
+      "cancel-confirm": "ASN-{id} will be cancelled: the received quantities are taken back out of received stock, its sorting task is deactivated and the ASN is closed. An ASN whose sorting has started cannot be cancelled. This cannot be undone."
     }
   },
   "sorting": {
@@ -899,7 +905,8 @@
       "picking": "Picking",
       "packing": "Packing",
       "delivery": "Delivery",
-      "sign": "Sign"
+      "sign": "Sign",
+      "cancel": "Cancel DN"
     },
     "type": {
       "shipping": "Standard Outbound",
@@ -921,7 +928,9 @@
       "created-successfully": "DN created by {creator} successfully.",
       "started-successfully": "DN processing started.",
       "picking-operation-message": "{creator} picked {pickedQuantity} items (expected {expectedQuantity}).",
-      "packing-operation-message": "{operator} packed {packedQuantity} items."
+      "packing-operation-message": "{operator} packed {packedQuantity} items.",
+      "cancel-confirm-title": "Cancel DN?",
+      "cancel-confirm": "DN-{id} will be cancelled: the stock it reserves is released, its picking task is deactivated and the DN is closed. A DN whose picking has started cannot be cancelled. This cannot be undone."
     }
   },
   "picking": {
@@ -1138,7 +1147,9 @@
       "all": "All",
       "pending": "Pending",
       "sent": "Sent",
-      "failed": "Failed"
+      "failed": "Failed",
+      "sending": "Sending",
+      "superseded": "Superseded"
     },
     "filters": {
       "all-types": "All Types"
@@ -1696,6 +1707,22 @@
     "code-16078": "This DN has an automatically created FedEx shipment {tracking_number}. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. To change them, cancel that shipment on the DN's export documents card first.",
     "code-16078-no-tracking": "This DN has an automatically created FedEx shipment. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. To change them, cancel that shipment on the DN's export documents card first.",
     "code-16079": "This DN has a FedEx shipment whose result is unknown (it may exist in FedEx). Until it is checked in FedEx Ship Manager and resolved as described on the DN's export documents card, shipments cannot be created and the tracking number cannot be changed.",
-    "code-16080": "The tracking number printed on the Commercial Invoice (CI) is {document_tracking_number}, which differs from the entered {tracking_number}. Ship with the tracking number on the CI; if the tracking number really changed, save the new one and re-issue the CI / PL first."
+    "code-16080": "The tracking number printed on the Commercial Invoice (CI) is {document_tracking_number}, which differs from the entered {tracking_number}. Ship with the tracking number on the CI; if the tracking number really changed, save the new one and re-issue the CI / PL first.",
+    "code-16081": "Shipping cost must be a non-negative number",
+    "code-16052": "This DN cannot be cancelled in its current status: only pending DNs, or in-progress DNs whose picking has not started, can be cancelled",
+    "code-16053": "Picking has already started for this DN, so it cannot be cancelled",
+    "code-16059": "This ASN cannot be cancelled in its current status: only pending ASNs, or received ASNs whose sorting has not started, can be cancelled",
+    "code-16060": "Sorting has already started for this ASN, so it cannot be cancelled",
+    "code-16017": "This count detail is already completed and can no longer be changed",
+    "code-16078-cancelled": "The automatic shipment for tracking number {cancelled_tracking_number} has been cancelled and can no longer be used. Create a new shipment or enter another tracking number",
+    "code-16082": "Nothing has been packed yet; the packing task cannot be completed",
+    "code-16083": "Invalid removal reason",
+    "code-16084": "The location still holds stock; it cannot be deactivated, have its type changed or be deleted. Move the stock out first",
+    "code-16085": "The target location is inactive and cannot receive stock",
+    "code-16086": "An adjustment (#{adjustment_id}) has already been created from this cycle count",
+    "code-16087": "Sorting tasks of a received ASN cannot be deleted",
+    "code-16090": "This DN already has an unfinished delivery task (#{delivery_task_id}); only one unfinished delivery task is allowed per DN",
+    "code-16091": "This is not the current delivery task of this export DN; use the current task (#{delivery_task_id}) instead",
+    "code-16092": "The commercial invoice shows carrier \"{document_carrier}\"; the carrier cannot be changed when shipping. To change it, update the carrier and re-issue the documents first"
   }
 }

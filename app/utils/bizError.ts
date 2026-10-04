@@ -10,12 +10,14 @@ const detailsOf = (error: BizErrorLike): Record<string, any> => {
 /**
  * 同一业务码按 details 细分的文案（key 后缀）；没有对应文案时回落到基础 key。
  * - 16069：单证过期（details.outdated = true）→ code-16069-outdated；缺失（details.missing_documents）→ code-16069
- * - 16078：没带运单号（新建 / 删除配送任务被拒）→ code-16078-no-tracking
+ * - 16078：本 DN 已取消的自动运单号（details.status = cancelled）→ code-16078-cancelled；
+ *   没带运单号（新建 / 删除配送任务被拒）→ code-16078-no-tracking
  */
 export const bizErrorVariant = (error: BizErrorLike): string => {
   if (!error) return ''
   const details = detailsOf(error)
   if (error.code === 16069 && details.outdated === true) return 'outdated'
+  if (error.code === 16078 && details.status === 'cancelled') return 'cancelled'
   if (error.code === 16078 && !details.tracking_number) return 'no-tracking'
   return ''
 }

@@ -20,6 +20,9 @@ const router = useRouter()
 const route = useRoute();
 const dnId = route.params.id;
 let loading = ref(true);
+const { bizErrorMessage } = useBizError();
+// 本单各商品打开页面时的数量（本单已预占的量）：可售可用量已扣掉它，编辑时可以重新用上
+const originalQtyByGoods = ref<Record<string, number>>({});
 
 
 // 创建响应式表单引用
@@ -46,6 +49,12 @@ const fetchData = async () => {
         params: route.query,
         onSuccess: async(data) => {
           dnItem.value = data;
+          const original: Record<string, number> = {};
+          (data?.details ?? []).forEach((d: any) => {
+            const key = String(d.goods_id);
+            original[key] = (original[key] || 0) + (Number(d.quantity) || 0);
+          });
+          originalQtyByGoods.value = original;
           if (dnItem.value.status != 'pending'){
             await router.push('/dn/')
           }
@@ -215,6 +224,13 @@ const editDN = async () => {
 
   if (Object.values(errors.value).some(v => v)) return
 
+  // 有明细数量超出可用量：不提交（该行下方已提示）
+  const exceeded: any = dnItem.value.details.find((item: any) => exceedsMax(item))
+  if (exceeded) {
+    showToast(t('common.validation.quantity-exceeds-available', { max: exceeded.max_qty }), 'error')
+    return
+  }
+
   if (dnItem.value.expected_shipping_date) {
     dnItem.value.expected_shipping_date = safeFormatDate(dnItem.value.expected_shipping_date);
   }
@@ -228,7 +244,8 @@ const editDN = async () => {
       await router.push('/dn/')          
     },
     onError: (error) => {
-      showToast(t('action-results.failed'), 'error')
+      // 库存不足（16032）等按业务码显示原因
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 
@@ -236,6 +253,19 @@ const editDN = async () => {
 
 // ------------------ 添加商品 ----------------------
 
+/**
+ * 本单某商品的数量上限 = 可售可用量（onhand - locked - 所有 DN 预占，已含本单）+ 本单原数量；
+ * 与后端校验一致（不能用 available_stock：它含残损 / 退货库存，且已扣掉本单预占，上限会变成 0）
+ */
+const maxQtyFor = (inventory: any, goodsId: any): number | null => {
+  if (!inventory) return null;
+  const forSale = Number(inventory.available_stock_for_sale) || 0;
+  return Math.max(0, forSale + (originalQtyByGoods.value[String(goodsId)] || 0));
+}
+
+/** 数量超出上限（上限未知时不判断） */
+const exceedsMax = (target: any) =>
+  !!target && typeof target.max_qty === 'number' && Number(target.quantity) > target.max_qty;
 
 const fetchInventories = async (warehouse_id:number) => {
     const goods_codes = dnItem.value.details.map((item:any) => item.goods?.code).join(',');
@@ -249,7 +279,7 @@ const fetchInventories = async (warehouse_id:number) => {
           dnItem.value.details = dnItem.value.details.map((item:any) => {
             const foundItem = data.items.find((i:any) => i.goods_id === item.goods_id);
             if (foundItem) {
-              item.max_qty = foundItem.available_stock;
+              item.max_qty = maxQtyFor(foundItem, item.goods_id);
             }
             return item;
           });
@@ -280,7 +310,7 @@ watch(
     if (newVal) {
       const selectedItem = goodsSearch.results.find((item:any) => item.goods_id == newVal);
       if (selectedItem) {
-        goodsSearch.selected.max_qty = selectedItem.available_stock;
+        goodsSearch.selected.max_qty = maxQtyFor(selectedItem, selectedItem.goods_id);
       }
     } else {
       goodsSearch.selected.max_qty = null; // 清空选择时重置
@@ -291,11 +321,8 @@ watch(
 
 const clampValue = (target: any) => {
   if (!target) return;
-  
-  const max = target.max_qty;
-  if (target.quantity > max) {
-    target.quantity = max;
-  }
+  // 超出上限时不再改写成上限：上限为 0 时会先压成 0、再被下面改成 1，把原数量改坏；
+  // 改为在输入框下提示超出可用量（exceedsMax），保存时拦截
   if (target.quantity < 1) {
     target.quantity = 1;
   }
@@ -304,7 +331,7 @@ const clampValue = (target: any) => {
 const is_next = ref(false);
 const nextAddDNItem = () => {
   if (dnItem.value.details.some((item:any) => item.goods_id == goodsSearch.selected.goods_id)) {
-    showToast(t('common.validation.goods-exists"'), 'error');
+    showToast(t('common.validation.goods-exists'), 'error');
     return;
   }
   is_next.value = true;
@@ -317,6 +344,10 @@ const nextAddDNItem = () => {
 const addDNItem = () => {
   if (!goodsSearch.selected.quantity) {
     errors.value.quantity = t('common.validation.quantity-required');
+    return;
+  }
+  if (exceedsMax(goodsSearch.selected)) {
+    errors.value.quantity = t('common.validation.quantity-exceeds-available', { max: goodsSearch.selected.max_qty });
     return;
   }
   dnItem.value.details.push(goodsSearch.selected)
@@ -427,8 +458,10 @@ const saveRemark = () => {
                       <input v-maska:[] type="number" class="form-control number-format" id="product-quantity"
                         data-maska="0" data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('common.placeholders.quantity')"
                         v-model="detail.quantity" min="1" step="1" @change="clampValue(detail)">
-                      <label for="product-quantity" class="form-label mt-1 fs-12 op-5 text-muted mb-0" v-if="detail.max_qty">{{t('common.quantities.max')}}:{{
+                      <label for="product-quantity" class="form-label mt-1 fs-12 op-5 text-muted mb-0" v-if="typeof detail.max_qty === 'number'">{{t('common.quantities.max')}}:{{
                         detail.max_qty }}</label>
+                      <div v-if="exceedsMax(detail)" class="invalid-feedback d-block">{{
+                        t('common.validation.quantity-exceeds-available', { max: detail.max_qty }) }}</div>
                     </div>
 
                   </td>
@@ -620,7 +653,7 @@ const saveRemark = () => {
             <li class="list-group-item" v-for="(item, index) in goodsSearch.results" :key="index">
               <div class="d-flex align-items-center">
                 <input class="form-check-input me-2" type="radio" :value="item.goods?.id" name="list-radio"
-                  v-model="goodsSearch.selected.goods_id" :disabled="item.available_stock <= 0" />
+                  v-model="goodsSearch.selected.goods_id" :disabled="(maxQtyFor(item, item.goods_id) ?? 0) <= 0" />
                 <div class="ms-2">
                   <span class="avatar avatar-md me-2">
                     <NuxtLink :to="`/goods/detail/${item.goods?.id}`" target="_blank">
@@ -633,7 +666,7 @@ const saveRemark = () => {
                   <p class="fw-semibold mb-0">{{ item.goods?.name }}</p>
                   <span class="fs-12 text-muted">{{ item.goods?.code }}</span>
                   <p class="fw-semibold mb-0"><span class="badge rounded-pill bg-success me-2"
-                      :class="item.available_stock>0?'bg-success':'bg-warning'">{{ item.available_stock }}</span>@{{
+                      :class="(maxQtyFor(item, item.goods_id) ?? 0)>0?'bg-success':'bg-warning'">{{ maxQtyFor(item, item.goods_id) ?? 0 }}</span>@{{
                     item.warehouse?.name }}</p>
 
                 </div>

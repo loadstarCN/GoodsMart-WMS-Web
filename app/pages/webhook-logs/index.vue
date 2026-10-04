@@ -53,7 +53,7 @@ onMounted(async () => {
 })
 
 // ==================== 状态 Tab ====================
-const statusTabs = ['all', 'pending', 'sent', 'failed'] as const
+const statusTabs = ['all', 'pending', 'sending', 'sent', 'failed', 'superseded'] as const
 
 const activeTab = computed(() => {
   const statusParam = route.query.status as string
@@ -139,6 +139,7 @@ const statusBadgeClass = (status: string) => {
     case 'sent': return 'bg-success-transparent'
     case 'failed': return 'bg-danger-transparent'
     case 'pending': return 'bg-warning-transparent'
+    case 'sending': return 'bg-info-transparent'
     default: return 'bg-secondary-transparent'
   }
 }

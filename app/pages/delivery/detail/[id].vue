@@ -68,10 +68,15 @@ const processTask = async () => {
             showToast(error.message, 'error')
         }
     })
-    return data;   
+    return data;
 };
 
-
+// 运费输入框（v-maska 文本框）的值转成提交值：空 → null（后端视为不改），否则转数字
+const toShippingCost = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text === '' ? null : Number(text);
+};
 
 const completeTask = async () => {
   errors.value = {
@@ -86,7 +91,8 @@ const completeTask = async () => {
     const data = await httpRequest(`/api/warehouse/delivery/${taskId}/complete/`, {
         method: 'PUT',
         body: {
-          shipping_cost: itemData.value.shipping_cost,
+          // 输入框是文本框：空 = 不改已存运费（null），其余按数字提交（后端只收数字 / 数字字符串）
+          shipping_cost: toShippingCost(itemData.value.shipping_cost),
           carrier_id: itemData.value.carrier_id,
           transportation_mode: itemData.value.transportation_mode,
           tracking_number: itemData.value.tracking_number,
@@ -216,7 +222,7 @@ const customsBlockedReason = ref<string | null>(null);
 const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
 
 /** 完成发货 / 保存运单号时要弹窗说明的业务码：自动运单锁定（16078）/ 结果不明（16079）/ 与 CI 上的运单号不一致（16080） */
-const SHIPPING_BLOCK_CODES = [16078, 16079, 16080];
+const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092];
 
 // ------------------ 保存运单号（完成发货前） ----------------------
 // 任务 pending / in_progress 可存；已发货 409 16065。

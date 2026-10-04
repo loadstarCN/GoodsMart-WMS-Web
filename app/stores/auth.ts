@@ -109,6 +109,11 @@ export const useAuthStore = defineStore('auth', {
 
       secureLocalStorage.remove("userInfo"); // 彻底移除会话数据
 
+      // 员工信息（公司、可访问仓库）与当前仓库（warehouse_id cookie）也一起清掉：
+      // 否则换人登录后页头沿用上一个人的公司，请求带着上一个人的 X-WAREHOUSE-ID 被拒
+      useStaffStore().clearStaffInfo();
+      useWarehouseStore().reset();
+
       // 更新认证状态
       this.authenticated = false;
       this.userInfo = null;

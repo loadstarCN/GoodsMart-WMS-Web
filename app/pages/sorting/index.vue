@@ -46,22 +46,8 @@ async function search() {
 }
 
 
-// 删除Item
-const deleteItem = async (item_id:Number) => {
-    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm'),t('button.confirm'),t('button.cancel'));
-    if (confirm) {
-        await httpRequest(`/api/warehouse/sorting/${item_id}`, {
-            method: 'DELETE',
-            onSuccess: async() => {
-                showToast(t('action-results.success'), 'success')
-                await fetchData();                
-            },
-            onError: (error) => {
-                showToast(error.message, 'error')
-            }
-        })
-    }
-}
+// 分拣任务不提供删除：任务由 ASN 签收时自动生成，ASN 只能经分拣完成推进到 completed，
+// 删掉后 ASN 会永远停在 received（误签收请在 ASN 上「取消」）
 
 // 处理标签切换
 const setActiveFilter = (status: string | null) => {
@@ -215,7 +201,6 @@ onMounted(async() => {
                                     <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.status') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.creator') }}</th>
-                                    <th scope="col">{{ t('common.fields.action') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -231,13 +216,6 @@ onMounted(async() => {
 
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ item?.creator?.user_name }}</td>
-                                    <td>
-                                        <div class="hstack gap-2 fs-15">
-                                            <NuxtLink href="javascript:void(0);" @click="deleteItem(item.id)"
-                                                class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="item.status===
-                                            'pending'"><i class="ri-delete-bin-line"></i></NuxtLink>
-                                        </div>
-                                    </td>
                                 </tr>
                             </tbody>
                         </table>

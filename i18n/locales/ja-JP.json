@@ -60,7 +60,8 @@
     "approved": "承認済み",
     "next": "次へ",
     "previous": "前へ",
-    "replenish": "補充"
+    "replenish": "補充",
+    "dont-cancel": "取り消さない"
   },
   "welcome-wms": {
     "title": "倉庫管理システム（WMS）へようこそ",
@@ -371,7 +372,8 @@
       "confirm-password-required": "新しいパスワードの確認が必要です",
       "password-complexity": "パスワードは{min}文字以上で、大文字、小文字、数字、特殊文字を含める必要があります",
       "password-mismatch": "新しいパスワードと確認が一致しません",
-      "password-same-as-old": "新しいパスワードは現在のパスワードと同じにすることはできません"
+      "password-same-as-old": "新しいパスワードは現在のパスワードと同じにすることはできません",
+      "quantity-exceeds-available": "数量が引当可能数を超えています（最大 {max}）"
     },
     "statistics": {
       "title": "統計情報",
@@ -768,7 +770,8 @@
       "back-to-list": "一覧に戻る"
     },
     "validation": {
-      "no-valid-records": "調整対象の有効なレコードがありません。"
+      "no-valid-records": "調整対象の有効なレコードがありません。",
+      "no-quantity": "先に棚卸数量を入力してください"
     }
   },
   "adjustment": {
@@ -826,7 +829,8 @@
       "delete": "ASN削除",
       "back-to-list": "一覧に戻る",
       "sorting": "仕分け",
-      "receive": "受領"
+      "receive": "受領",
+      "cancel": "ASNを取り消す"
     },
     "type": {
       "inbound": "通常入庫",
@@ -837,7 +841,9 @@
       "created-successfully": "{creator}によるASN作成完了。",
       "started-successfully": "ASN処理開始。",
       "received-successfully": "荷物を受領しました。",
-      "sorting-operation-message": "{operator}が仕分操作で{sortedQuantity}点商品を仕分け、{damagedQuantity}点不良あり(予定{expectedQuantity}点)。"
+      "sorting-operation-message": "{operator}が仕分操作で{sortedQuantity}点商品を仕分け、{damagedQuantity}点不良あり(予定{expectedQuantity}点)。",
+      "cancel-confirm-title": "ASNを取り消しますか？",
+      "cancel-confirm": "ASN-{id} を取り消します。受領済みの数量は受領在庫から差し戻され、仕分タスクは無効になり、ASN はクローズされます。仕分が始まっている ASN は取り消せません。元に戻せません。"
     }
   },
   "sorting": {
@@ -899,7 +905,8 @@
       "picking": "ピッキング",
       "packing": "梱包",
       "delivery": "配送",
-      "sign": "サイン"
+      "sign": "サイン",
+      "cancel": "DNを取り消す"
     },
     "type": {
       "shipping": "通常出庫",
@@ -921,7 +928,9 @@
       "created-successfully": "{creator}によるDN作成完了。",
       "started-successfully": "DN処理開始。",
       "picking-operation-message": "{creator}がピッキング操作で{pickedQuantity}点商品をピッキング(予定{expectedQuantity}点)。",
-      "packing-operation-message": "{operator}が梱包操作で{packedQuantity}点商品を梱包。"
+      "packing-operation-message": "{operator}が梱包操作で{packedQuantity}点商品を梱包。",
+      "cancel-confirm-title": "DNを取り消しますか？",
+      "cancel-confirm": "DN-{id} を取り消します。この DN が引き当てている在庫を解放し、ピッキングタスクは無効になり、DN はクローズされます。ピッキングが始まっている DN は取り消せません。元に戻せません。"
     }
   },
   "picking": {
@@ -1138,7 +1147,9 @@
       "all": "すべて",
       "pending": "待機中",
       "sent": "送信済み",
-      "failed": "失敗"
+      "failed": "失敗",
+      "sending": "送信中",
+      "superseded": "無効化"
     },
     "filters": {
       "all-types": "すべてのタイプ"
@@ -1696,6 +1707,22 @@
     "code-16078": "この出荷指示には FedEx で自動作成した運送状 {tracking_number} があります。運送状番号・運送会社の変更や、配送タスクの新規作成・削除はできません。変更するには、先に出荷指示の単証カードで運送状を取り消してください",
     "code-16078-no-tracking": "この出荷指示には FedEx で自動作成した運送状があります。運送状番号・運送会社の変更や、配送タスクの新規作成・削除はできません。変更するには、先に出荷指示の単証カードで運送状を取り消してください",
     "code-16079": "この出荷指示には作成結果が不明な FedEx の運送状があります（FedEx 側で作成済みの可能性があります）。出荷指示の単証カードの案内に従って FedEx Ship Manager で確認・対応するまで、運送状の作成や運送状番号の変更はできません",
-    "code-16080": "コマーシャルインボイス（CI）に印字された運送状番号 {document_tracking_number} と、今回入力した {tracking_number} が一致しません。CI の運送状番号で出荷してください。運送状番号が本当に変わった場合は、新しい番号を保存して CI／PL を再発行してください"
+    "code-16080": "コマーシャルインボイス（CI）に印字された運送状番号 {document_tracking_number} と、今回入力した {tracking_number} が一致しません。CI の運送状番号で出荷してください。運送状番号が本当に変わった場合は、新しい番号を保存して CI／PL を再発行してください",
+    "code-16081": "送料は 0 以上の数値で入力してください",
+    "code-16052": "現在のステータスでは DN を取り消せません。取り消せるのは保留中の DN、またはピッキング未開始の処理中の DN のみです",
+    "code-16053": "ピッキングが始まっているため、DN を取り消せません",
+    "code-16059": "現在のステータスでは ASN を取り消せません。取り消せるのは保留中の ASN、または仕分未開始の受領済み ASN のみです",
+    "code-16060": "仕分が始まっているため、ASN を取り消せません",
+    "code-16017": "この棚卸明細は完了済みのため変更できません",
+    "code-16078-cancelled": "運送状番号 {cancelled_tracking_number} の自動運送状は取消済みのため使用できません。運送状を作り直すか、別の運送状番号を入力してください",
+    "code-16082": "まだ何も梱包されていないため、梱包タスクを完了できません",
+    "code-16083": "出庫理由が無効です",
+    "code-16084": "ロケーションに在庫が残っているため、無効化・種別変更・削除はできません。先に在庫を移動してください",
+    "code-16085": "移動先ロケーションが無効のため、入庫・移動できません",
+    "code-16086": "この棚卸からは既に調整（#{adjustment_id}）が作成されています",
+    "code-16087": "入荷済み ASN の仕分けタスクは削除できません",
+    "code-16090": "この出荷指示には未完了の出荷タスク（#{delivery_task_id}）が既にあります。出荷指示ごとに未完了の出荷タスクは 1 件のみです",
+    "code-16091": "この海外出荷指示の現在の出荷タスクではありません。現在のタスク（#{delivery_task_id}）で操作してください",
+    "code-16092": "コマーシャルインボイスの運送会社は「{document_carrier}」です。出荷完了時に運送会社は変更できません。変更する場合は先に運送会社を変更して書類を再発行してください"
   }
 }

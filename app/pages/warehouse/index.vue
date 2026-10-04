@@ -58,8 +58,8 @@ const deleteItem = async (item_id:Number) => {
             onSuccess: async() => {
                 showToast(t('action-results.success'), 'success')
                 await fetchData();
-                await staffStore.clearStaffInfo();
-                await staffStore.getCurrentStaffInfo();
+                // 刷新员工信息与页头仓库下拉，并校验当前仓库
+                await staffStore.refreshStaffInfo();
             },
             onError: (error) => {
                 showToast(error.message, 'error')
@@ -76,6 +76,8 @@ const activeItem = async (item_id:Number) => {
         onSuccess: async() => {
             showToast(t('action-results.success'), 'success')
             await fetchData();       
+            // 启用 / 停用会改变可访问仓库：刷新页头下拉，停用的是当前仓库时清掉
+            await staffStore.refreshStaffInfo();
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -91,6 +93,8 @@ const inactiveItem = async (item_id:Number) => {
         onSuccess: async() => {
             showToast(t('action-results.success'), 'success')
             await fetchData();       
+            // 启用 / 停用会改变可访问仓库：刷新页头下拉，停用的是当前仓库时清掉
+            await staffStore.refreshStaffInfo();
         },
         onError: (error) => {
             showToast(error.message, 'error')

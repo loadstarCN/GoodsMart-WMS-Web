@@ -6,6 +6,7 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -90,6 +91,37 @@ const closeItem = async (item_id:Number) => {
             showToast(error.message, 'error')
         }
     })
+}
+
+// 取消ASN（已签收、分拣尚未开始）：后端回滚签收库存、停用分拣任务并关闭单据；待处理的 ASN 用「关闭」
+const cancelingId = ref<number | null>(null);
+const cancelItem = async (item_id: number) => {
+    if (cancelingId.value !== null) return;
+    const confirmed = await showConfirm(
+        t('asn.tips.cancel-confirm-title'),
+        t('asn.tips.cancel-confirm', { id: item_id }),
+        t('asn.operations.cancel'),
+        t('button.dont-cancel'),
+    );
+    if (!confirmed) return;
+    cancelingId.value = item_id;
+    let done = false;
+    let conflict = false;
+    await httpRequest(`/api/warehouse/asn/${item_id}/cancel/`, {
+        method: 'PUT',
+        onSuccess: () => {
+            done = true;
+        },
+        onError: (error) => {
+            // 16059 状态已变 / 16060 分拣已开始
+            conflict = error.status === 409;
+            showToast(bizErrorMessage(error), 'error')
+        }
+    })
+    if (done) showToast(t('action-results.success'), 'success')
+    // 成功或状态已变（409）：刷新列表
+    if (done || conflict) await fetchData();
+    cancelingId.value = null;
 }
 
 // 签收ASN
@@ -298,6 +330,11 @@ onMounted(async() => {
                                             <NuxtLink :to="`/asn/edit/${asn?.id}`" class="btn btn-icon btn-sm btn-success-light product-btn" v-if="asn.status==='pending'"><i class="ri-edit-line"></i></NuxtLink>
                                             <NuxtLink  href="javascript:void(0);" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="asn.status==='pending'" :title="t('asn.operations.receive')" @click="receiveItem(asn.id)"><i  class="ri-checkbox-line"></i></NuxtLink>
                                             <NuxtLink :to="`/sorting/?asn_id=${asn.id}`" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="asn.status==='received'" :title="t('asn.operations.sorting')"><i class="ri-list-check-3"></i></NuxtLink>
+                                            <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="asn.status==='received'"
+                                                :title="t('asn.operations.cancel')" :disabled="cancelingId !== null" @click="cancelItem(asn.id)">
+                                                <span v-if="cancelingId === asn.id" class="spinner-border spinner-border-sm"></span>
+                                                <i v-else class="ri-arrow-go-back-line"></i>
+                                            </button>
                                             <NuxtLink href="javascript:void(0);" @click="closeItem(asn.id)" class="btn btn-icon btn-sm btn-info-light product-btn" v-if="asn.status==='pending'" :title="t('button.close')"><i class="ri-close-line"></i></NuxtLink>
                                             <NuxtLink href="javascript:void(0);" @click="deleteItem(asn.id)" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="asn.status==='pending'"><i class="ri-delete-bin-line"></i></NuxtLink>
                                         </div>

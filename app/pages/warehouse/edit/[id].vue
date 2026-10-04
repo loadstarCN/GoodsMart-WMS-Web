@@ -103,8 +103,8 @@ const saveWarehouse = async () => {
     body: itemData.value,
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
-      await staffStore.clearStaffInfo();
-      await staffStore.getCurrentStaffInfo();
+      // 刷新员工信息与页头仓库下拉，并校验当前仓库
+      await staffStore.refreshStaffInfo();
       await router.push('/warehouse/')          
     },
     onError: (error) => {

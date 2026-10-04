@@ -249,7 +249,7 @@ const handleSearch = () => {
 const is_next = ref(false);
 const nextAddASNItem = () => {
   if (asnItem.value.details.some((item:any) => item.goods_id == goodsSearch.selected.goods_id)) {
-    showToast(t('common.validation.goods-exists"'), 'error');
+    showToast(t('common.validation.goods-exists'), 'error');
     return;
   }
   is_next.value = true;

@@ -90,6 +90,8 @@ const saveCompany = async () => {
     body: itemData.value,
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
+      // 公司名称、默认币种等在员工信息里有缓存（页头、各新建页默认值）：重新拉取
+      await staffStore.refreshStaffInfo()
     },
     onError: (error) => {
       // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案

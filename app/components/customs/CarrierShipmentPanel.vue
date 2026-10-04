@@ -14,7 +14,9 @@
  *   后端配置成 ZPLII / EPL2 时下载指令文件；
  *   取消运单（二次确认；DN 已发货时不显示）
  * - 有运送申告价额时注明「已随运单提交」（后端按箱分摊成每箱 declaredValue）
- * - 成功建单 / 取消后通知父组件刷新单证（后端已让 CI / PL 带上 / 去掉运单号重新签发）
+ * - 成功建单 / 取消后通知父组件刷新单证（后端已让 CI / PL 带上 / 去掉运单号重新签发）；
+ *   轮询、刷新、建单超时后重读才看到的变化（运单 id / 运单号 / 状态变了，或结果不明的运单消失）同样通知，
+ *   免得单证区仍显示已作废的旧版 CI / PL
  */
 import type { HttpRequestError } from '~/utils/http'
 import { formatMoney, useCustomsPdfActions } from '~/composables/customs/customsDocuments'
@@ -67,7 +69,7 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  /** 建单 / 取消成功：运单号变了，父组件要刷新单证 */
+  /** 运单变了（建单 / 取消成功，或重新读取时发现运单、结果不明的运单有变化）：父组件要刷新单证 */
   (e: 'changed'): void
   /** 读到新的状态（父组件据此切换申告价额提示） */
   (e: 'status', status: CarrierShipmentStatus | null): void
@@ -94,13 +96,40 @@ const labelFormat = ref<LabelFormat>('A4')
 let labelFormatChosen = false
 
 // ------------------ 读取 ----------------------
-const load = async () => {
+/** 运单的识别信息（id / 运单号 / 状态）：任一变化说明后端已让 CI / PL 重新签发 */
+const shipmentSignature = (s: CarrierShipmentStatus | null) => {
+  const sh = s?.shipment
+  return sh ? `${sh.id ?? ''}|${sh.tracking_number ?? ''}|${sh.status ?? ''}` : ''
+}
+
+/**
+ * 写入后端最新状态。与之前相比运单变了，或结果不明的运单由有变无时，通知父组件刷新单证；
+ * 首次读取不通知（父组件同时在读单证）。读到新的有效运单时清掉之前建单失败 / 超时的提示。
+ * 返回是否已通知父组件。
+ */
+const applyStatus = (next: CarrierShipmentStatus | null): boolean => {
+  const prev = status.value
+  status.value = next
+  const shipmentChanged = shipmentSignature(prev) !== shipmentSignature(next)
+  if (shipmentChanged && isActiveShipment(next?.shipment ?? null)) failure.value = null
+  if (!prev) return false
+  const unresolvedGone = !!prev.unresolved && !next?.unresolved
+  if (shipmentChanged || unresolvedGone) {
+    emit('changed')
+    return true
+  }
+  return false
+}
+
+/** 重新读取状态；返回是否因运单变化通知了父组件 */
+const load = async (): Promise<boolean> => {
   loading.value = true
   loadError.value = null
+  let notified = false
   await httpRequest<CarrierShipmentStatus>(carrierShipmentUrl(props.dnId), {
     method: 'GET',
     onSuccess: (data) => {
-      status.value = normalizeCarrierStatus(data)
+      notified = applyStatus(normalizeCarrierStatus(data))
       unsupported.value = false
       const backendDefault = toLabelFormat(status.value?.default_label_format)
       if (!labelFormatChosen && backendDefault) labelFormat.value = backendDefault
@@ -117,6 +146,7 @@ const load = async () => {
       loading.value = false
     },
   })
+  return notified
 }
 
 onMounted(() => {
@@ -321,21 +351,19 @@ const create = async () => {
       handleFailure(error)
     },
   })
-  // 超时 / 结果不明 / 5xx / 断网：运单可能已在 FedEx 生成，立刻按后端最新状态（unresolved、can_create）刷新按钮
+  // 超时 / 结果不明 / 5xx / 断网：运单可能已在 FedEx 生成，立刻按后端最新状态（unresolved、can_create）刷新按钮；
+  // 读到后端其实已建好的运单时 load() 会通知父组件刷新单证
   if (failedWith && shouldReloadAfterCreateFailure(failedWith)) {
     await load()
   }
   if (created) {
     const next = normalizeCarrierStatus(created)
-    if (next) {
-      status.value = next
-    } else {
-      await load()
-    }
+    const notified = next ? applyStatus(next) : await load()
     alerts.value = extractCarrierAlerts(created)
     const tracking = created?.shipment?.tracking_number || created?.tracking_number || activeShipment.value?.tracking_number || ''
     showToast(t('customs.carrier.created', { tracking }), 'success')
-    emit('changed')
+    // 已因运单变化通知过就不再重复通知
+    if (!notified) emit('changed')
   }
   creating.value = false
 }
@@ -368,13 +396,10 @@ const cancel = async () => {
   })
   if (done) {
     const next = normalizeCarrierStatus(result)
-    if (next) {
-      status.value = next
-    } else {
-      await load()
-    }
+    const notified = next ? applyStatus(next) : await load()
     showToast(t('customs.carrier.cancelled', { tracking: s.tracking_number || '' }), 'success')
-    emit('changed')
+    // 已因运单变化通知过就不再重复通知
+    if (!notified) emit('changed')
   }
   cancelling.value = false
 }
@@ -410,9 +435,10 @@ const dismiss = async () => {
     },
   })
   // 成功返回与 GET 同形；失败（如 16075 已没有可解除的运单）也重新读取，按最新状态显示
+  //（结果不明的运单解除后会通知父组件刷新单证）
   const next = done ? normalizeCarrierStatus(result) : null
   if (next) {
-    status.value = next
+    applyStatus(next)
   } else {
     await load()
   }
@@ -439,7 +465,7 @@ const sendToPrinter = async () => {
   }
 }
 
-defineExpose({ reload: load })
+defineExpose({ reload: async () => { await load() } })
 </script>
 
 <template>

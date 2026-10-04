@@ -144,26 +144,18 @@ const selectWarehouse = (warehouse) => {
 // 生命周期
 onMounted(async () => {
 
-    // 获取Staff信息
+    // 获取Staff信息：每次打开页面都从后端刷新一次（登录时刚刷新过的不再重复），
+    // 公司、可访问仓库可能已被改过（仓库停用、权限调整），本地缓存不可靠
     if (userStore.authenticated && userStore.userInfo) {
       if (userStore.userInfo?.type === 'staff') {
-          if (!staffStore.staffInfo) {
+          if (!staffStore.staffInfo || !staffStore.refreshed) {
               await staffStore.getCurrentStaffInfo();
           }
       }
-    }  
-    
-    // 获取仓库信息
-    const warehouseId = useCookie('warehouse_id').value
-    
-    // 初始化仓库列表
-    await warehouseStore.fetchWarehouses()
-    
-    // 设置当前仓库
-    if (warehouseId) {
-      const warehouse = warehouseStore.warehouses.find(w => w.id === warehouseId)
-      warehouseStore.selectWarehouse(warehouse || null)
     }
+
+    // 用最新的仓库列表初始化下拉，并校验当前仓库（cookie）：不在列表里（已停用 / 无权访问）就清掉
+    warehouseStore.syncWarehouses()
 
 
     // locale.value = currentLang.value    

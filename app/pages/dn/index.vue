@@ -6,6 +6,7 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -89,6 +90,37 @@ const closeItem = async (item_id:Number) => {
             showToast(error.message, 'error')
         }
     })
+}
+
+// 取消DN（处理中、拣货尚未开始）：后端释放预占库存、停用拣货任务并关闭单据；待处理的 DN 用「关闭」
+const cancelingId = ref<number | null>(null);
+const cancelItem = async (item_id: number) => {
+    if (cancelingId.value !== null) return;
+    const confirmed = await showConfirm(
+        t('dn.tips.cancel-confirm-title'),
+        t('dn.tips.cancel-confirm', { id: item_id }),
+        t('dn.operations.cancel'),
+        t('button.dont-cancel'),
+    );
+    if (!confirmed) return;
+    cancelingId.value = item_id;
+    let done = false;
+    let conflict = false;
+    await httpRequest(`/api/warehouse/dn/${item_id}/cancel/`, {
+        method: 'PUT',
+        onSuccess: () => {
+            done = true;
+        },
+        onError: (error) => {
+            // 16052 状态已变 / 16053 拣货已开始
+            conflict = error.status === 409;
+            showToast(bizErrorMessage(error), 'error')
+        }
+    })
+    if (done) showToast(t('action-results.success'), 'success')
+    // 成功或状态已变（409）：刷新列表
+    if (done || conflict) await fetchData();
+    cancelingId.value = null;
 }
 
 // 处理标签切换
@@ -307,6 +339,11 @@ onMounted(async() => {
                                             <NuxtLink href="javascript:void(0);" @click="closeItem(dn.id)"
                                                 class="btn btn-icon btn-sm btn-info-light product-btn" v-if="dn.status===
                                             'pending'" :title="t('button.close')"><i class="ri-close-line"></i></NuxtLink>
+                                            <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="dn.status==='in_progress'"
+                                                :title="t('dn.operations.cancel')" :disabled="cancelingId !== null" @click="cancelItem(dn.id)">
+                                                <span v-if="cancelingId === dn.id" class="spinner-border spinner-border-sm"></span>
+                                                <i v-else class="ri-arrow-go-back-line"></i>
+                                            </button>
                                             <NuxtLink href="javascript:void(0);" @click="deleteItem(dn.id)"
                                                 class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="dn.status===
                                             'pending'"><i class="ri-delete-bin-line"></i></NuxtLink>

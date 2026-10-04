@@ -104,6 +104,8 @@ const clearCredentials = () => {
 
 const router = useRouter();
 const authStore = useAuthStore();
+const staffStore = useStaffStore();
+const warehouseStore = useWarehouseStore();
 const user = reactive<LoginForm>({
   account: '',
   password: ''
@@ -118,7 +120,15 @@ const login = async () => {
 
     const data = await authStore.authenticateUser(user)
     if (data?.authenticated) {
-      // getCurrentStaffInfo();
+      // 无条件重新拉取员工信息，并用新的可访问仓库列表校验当前仓库（不在列表里就清掉），
+      // 免得沿用上一个登录者缓存的公司和仓库；非员工（平台管理员）清掉员工缓存
+      await nextTick(); // 等新 token 写入 cookie
+      if (authStore.userInfo?.type === 'staff') {
+        await staffStore.refreshStaffInfo();
+      } else {
+        staffStore.clearStaffInfo();
+        warehouseStore.reset();
+      }
       // 处理记住密码逻辑
       handleRememberPassword();
       await router.push('/');
