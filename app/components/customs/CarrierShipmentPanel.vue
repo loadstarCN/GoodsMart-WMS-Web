@@ -25,10 +25,12 @@
  *   免得单证区仍显示已作废的旧版 CI / PL
  */
 import type { HttpRequestError } from '~/utils/http'
-import { formatMoney, useCustomsPdfActions } from '~/composables/customs/customsDocuments'
+import { formatMoney, formatUserRef, useCustomsPdfActions } from '~/composables/customs/customsDocuments'
+import dayjs from 'dayjs'
 import {
   CARRIER_BIZ_CODES,
   carrierShipmentUrl,
+  declaredAmountOrNull,
   extractCarrierAlerts,
   extractCarrierErrors,
   hasAuxiliaryLabel,
@@ -220,36 +222,95 @@ const unresolvedReasonText = computed(() => {
   return te(key) ? t(key) : reason
 })
 
-// 别人正在建单 / 取消（pending / cancelling）：定时重新读取，直到有结果（最多约 5 分钟，之后手动刷新）
+/*
+ * 别人正在建单 / 取消（pending / cancelling）：定时重新读取，直到有结果。
+ * 后端把 pending 自 created_at、取消进行中（cancelling + cancel_in_progress）自 updated_at 起超过
+ * FEDEX_PENDING_STALE_MINUTES（默认 10 分钟）的记录按结果不明（stale）返回，此后 can_dismiss = true、不再是「进行中」，
+ * 轮询自然停止。所以按记录的时间轮询到「判定卡住的时刻 + 余量」；记录时间不可用（缺失 / 晚于现在：时钟或时区不一致）时
+ * 按刚开始算；已过该时刻仍在进行中（后端把时限配得更长等）时从开始轮询起至少再轮询一段。
+ * 到点仍在进行中就停止并提示手动刷新（不再写「本页会自动刷新」）。
+ */
 const IN_PROGRESS_POLL_MS = 10000
-const IN_PROGRESS_POLL_MAX = 30
+/** 与后端 DEFAULT_PENDING_STALE_MINUTES 一致 */
+const BACKEND_STALE_AFTER_MS = 10 * 60 * 1000
+/** 判定卡住之后再多等的时间（后端判定时刻 + 一次轮询的间隔 + 时钟误差） */
+const STALE_GRACE_MS = 90 * 1000
+/** 已过判定时刻仍在进行中时，从开始轮询起至少再轮询的时间 */
+const MIN_POLL_WINDOW_MS = 2 * 60 * 1000
+/** 记录时间比本机「现在」晚这么多以内按时钟误差处理 */
+const CLOCK_SKEW_MS = 60 * 1000
 // 运单取消中但后端同时给了结果不明记录时，以记录为准（取消结果不明不是进行中，不轮询）
 const inProgress = computed(() => unresolvedInProgress.value || (!!cancellingShipment.value && !unresolved.value))
+/** 进行中的记录开始计时的时间：建单中（pending）看 created_at，取消中（cancelling）看 updated_at */
+const inProgressSince = computed<string | null>(() => {
+  const u = unresolved.value
+  if (u && unresolvedInProgress.value) {
+    return u.status === 'cancelling' ? (u.updated_at || u.created_at) : u.created_at
+  }
+  const s = cancellingShipment.value
+  if (s && !u) return s.updated_at || null
+  return null
+})
+const parseTimestamp = (value: string | null | undefined): number | null => {
+  if (!value) return null
+  const parsed = dayjs(value)
+  return parsed.isValid() ? parsed.valueOf() : null
+}
 let pollTimer: ReturnType<typeof setTimeout> | null = null
-let pollCount = 0
+let pollStartedAt = 0
+/** 组件已卸载：轮询回调里检查，不再请求、不再排程 */
+let unmounted = false
+/** 到了轮询上限仍在进行中：停止自动刷新，提示手动刷新 */
+const pollExhausted = ref(false)
+/** 继续自动刷新的截止时间（按最新读到的记录时间动态计算） */
+const pollDeadline = (): number => {
+  const now = Date.now()
+  const since = parseTimestamp(inProgressSince.value)
+  if (since === null || since > now + CLOCK_SKEW_MS) return pollStartedAt + BACKEND_STALE_AFTER_MS + STALE_GRACE_MS
+  return Math.max(since + BACKEND_STALE_AFTER_MS + STALE_GRACE_MS, pollStartedAt + MIN_POLL_WINDOW_MS)
+}
 const stopPolling = () => {
   if (pollTimer) clearTimeout(pollTimer)
   pollTimer = null
 }
 const schedulePoll = () => {
   stopPolling()
-  if (!inProgress.value || pollCount >= IN_PROGRESS_POLL_MAX) return
+  if (unmounted || !inProgress.value) return
+  if (Date.now() >= pollDeadline()) {
+    pollExhausted.value = true
+    return
+  }
   pollTimer = setTimeout(async () => {
     pollTimer = null
-    pollCount += 1
+    if (unmounted) return
     if (!busy.value) await load()
+    // 读取期间组件被卸载：不再排程
+    if (unmounted) return
     schedulePoll()
   }, IN_PROGRESS_POLL_MS)
 }
+const startPolling = () => {
+  pollStartedAt = Date.now()
+  pollExhausted.value = false
+  schedulePoll()
+}
 watch(inProgress, (value: boolean) => {
   if (value) {
-    pollCount = 0
-    schedulePoll()
+    startPolling()
   } else {
     stopPolling()
+    pollExhausted.value = false
   }
 })
-onBeforeUnmount(stopPolling)
+/** 手动刷新：自动刷新已停止而仍在进行中时，重新开始轮询 */
+const refresh = async () => {
+  await load()
+  if (!unmounted && inProgress.value && !pollTimer) startPolling()
+}
+onBeforeUnmount(() => {
+  unmounted = true
+  stopPolling()
+})
 
 const labelDoc = computed(() => labelDocumentOf(activeShipment.value))
 const labelImageType = computed(() => labelImageTypeOf(activeShipment.value))
@@ -271,7 +332,8 @@ const warningText = (w: CarrierWarning) => {
   if (!w.code || !te(key)) return w.message || w.code || ''
   return t(key, {
     original: isAmount(w.requested) ? money(w.requested) : '—',
-    amount: isAmount(w.applied) ? money(w.applied) : '—',
+    // 实际提交 0 = 不提交申告价额
+    amount: declaredAmountOrNull(w.applied) !== null ? money(w.applied) : '—',
   })
 }
 const labelFormatText = (format: string | null | undefined) => {
@@ -303,23 +365,28 @@ const blockerText = (b: CarrierShipmentBlocker) => {
   }
   return b.message || b.code
 }
-const userText = (u: any) => (u && typeof u === 'object' ? (u.user_name || u.email || u.id) : (u ?? ''))
+// 建单人：后端只给用户 id 时显示「用户 #id」
+const userText = (u: any) => formatUserRef(u, t)
 const money = (v: unknown) => formatMoney(Number(v), props.customs?.currency || 'JPY')
 const isAmount = (x: unknown) => x !== null && x !== undefined && x !== '' && !isNaN(Number(x))
-/** 已建运单的申告价额说明：运单上记的是实际提交值，比报关快照小时注明已自动调整 */
+/**
+ * 已建运单的申告价额说明：运单上记的是实际提交值，比报关快照小时注明已自动调整。
+ * 申告价额为 0 按「没有申告价额」处理（后端把 0 视为不提交），不显示
+ */
 const declaredValueText = computed(() => {
-  const submitted = activeShipment.value?.declared_value
-  const original = isAmount(status.value?.declared_value_carriage)
+  const raw = activeShipment.value?.declared_value
+  const submitted = declaredAmountOrNull(raw)
+  const original = declaredAmountOrNull(isAmount(status.value?.declared_value_carriage)
     ? status.value?.declared_value_carriage
-    : props.customs?.declared_value_carriage
-  if (isAmount(submitted)) {
-    if (isAmount(original) && Number(original) !== Number(submitted)) {
+    : props.customs?.declared_value_carriage)
+  if (submitted !== null) {
+    if (original !== null && original !== submitted) {
       return t('customs.carrier.tips.declared-value-submitted-capped', { amount: money(submitted), original: money(original) })
     }
     return t('customs.carrier.tips.declared-value-submitted', { amount: money(submitted) })
   }
   // 旧数据没有 declared_value 时按快照显示
-  if (submitted === undefined && isAmount(original)) {
+  if (raw === undefined && original !== null) {
     return t('customs.carrier.tips.declared-value-submitted', { amount: money(original) })
   }
   return ''
@@ -331,8 +398,12 @@ const chargeText = computed(() => {
 })
 
 // ------------------ 失败：显示承运商错误原文 ----------------------
-/** summaryOverride：自定义概要（如取消结果不明），此时不显示「建单超时」的提示 */
-const handleFailure = (error: HttpRequestError, summaryOverride?: string) => {
+/**
+ * op：本次请求是建单还是取消。「超时，运单可能已在 FedEx 生成」只在建单请求、且超时发生在建单这一步
+ *（details.action 为 create，或网关超时没有 details）时显示；取消超时、ETD 上传超时（运单还没请求）不显示。
+ * summaryOverride：自定义概要（如取消结果不明），此时也不显示该提示
+ */
+const handleFailure = (error: HttpRequestError, op: 'create' | 'cancel', summaryOverride?: string) => {
   const summary = summaryOverride || bizErrorMessage(error)
   // 409：前置条件不满足，details.blockers 是最新的原因清单
   const latest = error.details?.blockers
@@ -346,13 +417,14 @@ const handleFailure = (error: HttpRequestError, summaryOverride?: string) => {
   }
   const { errors, transactionId, action, permissionDenied, maybeProcessed } = extractCarrierErrors(error.details)
   const timeout = isCarrierTimeout(error)
+  const createTimedOut = op === 'create' && timeout && maybeProcessed && (!action || action === 'create')
   if (errors.length > 0 || transactionId || timeout || error.status === 502) {
     failure.value = {
       summary,
       // 没有逐条错误时把后端原文也带上（后端 message 里带着 FedEx 原文，业务码文案会盖住它）
       errors: errors.length > 0 || !error.message || error.message === summary ? errors : [{ code: null, message: error.message }],
       transactionId,
-      timeout: !summaryOverride && timeout && maybeProcessed,
+      timeout: !summaryOverride && createTimedOut,
       action,
       permissionDenied,
     }
@@ -390,10 +462,11 @@ const create = async () => {
     },
     onError: (error) => {
       failedWith = error
-      handleFailure(error)
+      handleFailure(error, 'create')
     },
   })
   // 超时 / 结果不明 / 5xx / 断网：运单可能已在 FedEx 生成，立刻按后端最新状态（unresolved、can_create）刷新按钮；
+  // 409 16072（前置条件不满足：别人刚建好运单、DN 状态变了等）同样重读，画面不停在旧状态。
   // 读到后端其实已建好的运单时 load() 会通知父组件刷新单证
   if (failedWith && shouldReloadAfterCreateFailure(failedWith)) {
     await load()
@@ -479,7 +552,7 @@ const cancel = async () => {
         return
       }
       // 取消结果不明：概要换成「取消结果不明，请核对 / 重试」（FedEx 原文仍列在下面）
-      handleFailure(error, isCancelOutcomeUnknown(error) ? t('customs.carrier.tips.cancel-unknown') : undefined)
+      handleFailure(error, 'cancel', isCancelOutcomeUnknown(error) ? t('customs.carrier.tips.cancel-unknown') : undefined)
     },
   })
   if (done) {
@@ -489,7 +562,7 @@ const cancel = async () => {
     // 已因运单变化通知过就不再重复通知
     if (!notified) emit('changed')
   } else if (failedWith) {
-    // 目标已变 / 取消结果不明 / 已有取消在进行（16079）/ FedEx 拒绝等：按后端最新状态显示
+    // 目标已变 / 取消结果不明 / 已有取消在进行（16079）/ 运单已被别人取消（16075）/ FedEx 拒绝等：按后端最新状态显示
     //（运单变了时 load() 会通知父组件刷新单证）
     await load()
     if (isCancelOutcomeUnknown(failedWith)) {
@@ -624,7 +697,11 @@ defineExpose({ reload: async () => { await load() } })
             {{ unresolvedCancelUnknown ? t('customs.carrier.unresolved.cancel-unknown-title') : t('customs.carrier.unresolved.title') }}
           </div>
           <div class="fs-12 mt-1">
-            <template v-if="unresolvedInProgress">
+            <!-- 自动刷新到了上限仍在进行中：改为提示手动刷新 -->
+            <template v-if="unresolvedInProgress && pollExhausted">
+              {{ unresolvedCancelling ? t('customs.carrier.unresolved.cancelling-stalled') : t('customs.carrier.unresolved.in-progress-stalled') }}
+            </template>
+            <template v-else-if="unresolvedInProgress">
               {{ unresolvedCancelling ? t('customs.carrier.unresolved.cancelling') : t('customs.carrier.unresolved.in-progress') }}
             </template>
             <template v-else-if="unresolvedCancelUnknown">{{ t('customs.carrier.unresolved.cancel-unknown-description') }}</template>
@@ -667,7 +744,7 @@ defineExpose({ reload: async () => { await load() } })
               <i v-else class="ri-check-double-line me-1"></i>{{ t('customs.carrier.operations.dismiss') }}
             </button>
             <button type="button" class="btn btn-sm" :class="unresolvedInProgress ? 'btn-outline-secondary' : 'btn-outline-light'"
-              :disabled="loading || busy" @click="load">
+              :disabled="loading || busy" @click="refresh">
               <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
               <i v-else class="ri-refresh-line me-1"></i>{{ t('customs.carrier.operations.refresh') }}
             </button>
@@ -703,7 +780,7 @@ defineExpose({ reload: async () => { await load() } })
               <div class="text-muted fs-12">{{ t('customs.carrier.fields.created') }}</div>
               <div>
                 {{ $dayjs(activeShipment.created_at, 'YYYY-MM-DD HH:mm') || '—' }}
-                <span class="text-muted ms-1" v-if="activeShipment.created_by">{{ userText(activeShipment.created_by) }}</span>
+                <span class="text-muted ms-1" v-if="activeShipment.created_by">{{ userText(activeShipment.created_by_user ?? activeShipment.created_by) }}</span>
               </div>
               <div class="fs-12 text-muted" v-if="activeShipment.ship_date">
                 {{ t('customs.carrier.fields.ship-date') }}: {{ activeShipment.ship_date }}
@@ -784,13 +861,15 @@ defineExpose({ reload: async () => { await load() } })
           <div class="fw-semibold d-flex align-items-center gap-2">
             <span class="spinner-border spinner-border-sm" role="status"></span>{{ t('customs.carrier.unresolved.cancelling-title') }}
           </div>
-          <div class="fs-12 mt-1">{{ t('customs.carrier.unresolved.cancelling') }}</div>
+          <div class="fs-12 mt-1">
+            {{ pollExhausted ? t('customs.carrier.unresolved.cancelling-stalled') : t('customs.carrier.unresolved.cancelling') }}
+          </div>
           <div class="fs-12 mt-2">
             <span class="opacity-75">{{ t('customs.carrier.fields.tracking-number') }}:</span>
             <span class="ms-1 font-monospace">{{ cancellingShipment.tracking_number || '—' }}</span>
           </div>
           <div class="btn-list mt-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="loading || busy" @click="load">
+            <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="loading || busy" @click="refresh">
               <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
               <i v-else class="ri-refresh-line me-1"></i>{{ t('customs.carrier.operations.refresh') }}
             </button>

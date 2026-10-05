@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { currenciesOptions } from '~/data/selectOptions'
-import { hasNonAscii } from '~/composables/customs/customsDocuments'
+import { hasNonLatin } from '~/composables/customs/customsDocuments'
 
 // 定义页面元数据
 definePageMeta({
@@ -91,7 +91,7 @@ const submitting = ref(false)
 const addWarehouse = async () => {
   if (submitting.value) return
   errors.value = {
-    name: !itemData.value.name ? t('common.validation.name-required') : null,
+    name: !itemData.value.name ? t('common.validation.name-required', { entity: t('warehouse.entity') }) : null,
   }
 
   if (Object.values(errors.value).some(v => v)) return
@@ -172,7 +172,7 @@ const addWarehouse = async () => {
                         <label for="warehouse-address-en" class="form-label">{{ t('warehouse.fields.address-en') }}</label>
                         <textarea class="form-control" id="warehouse-address-en" rows="2" maxlength="500"
                           :placeholder="t('warehouse.form.placeholders.address-en')" v-model="itemData.address_en"></textarea>
-                        <div class="form-text text-warning" v-if="hasNonAscii(itemData.address_en)">{{ t('common.tips.non-latin') }}</div>
+                        <div class="form-text text-warning" v-if="hasNonLatin(itemData.address_en)">{{ t('common.tips.non-latin') }}</div>
                       </div>
                       <div class="col-xl-6">
                         <label for="warehouse-country-code" class="form-label">{{ t('warehouse.fields.country-code') }}</label>
@@ -182,7 +182,7 @@ const addWarehouse = async () => {
                         <label for="warehouse-contact-name-en" class="form-label">{{ t('warehouse.fields.contact-name-en') }}</label>
                         <input type="text" class="form-control" id="warehouse-contact-name-en" maxlength="100"
                           :placeholder="t('warehouse.form.placeholders.contact-name-en')" v-model="itemData.contact_name_en">
-                        <div class="form-text text-warning" v-if="hasNonAscii(itemData.contact_name_en)">{{ t('common.tips.non-latin') }}</div>
+                        <div class="form-text text-warning" v-if="hasNonLatin(itemData.contact_name_en)">{{ t('common.tips.non-latin') }}</div>
                       </div>
 
                     </div>

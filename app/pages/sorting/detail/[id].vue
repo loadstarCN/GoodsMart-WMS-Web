@@ -11,6 +11,10 @@ const taskId = route.params.id;
 const itemData = ref(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
+// 批次提交的幂等键与提交锁
+const batchKey = useBatchSubmitKey();
+const submitting = ref(false);
 // 计算属性转换
 const dataToPass = computed(() => ({
   current: t('nav.sorting'),
@@ -133,28 +137,43 @@ const saveTask = async () => {
     details
   };
   if (payload.details.length === 0) {
-    showToast('Please add sorted or damage quantity', 'error');
+    showToast(t('error.empty-sorting-items'), 'error');
     return;
   }
+  if (submitting.value) return;
 
+  submitting.value = true;
+  let done = false;
+  let replayMismatch = false;
   try {
     const data = await httpRequest(`/api/warehouse/sorting/${taskId}/batches/`, {
         method: 'POST',
-        body: payload,
-        onSuccess: async(data) => {
-            await fetchData();
-            await resetTask();
-            showToast(t('action-results.success'), 'success')
+        // 幂等键：失败后重试沿用同一个（上次其实已成功时后端返回 200 + 已有批次），成功后清掉
+        body: { ...payload, client_batch_id: batchKey.take() },
+        onSuccess: () => {
+            done = true;
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            replayMismatch = batchKey.isReplayMismatch(error);
+            showToast(bizErrorMessage(error), 'error')
         }
     })
-    return data; 
-    
-    // 处理成功逻辑
-  } catch (err) {
-    // 处理错误逻辑
+    // 成功（201 新建 / 200 重放）：清掉幂等键，重新读取并清空录入后才解除提交锁（免得旧录入被再提交一次）
+    if (done) {
+        batchKey.clear();
+        await fetchData();
+        resetTask();
+        showToast(t('action-results.success'), 'success')
+    }
+    // 16121：这次提交此前已按不同的内容处理过，换新的幂等键，重新读取并清空录入，让用户核对后再录
+    if (replayMismatch) {
+        batchKey.clear();
+        await fetchData();
+        resetTask();
+    }
+    return data;
+  } finally {
+    submitting.value = false;
   }
 };
 
@@ -209,7 +228,7 @@ function completeFn(item: any) {
   // 使用封装的确认对话框
   showConfirm(
     t('action-results.complete-confirm-title'),
-    t('action-results.complete-confirm'),
+    t('action-results.complete-confirm', { entity: t('sorting.entity') }),
     t('button.confirm'),
     t('button.cancel'),
   ).then((confirmed) => {
@@ -223,7 +242,7 @@ function completeFn(item: any) {
 
 // 删除Item
 const deleteDetailItem = async (item_id:Number) => {
-    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm'),t('button.confirm'),t('button.cancel'));
+    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm', { entity: t('common.fields.task-details') }),t('button.confirm'),t('button.cancel'));
     if (confirm) {
         await httpRequest(`/api/warehouse/sorting/${taskId}/details/${item_id}`, {
             method: 'DELETE',
@@ -260,7 +279,7 @@ onMounted(async() => {
             <div class="card-body row">
               <div class="col-xl-6">
                 <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">ASN :</span>
+                  <span class="fw-semibold text-default">{{ t('asn.entity') }} :</span>
                   <NuxtLink :to="`/asn/detail/${itemData?.asn_id}`">#ASN-{{ itemData?.asn_id }}</NuxtLink>
                 </p>
                 <p class="mb-2 text-muted">
@@ -300,7 +319,7 @@ onMounted(async() => {
               </div>
               <div>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                  {{t('common.dates.created')}}{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.created')}}:{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'in_progress'">
                   {{t('common.dates.started')}}:{{ $dayjs(itemData?.started_at,'YYYY-MM-DD HH:mm:ss') }}
@@ -454,7 +473,7 @@ onMounted(async() => {
                   :title="t('button.reset')" @click="resetTask()"><i
                     class="ri-reset-left-line me-1 align-middle"></i>{{t('button.reset')}}</NuxtLink>
                 <button class="btn btn-info btn-wave btn-sm" v-if="itemData?.status =='in_progress'"
-                  :title="t('button.save')" @click="saveTask()" :disabled="!hasUnsavedChanges"><i
+                  :title="t('button.save')" @click="saveTask()" :disabled="!hasUnsavedChanges || submitting"><i
                     class="ri-draft-line me-1 align-middle"></i>{{t('button.save')}}</button>
 
                 <button class="btn btn-primary btn-wave btn-sm" v-if="itemData?.status =='in_progress'"

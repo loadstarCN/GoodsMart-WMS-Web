@@ -108,3 +108,26 @@ export function formatDateTimeWithoutTimezone(
     return null;
   }
 }
+/**
+ * 任务列表项（分拣 / 拣货 / 打包任务）在单据时间线上的时间：完成时间优先，没完成时用最后更新时间。
+ * 列表接口的任务项没有 sorting_time / picking_time / packing_time（那是任务明细的字段）。
+ */
+export function taskTimelineTime(task: any): string | null {
+  return task?.completed_at || task?.updated_at || task?.started_at || task?.created_at || null;
+}
+
+/** 一组任务里最晚的时间线时间（时间线「已分拣 / 已拣货 / 已打包」的标题时间）；没有可用时间时返回 null */
+export function latestTaskTimelineTime(tasks: any[] | null | undefined): string | null {
+  let latest: string | null = null;
+  let latestMs = -Infinity;
+  for (const task of tasks || []) {
+    const value = taskTimelineTime(task);
+    if (!value) continue;
+    const ms = parseISO(String(value)).getTime();
+    if (!isNaN(ms) && ms > latestMs) {
+      latest = String(value);
+      latestMs = ms;
+    }
+  }
+  return latest;
+}

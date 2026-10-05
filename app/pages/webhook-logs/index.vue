@@ -73,7 +73,8 @@ const setStatusFilter = (status: string) => {
 }
 
 // ==================== 事件类型筛选 ====================
-// 与后端 webhook_emit 的事件一致（asn.cancelled / dn.cancelled：取消单据时推送）
+// 与后端 system/webhook/schemas.py 的 EVENT_TYPES 一致（asn.cancelled / dn.cancelled：取消单据时推送；
+// goods.spec_updated：商品规格变更时按公司推送）
 const eventTypes = [
   'asn.received',
   'asn.completed',
@@ -82,6 +83,7 @@ const eventTypes = [
   'dn.delivered',
   'dn.completed',
   'dn.cancelled',
+  'goods.spec_updated',
 ]
 
 const setEventTypeFilter = () => {
@@ -182,7 +184,7 @@ const truncateError = (error: string | null, maxLen = 60) => {
           </div>
           <div class="d-flex flex-wrap gap-2">
             <!-- 事件类型筛选 -->
-            <select class="form-select form-select-sm" style="width: 160px;" v-model="eventTypeFilter"
+            <select class="form-select form-select-sm" style="width: 190px;" v-model="eventTypeFilter"
               @change="setEventTypeFilter">
               <option value="">{{ t('webhook-logs.filters.all-types') }}</option>
               <option v-for="et in eventTypes" :key="et" :value="et">{{ et }}</option>

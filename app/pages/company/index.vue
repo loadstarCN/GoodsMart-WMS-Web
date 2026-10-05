@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { currenciesOptions } from '~/data/selectOptions'
-import { hasNonAscii } from '~/composables/customs/customsDocuments'
+import { hasNonLatin } from '~/composables/customs/customsDocuments'
 
 // 定义页面元数据
 definePageMeta({
@@ -47,7 +47,7 @@ const exportTextFields = [
 ]
 const nonLatin = computed<Record<string, boolean>>(() => {
   const data = itemData.value as Record<string, any>
-  return Object.fromEntries(exportTextFields.map((f) => [f, hasNonAscii(data?.[f])]))
+  return Object.fromEntries(exportTextFields.map((f) => [f, hasNonLatin(data?.[f])]))
 })
 
 const errors = ref({
@@ -65,7 +65,7 @@ const selectOptions = reactive({
 // ------------------ 提交保存 ----------------------
 const saveCompany = async () => {
   errors.value = {
-    name: !itemData.value.name ? t("common.validation.name-required") : null,
+    name: !itemData.value.name ? t("common.validation.name-required", { entity: t('company.entity') }) : null,
     email: (() => {
       const email = itemData.value.email;
       // 仅当输入非空时进行格式验证

@@ -54,7 +54,7 @@ onMounted(async() => {
   <PageHeader :propData="dataToPass" />
   <div class="row d-flex justify-content-center mb-4" v-if="loading">
     <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">{{ t('common.loading') }}...</span>
+      <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
     </div>
   </div>
   <div class="row" v-else>

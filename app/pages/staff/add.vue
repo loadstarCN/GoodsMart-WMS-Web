@@ -60,13 +60,13 @@ const addStaff = async () => {
   if (submitting.value) return
   var password_min_length = 6;
   errors.value = {
-    user_name: !itemData.value.user_name ? t('common.validation.name-required') : null,
+    user_name: !itemData.value.user_name ? t('common.validation.name-required', { entity: t('staff.entity') }) : null,
     password:(() => {
       const password = itemData.value.password;
       // if (!password) return t('common.validation.password-required');
       // 仅当输入非空时进行长度验证    
       if (password && password.length < password_min_length) {
-        return t('common.validation.name-required', { min: password_min_length });
+        return t('common.validation.password-min-length', { min: password_min_length });
       }
       return null;
     })(),

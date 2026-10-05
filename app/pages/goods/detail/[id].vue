@@ -18,6 +18,8 @@ const tabData = ref(null);
 
 // 获取国际化方法
 const { t, locale } = useI18n();
+// 上架 / 下架 / 移库失败按业务码显示三语文案（如移库时源库位没有该商品 16120）
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -98,11 +100,11 @@ const createPutaway = async () => {
         selectedLocation.value = null;
         quantity.value = null;
         remark.value = null;
-        showToast(t('action-results.op-success',{operation:t('goods.operations.create-putaway')}), 'success')
+        showToast(t('action-results.op-success',{operation:t('goods.operations.create-putaway'),entity:itemData.value?.code ?? ''}), 'success')
         await fetchTabData();      
       },
       onError: (error) => {
-          showToast(error.message, 'error')
+          showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
           loading.value = false;
@@ -145,11 +147,11 @@ const createRemoval = async () => {
         reason.value = null;
         // 调用公共方法关闭模态框
         // closeModal('removalModal');
-        showToast(t('action-results.op-success',{operation:t('goods.operations.create-removal')}), 'success')
+        showToast(t('action-results.op-success',{operation:t('goods.operations.create-removal'),entity:itemData.value?.code ?? ''}), 'success')
         await fetchTabData();      
       },
       onError: (error) => {
-          showToast(error.message, 'error')
+          showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
           loading.value = false;
@@ -201,11 +203,11 @@ const createTransfer = async () => {
         remark.value = null;
         // 调用公共方法关闭模态框
         // closeModal('transferModal');
-        showToast(t('action-results.op-success',{operation:t('goods.operations.create-transfer')}), 'success')
+        showToast(t('action-results.op-success',{operation:t('goods.operations.create-transfer'),entity:itemData.value?.code ?? ''}), 'success')
         await fetchTabData();      
       },
       onError: (error) => {
-          showToast(error.message, 'error')
+          showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
           loading.value = false;
@@ -673,7 +675,7 @@ onMounted(async() => {
                       </NuxtLink>
                     </td>
                     <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/cyclecount/${item?.task_id}`" target="_blank">CC-{{ item?.task_id }}</NuxtLink>
+                      <NuxtLink :to="`/cyclecount/detail/${item?.task_id}`" target="_blank">CC-{{ item?.task_id }}</NuxtLink>
                     </td>
                     <td>{{ item?.actual_quantity }}</td>
                     <td>{{ item?.difference }}</td>

@@ -51,7 +51,7 @@ async function search() {
 
 // 删除ASN
 const deleteItem = async (item_id:Number) => {
-    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm'),t('button.confirm'),t('button.cancel'));
+    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm', { entity: t('asn.entity') }),t('button.confirm'),t('button.cancel'));
     if (confirm) {
         await httpRequest(`/api/warehouse/asn/${item_id}`, {
             method: 'DELETE',

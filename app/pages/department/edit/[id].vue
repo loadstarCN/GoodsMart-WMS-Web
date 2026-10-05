@@ -47,7 +47,7 @@ const submitting = ref(false)
 const saveDepartment = async () => {
   if (submitting.value) return
   errors.value = {
-    name: !itemData.value.name ? t('common.validation.name-required') : null,
+    name: !itemData.value.name ? t('common.validation.name-required', { entity: t('department.entity') }) : null,
   }
 
   if (Object.values(errors.value).some(v => v)) return

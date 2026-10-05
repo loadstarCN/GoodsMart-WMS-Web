@@ -40,7 +40,7 @@ const submitting = ref(false)
 const addSupplier = async () => {
   if (submitting.value) return
   errors.value = {
-    name: !itemData.value.name ? t('common.validation.name-required') : null,
+    name: !itemData.value.name ? t('common.validation.name-required', { entity: t('supplier.entity') }) : null,
     email: (() => {
       const email = itemData.value.email;
       // 仅当输入非空时进行格式验证

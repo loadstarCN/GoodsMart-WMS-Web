@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { latestTaskTimelineTime, taskTimelineTime } from '~/utils/date'
 
 // 定义页面元数据
 definePageMeta({
@@ -70,7 +71,7 @@ const receivedASN = async () => {
         method: 'PUT',
         onSuccess: (data) => {
             itemData.value = data;
-            showToast('ASN Received', 'success')
+            showToast(t('action-results.success'), 'success')
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -83,7 +84,7 @@ const closeASN = async () => {
         method: 'PUT',
         onSuccess: (data) => {
             itemData.value = data;
-            showToast('ASN Closed', 'success')
+            showToast(t('action-results.success'), 'success')
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -123,13 +124,8 @@ const cancelASN = async () => {
     }
     canceling.value = false;
 };
-function getEarliestStartedItem(itemSortingData: any) {
-  const items = itemSortingData?.items;
-  if (!items || items.length === 0) return undefined;
-  return items.reduce((minItem:any, currentItem:any) => 
-    currentItem.sorting_time < minItem.sorting_time ? currentItem.sorting_time : minItem.sorting_time
-  );
-}
+// 时间线「已分拣」的时间：取任务列表项里有的 completed_at / updated_at（列表项没有 sorting_time）
+const sortingTimelineTime = computed(() => latestTaskTimelineTime(itemSortingData.value?.items));
 </script>
 <template>
     <PageHeader :propData="dataToPass" />
@@ -447,7 +443,7 @@ function getEarliestStartedItem(itemSortingData: any) {
                                                         class="ri-archive-line fs-12"></i></span></div>
                                             <div class="flex-fill">
                                                 <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.sorted')}}</p><span
-                                                    class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(getEarliestStartedItem(itemSortingData))}}</span>
+                                                    class="mb-1 d-block fs-12 text-undefined">{{ sortingTimelineTime ? $dayjs(sortingTimelineTime, 'YYYY-MM-DD HH:mm:ss') : '' }}</span>
                                             </div>
                                         </div>
                                     </a></div>
@@ -457,8 +453,9 @@ function getEarliestStartedItem(itemSortingData: any) {
                                         <div class="fs-11">
                                             <div class="fs-11 mb-3"  v-for="(item, index) in itemSortingData?.items" :key="index">
                                                 
-                                                <p class="mb-0">{{ $t('asn.tips.sorting-operation-message',{sortedQuantity:item.total_sorted_quantity,damagedQuantity:item.total_damage_quantity,allQuantity:item.total_sorted_quantity+item.total_damage_quantity,expectedQuantity:item.expected_quantity,creator:itemData?.creator?.user_name}) }}</p>
-                                                <span class="text-muted op-5">{{ $dayjs(item.sorting_time,'YYYY-MM-DD HH:mm:ss') }}</span>
+                                                <p class="mb-0">{{ $t('asn.tips.sorting-operation-message',{sortedQuantity:item.total_sorted_quantity,damagedQuantity:item.total_damage_quantity,allQuantity:item.total_sorted_quantity+item.total_damage_quantity,expectedQuantity:item.expected_quantity,operator:item?.creator?.user_name || itemData?.creator?.user_name || '—'}) }}</p>
+                                                <!-- 列表项没有逐批的操作员与 sorting_time：按任务的建立人与完成 / 更新时间显示 -->
+                                                <span class="text-muted op-5" v-if="taskTimelineTime(item)">{{ $dayjs(taskTimelineTime(item),'YYYY-MM-DD HH:mm:ss') }}</span>
                                             </div>
                                             
                                         </div>

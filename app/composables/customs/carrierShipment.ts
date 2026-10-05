@@ -66,7 +66,10 @@ export interface CarrierShipment {
   /** 面单 PDF 的组成（每箱面单、国际件的 AWB 副本 AUXILIARY 等） */
   label_parts?: CarrierLabelPart[] | null
   created_at: string | null
+  /** 建单人：后端目前只给用户 id */
   created_by: any
+  /** 状态最后变化时间（取消中的运单按它判断是否卡住） */
+  updated_at?: string | null
   cancelled_at: string | null
   cancelled_by?: any
 }
@@ -267,13 +270,16 @@ export const carrierSummaryState = (status: CarrierShipmentStatus | null | undef
 
 /**
  * 建单失败后要立刻重新读取状态的情况：超时 / 有结果不明运单 / 网关错误 / 网络断开
- * （运单可能已在 FedEx 生成，按钮状态要以后端最新的 unresolved / can_create 为准）。
+ * （运单可能已在 FedEx 生成，按钮状态要以后端最新的 unresolved / can_create 为准）；
+ * 409 16072 前置条件不满足（别人刚建好 / 取消了运单、DN 状态变了等）/ 16075 也重读，免得画面停在旧状态。
  * httpRequest 网络异常时 status = -1。
  */
 export const shouldReloadAfterCreateFailure = (error: HttpRequestError | null | undefined): boolean =>
   !error ||
   error.code === CARRIER_BIZ_CODES.CARRIER_TIMEOUT ||
   error.code === CARRIER_BIZ_CODES.UNRESOLVED ||
+  error.code === CARRIER_BIZ_CODES.BLOCKED ||
+  error.code === CARRIER_BIZ_CODES.NO_ACTIVE_SHIPMENT ||
   !error.status ||
   error.status < 0 ||
   error.status >= 500
@@ -460,20 +466,28 @@ export const isCarrierTimeout = (error: HttpRequestError | null | undefined): bo
   !!error && (error.status === 504 || error.code === CARRIER_BIZ_CODES.CARRIER_TIMEOUT)
 
 /**
+ * 申告价额：0 与没有一样（后端把 0 视为不提交申告价额），统一成 null；其余非数字也是 null
+ */
+export const declaredAmountOrNull = (v: unknown): number | null => {
+  const n = toNumberOrNull(v)
+  return n !== null && n > 0 ? n : null
+}
+
+/**
  * 随 FedEx 运单提交（或自动建单时将提交）的申告价额与报关快照不同时，返回实际值（null = 不提交申告价额）；
- * 相同或无从判断时返回 undefined（照快照显示）。
+ * 相同或无从判断时返回 undefined（照快照显示）。0 按「没有申告价额」处理。
  */
 export const carrierDeclaredValueOverride = (status: CarrierShipmentStatus | null | undefined): number | null | undefined => {
   if (!status?.enabled) return undefined
-  const snapshot = toNumberOrNull(status.declared_value_carriage)
+  const snapshot = declaredAmountOrNull(status.declared_value_carriage)
   const shipment = status.shipment
   if (isActiveShipment(shipment)) {
     if (shipment.declared_value === undefined) return undefined
-    const applied = toNumberOrNull(shipment.declared_value)
+    const applied = declaredAmountOrNull(shipment.declared_value)
     return applied !== snapshot ? applied : undefined
   }
   const capped = (status.warnings || []).find((w) => w.code === 'DECLARED_VALUE_CAPPED')
-  return capped ? (capped.applied ?? null) : undefined
+  return capped ? declaredAmountOrNull(capped.applied) : undefined
 }
 
 /** 申告价额提示的模式：manual=手工建单时填写；auto=自动建单会随运单提交；submitted=已随运单提交 */

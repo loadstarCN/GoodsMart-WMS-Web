@@ -100,7 +100,7 @@ const submitting = ref(false)
 const saveProduct = async () => {
   if (submitting.value) return
   errors.value = {
-    name: !itemData.value.name ? t('common.validation.name-required') : null,
+    name: !itemData.value.name ? t('common.validation.name-required', { entity: t('goods.entity') }) : null,
     code: !itemData.value.code ? t('goods.validation.code-required') : null
   }
 

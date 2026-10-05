@@ -219,7 +219,7 @@ const editDN = async () => {
   errors.value = {
     dn_type: !dnItem.value.dn_type ? t('common.validation.type-required') : null,
     wareshouse: !dnItem.value.warehouse_id ? t('common.validation.warehouse-required') : null,
-    recipient: !dnItem.value.recipient_id ? t('common.validation.supplier-required') : null,
+    recipient: !dnItem.value.recipient_id ? t('common.validation.recipient-required') : null,
     shipping_address: !dnItem.value.shipping_address ? t('common.validation.address-required') : null,
     expected_shipping_date: !dnItem.value.expected_shipping_date ? t('common.validation.expected-shipping-date-required') : null,    
     details: dnItem.value.details.length === 0 ? t('common.validation.goods-item-required') : null

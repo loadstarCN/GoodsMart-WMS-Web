@@ -89,7 +89,7 @@ const processFile = async (file: File) => {
   // Validate size
   if (file.size > props.maxSize) {
     const maxMB = (props.maxSize / 1024 / 1024).toFixed(0)
-    showToast(t('upload.upload-image-size-error', `File size must be less than ${maxMB}MB`), 'error')
+    showToast(t('upload.upload-image-size-error', { max: maxMB }), 'error')
     return
   }
 

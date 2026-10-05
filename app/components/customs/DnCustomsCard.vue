@@ -17,7 +17,9 @@ import {
   formatBytes,
   formatHsCode,
   formatMoney,
+  formatUserRef,
   hasNonAscii,
+  isPdfDocument,
   normalizeDocumentList,
   pickCurrentDocument,
   useCustomsPdfActions,
@@ -42,7 +44,7 @@ const props = defineProps<{
 const { t, te, locale } = useI18n()
 const route = useRoute()
 const { bizErrorMessage } = useBizError()
-const { busyDocId, printDoc, viewDoc, downloadDoc } = useCustomsPdfActions()
+const { busyDocId, printDoc, viewDoc, downloadDoc, downloadRawDoc } = useCustomsPdfActions()
 
 const loading = ref(false)
 const loadError = ref<string | null>(null)
@@ -167,7 +169,8 @@ const problemFieldText = (p: CustomsProblem) => {
   if (p.code === 'EXPORTER_PROFILE_INCOMPLETE' && EXPORTER_FIELD_KEYS[name]) return t(EXPORTER_FIELD_KEYS[name])
   return String(p.field)
 }
-const userText = (u: any) => (u && typeof u === 'object' ? (u.user_name || u.email || u.id) : (u ?? ''))
+// 签发人：后端只给用户 id 时显示「用户 #id」
+const userText = (u: any) => formatUserRef(u, t)
 
 // ------------------ 生成单证 ----------------------
 const issue = async () => {
@@ -617,7 +620,7 @@ defineExpose({ reload: reloadAll })
                     <td>v{{ doc.version }}</td>
                     <td class="font-monospace">{{ doc.document_number }}</td>
                     <td>{{ doc.invoice_date }}</td>
-                    <td>{{ $dayjs(doc.issued_at, 'YYYY-MM-DD HH:mm') }}<span class="text-muted ms-1" v-if="doc.issued_by">{{ userText(doc.issued_by) }}</span></td>
+                    <td>{{ $dayjs(doc.issued_at, 'YYYY-MM-DD HH:mm') }}<span class="text-muted ms-1" v-if="doc.issued_by">{{ userText(doc.issued_by_user ?? doc.issued_by) }}</span></td>
                     <td>{{ formatBytes(doc.size_bytes) }}</td>
                     <td>
                       <div class="hstack gap-1">
@@ -674,11 +677,16 @@ defineExpose({ reload: reloadAll })
                       </td>
                       <td class="font-monospace" :title="doc.sha256 || ''">{{ (doc.sha256 || '').slice(0, 12) }}</td>
                       <td>
-                        <div class="hstack gap-1">
+                        <!-- PDF（CI / PL / PDF 面单）：查看、下载；ZPL / EPL 指令文件面单：只能按原格式下载 -->
+                        <div class="hstack gap-1" v-if="isPdfDocument(doc)">
                           <button type="button" class="btn btn-icon btn-sm btn-primary-light" :title="t('customs.operations.view')"
                             :disabled="busyDocId !== null" @click="viewDoc(dnId, doc)"><i class="ri-eye-line"></i></button>
                           <button type="button" class="btn btn-icon btn-sm btn-light" :title="t('customs.operations.download')"
                             :disabled="busyDocId !== null" @click="downloadDoc(dnId, doc)"><i class="ri-download-line"></i></button>
+                        </div>
+                        <div class="hstack gap-1" v-else>
+                          <button type="button" class="btn btn-icon btn-sm btn-light" :title="t('customs.operations.download')"
+                            :disabled="busyDocId !== null" @click="downloadRawDoc(dnId, doc)"><i class="ri-download-line"></i></button>
                         </div>
                       </td>
                     </tr>

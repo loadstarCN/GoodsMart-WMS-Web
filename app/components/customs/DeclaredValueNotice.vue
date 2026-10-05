@@ -11,7 +11,7 @@
  * - 没有报关快照（国内件）不显示
  */
 import { formatMoney } from '~/composables/customs/customsDocuments'
-import type { DeclaredValueMode } from '~/composables/customs/carrierShipment'
+import { declaredAmountOrNull, type DeclaredValueMode } from '~/composables/customs/carrierShipment'
 
 const props = withDefaults(defineProps<{
   customs: Record<string, any> | null | undefined
@@ -29,8 +29,8 @@ const { t } = useI18n()
 
 const currency = computed(() => String(props.customs?.currency || 'JPY'))
 const hasValue = (v: unknown) => v !== null && v !== undefined && v !== '' && !isNaN(Number(v))
-const declaredValue = computed(() =>
-  hasValue(props.customs?.declared_value_carriage) ? Number(props.customs?.declared_value_carriage) : null)
+/** 申告价额为 0 时按「没有申告价额」处理（后端把 0 视为不提交） */
+const declaredValue = computed(() => declaredAmountOrNull(props.customs?.declared_value_carriage))
 const insuranceCharge = computed(() =>
   hasValue(props.customs?.insurance_charge) ? Number(props.customs?.insurance_charge) : null)
 const submitted = computed(() => props.mode === 'submitted')
@@ -43,7 +43,8 @@ const tipKey = computed(() => TIP_KEYS[props.mode as DeclaredValueMode] || TIP_K
 /** 自动建单时的实际提交值（被压到已打包货值）：手工建单模式不显示 */
 const cappedText = computed(() => {
   if (props.mode === 'manual' || props.carrierValue === undefined) return ''
-  const amount = props.carrierValue === null ? '—' : formatMoney(Number(props.carrierValue), currency.value)
+  const applied = declaredAmountOrNull(props.carrierValue)
+  const amount = applied === null ? '—' : formatMoney(applied, currency.value)
   return t(props.mode === 'submitted' ? 'customs.tips.declared-value-capped-submitted' : 'customs.tips.declared-value-capped-auto',
     { amount })
 })

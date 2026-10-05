@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 /**
  * 海外出荷：箱子录入（每箱毛重、长宽高）
- * - 画面按 cm / kg 录入，保存时尺寸 ×10 换算成 mm（整数），毛重保留三位小数
+ * - 画面按 cm / kg 录入，保存时尺寸 ×10 换算成 mm（整数），毛重保留三位小数；
+ *   尺寸超过 1 位小数、毛重超过 3 位小数时提示用户改正（不静默四舍五入）
  * - 1–99 箱，编号从 1 连续（保存时按顺序自动编号）
  * - 已出单证后改箱子，后端会自动作废现有单证（返回 voided_documents）
  */
@@ -127,6 +128,17 @@ const toNumber = (v: string | number): number | null => {
   return isNaN(n) ? null : n
 }
 
+/** 小数位数（忽略末尾的 0；兼容 1e-7 这类指数写法） */
+const decimalPlaces = (v: string | number): number => {
+  const m = /^[+-]?\d*(?:\.(\d*))?(?:e([+-]?\d+))?$/i.exec(String(v).trim())
+  if (!m) return 0
+  const fraction = (m[1] || '').replace(/0+$/, '').length
+  return Math.max(0, fraction - (m[2] ? Number(m[2]) : 0))
+}
+/** 毛重最多 3 位小数（g），尺寸最多 1 位小数（mm）：多了提示用户，不静默四舍五入 */
+const WEIGHT_MAX_DECIMALS = 3
+const DIMENSION_MAX_DECIMALS = 1
+
 const validate = (): boolean => {
   formError.value = null
   const errs: string[][] = []
@@ -138,12 +150,20 @@ const validate = (): boolean => {
   rows.value.forEach((r: PackageRow, i: number) => {
     const e: string[] = []
     const w = toNumber(r.gross_weight_kg)
-    if (w === null || w < 0.01 || w > 999.999) e.push(t('customs.packages.validation.weight'))
+    if (w === null || w < 0.01 || w > 999.999) {
+      e.push(t('customs.packages.validation.weight'))
+    } else if (decimalPlaces(r.gross_weight_kg) > WEIGHT_MAX_DECIMALS) {
+      e.push(t('customs.packages.validation.weight-decimals', { max: WEIGHT_MAX_DECIMALS }))
+    }
     for (const v of [r.length_cm, r.width_cm, r.height_cm]) {
       const cm = toNumber(v)
       const mm = cm === null ? null : Math.round(cm * 10)
       if (mm === null || mm < 1 || mm > 3000) {
         e.push(t('customs.packages.validation.dimension'))
+        break
+      }
+      if (decimalPlaces(v) > DIMENSION_MAX_DECIMALS) {
+        e.push(t('customs.packages.validation.dimension-decimals', { max: DIMENSION_MAX_DECIMALS }))
         break
       }
     }

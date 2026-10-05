@@ -95,6 +95,8 @@
     "file-upload": "文件上传失败，请稍后重试。",
     "no-found-data": "未找到相关数据，请检查您的查询条件或稍后重试。",
     "empty-items": "请输入要拣货的数量",
+    "empty-sorting-items": "请输入分拣或残损数量",
+    "empty-packing-items": "请输入要打包的数量",
     "picking-location-required": "请先为要拣货的商品选择库存仓位",
     "picking-location-stock": "拣货数量超过所选仓位的实际库存",
     "check-quantities": "请检查数量是否正确"
@@ -264,7 +266,8 @@
       "creator": "创建者",
       "operator": "操作员",
       "approver": "审批人",
-      "manager": "管理员"
+      "manager": "管理员",
+      "user-ref": "用户 #{id}"
     },
     "locations": {
       "from": "起始库位",
@@ -345,7 +348,8 @@
       "code": "长度≤50字符",
       "country": "两位大写字母，如CN/JP/US",
       "readonly": "只读",
-      "non-latin": "含有非拉丁字符（单证上会给出警告）"
+      "non-latin": "含有非拉丁字符（如中文、日文）。出口单证只能使用英文 / 拉丁字母，签发单证时会被拦下",
+      "required": "必填"
     },
     "validation": {
       "name-required": "{entity}名称不能为空",
@@ -359,6 +363,7 @@
       "warehouse-required": "请选择仓库",
       "goods-item-required": "请至少选择一个商品",
       "supplier-required": "请选择供应商",
+      "recipient-required": "请选择收货方",
       "type-required": "请选择类型",
       "address-required": "地址不能为空",
       "expected-shipping-date-required": "预计发货日期不能为空",
@@ -738,7 +743,8 @@
       "origin-missing": "原产国未录入"
     },
     "tips": {
-      "origin-missing": "未录入"
+      "origin-missing": "未录入",
+      "company-missing": "未读取到当前员工的公司信息，无法上传。请刷新页面或重新登录后再试"
     }
   },
   "cyclecount": {
@@ -886,7 +892,7 @@
       "shipping-address": "送货地址",
       "items": "商品列表",
       "details": "发货单详情",
-      "packing-info": "订单跟踪信息",
+      "packing-info": "包装信息",
       "special-handling": "特殊处理要求",
       "transportation": "运输方式",
       "order-no": "订单号",
@@ -954,7 +960,8 @@
       "placeholders": {
         "number": "请输入拣货单号",
         "search": "拣货单号/DN/商品编码"
-      }
+      },
+      "search-location": "选择拣货库位"
     },
     "operations": {
       "add": "添加拣货任务",
@@ -1003,7 +1010,8 @@
       "placeholders": {
         "number": "请输入配送单号",
         "search": "配送单号/DN/商品编码",
-        "signed-time": "请选择签收时间"
+        "signed-time": "请选择签收时间",
+        "shipping-cost": "请输入运费"
       }
     },
     "operations": {
@@ -1016,7 +1024,8 @@
     "tips": {
       "save-tracking": "可在完成发货前单独保存运单号",
       "tracking-saved-reissue": "运单号已保存。要在单证上印出 AWB，请重新生成单证",
-      "tracking-blocked-title": "不能保存运单号"
+      "tracking-blocked-title": "不能保存运单号",
+      "signed": "已登记签收"
     },
     "validation": {
       "tracking-too-long": "运单号不能超过 {max} 个字符"
@@ -1518,7 +1527,9 @@
       "declared-value-capped-submitted": "实际随运单提交：{amount}（高于已打包的货物金额，已自动调整）",
       "declared-value-capped-auto": "自动建单时将按 {amount} 提交（高于已打包的货物金额，会自动调整）",
       "packages-unsaved-before-create": "箱子有未保存的修改，请先保存箱子再建运单（否则会按已保存的旧箱子建单）",
-      "packages-unsaved-before-issue": "箱子有未保存的修改，请先保存箱子再生成单证（否则会按已保存的旧箱子生成）"
+      "packages-unsaved-before-issue": "箱子有未保存的修改，请先保存箱子再生成单证（否则会按已保存的旧箱子生成）",
+      "print-fallback-downloaded": "浏览器无法直接打印，已改为下载文件。请打开下载的 PDF 后打印",
+      "popup-blocked-downloaded": "新窗口被浏览器拦截，已改为下载文件。如需在新窗口查看，请允许本站弹出窗口"
     },
     "packages": {
       "box-no": "箱",
@@ -1538,7 +1549,9 @@
       "validation": {
         "count": "箱数必须在 1–99 之间",
         "weight": "毛重须在 0.01–999.999 kg 之间",
-        "dimension": "尺寸须在 0.1–300 cm 之间"
+        "weight-decimals": "毛重最多 {max} 位小数，请修改",
+        "dimension": "尺寸须在 0.1–300 cm 之间",
+        "dimension-decimals": "尺寸最多 {max} 位小数（精确到 mm），请修改"
       },
       "title-domestic": "箱子（可选）",
       "domestic-tip": "国内单可选录入，用于记录箱数、重量和尺寸。"
@@ -1678,8 +1691,10 @@
         "description": "WMS 没能确认这次建单的结果，运单可能已经在 FedEx 生成。为避免重复建单和重复计费，请先到 FedEx 上核对。",
         "in-progress-title": "正在 FedEx 建运单…",
         "in-progress": "这张出库单的运单正在建（可能是其他人或其他画面发起的），结束前不能再建。本页会自动刷新。",
+        "in-progress-stalled": "这张出库单的运单仍在建（可能是其他人或其他画面发起的），已等待较长时间，自动刷新已停止。请点「重新读取」查看最新状态；一直没有结果时请联系管理员。",
         "cancelling-title": "正在 FedEx 取消运单…",
         "cancelling": "这张出库单的运单正在取消（可能是其他人或其他画面发起的），结束前不能建单或再取消。本页会自动刷新。",
+        "cancelling-stalled": "这张出库单的运单仍在取消（可能是其他人或其他画面发起的），已等待较长时间，自动刷新已停止。请点「重新读取」查看最新状态；一直没有结果时请联系管理员。",
         "cancel-unknown-title": "FedEx 运单取消结果不明，暂时不能发货",
         "cancel-unknown-description": "WMS 没能确认这张运单是否已在 FedEx 取消。请点「重试取消」再向 FedEx 请求取消；仍不明时到 FedEx Ship Manager 核对，确认已取消后点「已核对」作废。",
         "fields": {
@@ -1805,8 +1820,12 @@
     "code-16114": "还有盘点明细未录入，请先录入并保存，或逐条完成（盘到 0 件也要提交 0）",
     "code-16115": "{field} 须为有效数字（库位尺寸、容量须大于 0；重量、体积不能为负数）",
     "code-16116": "分拣任务所属的收货通知不能更改",
+    "code-16120": "源库位里没有这个商品，请确认移出的库位",
+    "code-16121": "这次提交此前已按不同的内容处理过（可能在网络中断前已经成功）。已重新读取最新数据，请核对后再录入",
+    "code-16122": "你修改过这张调整单的明细，不能自己审批，请由其他有审批权限的人审批",
     "code-44004": "该数据已被单据或库存引用，不能删除，请改为停用",
     "code-44005": "与已有数据冲突（如编码重复），请检查后重试",
-    "code-44009": "该库位已有作业历史记录，不能删除，请改为停用"
+    "code-44009": "该库位已有作业历史记录，不能删除，请改为停用",
+    "code-16123": "批次提交标识不合法，请刷新页面后重新提交"
   }
 }

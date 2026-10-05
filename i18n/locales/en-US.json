@@ -95,6 +95,8 @@
     "file-upload": "File upload failed. Please try again later.",
     "no-found-data": "No relevant data found. Please check your search criteria or try again later.",
     "empty-items": "Enter a quantity to pick.",
+    "empty-sorting-items": "Enter a sorted or damaged quantity",
+    "empty-packing-items": "Enter the quantity to pack",
     "picking-location-required": "Select an inventory location for every item being picked.",
     "picking-location-stock": "The picked quantity exceeds stock in the selected location.",
     "check-quantities": "Please check the quantities entered. Ensure they are valid and within the allowed range."
@@ -264,7 +266,8 @@
       "creator": "Creator",
       "operator": "Operator",
       "approver": "Approver",
-      "manager": "Manager"
+      "manager": "Manager",
+      "user-ref": "User #{id}"
     },
     "locations": {
       "from": "From Location",
@@ -345,7 +348,8 @@
       "code": "Max 50 characters",
       "country": "Two uppercase letters (e.g., CN/JP/US)",
       "readonly": "Read-only",
-      "non-latin": "Contains non-Latin characters (documents will show a warning)"
+      "non-latin": "Contains non-Latin characters (e.g. Chinese or Japanese). Export documents accept English / Latin letters only; issuing documents will be blocked",
+      "required": "Required"
     },
     "validation": {
       "name-required": "{entity} name cannot be empty",
@@ -359,6 +363,7 @@
       "warehouse-required": "Select a warehouse",
       "goods-item-required": "Select at least one product",
       "supplier-required": "Select a supplier",
+      "recipient-required": "Select a recipient",
       "type-required": "Select a type",
       "address-required": "Address cannot be empty",
       "expected-shipping-date-required": "Expected shipping date required",
@@ -738,7 +743,8 @@
       "origin-missing": "Origin not set"
     },
     "tips": {
-      "origin-missing": "Not set"
+      "origin-missing": "Not set",
+      "company-missing": "Your company information could not be loaded, so the file cannot be uploaded. Refresh the page or sign in again"
     }
   },
   "cyclecount": {
@@ -954,7 +960,8 @@
       "placeholders": {
         "number": "Enter picking number",
         "search": "Picking No./DN/Product Code"
-      }
+      },
+      "search-location": "Select picking location"
     },
     "operations": {
       "add": "Add Picking Task",
@@ -1003,7 +1010,8 @@
       "placeholders": {
         "number": "Enter delivery number",
         "search": "Delivery No./DN/Product Code",
-        "signed-time": "Select signature time"
+        "signed-time": "Select signature time",
+        "shipping-cost": "Enter the shipping cost"
       }
     },
     "operations": {
@@ -1016,7 +1024,8 @@
     "tips": {
       "save-tracking": "You can save the tracking number before completing the shipment",
       "tracking-saved-reissue": "Tracking number saved. Re-issue the documents to print the AWB on them.",
-      "tracking-blocked-title": "Cannot save the tracking number"
+      "tracking-blocked-title": "Cannot save the tracking number",
+      "signed": "Delivery signed"
     },
     "validation": {
       "tracking-too-long": "Tracking number must be at most {max} characters"
@@ -1518,7 +1527,9 @@
       "declared-value-capped-submitted": "Actually submitted with the shipment: {amount} (adjusted automatically because it exceeds the packed goods value)",
       "declared-value-capped-auto": "{amount} will be submitted when the shipment is created automatically (adjusted because it exceeds the packed goods value)",
       "packages-unsaved-before-create": "The packages have unsaved changes. Save the packages before creating the shipment (otherwise the previously saved packages are used).",
-      "packages-unsaved-before-issue": "The packages have unsaved changes. Save the packages before issuing the documents (otherwise the previously saved packages are used)."
+      "packages-unsaved-before-issue": "The packages have unsaved changes. Save the packages before issuing the documents (otherwise the previously saved packages are used).",
+      "print-fallback-downloaded": "The browser could not print directly, so the file was downloaded. Open the downloaded PDF to print it",
+      "popup-blocked-downloaded": "The new window was blocked by the browser, so the file was downloaded. Allow pop-ups for this site to view files in a new window"
     },
     "packages": {
       "box-no": "Box",
@@ -1538,7 +1549,9 @@
       "validation": {
         "count": "Number of boxes must be 1–99",
         "weight": "Gross weight must be 0.01–999.999 kg",
-        "dimension": "Dimensions must be 0.1–300 cm"
+        "weight-decimals": "Gross weight can have at most {max} decimal places",
+        "dimension": "Dimensions must be 0.1–300 cm",
+        "dimension-decimals": "Dimensions can have at most {max} decimal place (to the millimetre)"
       },
       "title-domestic": "Packages (optional)",
       "domestic-tip": "Optional for domestic shipments; use it to record box count, weight and dimensions."
@@ -1678,8 +1691,10 @@
         "description": "WMS could not confirm the result of this shipment request. The shipment may have been created in FedEx. To avoid a duplicate shipment and duplicate charges, check in FedEx first.",
         "in-progress-title": "Creating the shipment in FedEx…",
         "in-progress": "A shipment for this DN is being created (possibly by someone else or from another screen). You cannot create another one until it finishes. This page refreshes automatically.",
+        "in-progress-stalled": "A shipment for this DN is still being created (possibly by someone else or from another screen). It has taken a long time, so automatic refresh has stopped. Click Reload to check the latest status; contact an administrator if it never finishes.",
         "cancelling-title": "Cancelling the shipment in FedEx…",
         "cancelling": "The shipment for this DN is being cancelled (possibly by someone else or from another screen). You cannot create or cancel a shipment until it finishes. This page refreshes automatically.",
+        "cancelling-stalled": "The shipment for this DN is still being cancelled (possibly by someone else or from another screen). It has taken a long time, so automatic refresh has stopped. Click Reload to check the latest status; contact an administrator if it never finishes.",
         "cancel-unknown-title": "The result of cancelling the FedEx shipment is unknown; the DN cannot be shipped yet",
         "cancel-unknown-description": "WMS could not confirm whether this shipment was cancelled in FedEx. Click “Retry cancellation” to ask FedEx again; if it is still unclear, check in FedEx Ship Manager and, once it is cancelled, click “Checked” to dismiss it.",
         "fields": {
@@ -1805,8 +1820,12 @@
     "code-16114": "Some cycle count lines have not been entered. Enter and save them, or complete them one by one (enter 0 if you counted 0).",
     "code-16115": "{field} must be a valid number (location dimensions and capacity must be greater than 0; weight and volume must not be negative)",
     "code-16116": "The ASN of a sorting task cannot be changed",
+    "code-16120": "This goods is not in the source location. Check the location to move from",
+    "code-16121": "This submission was already processed with different content (it may have succeeded before the connection dropped). The latest data has been reloaded; check it and enter again",
+    "code-16122": "You changed the details of this adjustment, so you cannot approve it yourself. Ask another user with approval permission",
     "code-44004": "This record is referenced by documents or stock and cannot be deleted. Deactivate it instead.",
     "code-44005": "This conflicts with existing data (for example, a duplicate code). Check and try again.",
-    "code-44009": "This location has operation history and cannot be deleted. Deactivate it instead."
+    "code-44009": "This location has operation history and cannot be deleted. Deactivate it instead.",
+    "code-16123": "Invalid batch submission ID; reload the page and submit again"
   }
 }

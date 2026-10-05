@@ -17,6 +17,8 @@ const tabData = ref(null);
 
 // 获取国际化方法
 const { t } = useI18n();
+// 上架 / 下架 / 移库失败按业务码显示三语文案（如移库时源库位没有该商品 16120）
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -113,7 +115,7 @@ const createPutaway = async () => {
         await fetchTabData();      
       },
       onError: (error) => {
-          showToast(error.message, 'error')
+          showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
           loading.value = false;
@@ -160,7 +162,7 @@ const createRemoval = async () => {
         await fetchTabData();      
       },
       onError: (error) => {
-          showToast(error.message, 'error')
+          showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
           loading.value = false;
@@ -216,7 +218,7 @@ const createTransfer = async () => {
         await fetchTabData();      
       },
       onError: (error) => {
-          showToast(error.message, 'error')
+          showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
           loading.value = false;
@@ -731,7 +733,7 @@ onMounted(async() => {
                       </div>
                     </td>
                     <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/cyclecount/${item?.task_id}`" target="_blank">CC-{{ item?.task_id }}</NuxtLink>
+                      <NuxtLink :to="`/cyclecount/detail/${item?.task_id}`" target="_blank">CC-{{ item?.task_id }}</NuxtLink>
                     </td>
                     <td>{{ item?.actual_quantity }}</td>
                     <td>{{ item?.difference }}</td>

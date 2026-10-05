@@ -101,10 +101,10 @@ fetchData();
 
             <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.entities.carrier')}}</b></p>
+              <!-- DN 的承运商（carrier）：联系人 / 电话；DN 本身没有运单号（运单号在发货任务上） -->
               <p>{{itemData?.carrier?.name}} (ID:{{itemData?.carrier_id}})<br>
-                <span v-if="itemData?.tracking_number">{{t('common.fields.tracking-number')}}: #{{itemData?.tracking_number}}</span><br>
-                <span v-if="itemData?.supplier?.contact">{{ t('common.fields.contact') }} :{{itemData?.supplier?.contact}}</span><br>
-                <span v-if="itemData?.supplier?.phone">{{ t('common.fields.phone') }} :{{itemData?.supplier?.phone}}</span>
+                <span v-if="itemData?.carrier?.contact">{{ t('common.fields.contact') }} :{{itemData?.carrier?.contact}}</span><br>
+                <span v-if="itemData?.carrier?.phone">{{ t('common.fields.phone') }} :{{itemData?.carrier?.phone}}</span>
               </p>
             </div>
 
@@ -227,7 +227,7 @@ fetchData();
 
           <div class="tm_padd_15_20 tm_round_border" v-if="itemData?.order_number || itemData?.remark || itemData?.packaging_info || itemData?.special_handling">
             <p v-if="itemData?.order_number"><b class="tm_primary_color">{{t('dn.fields.order-no')}}</b>: {{ itemData?.order_number }}</p>
-            <p v-if="itemData?.packaging_info"><b class="tm_primary_color">{{ t('dn.fields.packaging-info') }}</b>: {{ itemData?.packaging_info }}</p>
+            <p v-if="itemData?.packaging_info"><b class="tm_primary_color">{{ t('dn.fields.packing-info') }}</b>: {{ itemData?.packaging_info }}</p>
             <p v-if="itemData?.special_handling"><b class="tm_primary_color">{{ t('dn.fields.special-handling') }}</b>: {{ itemData?.special_handling }}</p>
             <p v-if="itemData?.remark"><b class="tm_primary_color">{{ t('common.fields.remark') }}</b>: {{ itemData?.remark }}</p>
 

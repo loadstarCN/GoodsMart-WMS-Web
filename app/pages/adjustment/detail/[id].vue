@@ -49,10 +49,15 @@ const approveTask = async () => {
             showToast(t('action-results.task-approved'), 'success')
         },
         onError: (error) => {
+            // 16122：审批人改过这张调整单的明细，不能自己审批（职责分离），用弹窗说明
+            if (error.code === 16122) {
+                showAlert(t('button.approved'), bizErrorMessage(error), 'warning');
+                return;
+            }
             showToast(bizErrorMessage(error), 'error')
         }
     })
-    return data;   
+    return data;
 };
 
 const completeTask = async () => {
@@ -108,7 +113,7 @@ function completeFn(item: any) {
   // 使用封装的确认对话框
   showConfirm(
     t('action-results.complete-confirm-title'),
-    t('action-results.complete-confirm'),
+    t('action-results.complete-confirm', { entity: t('adjustment.entity') }),
     t('button.confirm'),
     t('button.cancel'),
   ).then((confirmed) => {
@@ -293,7 +298,7 @@ onMounted(async() => {
                     class="ri-printer-line me-1 align-middle"></i>{{t('button.print')}}</NuxtLink> -->
 
                 <NuxtLink class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status==='pending' && !cancelled && staffStore.hasPermission('adjustment_approve')"
-                  title="Approve" @click="approveTask()"><i class="ri-checkbox-line me-1 align-middle"></i>{{t('button.approved')}}
+                  :title="t('button.approved')" @click="approveTask()"><i class="ri-checkbox-line me-1 align-middle"></i>{{t('button.approved')}}
                 </NuxtLink>
 
                 <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='approved' && !cancelled && staffStore.hasPermission('adjustment_edit')" :title="t('button.complete')"

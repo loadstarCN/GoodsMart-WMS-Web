@@ -146,7 +146,7 @@ const signTask = async () => {
         },
         onSuccess: (data) => {
             itemData.value = data;
-            showToast('Task signed', 'success')
+            showToast(t('delivery.tips.signed'), 'success')
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -160,7 +160,7 @@ function completeFn(item: any) {
   // 使用封装的确认对话框
   showConfirm(
     t('action-results.complete-confirm-title'),
-    t('action-results.complete-confirm'),
+    t('action-results.complete-confirm', { entity: t('delivery.entity') }),
     t('button.confirm'),
     t('button.cancel'),
   ).then((confirmed) => {
@@ -297,7 +297,7 @@ const saveTracking = async () => {
             <div class="card-body row">
               <div class="col-xl-6">
                 <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">DN :</span>
+                  <span class="fw-semibold text-default">{{ t('dn.entity') }} :</span>
                   <NuxtLink :to="`/dn/detail/${itemData?.dn_id}`">#DN-{{ itemData?.dn_id }}</NuxtLink>
                 </p>
                 <p class="mb-2 text-muted">
@@ -322,11 +322,11 @@ const saveTracking = async () => {
                   {{ $dayjs(itemData?.dn?.expected_shipping_date,'YYYY-MM-DD') }}
                 </p>
                 <p class="mb-2 text-muted" v-if="itemData?.dn?.packaging_info">
-                  <span class="fw-semibold text-default">packaging_info :</span>
+                  <span class="fw-semibold text-default">{{ t('dn.fields.packing-info') }} :</span>
                   {{ itemData?.dn?.packaging_info }}
                 </p>
                 <p class="mb-2 text-muted" v-if="itemData?.dn?.special_handling">
-                  <span class="fw-semibold text-default">special_handling :</span>
+                  <span class="fw-semibold text-default">{{ t('dn.fields.special-handling') }} :</span>
                   {{ itemData?.dn?.special_handling }}
                 </p>
                 <p class="mb-2 text-muted" v-if="itemData?.dn?.remark">
@@ -353,7 +353,7 @@ const saveTracking = async () => {
               </div>
               <div>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                  {{t('common.dates.created')}}{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.created')}}:{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'in_progress'">
                   {{t('common.dates.started')}}:{{ $dayjs(itemData?.started_at,'YYYY-MM-DD HH:mm:ss') }}
@@ -389,11 +389,11 @@ const saveTracking = async () => {
                     <div class="col-xl-6">
                       <label for="product-price" class="form-label">{{t('common.fields.shipping-cost')}} ({{ itemData?.currency }})</label>
                       <input v-maska:[] type="text" class="form-control number-format" id="product-shipping_cost"
-                        data-maska="0.99" data-maska-tokens="0:\d:multiple|9:\d:optional" placeholder="shipping_cost"
+                        data-maska="0.99" data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('delivery.form.placeholders.shipping-cost')"
                         v-model="itemData.shipping_cost" :disabled="itemData?.status != 'in_progress'" />
                     </div>
                     <div class="col-xl-6">
-                      <label class="form-label">{{t('common.entities.carrier')}} <abbr title="required" aria-hidden="true"
+                      <label class="form-label">{{t('common.entities.carrier')}} <abbr :title="t('common.tips.required')" aria-hidden="true"
                           class="text-danger">*</abbr></label>
                       <div class="flex-nowrap input-group-custom">
                         <VueMultiselect :searchable="true" :show-labels="false" v-model="selectedCarrier"
@@ -406,7 +406,7 @@ const saveTracking = async () => {
 
                     <div class="col-xl-6">
                       <div class="form-group mb-3">
-                        <label class="form-label">{{t('dn.fields.transportation')}} <abbr title="required" aria-hidden="true"
+                        <label class="form-label">{{t('dn.fields.transportation')}} <abbr :title="t('common.tips.required')" aria-hidden="true"
                             class="text-danger">*</abbr></label>
                         <div class="flex-nowrap input-group-custom">
                           <VueMultiselect id="dn_transportation_mode" :show-labels="false"
@@ -420,7 +420,7 @@ const saveTracking = async () => {
                     </div>
                     <div class="col-xl-6">
                       <div class="form-group mb-3">
-                        <label class="form-label">{{t('common.fields.tracking-number')}} <abbr title="required" aria-hidden="true"
+                        <label class="form-label">{{t('common.fields.tracking-number')}} <abbr :title="t('common.tips.required')" aria-hidden="true"
                             class="text-danger">*</abbr></label>
                         <div class="input-group">
                           <input type="text" class="form-control" id="service-charges" :placeholder="t('common.placeholders.tracking-number')"
@@ -447,7 +447,7 @@ const saveTracking = async () => {
                 <div class="col-xl-6" v-if="itemData?.status == 'completed' || itemData?.status == 'signed'">
                   <div class="row gy-3">
                     <div class="col-xl-12" v-if="itemData?.status == 'completed'">
-                      <label class="form-label">{{t('common.dates.signed')}} <abbr title="required" aria-hidden="true"
+                      <label class="form-label">{{t('common.dates.signed')}} <abbr :title="t('common.tips.required')" aria-hidden="true"
                           class="text-danger">*</abbr></label>
                       <div class="input-group flex-nowrap input-group-custom">
                         <div class="input-group-text text-muted"> <i class="ri-calendar-line"></i> </div>

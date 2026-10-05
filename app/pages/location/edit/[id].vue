@@ -209,7 +209,7 @@ const fetchData = async () => {
                       </div>
 
                       <div class="col-xl-4">
-                        <label for="product-width" class="form-label">{{t('location.fields.weight')}}</label>
+                        <label for="product-width" class="form-label">{{t('location.fields.width')}}</label>
                         <input v-maska:[] type="text" class="form-control number-format" id="product-weight"
                           data-maska="0.99" data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('location.form.placeholders.width')"
                           v-model="itemData.width">

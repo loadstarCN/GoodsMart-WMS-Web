@@ -139,9 +139,31 @@ export const formatMoney = (value: number | null | undefined, currency?: string 
   }
 }
 
-/** 含非拉丁（非 ASCII 可打印）字符时返回 true —— 单证上只给警告，不拦截 */
+/** 含非 ASCII 可打印字符时返回 true（商品英文品名：后端 is_ascii_text 只认 ASCII 可打印字符） */
 export const hasNonAscii = (text: string | null | undefined): boolean =>
   !!text && /[^\x20-\x7E]/.test(String(text))
+
+/**
+ * 拉丁字符：与后端 warehouse/dn/customs_services.py 的 _is_latin_char 一致——
+ * U+0000–U+024F（ASCII 含换行等控制字符、Latin-1 补充、Latin 扩展 A·B）、U+1E00–U+1EFF（Latin 扩展附加）、
+ * U+2000–U+206F（常用标点），以及 €、™
+ */
+const isLatinChar = (ch: string): boolean => {
+  const code = ch.codePointAt(0) ?? 0
+  return code < 0x250 || (code >= 0x1e00 && code <= 0x1eff) || (code >= 0x2000 && code <= 0x206f) || ch === '€' || ch === '™'
+}
+
+/**
+ * 含非拉丁字符时返回 true（公司 / 仓库出口资料：与后端 has_non_latin 一致，Müller、é、换行都不算）——只给警告，不拦截
+ */
+export const hasNonLatin = (text: string | null | undefined): boolean => {
+  if (!text) return false
+  // for...of 按码点遍历（与 Python 逐字符一致，代理对不会被拆开）
+  for (const ch of String(text)) {
+    if (!isLatinChar(ch)) return true
+  }
+  return false
+}
 
 const toHex = (buf: ArrayBuffer) =>
   Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
@@ -226,25 +248,43 @@ const revokeLater = (url: string, ms = 10 * 60 * 1000) => {
 }
 
 /**
- * 用隐藏 iframe 打开 PDF 并调起打印；浏览器不允许时退回到新窗口打开。
+ * 用隐藏 iframe 打开 PDF 并调起打印。
+ * 浏览器不允许在 iframe 里打印（print() 抛错、iframe 没加载出来）时改为直接下载，并调用 onFallback 让调用方提示用户——
+ * 这里已在异步回调里，再 window.open 会被弹窗拦截（noopener 时返回值还恒为 null，无从判断），所以不再开新窗口。
  */
-export const printPdfBlob = (blob: Blob): void => {
+export const printPdfBlob = (blob: Blob, fileName: string, onFallback?: () => void): void => {
   const url = URL.createObjectURL(blob)
   const iframe = document.createElement('iframe')
   iframe.setAttribute('aria-hidden', 'true')
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;'
-  iframe.src = url
+  let settled = false
+  const fallback = () => {
+    if (settled) return
+    settled = true
+    downloadPdfBlob(blob, fileName)
+    onFallback?.()
+  }
   iframe.onload = () => {
     setTimeout(() => {
+      if (settled) return
       try {
-        iframe.contentWindow?.focus()
-        iframe.contentWindow?.print()
+        const frameWindow = iframe.contentWindow
+        if (!frameWindow) throw new Error('iframe has no window')
+        frameWindow.focus()
+        frameWindow.print()
+        settled = true
       } catch {
-        window.open(url, '_blank', 'noopener')
+        fallback()
       }
     }, 300)
   }
+  iframe.onerror = fallback
+  iframe.src = url
   document.body.appendChild(iframe)
+  // iframe 一直没加载出来（浏览器不在页面内显示 PDF 等）：同样改为下载
+  setTimeout(() => {
+    if (!settled) fallback()
+  }, 15 * 1000)
   // 打印对话框关闭后再清理（打印过程中不能移除）
   setTimeout(() => {
     iframe.remove()
@@ -253,17 +293,37 @@ export const printPdfBlob = (blob: Blob): void => {
 }
 
 /**
- * 在新窗口查看 PDF。
- * 为避免弹窗拦截：调用方先同步 window.open('') 拿到窗口，取到 PDF 后再导航。
+ * 在新窗口查看 PDF；打开不了时改为直接下载。返回 'window'（已在新窗口打开）或 'downloaded'（已改为下载）。
+ * 为避免弹窗拦截：调用方先同步 window.open('') 拿到窗口，取到 PDF 后再导航；
+ * 预开的窗口被拦截（null）或已被关掉时再试一次 window.open（不带 noopener，返回值才可判断），仍失败就下载。
  */
-export const showPdfInWindow = (blob: Blob, win: Window | null): void => {
+export const showPdfInWindow = (blob: Blob, win: Window | null, fileName: string): 'window' | 'downloaded' => {
   const url = URL.createObjectURL(blob)
+  let opened = false
   if (win && !win.closed) {
-    win.location.href = url
-  } else {
-    window.open(url, '_blank')
+    try {
+      win.location.href = url
+      opened = true
+    } catch {
+      opened = false
+    }
+  }
+  if (!opened) {
+    let retry: Window | null = null
+    try {
+      retry = window.open(url, '_blank')
+    } catch {
+      retry = null
+    }
+    opened = !!retry
+  }
+  if (!opened) {
+    URL.revokeObjectURL(url)
+    downloadPdfBlob(blob, fileName)
+    return 'downloaded'
   }
   revokeLater(url)
+  return 'window'
 }
 
 /** 以文件名下载（PDF，或热敏面单等其他文件） */
@@ -276,6 +336,31 @@ export const downloadPdfBlob = (blob: Blob, fileName: string): void => {
   a.click()
   a.remove()
   revokeLater(url, 60 * 1000)
+}
+
+/**
+ * 文档是不是 PDF（按文件名扩展名，与后端 DNDocument.content_type 一致）：
+ * 历史版本里可能有热敏面单的 ZPL / EPL 指令文件，要用 downloadRawDoc 下载，不能按 PDF 查看 / 打印。
+ * 没有文件名时按 PDF（CI / PL 都是 PDF）。
+ */
+export const isPdfDocument = (doc: { file_name?: string | null } | null | undefined): boolean => {
+  const name = String(doc?.file_name || '').trim().toLowerCase()
+  if (!name || !name.includes('.')) return true
+  return name.endsWith('.pdf')
+}
+
+/**
+ * 签发人 / 建单人显示：后端目前只返回用户 id（issued_by / created_by 是整数，没有用户名），显示为「用户 #id」；
+ * 以后后端给出对象（user_name / email）时显示名字。
+ */
+export const formatUserRef = (u: any, t: (...args: any[]) => string): string => {
+  if (u === null || u === undefined || u === '') return ''
+  if (typeof u === 'object') {
+    const name = u.user_name || u.email
+    if (name) return String(name)
+    return u.id !== null && u.id !== undefined ? t('common.users.user-ref', { id: u.id }) : ''
+  }
+  return t('common.users.user-ref', { id: u })
 }
 
 /** 从文档列表里挑出当前有效的 CI / PL（同类型取最高版本） */
@@ -325,17 +410,25 @@ export const useCustomsPdfActions = () => {
   const printDoc = async (dnId: number | string, doc: PdfDocumentRef | null) => {
     if (!doc) return
     const pdf = await load(dnId, doc)
-    if (pdf) printPdfBlob(pdf.blob)
+    // 浏览器不能直接打印时已改为下载：提示用户打开下载的文件再打印
+    if (pdf) printPdfBlob(pdf.blob, pdf.fileName, () => showToast(t('customs.tips.print-fallback-downloaded'), 'warning'))
   }
 
   const viewDoc = async (dnId: number | string, doc: PdfDocumentRef | null) => {
     if (!doc) return
-    // 先同步开窗，避免异步取数后被弹窗拦截
-    const win = window.open('', '_blank')
+    // 先同步开窗，避免异步取数后被弹窗拦截（被拦截时为 null，取到文件后再试，仍不行就下载）
+    let win: Window | null = null
+    try {
+      win = window.open('', '_blank')
+    } catch {
+      win = null
+    }
     const pdf = await load(dnId, doc)
     if (pdf) {
-      showPdfInWindow(pdf.blob, win)
-    } else if (win) {
+      if (showPdfInWindow(pdf.blob, win, pdf.fileName) === 'downloaded') {
+        showToast(t('customs.tips.popup-blocked-downloaded'), 'warning')
+      }
+    } else if (win && !win.closed) {
       win.close()
     }
   }

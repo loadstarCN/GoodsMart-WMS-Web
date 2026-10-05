@@ -12,6 +12,10 @@ const itemData = ref(null);
 const currentItem = ref(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
+// 批次提交的幂等键与提交锁
+const batchKey = useBatchSubmitKey();
+const submitting = ref(false);
 // 计算属性转换
 const dataToPass = computed(() => ({
   current: t('nav.picking'),
@@ -159,25 +163,40 @@ const saveTask = async () => {
   if (payload.details.length !== selectedItems.length) {
     return;
   }
+  if (submitting.value) return;
 
+  submitting.value = true;
+  let done = false;
+  let replayMismatch = false;
   try {
     const data = await httpRequest(`/api/warehouse/picking/${taskId}/batches/`, {
         method: 'POST',
-        body: payload,
-        onSuccess: async(data) => {
-            await fetchData();
-            await resetTask();
-            showToast(t('action-results.success'), 'success')
+        // 幂等键：失败后重试沿用同一个（上次其实已成功时后端返回 200 + 已有批次），成功后清掉
+        body: { ...payload, client_batch_id: batchKey.take() },
+        onSuccess: () => {
+            done = true;
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            replayMismatch = batchKey.isReplayMismatch(error);
+            showToast(bizErrorMessage(error), 'error')
         }
     })
-    return data; 
-    
-    // 处理成功逻辑
-  } catch (err) {
-    // 处理错误逻辑
+    // 成功（201 新建 / 200 重放）：清掉幂等键，重新读取并清空录入后才解除提交锁（免得旧录入被再提交一次）
+    if (done) {
+        batchKey.clear();
+        await fetchData();
+        resetTask();
+        showToast(t('action-results.success'), 'success')
+    }
+    // 16121：这次提交此前已按不同的内容处理过，换新的幂等键，重新读取并清空录入，让用户核对后再录
+    if (replayMismatch) {
+        batchKey.clear();
+        await fetchData();
+        resetTask();
+    }
+    return data;
+  } finally {
+    submitting.value = false;
   }
 };
 
@@ -230,7 +249,7 @@ function completeFn(item: any) {
   // 使用封装的确认对话框
   showConfirm(
     t('action-results.complete-confirm-title'),
-    t('action-results.complete-confirm'),
+    t('action-results.complete-confirm', { entity: t('picking.entity') }),
     t('button.confirm'),
     t('button.cancel'),
   ).then((confirmed) => {
@@ -277,7 +296,7 @@ const addLocationFn = (item:any) => {
 
 const addLocation = (item:any) => {
   if (!selectedLocation.value) {
-    showToast('Please select an item', 'error');
+    showToast(t('goods.validation.location.required'), 'error');
     return;
   }
   item.location_id = selectedLocation.value.location_id;
@@ -300,7 +319,7 @@ const addLocation = (item:any) => {
 
 // 删除Item
 const deleteDetailItem = async (item_id:Number) => {
-    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm'),t('button.confirm'),t('button.cancel'));
+    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm', { entity: t('common.fields.task-details') }),t('button.confirm'),t('button.cancel'));
     if (confirm) {
         await httpRequest(`/api/warehouse/picking/${taskId}/details/${item_id}`, {
             method: 'DELETE',
@@ -336,7 +355,7 @@ onMounted(async() => {
             <div class="card-body row">
               <div class="col-xl-6">
                 <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">DN :</span>
+                  <span class="fw-semibold text-default">{{ t('dn.entity') }} :</span>
                   <NuxtLink :to="`/dn/detail/${itemData?.dn_id}`">#DN-{{ itemData?.dn_id }}</NuxtLink>
                 </p>
                 <p class="mb-2 text-muted">
@@ -357,7 +376,7 @@ onMounted(async() => {
                   {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
                 </p>
                 <p class="mb-2 text-muted" v-if="itemData?.dn?.special_handling">
-                  <span class="fw-semibold text-default">special_handling :</span>
+                  <span class="fw-semibold text-default">{{ t('dn.fields.special-handling') }} :</span>
                   {{ itemData?.dn?.special_handling }}
                 </p>
                 <p class="mb-2 text-muted" v-if="itemData?.dn?.remark">
@@ -494,7 +513,7 @@ onMounted(async() => {
                 <NuxtLink class="btn btn-warning btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.reset')"
                   @click="resetTask()"><i class="ri-reset-left-line me-1 align-middle"></i>{{t('button.reset')}}</NuxtLink>
                 <button class="btn btn-info btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.save')"
-                  @click="saveTask()" :disabled="!hasUnsavedChanges"><i class="ri-draft-line me-1 align-middle"></i>{{t('button.save')}}</button>
+                  @click="saveTask()" :disabled="!hasUnsavedChanges || submitting"><i class="ri-draft-line me-1 align-middle"></i>{{t('button.save')}}</button>
 
                 <button class="btn btn-primary btn-wave btn-sm" v-if="itemData?.status =='in_progress'"
                   :title="t('button.complete')" @click="completeFn()" :disabled="hasUnsavedChanges"><i class="ri-save-line me-1 align-middle"></i>{{t('button.complete')}}
@@ -620,12 +639,12 @@ onMounted(async() => {
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h6 class="modal-title" id="exampleModalLabel1">Search location</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h6 class="modal-title" id="exampleModalLabel1">{{ t('picking.form.search-location') }}</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" :aria-label="t('button.close')"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label">Location <abbr title="required" aria-hidden="true"
+            <label class="form-label">{{ t('common.entities.location') }} <abbr :title="t('common.tips.required')" aria-hidden="true"
                 class="text-danger">*</abbr></label>
             <div class="flex-nowrap input-group-custom">
 

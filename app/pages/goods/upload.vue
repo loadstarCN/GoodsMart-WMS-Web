@@ -56,19 +56,23 @@ const triggerUpload = async () => {
     return
   }
 
+  // 公司信息缺失（员工信息还没读到 / 已过期）：先重新读取一次；仍没有时提示，不进入上传中状态
+  if (!staffStore.staffInfo?.company?.id) {
+    await staffStore.getCurrentStaffInfo();
+  }
+  const companyId = staffStore.staffInfo?.company?.id;
+  if (!companyId) {
+    showToast(t('goods.tips.company-missing'), 'error');
+    return;
+  }
+
   uploading.value = true;
 
   const formData = new FormData();
   formData.append('file', selectedFile.value);
   // 覆盖策略
   formData.append('overwrite', selectedOption.value);
-
-  if (staffStore.staffInfo?.company?.id) {
-    formData.append('company_id', staffStore.staffInfo?.company?.id);
-  } else {
-    showToast(t('common.validation.company-required'), 'error');
-    return;
-  }
+  formData.append('company_id', String(companyId));
 
   await httpRequest('/api/warehouse/goods/bulk_upload', {
     method: 'POST',

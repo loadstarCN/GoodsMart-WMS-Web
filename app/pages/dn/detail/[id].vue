@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { latestTaskTimelineTime, taskTimelineTime } from '~/utils/date'
 
 // 定义页面元数据
 definePageMeta({
@@ -99,7 +100,7 @@ const closeDN = async () => {
         method: 'PUT',
         onSuccess: (data) => {
             itemData.value = data;
-            showToast('DN Closed', 'success')
+            showToast(t('action-results.success'), 'success')
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -147,21 +148,9 @@ const cancelDN = async () => {
     }
     canceling.value = false;
 };
-function getEarliestPickItem(itemPickingData: any) {
-  const items = itemPickingData?.items;
-  if (!items || items.length === 0) return undefined;
-  return items.reduce((minItem:any, currentItem:any) => 
-    currentItem.picking_time < minItem.picking_time ? currentItem.picking_time : minItem.picking_time
-  );
-}
-
-function getEarliestPackItem(itemPackingData: any) {
-  const items = itemPackingData?.items;
-  if (!items || items.length === 0) return undefined;
-  return items.reduce((minItem:any, currentItem:any) => 
-    currentItem.packing_time < minItem.packing_time ? currentItem.packing_time : minItem.packing_time
-  );
-}
+// 时间线「已拣货 / 已打包」的时间：取任务列表项里有的 completed_at / updated_at（列表项没有 picking_time / packing_time）
+const pickingTimelineTime = computed(() => latestTaskTimelineTime(itemPickingData.value?.items));
+const packingTimelineTime = computed(() => latestTaskTimelineTime(itemPackingData.value?.items));
 </script>
 <template>
     <PageHeader :propData="dataToPass" />
@@ -176,11 +165,21 @@ function getEarliestPackItem(itemPackingData: any) {
                                 <span class="text-primary">#DN-{{ itemData?.id }}</span>
                             </div>
                             <div>
+                                <!-- DN 的字段：计划发货日 / 开始处理 / 拣货完成 / 打包完成 / 发货时间（不是 ASN 的到货日期） -->
                                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                                    expected_arrival_date:{{ itemData?.expected_arrival_date }}
+                                    {{t('dn.fields.scheduled-date')}}:{{ itemData?.expected_shipping_date }}
                                 </span>
-                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'received'">
-                                    actual_arrival_date:{{ $dayjs(itemData?.received_at,'YYYY-MM-DD HH:mm:ss') }}
+                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'in_progress' && itemData?.started_at">
+                                    {{t('common.dates.started')}}:{{ $dayjs(itemData?.started_at,'YYYY-MM-DD HH:mm:ss') }}
+                                </span>
+                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'picked' && itemData?.picked_at">
+                                    {{t('common.dates.picked')}}:{{ $dayjs(itemData?.picked_at,'YYYY-MM-DD HH:mm:ss') }}
+                                </span>
+                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'packed' && itemData?.packed_at">
+                                    {{t('common.dates.packed')}}:{{ $dayjs(itemData?.packed_at,'YYYY-MM-DD HH:mm:ss') }}
+                                </span>
+                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'delivered' && itemData?.delivered_at">
+                                    {{t('common.dates.delivered')}}:{{ $dayjs(itemData?.delivered_at,'YYYY-MM-DD HH:mm:ss') }}
                                 </span>
                                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
                                     {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}
@@ -314,7 +313,7 @@ function getEarliestPackItem(itemPackingData: any) {
                     <div class="card custom-card">
                         <div class="card-header">
                             <div class="card-title">
-                                DN Details
+                                {{t('dn.fields.details')}}
                             </div>
                         </div>
                         <div class="card-body p-0">
@@ -437,7 +436,6 @@ function getEarliestPackItem(itemPackingData: any) {
                                     <div class="accordion-body pt-0 ps-5">
                                         <div class="fs-11">
                                             <div class="fs-11">
-                                                {{ itemData?.operator }}
                                                 <p class="mb-0">{{ $t('dn.tips.started-successfully') }}</p>
                                                 <span class="text-muted op-5">{{ $dayjs(itemData?.started_at,'YYYY-MM-DD HH:mm:ss') }}</span>
                                             </div>
@@ -457,7 +455,7 @@ function getEarliestPackItem(itemPackingData: any) {
                                                         class="ri-archive-line fs-12"></i></span></div>
                                             <div class="flex-fill">
                                                 <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.picked')}}</p><span
-                                                    class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(getEarliestPickItem(itemPickingData))}}</span>
+                                                    class="mb-1 d-block fs-12 text-undefined">{{ pickingTimelineTime ? $dayjs(pickingTimelineTime, 'YYYY-MM-DD HH:mm:ss') : '' }}</span>
                                             </div>
                                         </div>
                                     </a></div>
@@ -468,7 +466,7 @@ function getEarliestPackItem(itemPackingData: any) {
                                             <div class="fs-11 mb-3"  v-for="(item, index) in itemPickingData?.items" :key="index">
                                                 <p class="mb-0">{{ $t('dn.tips.picking-operation-message',{pickedQuantity:item.total_picked_quantity,expectedQuantity:item.expected_quantity,creator:itemData?.creator?.user_name}) }}</p>
                                                 
-                                                <span class="text-muted op-5">{{ $dayjs(item.picking_time,'YYYY-MM-DD HH:mm:ss') }}</span>
+                                                <span class="text-muted op-5" v-if="taskTimelineTime(item)">{{ $dayjs(taskTimelineTime(item),'YYYY-MM-DD HH:mm:ss') }}</span>
                                             </div>
                                             
                                         </div>
@@ -487,7 +485,7 @@ function getEarliestPackItem(itemPackingData: any) {
                                                         class="ri-archive-line fs-12"></i></span></div>
                                             <div class="flex-fill">
                                                 <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.packed')}}</p><span
-                                                    class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(getEarliestPackItem(itemPackingData))}}</span>
+                                                    class="mb-1 d-block fs-12 text-undefined">{{ packingTimelineTime ? $dayjs(packingTimelineTime, 'YYYY-MM-DD HH:mm:ss') : '' }}</span>
                                             </div>
                                         </div>
                                     </a></div>
@@ -496,8 +494,9 @@ function getEarliestPackItem(itemPackingData: any) {
                                     <div class="accordion-body pt-0 ps-5">
                                         <div class="fs-11">
                                             <div class="fs-11 mb-3"  v-for="(item, index) in itemPackingData?.items" :key="index">
-                                                <p class="mb-0">{{ $t('dn.tips.packing-operation-message',{packedQuantity:item.total_packed_quantity,creator:itemData?.creator?.user_name}) }}</p>
-                                                 <span class="text-muted op-5">{{ $dayjs(item.packing_time,'YYYY-MM-DD HH:mm:ss') }}</span>
+                                                <!-- 列表项没有逐批的操作员：按任务的建立人显示，没有时用 DN 的建立人 -->
+                                                <p class="mb-0">{{ $t('dn.tips.packing-operation-message',{packedQuantity:item.total_packed_quantity,operator:item?.creator?.user_name || itemData?.creator?.user_name || '—'}) }}</p>
+                                                 <span class="text-muted op-5" v-if="taskTimelineTime(item)">{{ $dayjs(taskTimelineTime(item),'YYYY-MM-DD HH:mm:ss') }}</span>
                                             </div>
                                             
                                         </div>

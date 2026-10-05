@@ -128,7 +128,7 @@ const openCreateModal = () => {
 const submitCreate = async () => {
   // 验证
   createErrors.value.system_name = !createForm.value.system_name?.trim()
-    ? t('common.validation.name-required')
+    ? t('common.validation.name-required', { entity: t('apikeys.entity') })
     : null
 
   if (Object.values(createErrors.value).some(v => v)) return
@@ -198,7 +198,7 @@ const toggleActive = async (item: any) => {
 const deleteItem = async (itemId: number) => {
   const confirm = await showConfirm(
     t('action-results.delete-confirm-title'),
-    t('action-results.delete-confirm'),
+    t('action-results.delete-confirm', { entity: t('apikeys.entity') }),
     t('button.confirm'),
     t('button.cancel')
   )
@@ -282,7 +282,7 @@ const openEditModal = (item: any) => {
 
 const submitEdit = async () => {
   editErrors.value.system_name = !editForm.value.system_name?.trim()
-    ? t('common.validation.name-required')
+    ? t('common.validation.name-required', { entity: t('apikeys.entity') })
     : null
 
   if (Object.values(editErrors.value).some(v => v)) return

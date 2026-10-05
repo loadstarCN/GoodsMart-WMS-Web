@@ -217,7 +217,7 @@ function completeFn(item: any) {
   // 使用封装的确认对话框
   showConfirm(
     t('action-results.complete-confirm-title'),
-    t('action-results.complete-confirm'),
+    t('action-results.complete-confirm', { entity: t('cyclecount.entity') }),
     t('button.confirm'),
     t('button.cancel'),
   ).then((confirmed) => {
@@ -244,7 +244,7 @@ const carete_adjustmentFn = async () => {
   // 使用封装的确认对话框
   const confirmed = await showConfirm(
     t('action-results.create-confirm-title'),
-    t('action-results.create-confirm'),
+    t('action-results.create-confirm', { entity: t('adjustment.entity') }),
     t('button.confirm'),
     t('button.cancel'),
   )
@@ -487,7 +487,7 @@ onMounted(async() => {
                 <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.complete')"
                   @click="completeFn()" :disabled="hasUnsavedChanges || !allItemsCompleted"><i class="ri-save-line me-1 align-middle"></i>{{t('button.complete')}}
                 </button>
-                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='completed' && validDetails.length > 0 && !adjustmentCreated" title="Create Adjustment"
+                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='completed' && validDetails.length > 0 && !adjustmentCreated" :title="t('adjustment.operations.add')"
                     @click="carete_adjustmentFn()" :disabled="creatingAdjustment">
                     <span v-if="creatingAdjustment" class="spinner-border spinner-border-sm me-1"></span>
                     <i v-else class="ri-save-line me-1 align-middle"></i>{{t('adjustment.operations.add')}}
