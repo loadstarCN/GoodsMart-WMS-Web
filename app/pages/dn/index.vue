@@ -15,6 +15,8 @@ const dataToPass = computed(() => ({
 }));
 
 const router = useRouter();
+// 按权限显示新建 / 编辑 / 删除（鉴权仍以后端为准）
+const staffStore = useStaffStore();
 let route = useRoute();
 let loading = ref(true);
 let keyword = ref("");
@@ -58,7 +60,7 @@ const deleteItem = async (item_id:Number) => {
                 await fetchData();                 
             },
             onError: (error) => {
-                showToast(error.message, 'error')
+                showToast(bizErrorMessage(error), 'error')
             }
         })
     }
@@ -92,13 +94,18 @@ const closeItem = async (item_id:Number) => {
     })
 }
 
-// 取消DN（处理中、拣货尚未开始）：后端释放预占库存、停用拣货任务并关闭单据；待处理的 DN 用「关闭」
+// 取消DN（处理中 / 已拣货 / 已打包未发货）：后端释放预占库存、停用相关任务并关闭单据，
+// 已拣 / 已打包的货退回待上架（需要重新上架）；待处理的 DN 用「关闭」
 const cancelingId = ref<number | null>(null);
-const cancelItem = async (item_id: number) => {
+/** 可以取消的状态（已发货 delivered / 已完成 completed 不能取消，后端 16052） */
+const DN_CANCELLABLE_STATUSES = ['in_progress', 'picked', 'packed'];
+const cancelItem = async (item_id: number, status?: string) => {
     if (cancelingId.value !== null) return;
+    // 已拣 / 已打包：确认框说明货会退回待上架
+    const picked = status === 'picked' || status === 'packed';
     const confirmed = await showConfirm(
         t('dn.tips.cancel-confirm-title'),
-        t('dn.tips.cancel-confirm', { id: item_id }),
+        t(picked ? 'dn.tips.cancel-confirm-picked' : 'dn.tips.cancel-confirm', { id: item_id }),
         t('dn.operations.cancel'),
         t('button.dont-cancel'),
     );
@@ -112,8 +119,12 @@ const cancelItem = async (item_id: number) => {
             done = true;
         },
         onError: (error) => {
-            // 16052 状态已变 / 16053 拣货已开始
+            // 16052 状态已变 / 16053 拣货已开始 / 16110 有未结束的 FedEx 自动运单（要先在单证卡片取消运单）
             conflict = error.status === 409;
+            if (error.code === 16110) {
+                showAlert(t('dn.tips.cancel-confirm-title'), bizErrorMessage(error), 'warning');
+                return;
+            }
             showToast(bizErrorMessage(error), 'error')
         }
     })
@@ -243,7 +254,7 @@ onMounted(async() => {
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <div class="d-flex flex-wrap gap-2">
-                            <NuxtLink to="/dn/add" class="btn btn-primary btn-wave"><i
+                            <NuxtLink v-if="staffStore.hasPermission('dn_edit')" to="/dn/add" class="btn btn-primary btn-wave"><i
                                     class="ri-add-line me-1 fw-semibold align-middle"></i>{{ $t('dn.operations.add') }}</NuxtLink>
                         </div>
                         <div class="d-flex" role="search">
@@ -332,21 +343,21 @@ onMounted(async() => {
                                         <div class="hstack gap-2 fs-15">
                                             <NuxtLink :to="`/dn/edit/${dn?.id}`"
                                                 class="btn btn-icon btn-sm btn-success-light product-btn"
-                                                v-if="dn.status==='pending'"><i class="ri-edit-line"></i></NuxtLink>
+                                                v-if="(dn.status==='pending') && staffStore.hasPermission('dn_edit')"><i class="ri-edit-line"></i></NuxtLink>
                                             <NuxtLink href="javascript:void(0);" @click="progressItem(dn.id)"
-                                                class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="dn.status===
-                                            'pending'" :title="t('button.process')"><i class="ri-list-check-3"></i></NuxtLink>
+                                                class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="(dn.status===
+                                            'pending') && staffStore.hasPermission('dn_edit')" :title="t('button.process')"><i class="ri-list-check-3"></i></NuxtLink>
                                             <NuxtLink href="javascript:void(0);" @click="closeItem(dn.id)"
-                                                class="btn btn-icon btn-sm btn-info-light product-btn" v-if="dn.status===
-                                            'pending'" :title="t('button.close')"><i class="ri-close-line"></i></NuxtLink>
-                                            <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="dn.status==='in_progress'"
-                                                :title="t('dn.operations.cancel')" :disabled="cancelingId !== null" @click="cancelItem(dn.id)">
+                                                class="btn btn-icon btn-sm btn-info-light product-btn" v-if="(dn.status===
+                                            'pending') && staffStore.hasPermission('dn_edit')" :title="t('button.close')"><i class="ri-close-line"></i></NuxtLink>
+                                            <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(DN_CANCELLABLE_STATUSES.includes(dn.status)) && staffStore.hasPermission('dn_edit')"
+                                                :title="t('dn.operations.cancel')" :disabled="cancelingId !== null" @click="cancelItem(dn.id, dn.status)">
                                                 <span v-if="cancelingId === dn.id" class="spinner-border spinner-border-sm"></span>
                                                 <i v-else class="ri-arrow-go-back-line"></i>
                                             </button>
                                             <NuxtLink href="javascript:void(0);" @click="deleteItem(dn.id)"
-                                                class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="dn.status===
-                                            'pending'"><i class="ri-delete-bin-line"></i></NuxtLink>
+                                                class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(dn.status===
+                                            'pending') && staffStore.hasPermission('dn_delete')"><i class="ri-delete-bin-line"></i></NuxtLink>
                                         </div>
                                     </td>
                                 </tr>

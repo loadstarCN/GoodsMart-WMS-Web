@@ -189,7 +189,10 @@ onMounted(async () => {
 
 
 // ------------------ 提交保存 ----------------------
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁（连点两次会生成两张 DN、重复预占库存）
+const submitting = ref(false)
 const addDN = async () => {
+  if (submitting.value) return
   errors.value = {
     dn_type: !dnItem.value.dn_type ? t('common.validation.type-required') : null,
     wareshouse: !dnItem.value.warehouse_id ? t('common.validation.warehouse-required') : null,
@@ -212,15 +215,18 @@ const addDN = async () => {
     dnItem.value.expected_shipping_date = safeFormatDate(dnItem.value.expected_shipping_date);
   }
 
+  submitting.value = true
   await httpRequest('/api/warehouse/dn/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    // 用表单里选的仓库作为请求的仓库（页头选「全部仓库」时也能正确建单）
+    headers: { 'Content-Type': 'application/json', ...warehouseHeaders(dnItem.value.warehouse_id) },
     body: dnItem.value,
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
-      await router.push('/dn/')          
+      await router.push('/dn/')
     },
     onError: (error) => {
+      submitting.value = false
       // 库存不足（16032）等按业务码显示原因
       showToast(bizErrorMessage(error), 'error')
     }
@@ -245,9 +251,16 @@ const exceedsMax = (target: any) =>
 const { state: goodsSearch, fetchInventory, resetSelection,resetState } = useInventorySearch();
 const handleSearch = () => {
   if (goodsSearch.code.trim()) {
+    // 库存按仓库查：还没选仓库时先提示选仓库（否则 selectWareshouse.value 为 null 直接报错）
+    const warehouse: any = selectWareshouse.value;
+    if (!warehouse?.id) {
+      errors.value.wareshouse = t('common.validation.warehouse-required');
+      showToast(t('common.validation.warehouse-required'), 'error');
+      return;
+    }
     is_next.value = false;
     errors.value.quantity = null;
-    fetchInventory(selectWareshouse.value.id);
+    fetchInventory(warehouse.id);
     resetSelection();
   }
 }
@@ -539,9 +552,9 @@ const saveRemark = () => {
           </div>
 
           <div class="p-3 d-grid">
-            <NuxtLink to="javascript:void(0);" class="btn btn-primary btn-wave mb-2" @click="addDN()">
-              {{t('dn.operations.add')}}
-            </NuxtLink>
+            <button type="button" class="btn btn-primary btn-wave mb-2" :disabled="submitting" @click="addDN()">
+              <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>{{t('dn.operations.add')}}
+            </button>
 
             <NuxtLink to="/dn" class="btn btn-light btn-wave">
               {{t('dn.operations.back-to-list')}}

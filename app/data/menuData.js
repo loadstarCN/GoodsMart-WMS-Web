@@ -1,9 +1,12 @@
+// permission：显示该菜单所需的权限（见后端 seed_permissions.py；all_access / company_all_access 视为全部拥有），
+// Sidebar 按员工的权限过滤，鉴权仍以后端为准
 export let menuData = [
     {
         headTitle: 'nav.InventoryManger'
     },
     {
         path: '/inventory/',
+        permission: 'inventory_read',
         type: 'link',
         title: 'nav.inventory',
         icon: 'ri-archive-drawer-line',
@@ -13,6 +16,7 @@ export let menuData = [
     },
     {
         path: '/goods/',
+        permission: 'goods_read',
         type: 'link',
         title: 'nav.goods',
         icon: 'ri-box-3-line',
@@ -22,6 +26,7 @@ export let menuData = [
     },
     {
         path: '/cyclecount/',
+        permission: 'cycle_count_read',
         type: 'link',
         title: 'nav.cyclecount',
         icon: 'ri-list-check-3',
@@ -31,6 +36,7 @@ export let menuData = [
     },
     {
         path: '/adjustment/',
+        permission: 'adjustment_read',
         type: 'link',
         title: 'nav.adjustment',
         icon: 'ri-equalizer-line',
@@ -43,6 +49,7 @@ export let menuData = [
     },
     {
         path: '/asn/',
+        permission: 'asn_read',
         type: 'link',
         title: 'nav.ASN',
         icon: 'ri-inbox-archive-line',
@@ -52,6 +59,7 @@ export let menuData = [
     },
     {
         path: '/sorting/',
+        permission: 'sorting_read',
         type: 'link',
         title: 'nav.sorting',
         icon: 'ri-filter-3-fill',
@@ -65,6 +73,7 @@ export let menuData = [
     {
         type: 'sub',
         path: '/dn/',
+        permission: 'dn_read',
         type: 'link',
         title: 'nav.DN',
         icon: 'ri-inbox-unarchive-line',
@@ -75,6 +84,7 @@ export let menuData = [
     {
         type: 'sub',
         path: '/picking/',
+        permission: 'picking_read',
         type: 'link',
         title: 'nav.picking',
         icon: 'ri-hand-coin-line',
@@ -85,6 +95,7 @@ export let menuData = [
     {
         type: 'sub',
         path: '/packing/',
+        permission: 'packing_read',
         type: 'link',
         title: 'nav.packing',
         icon: 'ri-gift-line',
@@ -96,6 +107,7 @@ export let menuData = [
     {
         type: 'sub',
         path: '/delivery/',
+        permission: 'delivery_read',
         type: 'link',
         title: 'nav.delivery',
         icon: 'ri-truck-line',
@@ -109,6 +121,7 @@ export let menuData = [
     },
     {
         path: '/warehouse/',
+        permission: 'warehouse_read',
         type: 'link',
         title: 'nav.warehouse',
         icon: 'ri-store-2-line',
@@ -118,6 +131,7 @@ export let menuData = [
     },
     {
         path: '/location/',
+        permission: 'location_read',
         type: 'link',
         title: 'nav.location',
         icon: 'ri-map-pin-line',
@@ -127,6 +141,7 @@ export let menuData = [
     },
     {
         path: '/staff/',
+        permission: 'staff_read',
         type: 'link',
         title: 'nav.staff',
         icon: 'ri-user-line',
@@ -136,6 +151,7 @@ export let menuData = [
     },
     {
         path: '/carrier/',
+        permission: 'carrier_read',
         type: 'link',
         title: 'nav.carrier',
         icon: 'ri-riding-line',
@@ -145,6 +161,7 @@ export let menuData = [
     },
     {
         path: '/supplier/',
+        permission: 'supplier_read',
         type: 'link',
         title: 'nav.supplier',
         icon: 'ri-building-2-line',
@@ -154,6 +171,7 @@ export let menuData = [
     },
     {
         path: '/recipient/',
+        permission: 'recipient_read',
         type: 'link',
         title: 'nav.recipient',
         icon: 'ri-user-received-line',
@@ -167,6 +185,7 @@ export let menuData = [
     },
     {
         path: '/company/',
+        permission: 'company_read',
         type: 'link',
         title: 'nav.company',
         icon: 'ri-briefcase-line',
@@ -176,6 +195,7 @@ export let menuData = [
     },
     {
         path: '/department/',
+        permission: 'department_read',
         type: 'link',
         title: 'nav.department',
         icon: 'ri-organization-chart',
@@ -185,6 +205,7 @@ export let menuData = [
     },
     {
         path: '/apikeys/',
+        permission: 'api_keys_read',
         type: 'link',
         title: 'nav.apikeys',
         icon: 'ri-key-2-line',
@@ -194,6 +215,7 @@ export let menuData = [
     },
     {
         path: '/webhook-logs/',
+        permission: 'webhook_read',
         type: 'link',
         title: 'nav.webhook-logs',
         icon: 'ri-send-plane-line',

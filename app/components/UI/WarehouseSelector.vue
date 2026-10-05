@@ -6,16 +6,19 @@
       data-bs-toggle="dropdown" 
       aria-expanded="false"
     >
-      {{ selectedLabel || t('common.all-warehouse') }}
+      {{ selectedLabel || (allowAll ? t('common.all-warehouse') : t('common.validation.warehouse-required')) }}
       <i class="ri-arrow-down-s-line"></i>
     </button>
     <ul class="dropdown-menu">
-      <li>
-        <a class="dropdown-item" href="javascript:void(0);" @click="handleSelect(null)">
-          {{ t('common.all-warehouse') }}
-        </a>
-      </li>
-      <li><hr class="dropdown-divider"></li>
+      <!-- 「全部仓库」只给公司管理员：其他员工的仓库内接口必须带仓库，选全部会 14003 -->
+      <template v-if="allowAll">
+        <li>
+          <a class="dropdown-item" href="javascript:void(0);" @click="handleSelect(null)">
+            {{ t('common.all-warehouse') }}
+          </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+      </template>
       <li v-for="warehouse in warehouses" :key="warehouse.id">
         <a class="dropdown-item" href="javascript:void(0);" @click="handleSelect(warehouse)">
           {{ warehouse.name }}
@@ -34,6 +37,11 @@ defineProps({
   selectedLabel: {
     type: String,
     default: ''
+  },
+  // 是否提供「全部仓库」选项（只有公司管理员）
+  allowAll: {
+    type: Boolean,
+    default: true
   }
 });
 

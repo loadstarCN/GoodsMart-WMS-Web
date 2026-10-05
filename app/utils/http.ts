@@ -11,6 +11,13 @@ export interface HttpRequestError {
   field?: string
 }
 
+/**
+ * 指定本次请求的仓库（X-WAREHOUSE-ID 请求头）：新建表单里选了仓库时用所选仓库，不用页头的当前仓库
+ * （后端只从 query / 请求头取仓库；页头选「全部仓库」时表单里选的仓库不会自动带上）。没选时不指定。
+ */
+export const warehouseHeaders = (warehouseId: number | string | null | undefined): Record<string, string> =>
+  warehouseId === null || warehouseId === undefined || warehouseId === '' ? {} : { 'X-WAREHOUSE-ID': String(warehouseId) }
+
 interface RequestConfig<T = any> {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   params?: Record<string, any>

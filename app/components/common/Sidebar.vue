@@ -24,7 +24,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path> </svg>
                         </div>
                         <ul class="main-menu">
-                            <li v-for="(mainmenuItem, index) in menuData" :key="index"
+                            <li v-for="(mainmenuItem, index) in visibleMenuData" :key="index"
                             :class="`${mainmenuItem.headTitle ? 'slide__category' : ''} ${mainmenuItem?.type == 'link'? 'slide' : ''} ${mainmenuItem?.type == 'empty'? 'slide' : ''} ${mainmenuItem?.type == 'sub' ? 'slide has-sub' : ''} ${mainmenuItem?.active && mainmenuItem?.type == 'sub' ? 'open' : ''} ${mainmenuItem?.selected ? 'active' : ''}`">
                                 <template v-if="mainmenuItem.headTitle">
                                     <span class="category-name">{{ $t(mainmenuItem.headTitle) }}</span>
@@ -71,6 +71,7 @@
 <script>
 import RecursiveMenu from '../UI/recursiveMenu.vue';
 import { menuData } from '../../data/menuData.js';
+import { useStaffStore } from '~/stores/staff';
 import { watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar';
@@ -101,6 +102,19 @@ export default {
       hasParentLevel: 0,
       url: import.meta.env.BASE_URL,
     };
+  },
+  computed: {
+    /**
+     * 按权限过滤后的菜单（菜单项的 permission 见 data/menuData.js；只控制显示，鉴权仍以后端为准）：
+     * 没有所需权限的项不显示；某个分组下一项都不剩时，分组标题也不显示。
+     * 平台用户的菜单（adminMenuData）不带 permission，照常全部显示
+     */
+    visibleMenuData() {
+      const staffStore = useStaffStore();
+      const allowed = (item) => !item.permission || staffStore.hasPermission(...[].concat(item.permission));
+      const items = this.menuData.filter(allowed);
+      return items.filter((item, i) => !item.headTitle || (items[i + 1] && !items[i + 1].headTitle));
+    },
   },
   methods: {
     // Start of Toggle menu event

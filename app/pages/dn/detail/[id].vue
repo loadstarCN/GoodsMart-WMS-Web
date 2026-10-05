@@ -12,6 +12,8 @@ const itemData = ref(null);
 const itemPickingData = ref(null);
 const itemPackingData = ref(null);
 const { t } = useI18n();
+// 按权限显示操作按钮（鉴权仍以后端为准）
+const staffStore = useStaffStore();
 const { bizErrorMessage } = useBizError();
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -105,13 +107,17 @@ const closeDN = async () => {
     })
     return data;   
 };
-// 取消DN（处理中、拣货尚未开始）：后端释放预占库存、停用拣货任务并关闭单据；待处理的 DN 用「关闭」
+// 取消DN（处理中 / 已拣货 / 已打包未发货）：后端释放预占库存、停用相关任务并关闭单据，
+// 已拣 / 已打包的货退回待上架（需要重新上架）；待处理的 DN 用「关闭」；已发货 / 已完成不能取消（16052）
 const canceling = ref(false);
+const canCancel = computed(() => ['in_progress', 'picked', 'packed'].includes(String(itemData.value?.status || '')));
 const cancelDN = async () => {
     if (canceling.value) return;
+    // 已拣 / 已打包：确认框说明货会退回待上架
+    const picked = itemData.value?.status === 'picked' || itemData.value?.status === 'packed';
     const confirmed = await showConfirm(
         t('dn.tips.cancel-confirm-title'),
-        t('dn.tips.cancel-confirm', { id: dnId }),
+        t(picked ? 'dn.tips.cancel-confirm-picked' : 'dn.tips.cancel-confirm', { id: dnId }),
         t('dn.operations.cancel'),
         t('button.dont-cancel'),
     );
@@ -125,15 +131,19 @@ const cancelDN = async () => {
             done = true;
         },
         onError: (error) => {
-            // 16052 状态已变 / 16053 拣货已开始
+            // 16052 状态已变 / 16053 拣货已开始 / 16110 有未结束的 FedEx 自动运单（要先在单证卡片取消运单）
             conflict = error.status === 409;
+            if (error.code === 16110) {
+                showAlert(t('dn.tips.cancel-confirm-title'), bizErrorMessage(error), 'warning');
+                return;
+            }
             showToast(bizErrorMessage(error), 'error')
         }
     })
     if (done) showToast(t('action-results.success'), 'success')
-    // 成功或状态已变（409）：重新读取单据与拣货任务
+    // 成功或状态已变（409）：重新读取单据与拣货 / 打包任务（已拣 / 已打包的取消后任务一并停用）
     if (done || conflict) {
-        await Promise.all([fetchData(), fetchPickingData()]);
+        await Promise.all([fetchData(), fetchPickingData(), fetchPackingData()]);
     }
     canceling.value = false;
 };
@@ -272,7 +282,7 @@ function getEarliestPackItem(itemPackingData: any) {
                                 <NuxtLink class="btn btn-primary btn-wave btn-sm" :to="`/dn/print/${dnId}`"><i
                                         class="ri-printer-line me-1 align-middle"></i>{{t('button.print')}}</NuxtLink>
                                 <NuxtLink :to="`/dn/edit/${itemData.id}`" class="btn btn-secondary btn-wave btn-sm"
-                                    v-if="itemData?.status =='pending'"><i
+                                    v-if="(itemData?.status =='pending') && staffStore.hasPermission('dn_edit')"><i
                                         class="ri-edit-line me-1 align-middle"></i>{{t('button.edit')}}</NuxtLink>
                                 <NuxtLink :to="`/picking/?dn_id=${dnId}`" class="btn btn-warning btn-wave btn-sm"
                                     v-if="itemData?.status =='in_progress'" :title="t('dn.operations.picking')"><i
@@ -284,11 +294,11 @@ function getEarliestPackItem(itemPackingData: any) {
                                     v-if="itemData?.status =='packed'" :title="t('dn.operations.delivery')"><i
                                         class="ri-checkbox-line me-1 align-middle"></i>{{t('dn.operations.delivery')}}</NuxtLink>
                                         
-                                <button class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='pending'"
+                                <button class="btn btn-danger btn-wave btn-sm" v-if="(itemData?.status =='pending') && staffStore.hasPermission('dn_edit')"
                                     :title="t('button.close')" @click="closeDN()"><i
                                         class="ri-close-line me-1 align-middle"></i>{{ t('button.close') }}</button>
                                 <button type="button" class="btn btn-danger btn-wave btn-sm"
-                                    v-if="itemData?.status =='in_progress' || (itemData?.status == 'picked' && !Number(itemData?.total_picked_quantity))"
+                                    v-if="(canCancel) && staffStore.hasPermission('dn_edit')"
                                     :title="t('dn.operations.cancel')" :disabled="canceling" @click="cancelDN()">
                                     <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
                                     <i v-else class="ri-arrow-go-back-line me-1 align-middle"></i>{{ t('dn.operations.cancel') }}</button>

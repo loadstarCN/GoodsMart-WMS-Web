@@ -13,6 +13,8 @@ const dataToPass = computed(() => ({
   list: [t('nav.SYSTEM'), t('nav.apikeys')]
 }))
 
+const { bizErrorMessage } = useBizError()
+// 按权限显示新建 / 编辑 / 启停 / 删除（鉴权仍以后端为准）
 const staffStore = useStaffStore()
 const router = useRouter()
 const route = useRoute()
@@ -38,7 +40,7 @@ const fetchData = async () => {
       pageData.value = data
     },
     onError: (error) => {
-      showToast(error.message, 'error')
+      showToast(bizErrorMessage(error), 'error')
     },
     onFinally: () => {
       loading.value = false
@@ -158,7 +160,7 @@ const submitCreate = async () => {
       fetchData()
     },
     onError: (error) => {
-      showToast(error.message, 'error')
+      showToast(bizErrorMessage(error), 'error')
     },
     onFinally: () => {
       creating.value = false
@@ -187,7 +189,7 @@ const toggleActive = async (item: any) => {
       fetchData()
     },
     onError: (error) => {
-      showToast(error.message, 'error')
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 }
@@ -208,7 +210,7 @@ const deleteItem = async (itemId: number) => {
         fetchData()
       },
       onError: (error) => {
-        showToast(error.message, 'error')
+        showToast(bizErrorMessage(error), 'error')
       }
     })
   }
@@ -310,7 +312,7 @@ const submitEdit = async () => {
       fetchData()
     },
     onError: (error) => {
-      showToast(error.message, 'error')
+      showToast(bizErrorMessage(error), 'error')
     },
     onFinally: () => {
       editing.value = false
@@ -341,7 +343,7 @@ const submitEdit = async () => {
           </div>
           <div class="d-flex flex-wrap gap-2">
             <div class="d-flex flex-wrap gap-2">
-              <button class="btn btn-primary btn-wave" @click="openCreateModal">
+              <button v-if="staffStore.hasPermission('api_keys_edit')" class="btn btn-primary btn-wave" @click="openCreateModal">
                 <i class="ri-add-line me-1 fw-semibold align-middle"></i>{{ t('apikeys.operations.add') }}
               </button>
             </div>
@@ -413,17 +415,17 @@ const submitEdit = async () => {
                   </td>
                   <td>
                     <div class="hstack gap-2 fs-15">
-                      <button @click="openEditModal(item)"
+                      <button v-if="staffStore.hasPermission('api_keys_edit')" @click="openEditModal(item)"
                         class="btn btn-icon btn-sm btn-primary-light product-btn"
                         :title="t('apikeys.operations.edit')">
                         <i class="ri-pencil-line"></i>
                       </button>
-                      <button @click="toggleActive(item)"
+                      <button v-if="staffStore.hasPermission('api_keys_edit')" @click="toggleActive(item)"
                         class="btn btn-icon btn-sm btn-warning-light product-btn"
                         :title="item.is_active ? t('common.status.inactive') : t('common.status.active')">
                         <i :class="item.is_active ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
                       </button>
-                      <button @click="deleteItem(item.id)"
+                      <button v-if="staffStore.hasPermission('api_keys_delete')" @click="deleteItem(item.id)"
                         class="btn btn-icon btn-sm btn-danger-light product-btn">
                         <i class="ri-delete-bin-line"></i>
                       </button>

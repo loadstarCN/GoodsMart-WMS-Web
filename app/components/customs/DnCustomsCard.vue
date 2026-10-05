@@ -50,6 +50,10 @@ const view = ref<CustomsView | null>(null)
 const issuing = ref(false)
 const carrierRef = ref<{ reload: () => Promise<void> } | null>(null)
 const carrierStatus = ref<CarrierShipmentStatus | null>(null)
+/** 箱子编辑器（暴露 dirty：有未保存的修改） */
+const packagesRef = ref<{ reload: () => Promise<void>; dirty: boolean } | null>(null)
+/** 箱子有未保存的修改：此时建运单 / 生成单证会用已保存的旧箱子，先拦下提示保存 */
+const packagesDirty = computed(() => !!packagesRef.value?.dirty)
 let scrolled = false
 
 // ------------------ 读取 ----------------------
@@ -94,6 +98,7 @@ const issueHint = computed(() => {
   if (locked.value) return ''
   if (!isPacked.value) return t('customs.tips.issue-need-packed')
   if (!ready.value) return t('customs.tips.issue-not-ready')
+  if (packagesDirty.value) return t('customs.tips.packages-unsaved-before-issue')
   return ''
 })
 const packagesReadonlyReason = computed(() =>
@@ -167,6 +172,11 @@ const userText = (u: any) => (u && typeof u === 'object' ? (u.user_name || u.ema
 // ------------------ 生成单证 ----------------------
 const issue = async () => {
   if (!canIssue.value || issuing.value) return
+  // 箱子有未保存的修改：单证会按已保存的旧箱子生成，先保存箱子
+  if (packagesDirty.value) {
+    showAlert(t('customs.operations.issue'), t('customs.tips.packages-unsaved-before-issue'), 'warning')
+    return
+  }
   const prevVersion = Math.max(0, ...(view.value?.current_documents || []).map((d: CustomsDocumentMeta) => Number(d.version) || 0))
   issuing.value = true
   await httpRequest<any>(`/api/warehouse/dn/${props.dnId}/customs-documents/issue`, {
@@ -573,13 +583,14 @@ defineExpose({ reload: reloadAll })
           <!-- ===== 箱子 ===== -->
           <div class="col-12">
             <h6 class="fw-semibold mb-2">{{ t('customs.sections.packages') }}</h6>
-            <DnPackagesEditor :dn-id="dnId" :packages="packagesForEditor" :editable="canEditPackages"
+            <DnPackagesEditor ref="packagesRef" :dn-id="dnId" :packages="packagesForEditor" :editable="canEditPackages"
               :readonly-reason="packagesReadonlyReason" @saved="onPackagesSaved" />
           </div>
 
           <!-- ===== 承运商运单 ===== -->
           <div class="col-12">
             <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" :locked="locked" :customs="view.customs"
+              :packages-dirty="packagesDirty"
               :warehouse-id="warehouseId" :package-count="totals?.package_count ?? packagesForEditor.length"
               @status="carrierStatus = $event" @changed="onCarrierChanged" />
           </div>

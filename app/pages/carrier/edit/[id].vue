@@ -37,7 +37,11 @@ const errors = ref({
 
 
 // ------------------ 提交保存 ----------------------
+const { bizErrorMessage } = useBizError()
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const saveCarrier = async () => {
+  if (submitting.value) return
   errors.value = {
     name: !itemData.value.name ? t('common.validation.name-required') : null,
     email: (() => {
@@ -52,6 +56,7 @@ const saveCarrier = async () => {
 
   if (Object.values(errors.value).some(v => v)) return
 
+  submitting.value = true
   await httpRequest(`/api/warehouse/carrier/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -61,7 +66,8 @@ const saveCarrier = async () => {
       await router.push('/carrier/')          
     },
     onError: (error) => {
-      showToast(t('action-results.failed'), 'error')
+      submitting.value = false
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 }
@@ -162,7 +168,7 @@ onMounted(async() => {
             </div>
           </div>
           <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
-            <button class="btn btn-primary-light m-1" @click="saveCarrier">{{t('carrier.operations.edit')}}<i
+            <button class="btn btn-primary-light m-1" :disabled="submitting" @click="saveCarrier">{{t('carrier.operations.edit')}}<i
                 class="ri-add-line ms-2"></i></button>
           </div>
         </div>

@@ -50,7 +50,11 @@ const selectOptions = reactive({
 })
 
 // ------------------ 提交保存 ----------------------
+const { bizErrorMessage } = useBizError()
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const saveLocation = async () => {
+  if (submitting.value) return
   errors.value = {
       code: !itemData.value.code ? t('location.validation.code-required') : null,
       location_type: !itemData.value.location_type ? t('location.validation.location-type-required') : null,
@@ -60,16 +64,25 @@ const saveLocation = async () => {
   if (Object.values(errors.value).some(v => v)) return
 
 
+  submitting.value = true
   await httpRequest(`/api/warehouse/location/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: itemData.value,
+    body: {
+      ...itemData.value,
+      // 尺寸 / 容量：填了又清空是空串，转 null；其余转数字
+      width: toNullableNumber(itemData.value.width),
+      depth: toNullableNumber(itemData.value.depth),
+      height: toNullableNumber(itemData.value.height),
+      capacity: toNullableNumber(itemData.value.capacity),
+    },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
-      await router.push('/location/')          
+      await router.push('/location/')
     },
     onError: (error) => {
-      showToast(t('action-results.failed'), 'error')
+      submitting.value = false
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 }

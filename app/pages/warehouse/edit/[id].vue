@@ -8,7 +8,7 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n()
-const { bizErrorMessage, hasBizMessage } = useBizError()
+const { bizErrorMessage } = useBizError()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -89,7 +89,10 @@ watch(
 
 
 // ------------------ 提交保存 ----------------------
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const saveWarehouse = async () => {
+  if (submitting.value) return
   errors.value = {
     name: !itemData.value.name ? t('common.validation.name-required') : null,
   }
@@ -97,6 +100,7 @@ const saveWarehouse = async () => {
   if (Object.values(errors.value).some(v => v)) return
 
 
+  submitting.value = true
   await httpRequest(`/api/warehouse/warehouse/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -109,7 +113,8 @@ const saveWarehouse = async () => {
     },
     onError: (error) => {
       // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案
-      showToast(hasBizMessage(error) ? bizErrorMessage(error) : t('action-results.failed'), 'error')
+      submitting.value = false
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 }
@@ -240,7 +245,7 @@ onMounted(async() => {
             </div>
           </div>
           <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
-            <button class="btn btn-primary-light m-1" @click="saveWarehouse">{{t('warehouse.operations.edit')}}<i
+            <button class="btn btn-primary-light m-1" :disabled="submitting" @click="saveWarehouse">{{t('warehouse.operations.edit')}}<i
                 class="ri-add-line ms-2"></i></button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { isValid, parseISO, formatISO } from 'date-fns';
+import { isValid, parseISO, formatISO, format } from 'date-fns';
 // /​**​
 //  * 安全格式化日期到YYYY-MM-DD格式
 //  * @param inputDate 输入日期（支持字符串、Date对象或null/undefined）
@@ -76,41 +76,33 @@ export function safeFormatDateTime(
   }
 }
 
+/**
+ * 日期时间 → 不带时区的本地时间 YYYY-MM-DDTHH:mm:ss（后端按本地时间存，如签收时间）。
+ * Date 对象按浏览器本地时间格式化（不能用 toISOString()：那是 UTC，东京 10:00 会变成 01:00）；
+ * 不带时区的字符串原样当本地时间；带 Z / 偏移的字符串换算成本地时间。
+ */
 export function formatDateTimeWithoutTimezone(
   inputDate: string | Date | null | undefined
 ): string | null {
   if (!inputDate) return null;
 
   try {
-    // 统一转换为字符串处理
-    let isoString: string;
-    
+    let parsedDate: Date;
+
     if (typeof inputDate === 'string') {
-      // 验证字符串有效性
-      const parsedDate = parseISO(inputDate);
-      if (!isValid(parsedDate)) return null;
-      isoString = inputDate;
+      // 验证字符串有效性（parseISO 对不带时区的字符串按本地时间解析）
+      parsedDate = parseISO(inputDate);
     } else if (inputDate instanceof Date) {
-      // 验证Date对象有效性
-      if (!isValid(inputDate)) return null;
-      isoString = inputDate.toISOString();
+      parsedDate = inputDate;
     } else {
       console.error('Unexpected date type:', typeof inputDate);
       return null;
     }
 
-    // 使用正则表达式提取日期和时间部分
-    const datetimeMatch = isoString.match(
-      /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/
-    );
+    if (!isValid(parsedDate)) return null;
 
-    if (!datetimeMatch) {
-      console.error('Invalid datetime format:', isoString);
-      return null;
-    }
-
-    // 拼接为最终格式
-    return `${datetimeMatch[1]}T${datetimeMatch[2]}`;
+    // 按本地时间输出，不带时区
+    return format(parsedDate, "yyyy-MM-dd'T'HH:mm:ss");
   } catch (error) {
     console.error('Datetime formatting failed:', error);
     return null;

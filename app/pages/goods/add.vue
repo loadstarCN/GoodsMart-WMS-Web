@@ -12,7 +12,7 @@ import { categoriesOptions, currenciesOptions, unitsOptions,tagsOptions } from '
 
 // 获取国际化方法
 const { t } = useI18n()
-const { bizErrorMessage, hasBizMessage } = useBizError()
+const { bizErrorMessage } = useBizError()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -77,7 +77,10 @@ const imageUrl = computed({
 })
 
 // ------------------ 提交保存 ----------------------
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const addProduct = async () => {
+  if (submitting.value) return
   errors.value = {
     name: !itemData.value.name ? t('common.validation.name-required') : null,
     code: !itemData.value.code ? t('goods.validation.code-required') : null
@@ -88,6 +91,7 @@ const addProduct = async () => {
   // itemData.tags从数组变成以逗号分隔的字符串
   itemData.value.tags = convert_tags_to_string(itemData.value.tags)
 
+  submitting.value = true
   await httpRequest('/api/warehouse/goods/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -98,7 +102,8 @@ const addProduct = async () => {
       await router.push('/goods/')          
     },
     onError: (error) => {
-      showToast(hasBizMessage(error) ? bizErrorMessage(error) : t('action-results.op-failed',{operation:t('goods.operations.add'),entity:itemData.value.name}), 'error')
+      submitting.value = false
+      showToast(bizErrorMessage(error), 'error')
       itemData.value.tags = convert_tags_to_array(itemData.value.tags)
     }
   })
@@ -281,7 +286,7 @@ const addProduct = async () => {
             </div>
           </div>
           <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
-            <button class="btn btn-primary-light m-1" @click="addProduct">{{ t('goods.operations.add') }}<i
+            <button class="btn btn-primary-light m-1" :disabled="submitting" @click="addProduct">{{ t('goods.operations.add') }}<i
                 class="ri-add-line ms-2"></i></button>
 
           </div>

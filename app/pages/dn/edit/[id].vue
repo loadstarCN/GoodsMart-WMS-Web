@@ -212,7 +212,10 @@ onMounted(async() => {
 
 
 // ------------------ 提交保存 ----------------------
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const editDN = async () => {
+  if (submitting.value) return
   errors.value = {
     dn_type: !dnItem.value.dn_type ? t('common.validation.type-required') : null,
     wareshouse: !dnItem.value.warehouse_id ? t('common.validation.warehouse-required') : null,
@@ -235,6 +238,7 @@ const editDN = async () => {
     dnItem.value.expected_shipping_date = safeFormatDate(dnItem.value.expected_shipping_date);
   }
 
+  submitting.value = true
   await httpRequest(`/api/warehouse/dn/${dnId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -244,6 +248,7 @@ const editDN = async () => {
       await router.push('/dn/')          
     },
     onError: (error) => {
+      submitting.value = false
       // 库存不足（16032）等按业务码显示原因
       showToast(bizErrorMessage(error), 'error')
     }
@@ -599,9 +604,9 @@ const saveRemark = () => {
           </div>
 
           <div class="p-3 d-grid">
-            <NuxtLink to="javascript:void(0);" class="btn btn-primary btn-wave mb-2" @click="editDN()">
-              {{t('dn.operations.edit')}}
-            </NuxtLink>
+            <button type="button" class="btn btn-primary btn-wave mb-2" :disabled="submitting" @click="editDN()">
+              <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>{{t('dn.operations.edit')}}
+            </button>
 
             <NuxtLink to="/dn" class="btn btn-light btn-wave">
               {{t('dn.operations.back-to-list')}}

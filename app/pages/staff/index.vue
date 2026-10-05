@@ -7,6 +7,7 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -62,7 +63,7 @@ const deleteItem = async (item_id:Number) => {
                 await staffStore.getCurrentStaffInfo();
             },
             onError: (error) => {
-                showToast(error.message, 'error')
+                showToast(bizErrorMessage(error), 'error')
             }
         })
     }
@@ -147,7 +148,7 @@ const activeTab = computed(() => {
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <div class="d-flex flex-wrap gap-2" >
-                            <NuxtLink to="/staff/add" class="btn btn-primary btn-wave"><i class="ri-add-line me-1 fw-semibold align-middle"></i>{{ t('staff.operations.add') }}</NuxtLink>
+                            <NuxtLink v-if="staffStore.hasPermission('staff_edit')" to="/staff/add" class="btn btn-primary btn-wave"><i class="ri-add-line me-1 fw-semibold align-middle"></i>{{ t('staff.operations.add') }}</NuxtLink>
                         </div>
                         <div class="d-flex" role="search">
                             <input class="form-control me-2" type="search" :placeholder="t('common.search-placeholder')" :aria-label="t('common.search')" v-model="keyword" style="width: auto;">
@@ -197,11 +198,11 @@ const activeTab = computed(() => {
                                     <td class="d-none d-xxl-table-cell">{{ staff?.creator?.user_name }}</td>
                                     <td>
                                         <div class="hstack gap-2 fs-15">                                            
-                                            <NuxtLink :to="`/staff/edit/${staff?.id}`" class="btn btn-icon btn-sm btn-success-light product-btn"><i class="ri-edit-line" ></i></NuxtLink>
+                                            <NuxtLink v-if="staffStore.hasPermission('staff_edit')" :to="`/staff/edit/${staff?.id}`" class="btn btn-icon btn-sm btn-success-light product-btn"><i class="ri-edit-line" ></i></NuxtLink>
                                            
                                             <NuxtLink href="javascript:void(0);" @click="inactiveItem(staff.id)" class="btn btn-icon btn-sm btn-warning-light product-btn" v-if="activeTab === 'active'"><i class="ri-eye-off-line"></i></NuxtLink>
                                             <NuxtLink href="javascript:void(0);" @click="activeItem(staff.id)" class="btn btn-icon btn-sm btn-warning-light product-btn" v-else><i class="ri-eye-line"></i></NuxtLink>
-                                            <NuxtLink href="javascript:void(0);" @click="deleteItem(staff.id)" class="btn btn-icon btn-sm btn-danger-light product-btn"><i class="ri-delete-bin-line"></i></NuxtLink>
+                                            <NuxtLink v-if="staffStore.hasPermission('staff_delete')" href="javascript:void(0);" @click="deleteItem(staff.id)" class="btn btn-icon btn-sm btn-danger-light product-btn"><i class="ri-delete-bin-line"></i></NuxtLink>
                                         </div>
                                     </td>
                                 </tr>

@@ -15,6 +15,8 @@ const dataToPass = computed(() => ({
 }));
 
 const router = useRouter();
+// 按权限显示新建 / 编辑 / 删除（鉴权仍以后端为准）
+const staffStore = useStaffStore();
 let route = useRoute();
 let loading = ref(true);
 let keyword = ref("");
@@ -58,7 +60,7 @@ const deleteItem = async (item_id:Number) => {
                 await fetchData();                 
             },
             onError: (error) => {
-                showToast(error.message, 'error')
+                showToast(bizErrorMessage(error), 'error')
             }
         })
     }
@@ -253,7 +255,7 @@ onMounted(async() => {
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <div class="d-flex flex-wrap gap-2">
-                            <NuxtLink to="/asn/add" class="btn btn-primary btn-wave"><i
+                            <NuxtLink v-if="staffStore.hasPermission('asn_edit')" to="/asn/add" class="btn btn-primary btn-wave"><i
                                     class="ri-add-line me-1 fw-semibold align-middle"></i>{{t('asn.operations.add')}}</NuxtLink>
                         </div>
                         <div class="d-flex" role="search">
@@ -327,16 +329,16 @@ onMounted(async() => {
                                     <td class="d-none d-xxl-table-cell">{{ asn?.creator?.user_name }}</td>
                                     <td>
                                         <div class="hstack gap-2 fs-15">
-                                            <NuxtLink :to="`/asn/edit/${asn?.id}`" class="btn btn-icon btn-sm btn-success-light product-btn" v-if="asn.status==='pending'"><i class="ri-edit-line"></i></NuxtLink>
-                                            <NuxtLink  href="javascript:void(0);" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="asn.status==='pending'" :title="t('asn.operations.receive')" @click="receiveItem(asn.id)"><i  class="ri-checkbox-line"></i></NuxtLink>
+                                            <NuxtLink :to="`/asn/edit/${asn?.id}`" class="btn btn-icon btn-sm btn-success-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_edit')"><i class="ri-edit-line"></i></NuxtLink>
+                                            <NuxtLink  href="javascript:void(0);" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_edit')" :title="t('asn.operations.receive')" @click="receiveItem(asn.id)"><i  class="ri-checkbox-line"></i></NuxtLink>
                                             <NuxtLink :to="`/sorting/?asn_id=${asn.id}`" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="asn.status==='received'" :title="t('asn.operations.sorting')"><i class="ri-list-check-3"></i></NuxtLink>
-                                            <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="asn.status==='received'"
+                                            <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(asn.status==='received') && staffStore.hasPermission('asn_edit')"
                                                 :title="t('asn.operations.cancel')" :disabled="cancelingId !== null" @click="cancelItem(asn.id)">
                                                 <span v-if="cancelingId === asn.id" class="spinner-border spinner-border-sm"></span>
                                                 <i v-else class="ri-arrow-go-back-line"></i>
                                             </button>
-                                            <NuxtLink href="javascript:void(0);" @click="closeItem(asn.id)" class="btn btn-icon btn-sm btn-info-light product-btn" v-if="asn.status==='pending'" :title="t('button.close')"><i class="ri-close-line"></i></NuxtLink>
-                                            <NuxtLink href="javascript:void(0);" @click="deleteItem(asn.id)" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="asn.status==='pending'"><i class="ri-delete-bin-line"></i></NuxtLink>
+                                            <NuxtLink href="javascript:void(0);" @click="closeItem(asn.id)" class="btn btn-icon btn-sm btn-info-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_edit')" :title="t('button.close')"><i class="ri-close-line"></i></NuxtLink>
+                                            <NuxtLink href="javascript:void(0);" @click="deleteItem(asn.id)" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_delete')"><i class="ri-delete-bin-line"></i></NuxtLink>
                                         </div>
                                     </td>
                                 </tr>

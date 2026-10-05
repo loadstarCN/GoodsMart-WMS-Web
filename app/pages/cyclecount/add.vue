@@ -95,7 +95,11 @@ onMounted(async () => {
 
 
 // ------------------ 提交保存 ----------------------
+const { bizErrorMessage } = useBizError()
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const addCycleCount = async () => {
+  if (submitting.value) return
   errors.value = {
     wareshouse: !taskItem.value.warehouse_id ? t('common.validation.warehouse-required') : null,
     
@@ -108,16 +112,19 @@ const addCycleCount = async () => {
     taskItem.value.scheduled_date = safeFormatDateTime(taskItem.value.scheduled_date);
   }
 
+  submitting.value = true
   await httpRequest('/api/warehouse/cyclecount/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    // 用表单里选的仓库作为请求的仓库（页头选「全部仓库」时也能正确建单）
+    headers: { 'Content-Type': 'application/json', ...warehouseHeaders(taskItem.value.warehouse_id) },
     body: taskItem.value,
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
-      await router.push('/cyclecount/')          
+      await router.push('/cyclecount/')
     },
     onError: (error) => {
-      showToast(t('action-results.failed'), 'error')
+      submitting.value = false
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 
@@ -130,7 +137,14 @@ const addCycleCount = async () => {
 const { state: goodsSearch, fetchGoodsLocation, resetSelection,resetState } = useUseGoodsLocationSearch();
 const handleSearch = () => {
   if (goodsSearch.code.trim()) {
-    fetchGoodsLocation(selectWareshouse.value.id);
+    // 库位库存按仓库查：还没选仓库时先提示选仓库（否则 selectWareshouse.value 为 null 直接报错）
+    const warehouse: any = selectWareshouse.value;
+    if (!warehouse?.id) {
+      errors.value.wareshouse = t('common.validation.warehouse-required');
+      showToast(t('common.validation.warehouse-required'), 'error');
+      return;
+    }
+    fetchGoodsLocation(warehouse.id);
     resetSelection();
   }
 }
@@ -288,9 +302,9 @@ const deleteItem = (detail:any) => {
           </div>
 
           <div class="p-3 d-grid">
-            <NuxtLink to="javascript:void(0);" class="btn btn-primary btn-wave mb-2" @click="addCycleCount()">
-              {{t('cyclecount.operations.add')}}
-            </NuxtLink>
+            <button type="button" class="btn btn-primary btn-wave mb-2" :disabled="submitting" @click="addCycleCount()">
+              <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>{{t('cyclecount.operations.add')}}
+            </button>
 
             <NuxtLink to="/cyclecount" class="btn btn-light btn-wave">
               {{t('cyclecount.operations.back-to-list')}}

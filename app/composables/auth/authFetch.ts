@@ -6,7 +6,8 @@ export const authFetch = async (input: RequestInfo, init?: RequestInit) => {
 
   // 预处理请求头
   const headers = new Headers(init?.headers)
-  if (warehouse_id.value) headers.set('X-WAREHOUSE-ID', warehouse_id.value)
+  // 调用方显式指定了仓库（如新建表单里选的仓库）时以它为准，否则用页头当前仓库
+  if (warehouse_id.value && !headers.has('X-WAREHOUSE-ID')) headers.set('X-WAREHOUSE-ID', warehouse_id.value)
 
   // Token有效性检查
   if (!token.value || !isTokenValid(token.value)) {

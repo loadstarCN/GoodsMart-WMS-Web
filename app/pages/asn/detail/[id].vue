@@ -11,6 +11,8 @@ const asnId = route.params.id;
 const itemData = ref(null);
 const itemSortingData = ref(null);
 const { t } = useI18n();
+// 按权限显示操作按钮（鉴权仍以后端为准）
+const staffStore = useStaffStore();
 const { bizErrorMessage } = useBizError();
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -271,18 +273,18 @@ function getEarliestStartedItem(itemSortingData: any) {
                                 <NuxtLink class="btn btn-primary btn-wave btn-sm" :to="`/asn/print/${asnId}`"><i
                                         class="ri-printer-line me-1 align-middle"></i>{{t('button.print')}}</NuxtLink>
                                 <NuxtLink :to="`/asn/edit/${itemData.id}`" class="btn btn-secondary btn-wave btn-sm"
-                                    v-if="itemData?.status =='pending'"><i
+                                    v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"><i
                                         class="ri-edit-line me-1 align-middle"></i>{{t('button.edit')}}</NuxtLink>
-                                <button class="btn btn-warning btn-wave btn-sm" v-if="itemData?.status =='pending'"
+                                <button class="btn btn-warning btn-wave btn-sm" v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"
                                     title="Received" @click="receivedASN()"><i
                                         class="ri-checkbox-line me-1 align-middle"></i>{{t('asn.operations.receive')}}</button>
                                 <NuxtLink :to="`/sorting/?asn_id=${asnId}`" class="btn btn-warning btn-wave btn-sm"
                                     v-if="itemData?.status =='received'" title="Go Sorting"><i
                                         class="ri-checkbox-line me-1 align-middle"></i>{{t('asn.operations.sorting')}}</NuxtLink>
-                                <button class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='pending'"
+                                <button class="btn btn-danger btn-wave btn-sm" v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"
                                     :title="t('button.close')" @click="closeASN()"><i
                                         class="ri-close-line me-1 align-middle"></i>{{ t('button.close') }}</button>
-                                <button type="button" class="btn btn-danger btn-wave btn-sm" v-if="itemData?.status =='received'"
+                                <button type="button" class="btn btn-danger btn-wave btn-sm" v-if="(itemData?.status =='received') && staffStore.hasPermission('asn_edit')"
                                     :title="t('asn.operations.cancel')" :disabled="canceling" @click="cancelASN()">
                                     <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
                                     <i v-else class="ri-arrow-go-back-line me-1 align-middle"></i>{{ t('asn.operations.cancel') }}</button>

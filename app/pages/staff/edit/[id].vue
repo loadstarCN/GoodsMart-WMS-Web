@@ -57,7 +57,11 @@ const selectOptions = reactive({
 
 
 // ------------------ 提交保存 ----------------------
+const { bizErrorMessage } = useBizError()
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const saveStaff = async () => {
+  if (submitting.value) return
   var password_min_length = 6;
   errors.value = {
     user_name: !itemData.value.user_name ? t('common.validation.name-required') : null,
@@ -87,6 +91,7 @@ const saveStaff = async () => {
   // 检查仓库是否选择
   itemData.value.warehouse_ids = itemData.value.warehouses.map(w => w.id)
 
+  submitting.value = true
   await httpRequest(`/api/warehouse/staff/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -96,7 +101,8 @@ const saveStaff = async () => {
       await router.push('/staff/')          
     },
     onError: (error) => {
-      showToast(t('action-results.failed'), 'error')
+      submitting.value = false
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 }
@@ -283,7 +289,7 @@ onMounted(async () => {
             </div>
           </div>
           <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
-            <button class="btn btn-primary-light m-1" @click="saveStaff">{{t('staff.operations.edit')}}<i
+            <button class="btn btn-primary-light m-1" :disabled="submitting" @click="saveStaff">{{t('staff.operations.edit')}}<i
                 class="ri-add-line ms-2"></i></button>
 
           </div>

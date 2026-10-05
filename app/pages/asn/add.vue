@@ -179,7 +179,11 @@ onMounted(async () => {
 });
 
 // ------------------ 提交保存 ----------------------
+const { bizErrorMessage } = useBizError()
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const addASN = async () => {
+  if (submitting.value) return
   errors.value = {
     asn_type: !asnItem.value.asn_type ? t('common.validation.type-required') : null,
     wareshouse: !asnItem.value.warehouse_id ? t('common.validation.warehouse-required') : null,
@@ -193,16 +197,27 @@ const addASN = async () => {
     asnItem.value.expected_arrival_date = safeFormatDate(asnItem.value.expected_arrival_date);
   }
 
+  submitting.value = true
   await httpRequest('/api/warehouse/asn/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: asnItem.value,
+    // 用表单里选的仓库作为请求的仓库（页头选「全部仓库」时也能正确建单）
+    headers: { 'Content-Type': 'application/json', ...warehouseHeaders(asnItem.value.warehouse_id) },
+    body: {
+      ...asnItem.value,
+      // 重量 / 体积：填了又清空是空串，转 null；其余转数字
+      details: asnItem.value.details.map((detail: any) => ({
+        ...detail,
+        weight: toNullableNumber(detail.weight),
+        volume: toNullableNumber(detail.volume),
+      })),
+    },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
-      await router.push('/asn/')          
+      await router.push('/asn/')
     },
     onError: (error) => {
-      showToast(t('action-results.failed'), 'error')
+      submitting.value = false
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 
@@ -454,9 +469,9 @@ const saveRemark = () => {
           </div>
 
           <div class="p-3 d-grid">
-            <NuxtLink to="javascript:void(0);" class="btn btn-primary btn-wave mb-2" @click="addASN()">
-              {{t('asn.operations.add')}}
-            </NuxtLink>
+            <button type="button" class="btn btn-primary btn-wave mb-2" :disabled="submitting" @click="addASN()">
+              <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>{{t('asn.operations.add')}}
+            </button>
 
             <NuxtLink to="/asn" class="btn btn-light btn-wave">
               {{t('asn.operations.back-to-list')}}

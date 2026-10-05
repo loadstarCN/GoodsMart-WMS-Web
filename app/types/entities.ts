@@ -25,6 +25,11 @@ export interface Staff {
     company: CompanySimple;
     department: DepartmentSimple;
     warehouses: WarehouseSimple[];
+
+    // /staff/current 附带：启用中角色的权限名（去重、排序）、是否公司管理员（启用中的角色含 company_admin）。
+    // 只用于前端显示菜单 / 按钮，鉴权仍以后端为准；旧缓存 / 旧后端没有这两个字段
+    permissions?: string[];
+    is_company_admin?: boolean;
 }
 
 // 嵌套接口定义

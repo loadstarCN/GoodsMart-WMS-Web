@@ -11,6 +11,11 @@ const taskId = route.params.id;
 const itemData = ref(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+// 按权限显示审批 / 完成 / 取消按钮（鉴权仍以后端为准）
+const staffStore = useStaffStore();
+const { bizErrorMessage } = useBizError();
+/** 已取消：取消后 status 保持原值，is_active=false；之后一切操作 409 16111 */
+const cancelled = computed(() => itemData.value?.is_active === false);
 // 计算属性转换
 const dataToPass = computed(() => ({
   current: t('nav.adjustment'),
@@ -44,7 +49,7 @@ const approveTask = async () => {
             showToast(t('action-results.task-approved'), 'success')
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            showToast(bizErrorMessage(error), 'error')
         }
     })
     return data;   
@@ -59,10 +64,43 @@ const completeTask = async () => {
             showToast(t('action-results.task-complete'), 'success')
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            // 16113：建单后库位库存有变动，只能取消后按当前库存重新建单；16111：已被取消
+            if (error.code === 16113 || error.code === 16111) {
+                showAlert(t('button.complete'), bizErrorMessage(error), 'warning');
+                fetchData();
+                return;
+            }
+            showToast(bizErrorMessage(error), 'error')
         }
     })
     return data;   
+};
+
+// ------------------ 取消调整单（待审批 / 已审批；需要审批权限）----------------------
+const canceling = ref(false);
+const cancelAdjustment = async () => {
+    if (canceling.value) return;
+    const confirmed = await showConfirm(
+        t('adjustment.tips.cancel-confirm-title'),
+        t('adjustment.tips.cancel-confirm', { id: taskId }),
+        t('adjustment.operations.cancel'),
+        t('button.dont-cancel'),
+    );
+    if (!confirmed) return;
+    canceling.value = true;
+    await httpRequest(`/api/warehouse/adjustment/${taskId}/cancel/`, {
+        method: 'PUT',
+        onSuccess: (data) => {
+            itemData.value = data;
+            showToast(t('action-results.success'), 'success');
+        },
+        onError: (error) => {
+            // 16111 已取消 / 16112 状态不能取消：按最新状态显示
+            showToast(bizErrorMessage(error), 'error');
+            if (error.status === 409) fetchData();
+        },
+    });
+    canceling.value = false;
 };
 
 function completeFn(item: any) {
@@ -166,6 +204,7 @@ onMounted(async() => {
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
                   {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}
                 </span>
+                <span class="badge bg-secondary ms-1" v-if="cancelled">{{ t('common.status.cancelled') }}</span>
 
               </div>
             </div>
@@ -253,12 +292,20 @@ onMounted(async() => {
                 <!-- <NuxtLink class="btn btn-primary btn-wave btn-sm" :to="`/adjustment/print/${taskId}`"><i
                     class="ri-printer-line me-1 align-middle"></i>{{t('button.print')}}</NuxtLink> -->
 
-                <NuxtLink class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status==='pending'"
+                <NuxtLink class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status==='pending' && !cancelled && staffStore.hasPermission('adjustment_approve')"
                   title="Approve" @click="approveTask()"><i class="ri-checkbox-line me-1 align-middle"></i>{{t('button.approved')}}
                 </NuxtLink>
 
-                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='approved'" :title="t('button.complete')"
+                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='approved' && !cancelled && staffStore.hasPermission('adjustment_edit')" :title="t('button.complete')"
                   @click="completeFn()" ><i class="ri-save-line me-1 align-middle"></i>{{t('button.complete')}}
+                </button>
+
+                <!-- 取消：待审批 / 已审批且未取消，需要审批权限（与审批同级） -->
+                <button type="button" class="btn btn-danger btn-wave btn-sm"
+                  v-if="(itemData?.status === 'pending' || itemData?.status === 'approved') && !cancelled && staffStore.hasPermission('adjustment_approve')"
+                  :title="t('adjustment.operations.cancel')" :disabled="canceling" @click="cancelAdjustment()">
+                  <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
+                  <i v-else class="ri-arrow-go-back-line me-1 align-middle"></i>{{ t('adjustment.operations.cancel') }}
                 </button>
 
               </div>

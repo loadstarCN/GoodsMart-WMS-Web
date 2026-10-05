@@ -4,12 +4,20 @@
  * GET  /warehouse/dn/<dn_id>/carrier-shipment          状态（是否启用、能否建单、blockers、最近一张运单）
  * POST /warehouse/dn/<dn_id>/carrier-shipment          建单（body.label_format）→ 201 状态 + alerts；
  *                                                      运单号存到配送任务，CI / PL 自动带运单号重新签发
- * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   取消运单（DN 未发货时）→ 200 状态
- * POST /warehouse/dn/<dn_id>/carrier-shipment/dismiss  body {confirm: true}：操作员已在 FedEx Ship Manager 核对
+ * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   body {tracking_number}：取消运单（DN 未发货时）→ 200 状态
+ * POST /warehouse/dn/<dn_id>/carrier-shipment/dismiss  body {confirm: true, unresolved_id}：操作员已在 FedEx Ship Manager 核对
  *                                                      「FedEx 上没有这张运单或已手工取消」后，解除结果不明的运单 → 200 状态
+ *   取消 / 解除都带上确认框里展示的目标（运单号 / 结果不明记录的 id）：与服务端当前记录不符 → 409 16093（details.expected / actual），
+ *   免得解除 / 取消的是别人刚建的、没人核对过的另一张运单
  * 失败：409 16072（details.blockers）/ 502 16073（FedEx 报错，details.errors / transaction_id / action）/
  *       504 16074（超时，details.maybe_processed / unresolved）/ 409 16075（没有有效运单 / 没有可解除的运单）/
- *       400 16077（label_format 不合法）/ 409 16079（有结果不明的运单，details.unresolved）
+ *       400 16077（label_format 不合法）/ 409 16079（有结果不明的运单，details.unresolved）/ 409 16093（目标已变）
+ * 运单记录可能处于 cancelling：reason cancel_in_progress = 正在取消（按「进行中」处理，定时刷新）；
+ *   其它 reason（timeout / save_failed / interrupted / stale …）= 取消结果不明（can_dismiss / can_cancel：重试取消或核对后确认作废）
+ * can_cancel：可以（重试）取消——有效运单、取消结果不明的运单、带运单号的结果不明记录（如 compensation_failed）
+ * 取消结果不明：502 16073 / 504 16074（details.maybe_processed = true、unresolved）→ 重新读取，提示核对 / 重试
+ * 建单后 WMS 保存失败：502 16095（details.tracking_number / compensation{attempted, cancelled, …} / unresolved）
+ * 确认作废带运单号的记录：先请 FedEx 取消，FedEx 没确认 → 409 16094（details.tracking_number）
  * 结果不明（unresolved）：FedEx 超时、补偿失败、响应异常等，运单可能已在 FedEx 生成；有它时 can_create = false，
  * 要先到 FedEx Ship Manager 核对（有就取消），再在这里解除（can_dismiss）后才能重新建单。
  * 申告价额高于已打包货值时后端自动压到货值：warnings 里 DECLARED_VALUE_CAPPED（GET 预告 / POST 实际），
@@ -32,7 +40,7 @@ export interface CarrierShipment {
   id?: number
   carrier?: string | null
   tracking_number: string | null
-  /** active：有效；cancelled：已取消 */
+  /** active：有效；cancelling：取消中；cancelled：已取消 */
   status: string
   service_type: string | null
   net_charge: number | string | null
@@ -87,7 +95,7 @@ export interface CarrierWarning {
 
 /**
  * 结果不明的自动运单（FedEx 超时 / 补偿失败 / 响应异常等）。
- * pending = 建单进行中（别人或另一个画面正在建）；unknown = 已结束但不知道 FedEx 上有没有生成
+ * pending = 建单进行中（别人或另一个画面正在建）；cancelling = 取消进行中；unknown = 已结束但不知道 FedEx 上有没有生成
  */
 export interface CarrierUnresolvedShipment {
   id: number | null
@@ -124,6 +132,8 @@ export interface CarrierShipmentStatus {
   unresolved?: CarrierUnresolvedShipment | null
   /** 可以解除结果不明的运单（操作员核对 FedEx 后） */
   can_dismiss?: boolean
+  /** 可以（重试）取消运单；旧后端没有该字段（undefined）时按「有有效运单」判断 */
+  can_cancel?: boolean
 }
 
 /** 建单成功时 FedEx 返回的提示（如 CUSTOMVALUE.GREATER.THAN.DECLAREDVALUE） */
@@ -151,6 +161,12 @@ export const CARRIER_BIZ_CODES = {
   UNRESOLVED: 16079,
   /** 409：CI 上已印的运单号与完成发货时填的不同（details.document_tracking_number / tracking_number） */
   DOCUMENT_TRACKING_MISMATCH: 16080,
+  /** 409：取消 / 解除的目标与服务端当前记录不符（details.expected / actual） */
+  TARGET_MISMATCH: 16093,
+  /** 409：确认作废带运单号的记录时 FedEx 没确认已取消（details.tracking_number） */
+  DISMISS_NOT_CONFIRMED: 16094,
+  /** 502：FedEx 已建运单但 WMS 保存失败（details.compensation / unresolved） */
+  SAVE_FAILED: 16095,
 } as const
 
 /** 承运商返回的错误原文（FedEx errors[].code / message） */
@@ -214,12 +230,40 @@ export const normalizeUnresolved = (data: any): CarrierUnresolvedShipment | null
 export const unresolvedFromError = (error: HttpRequestError | null | undefined): CarrierUnresolvedShipment | null =>
   normalizeUnresolved(error?.details?.unresolved)
 
+/** 记录状态是「进行中」：建单中（pending）/ 取消中（cancelling） */
+export const isInProgressRecordStatus = (value: string | null | undefined): boolean =>
+  value === 'pending' || value === 'cancelling'
+
 /**
- * 结果不明的运单是否「进行中」：pending 且后端不允许解除（别人正在建，等它结束）。
- * pending 但后端允许解除（如卡住太久 stale）按结果不明处理，否则会一直卡着没法操作。
+ * 结果不明的运单是否「进行中」：pending / cancelling 且后端不允许解除（别人正在建 / 取消，等它结束）。
+ * 进行中但后端允许解除（如卡住太久 stale）按结果不明处理，否则会一直卡着没法操作。
  */
 export const isUnresolvedInProgress = (status: CarrierShipmentStatus | null | undefined): boolean =>
-  !!status?.unresolved && status.unresolved.status === 'pending' && !status.can_dismiss
+  !!status?.unresolved && isInProgressRecordStatus(status.unresolved.status) && !status.can_dismiss
+
+/** 运单正在取消（cancelling）：按进行中处理，不能再取消 / 建单 */
+export const isCancellingShipment = (shipment: CarrierShipment | null | undefined): shipment is CarrierShipment =>
+  !!shipment && shipment.status === 'cancelling'
+
+/**
+ * 单证概要用的运单状态：
+ * - unresolved：有结果不明的运单（FedEx 上可能已生成）
+ * - cancel-unresolved：运单取消结果不明（cancelling 且没有在进行，FedEx 上可能还有效）
+ * - creating / cancelling：建单中 / 取消中（结果不明记录进行中，或运单本身在取消中）
+ * - active：有效运单；none：没有
+ */
+export type CarrierSummaryState = 'unresolved' | 'cancel-unresolved' | 'creating' | 'cancelling' | 'active' | 'none'
+export const carrierSummaryState = (status: CarrierShipmentStatus | null | undefined): CarrierSummaryState => {
+  if (!status) return 'none'
+  const unresolved = status.unresolved
+  if (unresolved) {
+    if (isUnresolvedInProgress(status)) return unresolved.status === 'cancelling' ? 'cancelling' : 'creating'
+    return unresolved.status === 'cancelling' ? 'cancel-unresolved' : 'unresolved'
+  }
+  if (isCancellingShipment(status.shipment)) return 'cancelling'
+  if (isActiveShipment(status.shipment)) return 'active'
+  return 'none'
+}
 
 /**
  * 建单失败后要立刻重新读取状态的情况：超时 / 有结果不明运单 / 网关错误 / 网络断开
@@ -257,6 +301,7 @@ export const normalizeCarrierStatus = (data: any): CarrierShipmentStatus | null 
     warnings: extractCarrierWarnings(data),
     unresolved: normalizeUnresolved(data.unresolved),
     can_dismiss: !!data.can_dismiss,
+    can_cancel: data.can_cancel === undefined || data.can_cancel === null ? undefined : !!data.can_cancel,
   }
 }
 

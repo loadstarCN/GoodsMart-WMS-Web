@@ -154,8 +154,17 @@ onMounted(async () => {
       }
     }
 
-    // 用最新的仓库列表初始化下拉，并校验当前仓库（cookie）：不在列表里（已停用 / 无权访问）就清掉
+    // 用最新的仓库列表初始化下拉，并校验当前仓库（cookie）：不在列表里（已停用 / 无权访问）就清掉；
+    // 非公司管理员没有当前仓库时自动选第一个可访问的仓库
+    const warehouseBefore = warehouseStore.currentWarehouse?.id ?? useCookie('warehouse_id').value ?? null
     warehouseStore.syncWarehouses()
+    // 自动选了仓库（原来没选，或原来的仓库已不可用）：本页已发出的请求没带 / 带错了 X-WAREHOUSE-ID
+    //（非管理员会 14003），重新加载一次。重新加载后 cookie 已是有效仓库，不会再变，不会循环
+    const warehouseAfter = warehouseStore.currentWarehouse?.id ?? null
+    if (warehouseAfter !== null && String(warehouseAfter) !== String(warehouseBefore ?? '')) {
+      location.reload()
+      return
+    }
 
 
     // locale.value = currentLang.value    
@@ -297,7 +306,7 @@ onBeforeUnmount(() => {
         <!-- End::header-element -->
         <!-- Start::header-element -->
         <div class="pt-1" v-if="userStore.userInfo?.type !== 'user'">
-          <WarehouseSelector :warehouses="warehouseStore.warehouses"
+          <WarehouseSelector :warehouses="warehouseStore.warehouses" :allow-all="warehouseStore.canSelectAll"
             :selected-label="warehouseStore.currentWarehouseLabel" @select="selectWarehouse" />
         </div>
         <!-- End::header-element -->

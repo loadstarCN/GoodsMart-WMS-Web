@@ -6,6 +6,7 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -57,7 +58,7 @@ async function search() {
 //                 await fetchData();                
 //             },
 //             onError: (error) => {
-//                 showToast(error.message, 'error')
+//                 showToast(bizErrorMessage(error), 'error')
 //             }
 //         })
 //     }

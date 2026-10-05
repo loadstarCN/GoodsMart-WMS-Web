@@ -16,6 +16,21 @@ export const useStaffStore = defineStore('staff', {
     // 本次打开页面后是否已从后端刷新过（不持久化；页头据此在每次打开页面时刷新一次）
     refreshed: false,
   }),
+  getters: {
+    /** 是否公司管理员：以后端按启用中角色算出的 is_company_admin 为准（不看 roles，停用的角色不算） */
+    isCompanyAdmin: (state): boolean => state.staffInfo?.is_company_admin === true,
+    /**
+     * 是否有任一所需权限（用于显示菜单 / 按钮，鉴权仍以后端为准）：
+     * - all_access / company_all_access 视为拥有全部权限；
+     * - 没有员工信息（平台用户）或员工信息里还没有 permissions（旧缓存，刷新前）时不按权限隐藏
+     */
+    hasPermission: (state) => (...required: string[]): boolean => {
+      const permissions = state.staffInfo?.permissions;
+      if (!Array.isArray(permissions)) return true;
+      if (permissions.includes('all_access') || permissions.includes('company_all_access')) return true;
+      return required.length === 0 || required.some((p) => permissions.includes(p));
+    },
+  },
   actions: {
 
     // 获取当前Staff信息

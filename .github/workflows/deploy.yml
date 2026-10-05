@@ -1,28 +1,58 @@
+# 管理端部署：推送到 main 后构建 Nuxt，上传到服务器并切换 /var/www/admin_wms，pm2 重启 wms-admin。
+#
+# W-58：不再用 scp 的 rm: true 先删正式目录再拷贝（上传期间站点没有文件、中途失败直接挂）。
+#   1. 先上传到独立的发布目录 /var/www/admin_wms_release_<sha>，正式目录不受影响；
+#   2. 上传完整后在同一文件系统内 rename：admin_wms → admin_wms_prev（备份），发布目录 → admin_wms，
+#      两次 mv 之间只有毫秒级空隙；正式路径不变，pm2 / nginx 里写死的 /var/www/admin_wms 不用改；
+#   3. pm2 restart 后探测首页，确认返回的是本次构建（HTML 里的 Nuxt buildId）；失败就把目录换回去再重启。
+# 目录里只有上传的 .output：原来的 rm: true 每次都会整目录删除，所以切换目录不会丢掉服务器上另放的文件。
+#
+# 需要确认：服务器上 pm2 的 wms-admin 监听哪个端口（package.json 的 start 脚本是 3002；服务器上只有 .output、
+# 没有 package.json，若 pm2 直接跑 .output/server/index.mjs 又没设 PORT，则是 Nitro 默认的 3000）。
+# 确认后在仓库 Settings → Secrets and variables → Actions → Variables 建 WEB_HEALTH_URL 覆盖，不用改本文件。
+# 切换步骤开头会打印 pm2 里 wms-admin 的脚本路径 / 工作目录 / PORT。
 name: Deploy to Server
 
 on:
   push:
     branches: [main]
 
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  WEB_HEALTH_URL: ${{ vars.WEB_HEALTH_URL || 'http://127.0.0.1:3002/' }}
+  HEALTH_TIMEOUT: '60'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Create .env.prod
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          NUXT_PUBLIC_ENCRYPTION_KEY: ${{ secrets.NUXT_PUBLIC_ENCRYPTION_KEY }}
         run: |
-          echo "API_BASE_URL=${{ secrets.API_BASE_URL }}" > .env.prod
-          echo "NUXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NUXT_PUBLIC_ENCRYPTION_KEY }}" >> .env.prod
+          printf 'API_BASE_URL=%s\n' "$API_BASE_URL" > .env.prod
+          printf 'NUXT_PUBLIC_ENCRYPTION_KEY=%s\n' "$NUXT_PUBLIC_ENCRYPTION_KEY" >> .env.prod
 
       - name: Install dependencies
         run: npm ci
@@ -30,21 +60,130 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy .output to server
-        uses: appleboy/scp-action@v0.1.7
+      # Nuxt 每次构建生成新的 buildId，渲染出的首页 HTML 里带着它；切换后用它确认 pm2 跑的是这次的构建
+      - name: Read build id
+        id: build
+        run: |
+          test -f .output/server/index.mjs || { echo "构建产物缺少 .output/server/index.mjs"; exit 1; }
+          BUILD_ID=$(jq -r '.id // empty' .output/public/_nuxt/builds/latest.json 2>/dev/null || true)
+          if ! printf '%s' "$BUILD_ID" | grep -Eq '^[0-9a-zA-Z-]{8,64}$'; then
+            echo "::warning::没有读到 Nuxt buildId，切换后只校验首页 HTTP 200"
+            BUILD_ID=
+          fi
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Upload .output to release directory
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: '.output/*'
-          target: '/var/www/admin_wms'
+          # 独立的发布目录；rm 只清掉同一提交上次没切换成的残留，不碰正式目录
+          target: /var/www/admin_wms_release_${{ github.sha }}
           rm: true
           strip_components: 0
 
-      - name: Restart PM2
-        uses: appleboy/ssh-action@v1
+      - name: Switch release and restart PM2
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+          BUILD_ID: ${{ steps.build.outputs.build_id }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script: pm2 restart wms-admin
+          command_timeout: 10m
+          envs: DEPLOY_SHA,BUILD_ID,WEB_HEALTH_URL,HEALTH_TIMEOUT
+          script: |
+            set -u
+            LIVE=/var/www/admin_wms
+            BACKUP=/var/www/admin_wms_prev
+            PM2_NAME=wms-admin
+            say() { printf '[deploy] %s\n' "$*"; }
+
+            : "${DEPLOY_SHA:?未传入}" "${WEB_HEALTH_URL:?未传入}" "${HEALTH_TIMEOUT:?未传入}" "${BUILD_ID:=}"
+            NEW_DIR=/var/www/admin_wms_release_$DEPLOY_SHA
+            FAILED=/var/www/admin_wms_failed_$DEPLOY_SHA
+            BODY_FILE=$(mktemp)
+            trap 'rm -f "$BODY_FILE"' EXIT
+
+            say "提交 $DEPLOY_SHA，buildId=${BUILD_ID:-（无）}，探测地址 $WEB_HEALTH_URL"
+            # pm2 进程信息：确认 wms-admin 引用的路径与端口（只打印这几项）
+            pm2 jlist 2>/dev/null | node -e '
+              let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+                const i = s.indexOf("[{"); const list = i >= 0 ? JSON.parse(s.slice(i)) : [];
+                const p = list.find(x => x.name === process.argv[1]);
+                if (!p) return console.log("[deploy] pm2 里没有名为 " + process.argv[1] + " 的进程");
+                const e = p.pm2_env || {};
+                console.log("[deploy] pm2 " + p.name + ": status=" + e.status + " exec=" + e.pm_exec_path +
+                  " args=" + JSON.stringify(e.args) + " cwd=" + e.pm_cwd + " PORT=" + (e.PORT || (e.env || {}).PORT));
+              });' "$PM2_NAME" || say "（读取 pm2 进程信息失败，忽略）"
+
+            # 上传的目录必须完整：有 Nitro 服务端入口才切换
+            if [ ! -d "$NEW_DIR" ] || [ -z "$(find "$NEW_DIR" -maxdepth 3 -type f -path '*/server/index.mjs' | head -n 1)" ]; then
+              say "!!! $NEW_DIR 里没有 server/index.mjs，不切换（正式目录未动）"
+              exit 1
+            fi
+
+            # 首页 HTTP 200；有 buildId 时还要求 HTML 里带着期望的 buildId
+            probe() {
+              expect_id=$1
+              deadline=$(( $(date +%s) + HEALTH_TIMEOUT ))
+              while :; do
+                code=$(curl -s -o "$BODY_FILE" -w '%{http_code}' -m 5 "$WEB_HEALTH_URL") || code=000
+                if [ "$code" = 200 ] && { [ -z "$expect_id" ] || grep -qF "$expect_id" "$BODY_FILE"; }; then
+                  say "健康探测通过：HTTP 200${expect_id:+，buildId=$expect_id}"
+                  return 0
+                fi
+                if [ "$(date +%s)" -ge "$deadline" ]; then
+                  say "!!! 健康探测失败（${HEALTH_TIMEOUT} 秒内未通过）：最后一次 HTTP $code${expect_id:+，期望 buildId=$expect_id}"
+                  return 1
+                fi
+                sleep 3
+              done
+            }
+
+            # 清理以前没切换成的发布目录（concurrency 保证同一时间只有这一次部署）
+            for d in /var/www/admin_wms_release_*; do
+              [ -e "$d" ] && [ "$d" != "$NEW_DIR" ] && rm -rf "$d"
+            done
+
+            # 切换。旧目录的 buildId 留着，回滚后用来确认确实换回去了
+            HAD_LIVE=no
+            OLD_ID=
+            if [ -e "$LIVE" ]; then
+              OLD_JSON=$(find "$LIVE" -maxdepth 6 -type f -path '*/public/_nuxt/builds/latest.json' | head -n 1)
+              [ -n "$OLD_JSON" ] && OLD_ID=$(sed -n 's/.*"id" *: *"\([^"]*\)".*/\1/p' "$OLD_JSON")
+              rm -rf "$BACKUP"
+              mv "$LIVE" "$BACKUP" || { say "!!! 备份旧目录失败，不切换"; exit 1; }
+              HAD_LIVE=yes
+            fi
+            if ! mv "$NEW_DIR" "$LIVE"; then
+              say "!!! 新目录切换失败，恢复旧目录"
+              [ "$HAD_LIVE" = yes ] && mv "$BACKUP" "$LIVE"
+              exit 1
+            fi
+            say "已切换：$LIVE ← 提交 $DEPLOY_SHA（上一版在 $BACKUP）"
+
+            RESTARTED=yes
+            pm2 restart "$PM2_NAME" || RESTARTED=no
+            if [ "$RESTARTED" = yes ] && probe "$BUILD_ID"; then
+              say "部署完成"
+              exit 0
+            fi
+
+            say "!!! 新版本没有通过健康探测（pm2 restart 成功：$RESTARTED），切回上一版"
+            if [ "$HAD_LIVE" != yes ]; then
+              say "!!! 服务器上原来没有 $LIVE，无版本可回滚，需要人工处理"
+              exit 1
+            fi
+            rm -rf /var/www/admin_wms_failed_*
+            mv "$LIVE" "$FAILED" && mv "$BACKUP" "$LIVE" || { say "!!! 目录回滚失败，需要立即人工处理（失败版本 $FAILED，上一版 $BACKUP）"; exit 1; }
+            pm2 restart "$PM2_NAME" || say "!!! 上一版 pm2 restart 失败"
+            if probe "$OLD_ID"; then
+              say "已回滚到上一版。失败的构建留在 $FAILED 供排查（pm2 logs $PM2_NAME --lines 200）"
+            else
+              say "!!! 上一版也没有通过探测，需要立即人工处理；先确认 WEB_HEALTH_URL 的端口是否正确"
+            fi
+            exit 1

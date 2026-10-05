@@ -61,22 +61,35 @@ const fetchData = async () => {
 
 
 
+/**
+ * 本次录入过的行（点了「+」或改过数量）：保存时只提交这些行，盘到 0 件（增量 0）也要提交——
+ * 后端要求每条明细都明确录入过才能完成盘点（16114），不能再按「数量是否为 0」判断要不要提交
+ */
+const isTouched = (item: any) => !!item?.touched && item?.status !== 'completed';
+/** 完成盘点被拒（16114）时还没录入的明细 id：对应行标红 */
+const unrecordedIds = ref<number[]>([]);
+
 const addCycleCountQTY = (item:any) => {
     item.new_cyclecount_quantity = 0;
+    item.touched = true;
+};
+const markTouched = (item: any) => {
+    item.touched = true;
 };
 
 const resetTask = () => {
     itemData.value.task_details.forEach((item:any) => {
         item.new_cyclecount_quantity = undefined;
+        item.touched = false;
     });
 };
 
 const saveTask = async () => {
   if (saving.value) return;
-  // 只提交本次有录入且未完成的行：先按录入值过滤再映射（映射后的对象没有 new_cyclecount_quantity，
-  // 之前过滤写在 map 之后永远不生效，整单按打开页面时的旧值提交，会覆盖别人刚录的结果）；已完成的行后端也会拒绝
+  // 只提交本次录入过且未完成的行（含增量 0：盘到 0 件也要提交），没动过的行不提交：
+  // 先过滤再映射（映射后的对象没有录入标记）；整单提交会按打开页面时的旧值覆盖别人刚录的结果；已完成的行后端也会拒绝
   const details = (itemData.value?.task_details ?? [])
-    .filter((item: any) => item?.status !== 'completed' && (Number(item?.new_cyclecount_quantity) || 0) !== 0)
+    .filter((item: any) => isTouched(item))
     .map((item: any) => {
       const newQuantity = Number(item?.new_cyclecount_quantity) || 0;
       const actualQuantity = newQuantity + (Number(item.actual_quantity) || 0);
@@ -112,6 +125,9 @@ const saveTask = async () => {
     })
     // 重新读取完、清掉本次录入后再解锁：否则读取期间录入值还在，再点保存会把同一批数量再加一次
     if (done) {
+        // 保存过的行不再标红；后端按录入时的系统数量重算差异，重新读取即可
+        const savedIds = details.map((d: any) => d.id);
+        unrecordedIds.value = unrecordedIds.value.filter((id: number) => !savedIds.includes(id));
         await fetchData();
         await resetTask();
         showToast(t('action-results.success'), 'success')
@@ -147,10 +163,18 @@ const completeTask = async () => {
         method: 'PUT',
         onSuccess: (data) => {
             itemData.value = data;
+            unrecordedIds.value = [];
             showToast(t('action-results.task-complete'), 'success')
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            // 16114：还有明细没录入（details.detail_ids），标红这些行
+            if (error.code === 16114) {
+                const ids = error.details?.detail_ids;
+                unrecordedIds.value = Array.isArray(ids) ? ids.map((id: any) => Number(id)) : [];
+                showAlert(t('button.complete'), bizErrorMessage(error), 'warning');
+                return;
+            }
+            showToast(bizErrorMessage(error), 'error')
         }
     })
     return data;   
@@ -165,17 +189,15 @@ const completeItem = async (item:any) => {
             showToast(t('action-results.task-item-complete'), 'success')
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            showToast(bizErrorMessage(error), 'error')
         }
     })
     return data;   
 };
 
+// 有录入过但还没保存的行（含录入 0）
 const hasUnsavedChanges = computed(() => {
-  return itemData.value?.task_details?.some((item: any) => {
-    const checked = Number(item?.new_cyclecount_quantity) || 0
-    return checked > 0 
-  }) ?? false
+  return itemData.value?.task_details?.some((item: any) => isTouched(item)) ?? false
 })
 
 const allItemsCompleted = computed(() => {
@@ -358,7 +380,7 @@ onMounted(async() => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="item in itemData?.task_details">
+                    <tr v-for="item in itemData?.task_details" :class="{ 'table-danger': unrecordedIds.includes(Number(item.id)) }">
                       <td>
                         <div class="d-flex align-items-center">
                           <div class="me-2 lh-1">
@@ -404,7 +426,7 @@ onMounted(async() => {
                         </NuxtLink>
                         <input v-maska:[] type="number" class="form-control number-format" id="product-length"
                           data-maska="0" data-maska-tokens="0:\d:multiple|9:\d:optional"
-                          v-model="item.new_cyclecount_quantity" v-show="item.new_cyclecount_quantity>=0"
+                          v-model="item.new_cyclecount_quantity" v-show="item.new_cyclecount_quantity>=0" @input="markTouched(item)"
                           v-if="itemData.status == 'in_progress'">
                       </td>
                       <td v-if="itemData.status == 'in_progress'">

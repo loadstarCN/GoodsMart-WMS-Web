@@ -2,6 +2,8 @@
 /**
  * 海外出荷単証的状态概要（打包详情、发货详情用）
  * 显示当前有效的 CI / PL 版本、问题数量、运送申告价额、FedEx 自动建的运单，并可打印、跳到出库单的单证卡片。
+ * 自动运单结果不明 / 建单中 / 取消中时醒目提示并链接到单证卡片（不能显示成「尚未建运单」，否则会引导手工重复建单）；
+ * 读到的承运商状态通过 carrier-status 通知父组件（配送页据此调整流程提示）。
  */
 import {
   pickCurrentDocument,
@@ -12,6 +14,7 @@ import {
 import {
   carrierDeclaredValueOverride,
   carrierShipmentUrl,
+  carrierSummaryState,
   declaredValueModeOf,
   isActiveShipment,
   isPdfLabel,
@@ -29,6 +32,11 @@ const props = withDefaults(defineProps<{
 }>(), {
   showPrint: true,
 })
+
+const emit = defineEmits<{
+  /** 读到的承运商运单状态（读不到为 null） */
+  (e: 'carrier-status', status: CarrierShipmentStatus | null): void
+}>()
 
 const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
@@ -50,6 +58,7 @@ const loadCarrier = async () => {
       carrierStatus.value = null
     },
   })
+  emit('carrier-status', carrierStatus.value)
 }
 
 const load = async () => {
@@ -85,6 +94,30 @@ const carrierShipment = computed(() => {
   const s = carrierStatus.value?.shipment
   return isActiveShipment(s) ? s : null
 })
+/** 自动运单概要状态：结果不明 / 建单中 / 取消中 / 有效 / 没有 */
+const carrierState = computed(() => carrierSummaryState(carrierStatus.value))
+/** 结果不明 / 取消结果不明 / 建单中 / 取消中：要醒目提示并引导到单证卡片处理 */
+const carrierAttention = computed(() => ['unresolved', 'cancel-unresolved', 'creating', 'cancelling'].includes(carrierState.value))
+/** 结果不明（建单或取消）：要人处理，红色 */
+const carrierUnresolved = computed(() => carrierState.value === 'unresolved' || carrierState.value === 'cancel-unresolved')
+const carrierAttentionTitle = computed(() => {
+  if (carrierState.value === 'creating') return t('customs.carrier.unresolved.in-progress-title')
+  if (carrierState.value === 'cancelling') return t('customs.carrier.unresolved.cancelling-title')
+  if (carrierState.value === 'cancel-unresolved') return t('customs.carrier.unresolved.cancel-unknown-title')
+  return t('customs.carrier.unresolved.title')
+})
+const carrierAttentionText = computed(() => {
+  if (carrierState.value === 'unresolved') return t('customs.carrier.summary.unresolved')
+  if (carrierState.value === 'cancel-unresolved') return t('customs.carrier.summary.cancel-unresolved')
+  return t('customs.carrier.summary.in-progress')
+})
+/** 结果不明 / 进行中运单的已知运单号、交易 ID（取消中的有效运单用运单本身的号码） */
+const carrierAttentionTracking = computed(() => {
+  const s = carrierStatus.value
+  if (s?.unresolved) return s.unresolved.tracking_number
+  return carrierState.value === 'cancelling' ? (s?.shipment?.tracking_number || null) : null
+})
+const carrierAttentionTransaction = computed(() => carrierStatus.value?.unresolved?.transaction_id || null)
 const declaredValueMode = computed(() => declaredValueModeOf(carrierStatus.value))
 const carrierDeclaredValue = computed(() => carrierDeclaredValueOverride(carrierStatus.value))
 const labelDoc = computed(() => labelDocumentOf(carrierShipment.value))
@@ -131,6 +164,31 @@ defineExpose({ reload: load })
         <i class="ri-error-warning-line me-1"></i>{{ t('customs.tips.documents-outdated') }}
       </div>
 
+      <!-- 自动运单结果不明 / 建单中 / 取消中：FedEx 上可能已有运单，不要手工再建，到单证卡片处理 -->
+      <div class="alert py-2 fs-13 mb-2" role="alert" v-if="carrierAttention"
+        :class="carrierUnresolved ? 'alert-danger' : 'alert-warning-transparent'">
+        <div class="fw-semibold d-flex align-items-center gap-2">
+          <i class="ri-alarm-warning-line fs-16" v-if="carrierUnresolved"></i>
+          <span class="spinner-border spinner-border-sm" role="status" v-else></span>
+          {{ carrierAttentionTitle }}
+        </div>
+        <div class="fs-12 mt-1">{{ carrierAttentionText }}</div>
+        <div class="fs-12 mt-1" v-if="carrierAttentionTransaction || carrierAttentionTracking">
+          <span class="me-3" v-if="carrierAttentionTransaction">
+            <span class="opacity-75">{{ t('customs.carrier.fields.transaction-id') }}:</span>
+            <span class="ms-1 font-monospace text-break">{{ carrierAttentionTransaction }}</span>
+          </span>
+          <span v-if="carrierAttentionTracking">
+            <span class="opacity-75">{{ t('customs.carrier.unresolved.fields.tracking-number') }}:</span>
+            <span class="ms-1 font-monospace">{{ carrierAttentionTracking }}</span>
+          </span>
+        </div>
+        <NuxtLink :to="`/dn/detail/${dnId}#customs-documents`" class="btn btn-sm mt-2"
+          :class="carrierUnresolved ? 'btn-light' : 'btn-outline-secondary'">
+          <i class="ri-file-list-3-line me-1"></i>{{ t('customs.carrier.summary.open-card') }}
+        </NuxtLink>
+      </div>
+
       <!-- 运送申告价额：手工建单时在承运商系统填写；FedEx 自动建单时随运单提交 -->
       <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" :carrier-value="carrierDeclaredValue" compact />
 
@@ -151,7 +209,19 @@ defineExpose({ reload: load })
         </li>
         <li class="mt-1" v-if="carrierEnabled">
           <span class="fw-semibold">{{ t('customs.carrier.title') }} :</span>
-          <template v-if="carrierShipment">
+          <span class="badge bg-danger ms-1" v-if="carrierState === 'unresolved'">
+            <i class="ri-alarm-warning-line me-1"></i>{{ t('customs.carrier.status.unresolved') }}
+          </span>
+          <span class="badge bg-danger ms-1" v-else-if="carrierState === 'cancel-unresolved'">
+            <i class="ri-alarm-warning-line me-1"></i>{{ t('customs.carrier.status.cancel-unresolved') }}
+          </span>
+          <span class="badge bg-warning-transparent ms-1" v-else-if="carrierState === 'creating'">
+            {{ t('customs.carrier.status.creating') }}
+          </span>
+          <span class="badge bg-warning-transparent ms-1" v-else-if="carrierState === 'cancelling'">
+            {{ t('customs.carrier.status.cancelling') }}
+          </span>
+          <template v-else-if="carrierShipment">
             <span class="font-monospace ms-1">{{ carrierShipment.tracking_number }}</span>
             <span class="badge bg-success-transparent ms-1">{{ t('customs.carrier.status.auto-created') }}</span>
           </template>

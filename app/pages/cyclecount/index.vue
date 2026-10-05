@@ -6,6 +6,7 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -14,6 +15,8 @@ const dataToPass = computed(() => ({
 }));
 
 const router = useRouter();
+// 按权限显示新建 / 编辑 / 删除（鉴权仍以后端为准）
+const staffStore = useStaffStore();
 let route = useRoute();
 let loading = ref(true);
 let keyword = ref("");
@@ -57,7 +60,7 @@ const deleteItem = async (item_id:Number) => {
                 await fetchData();                
             },
             onError: (error) => {
-                showToast(error.message, 'error')
+                showToast(bizErrorMessage(error), 'error')
             }
         })
     }
@@ -176,7 +179,7 @@ onMounted(async() => {
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <div class="d-flex flex-wrap gap-2">
-                            <NuxtLink to="/cyclecount/add" class="btn btn-primary btn-wave"><i
+                            <NuxtLink v-if="staffStore.hasPermission('cycle_count_edit')" to="/cyclecount/add" class="btn btn-primary btn-wave"><i
                                     class="ri-add-line me-1 fw-semibold align-middle"></i>{{t('cyclecount.operations.add')}}</NuxtLink>
                         </div>
                         
@@ -239,7 +242,7 @@ onMounted(async() => {
                                         <div class="hstack gap-2 fs-15">
                                             
                                             <NuxtLink href="javascript:void(0);" @click="deleteItem(item.id)"
-                                                class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="item.status==='pending'"><i class="ri-delete-bin-line"></i></NuxtLink>
+                                                class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(item.status==='pending') && staffStore.hasPermission('cycle_count_delete')"><i class="ri-delete-bin-line"></i></NuxtLink>
                                         </div>
                                     </td>
                                 </tr>

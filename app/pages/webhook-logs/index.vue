@@ -73,12 +73,15 @@ const setStatusFilter = (status: string) => {
 }
 
 // ==================== 事件类型筛选 ====================
+// 与后端 webhook_emit 的事件一致（asn.cancelled / dn.cancelled：取消单据时推送）
 const eventTypes = [
   'asn.received',
   'asn.completed',
+  'asn.cancelled',
   'dn.in_progress',
   'dn.delivered',
   'dn.completed',
+  'dn.cancelled',
 ]
 
 const setEventTypeFilter = () => {

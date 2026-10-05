@@ -12,7 +12,7 @@ import { buildGoodsUpdatePayload, snapshotGoodsForm } from '~/utils/goodsForm'
 
 // 获取国际化方法
 const { t } = useI18n()
-const { bizErrorMessage, hasBizMessage } = useBizError()
+const { bizErrorMessage } = useBizError()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -60,6 +60,17 @@ const errors = ref({
 // 避免把别处在这之后更新的原产国 / 实测重量尺寸用画面上的旧值盖掉
 let originalData = null
 
+// 描述（富文本）：Quill 挂载后会把内容规范化（纯文本包 <p> 等）并异步回写 v-model，
+// 直接与打开时的原值比较会误判为「已修改」（只改价格也会带上描述，盖掉期间 CSV 导入的新描述）。
+// 所以描述只在用户真正操作过编辑器（按键 / 粘贴 / 拖放 / 点击编辑区或工具栏）后才参与比较，
+// 原值取第一次操作之前编辑器里的内容（已规范化）
+let descriptionTouched = false
+const onDescriptionInteract = () => {
+  if (descriptionTouched || !originalData) return
+  descriptionTouched = true
+  originalData = { ...originalData, description: itemData.value.description }
+}
+
 // 标签处理方法
 const addTag = (newTag) => {
   selectOptions.tagOptions.push(newTag)
@@ -84,7 +95,10 @@ const imageUrl = computed({
 })
 
 // ------------------ 提交保存 ----------------------
+// 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
+const submitting = ref(false)
 const saveProduct = async () => {
+  if (submitting.value) return
   errors.value = {
     name: !itemData.value.name ? t('common.validation.name-required') : null,
     code: !itemData.value.code ? t('goods.validation.code-required') : null
@@ -92,14 +106,19 @@ const saveProduct = async () => {
 
   if (Object.values(errors.value).some(v => v)) return
 
-  // 只带改过的字段：原产国没动就不带（用户明确清空才传 ''），重量尺寸没动也不带
-  const body = originalData ? buildGoodsUpdatePayload(originalData, itemData.value) : null
+  // 只带改过的字段：原产国没动就不带（用户明确清空才传 ''），重量尺寸没动也不带；
+  // 没操作过描述编辑器时描述按原值比较（不带）
+  const current = descriptionTouched || !originalData
+    ? itemData.value
+    : { ...itemData.value, description: originalData.description }
+  const body = originalData ? buildGoodsUpdatePayload(originalData, current) : null
   if (!body) return
   if (Object.keys(body).length === 0) {
     showToast(t('goods.form.tips.no-changes'), 'warning')
     return
   }
 
+  submitting.value = true
   await httpRequest(`/api/warehouse/goods/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -109,7 +128,8 @@ const saveProduct = async () => {
       await router.push('/goods/')          
     },
     onError: (error) => {
-      showToast(hasBizMessage(error) ? bizErrorMessage(error) : t('action-results.op-failed',{operation:t('goods.operations.edit'),entity:itemData.value.name}), 'error')
+      submitting.value = false
+      showToast(bizErrorMessage(error), 'error')
     }
   })
 }
@@ -207,8 +227,13 @@ onMounted(async() => {
 
                       <div class="col-xl-12 product-features">
                         <label class="form-label" for="product-description">{{ t('goods.fields.description')}}</label>
-                        <QuillEditor id="product-description" theme="snow" v-model:content="itemData.description"
-                          contentType="html" toolbar="full" style="overflow-y:auto;" />
+                        <!-- 捕获阶段记录「用户操作过编辑器」（在按键 / 粘贴等改动内容之前） -->
+                        <div @keydown.capture="onDescriptionInteract" @mousedown.capture="onDescriptionInteract"
+                          @paste.capture="onDescriptionInteract" @drop.capture="onDescriptionInteract"
+                          @cut.capture="onDescriptionInteract" @touchstart.capture="onDescriptionInteract">
+                          <QuillEditor id="product-description" theme="snow" v-model:content="itemData.description"
+                            contentType="html" toolbar="full" style="overflow-y:auto;" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -316,7 +341,7 @@ onMounted(async() => {
             </div>
           </div>
           <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
-            <button class="btn btn-primary-light m-1" @click="saveProduct">{{ t('goods.operations.edit') }}<i
+            <button class="btn btn-primary-light m-1" :disabled="submitting" @click="saveProduct">{{ t('goods.operations.edit') }}<i
                 class="ri-add-line ms-2"></i></button>
 
           </div>

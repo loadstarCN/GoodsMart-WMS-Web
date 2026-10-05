@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { dnTransportationModesOptions } from '~/data/selectOptions'
+import { carrierSummaryState, type CarrierShipmentStatus } from '~/composables/customs/carrierShipment'
 
 // 定义页面元数据
 definePageMeta({
@@ -115,6 +116,9 @@ const completeTask = async () => {
             // 16078（自动运单锁定运单号 / 承运商）、16079（有结果不明的自动运单）、16080（CI 上的运单号与填写的不同）：
             // 需要按文案处理，用弹窗而不是一闪而过的提示
             if (SHIPPING_BLOCK_CODES.includes(Number(error.code))) {
+                // 16079 按 details.unresolved.status 区分：建单中 / 取消中或取消结果不明 / 建单结果不明（见 useBizError）；
+                // 同时刷新单证概要，显示运单的最新状态
+                if (Number(error.code) === 16079 && isExport.value) docStatusRef.value?.reload();
                 showAlert(t('customs.tips.delivery-blocked-title'), bizErrorMessage(error), 'error');
                 return;
             }
@@ -220,6 +224,11 @@ const { bizErrorMessage } = useBizError();
 const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.value?.dn?.customs));
 const customsBlockedReason = ref<string | null>(null);
 const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
+/** 单证概要读到的 FedEx 自动运单状态：结果不明 / 建单中 / 取消中时，流程第 2 步改成「先到单证卡片处理，不要手工建运单」 */
+const carrierStatus = ref<CarrierShipmentStatus | null>(null);
+const carrierPending = computed(() => ['unresolved', 'cancel-unresolved', 'creating', 'cancelling'].includes(carrierSummaryState(carrierStatus.value)));
+const workflowStepKey = (n: number) =>
+  n === 2 && carrierPending.value ? 'customs.workflow.step2-unresolved' : `customs.workflow.step${n}`;
 
 /** 完成发货 / 保存运单号时要弹窗说明的业务码：自动运单锁定（16078）/ 结果不明（16079）/ 与 CI 上的运单号不一致（16080） */
 const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092];
@@ -506,10 +515,11 @@ const saveTracking = async () => {
               <i class="ri-information-line me-1"></i>{{ t('customs.tips.delivery-requires-documents') }}
             </p>
             <ol class="fs-12 text-muted mb-3 ps-4">
-              <li v-for="n in 5" :key="n">{{ t(`customs.workflow.step${n}`) }}</li>
+              <li v-for="n in 5" :key="n" :class="{ 'text-danger fw-semibold': n === 2 && carrierPending }">{{ t(workflowStepKey(n)) }}</li>
             </ol>
           </template>
-          <CustomsDocStatus ref="docStatusRef" :dn-id="itemData.dn_id" :key="`docs-${itemData.dn_id}-${itemData.status}`" />
+          <CustomsDocStatus ref="docStatusRef" :dn-id="itemData.dn_id" :key="`docs-${itemData.dn_id}-${itemData.status}`"
+            @carrier-status="carrierStatus = $event" />
         </div>
       </div>
     </div>

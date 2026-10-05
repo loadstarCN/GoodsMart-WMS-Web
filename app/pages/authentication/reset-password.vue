@@ -17,6 +17,7 @@ definePageMeta({
 })
 // 获取国际化方法
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -107,8 +108,8 @@ const handleSubmit = async () => {
         }, 1000);
       },
       onError: (error) => {
-        // 展示后端返回的具体原因（如旧密码错误）
-        showToast(error.message || t('action-results.failed'), 'error')
+        // 展示后端返回的具体原因（有三语文案的业务码用文案，如 10013 新密码为空；否则后端原文，如旧密码错误）
+        showToast(bizErrorMessage(error), 'error')
       }
     });
   } catch (error) {

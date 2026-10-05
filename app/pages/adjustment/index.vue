@@ -6,6 +6,7 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -14,6 +15,8 @@ const dataToPass = computed(() => ({
 }));
 
 const router = useRouter();
+// 按权限显示新建 / 编辑 / 删除（鉴权仍以后端为准）
+const staffStore = useStaffStore();
 let route = useRoute();
 let loading = ref(true);
 let keyword = ref("");
@@ -57,7 +60,7 @@ const deleteItem = async (item_id:Number) => {
                 await fetchData();                
             },
             onError: (error) => {
-                showToast(error.message, 'error')
+                showToast(bizErrorMessage(error), 'error')
             }
         })
     }
@@ -68,9 +71,14 @@ const deleteItem = async (item_id:Number) => {
 const setActiveFilter = (status: string | null) => {
   const query: Record<string, any> = { ...route.query }
 
-  // 处理状态参数
+  // 处理状态参数；「已取消」不是状态（取消后 status 不变、is_active=false），按 is_active=false 筛选，
+  // 其它标签只看未取消的（后端默认不返回已取消的）
+  delete query.is_active
   if (status === null) {
     delete query.status
+  } else if (status === 'cancelled') {
+    delete query.status
+    query.is_active = 'false'
   } else {
     if (status === 'all') {
       delete query.status
@@ -88,7 +96,9 @@ const setActiveFilter = (status: string | null) => {
 // 修改：计算当前激活状态
 const activeTab = computed(() => {
   const statusParam = route.query.status
-  if (statusParam === 'pending') {
+  if (route.query.is_active === 'false') {
+    return 'cancelled'
+  } else if (statusParam === 'pending') {
     return 'pending'
   } else if (statusParam === 'approved') {
     return 'approved'
@@ -204,6 +214,10 @@ onMounted(async() => {
                                 <a class="nav-link" :class="{ active: activeTab === 'completed' }"
                                     href="javascript:void(0);" @click="setActiveFilter('completed')">{{t('common.status.completed')}}</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" :class="{ active: activeTab === 'cancelled' }"
+                                    href="javascript:void(0);" @click="setActiveFilter('cancelled')">{{t('common.status.cancelled')}}</a>
+                            </li>
                         </ul>
                     </div>
 
@@ -226,7 +240,11 @@ onMounted(async() => {
                                         </NuxtLink>
                                     </td>
                                     <td class="">{{ item?.detail_count }} SKU</td>
-                                    <td class="d-none d-xl-table-cell">{{ t('common.status.'+item?.status.replace('_',"-")) }}</td>
+                                    <td class="d-none d-xl-table-cell">
+                                        {{ t('common.status.'+item?.status.replace('_',"-")) }}
+                                        <!-- 已取消：status 保持取消前的值，is_active=false -->
+                                        <span class="badge bg-secondary-transparent ms-1" v-if="item?.is_active === false">{{ t('common.status.cancelled') }}</span>
+                                    </td>
 
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ item?.creator?.user_name }}</td>
@@ -234,7 +252,7 @@ onMounted(async() => {
                                         <div class="hstack gap-2 fs-15">
                                             
                                             <NuxtLink href="javascript:void(0);" @click="deleteItem(item.id)"
-                                                class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="item.status==='pending'"><i class="ri-delete-bin-line"></i></NuxtLink>
+                                                class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(item.status==='pending' && item.is_active !== false) && staffStore.hasPermission('adjustment_delete')"><i class="ri-delete-bin-line"></i></NuxtLink>
                                         </div>
                                     </td>
                                 </tr>
