@@ -37,7 +37,8 @@
     "InventoryManger": "库存管理",
     "DNManger": "发货单管理",
     "apikeys": "API 密钥",
-    "webhook-logs": "推送日志"
+    "webhook-logs": "推送日志",
+    "pickup": "FedEx 揽收"
   },
   "button": {
     "back-to-home": "返回首页",
@@ -1029,6 +1030,125 @@
     },
     "validation": {
       "tracking-too-long": "运单号不能超过 {max} 个字符"
+    },
+    "pickup": {
+      "title": "FedEx 揽收预约",
+      "nav-button": "FedEx 揽收",
+      "intro": "我们没有和 FedEx 签定期集荷，FedEx 不会自动上门。FedEx 运单建好后，要在这里约快递员上门揽收：按仓库和日期约，一次可以带多张运单，件数和重量按所选运单的箱子合计。",
+      "select-warehouse": "揽收按仓库预约，请先在页头选择仓库。",
+      "disabled": "FedEx 未启用（未配置 API 凭证，或本公司不在允许使用 FedEx 的名单里），不能预约。",
+      "location": {
+        "address": "揽收地址",
+        "contact": "联系人",
+        "phone": "电话",
+        "hint": "地址、联系人、电话取自仓库资料（仓库没有英文地址时用公司的英文地址），要改请到仓库 / 公司设置。"
+      },
+      "blockers": {
+        "title": "暂时不能预约：",
+        "FEDEX_NOT_CONFIGURED": "FedEx 未配置（API Key / Secret Key / 账号）",
+        "FEDEX_CONFIG_INVALID": "FedEx 配置有误（允许使用的公司 ID 列表不合法）",
+        "FEDEX_COMPANY_NOT_ALLOWED": "本公司不在允许使用 FedEx 的名单里",
+        "PICKUP_ADDRESS_MISSING": "仓库和公司都没有英文地址，请先在仓库设置里填写",
+        "PICKUP_ADDRESS_INVALID": "英文地址无法转成 FedEx 格式：请用逗号分开街道与城市，例如「9-4 Izumoji Tawaracho, Kita-ku, Kyoto 603-8135」",
+        "PICKUP_PHONE_INVALID": "联系电话须为 8～13 位数字，请在仓库（或公司）设置里修改"
+      },
+      "shipments": {
+        "title": "待揽收运单",
+        "empty": "没有待揽收的 FedEx 运单（已发货的出库单不在这里）",
+        "selected": "已选 {count} 票，共 {packages} 件 / {weight} kg",
+        "select-all": "全选可预约的运单"
+      },
+      "fields": {
+        "tracking-number": "运单号",
+        "delivery-task": "配送任务",
+        "packages": "件数 / 重量",
+        "packages-value": "{count} 件 / {weight} kg",
+        "service": "服务",
+        "ship-date": "发货日",
+        "pickup-status": "揽收",
+        "pickup-date": "揽收日",
+        "time-window": "揽收时间段",
+        "status": "状态",
+        "confirmation-code": "确认号 / 站点",
+        "shipments": "运单",
+        "created": "预约时间",
+        "actions": "操作"
+      },
+      "row-status": {
+        "none": "未预约",
+        "scheduled": "已预约 {date} {window}（确认号 {code}）",
+        "past": "上次预约的揽收日 {date} 已过，快递员没来的话请重新预约",
+        "pending": "预约中…",
+        "unknown": "预约结果不明，请在下方预约记录里核对处理"
+      },
+      "status": {
+        "pending": "预约中",
+        "scheduled": "已预约",
+        "done": "揽收日已过",
+        "cancelled": "已取消",
+        "failed": "未约上",
+        "unknown": "结果不明",
+        "dismissed": "已作废"
+      },
+      "reasons": {
+        "cancel_unclear": "上次取消结果不明，FedEx 可能已经取消，请重试取消",
+        "cancel_refused": "FedEx 拒绝了上次的取消请求，预约仍有效",
+        "already_cancelled": "FedEx 回复该预约已取消",
+        "stale": "预约请求长时间没有结果"
+      },
+      "pickups": {
+        "title": "预约记录",
+        "empty": "最近 14 天没有揽收预约",
+        "hint": "显示揽收日在最近 14 天内的预约，结果不明的一直显示。预约后不能修改，只能取消重约。"
+      },
+      "operations": {
+        "schedule": "预约揽收",
+        "cancel": "取消预约",
+        "retry-cancel": "重试取消",
+        "dismiss": "已核对，作废",
+        "refresh": "刷新"
+      },
+      "modal": {
+        "title": "预约 FedEx 上门揽收",
+        "summary": "{count} 票运单，共 {packages} 件 / {weight} kg",
+        "loading-availability": "正在向 FedEx 查询可约时间…",
+        "availability-failed": "查不到 FedEx 的可约时间（{message}）。仍可按下面填的时间预约，FedEx 会检查。",
+        "no-options": "FedEx 没有返回可约的揽收日，请自行填写日期和时间。",
+        "today": "今天",
+        "date": "揽收日",
+        "ready-time": "包裹准备好的时间",
+        "close-time": "最晚揽收时间",
+        "limits": "当天最晚 {cutoff} 前准备好；准备好到最晚揽收之间至少隔 {minutes} 分钟。",
+        "remarks": "给快递员的留言",
+        "remarks-placeholder": "例：请按门铃 / 到 1 楼仓库门口",
+        "remarks-hint": "选填，最多 {max} 个字符（建议用英文或日文）",
+        "email": "确认邮件发送到",
+        "email-hint": "选填。FedEx 会把揽收确认（含确认号）发到这个邮箱（英文邮件）",
+        "no-change": "预约后不能修改，要改时间请取消后重新预约。",
+        "submit": "预约"
+      },
+      "validation": {
+        "ready-time": "请选择包裹准备好的时间",
+        "close-time": "请选择最晚揽收时间",
+        "close-before-ready": "最晚揽收时间要晚于包裹准备好的时间",
+        "after-cutoff": "包裹准备好的时间不能晚于当天截止时间 {cutoff}",
+        "access-time": "最晚揽收时间要比包裹准备好的时间至少晚 {minutes} 分钟"
+      },
+      "confirm-title": "确认预约揽收",
+      "confirm": "{date} {window}，{count} 票 / {packages} 件 / {weight} kg。预约后不能修改，只能取消重约。",
+      "scheduled-toast": "已预约揽收，确认号 {code}",
+      "cancel-confirm-title": "取消揽收预约",
+      "cancel-confirm": "取消 {date} {window} 的揽收预约（确认号 {code}）？取消后这些运单可以重新预约。",
+      "cancelled-toast": "已取消揽收预约",
+      "dismiss-confirm-title": "作废结果不明的预约",
+      "dismiss-confirm": "{date} {window} 这次预约结果不明，FedEx 那边可能已经约上了。请先查看 FedEx 的确认邮件或致电 FedEx 核对：确实没约上（或已在 FedEx 取消）再作废。作废后这些运单可以重新预约。",
+      "tips": {
+        "unknown": "FedEx 可能已经约上了：请查看确认邮件或致电 FedEx 核对，再在预约记录里「已核对，作废」后重新预约。核对前这些运单不能再约，以免重复叫车。",
+        "failed": "没有约上，可以修改时间后重新预约。",
+        "cancel-unclear": "FedEx 可能已经取消，请重试取消。",
+        "permission-denied": "FedEx 拒绝了请求：请确认 FedEx API 项目已开通 Pickup Request API，且凭证正确。",
+        "transaction-id": "FedEx 交易 ID"
+      }
     }
   },
   "action-results": {
@@ -1768,6 +1888,14 @@
           "save_failed": "FedEx 已处理，但 WMS 保存结果失败",
           "cancel_in_progress": "正在取消"
         }
+      },
+      "pickup": {
+        "none": "还没有预约揽收（没有定期集荷，FedEx 不会自动上门）",
+        "scheduled": "已预约揽收：{date} {window}（确认号 {code}）",
+        "past": "预约的揽收日 {date} 已过；快递员没来的话请重新预约",
+        "pending": "揽收预约中…",
+        "unknown": "揽收预约结果不明，请到「FedEx 揽收」页核对处理",
+        "manage": "去预约 / 查看"
       }
     }
   },
@@ -1864,6 +1992,10 @@
     "code-44004": "该数据已被单据或库存引用，不能删除，请改为停用",
     "code-44005": "与已有数据冲突（如编码重复），请检查后重试",
     "code-44009": "该库位已有作业历史记录，不能删除，请改为停用",
-    "code-16123": "批次提交标识不合法，请刷新页面后重新提交"
+    "code-16123": "批次提交标识不合法，请刷新页面后重新提交",
+    "code-16130": "暂时不能预约 FedEx 揽收，请先处理页面上列出的问题（如仓库英文地址、联系电话）",
+    "code-16131": "预约信息不正确（{field}），请检查后再提交",
+    "code-16132": "所选运单中有的已经预约、已发货或已取消，请刷新后重新选择",
+    "code-16133": "这条揽收预约当前不能取消或作废（可能已取消、揽收日已过或已有结果），请刷新"
   }
 }

@@ -178,7 +178,9 @@ onMounted(async() => {
                             }}</span>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                        
+                        <NuxtLink to="/delivery/pickup" class="btn btn-primary-light">
+                            <i class="ri-truck-line me-1"></i>{{ t('delivery.pickup.nav-button') }}
+                        </NuxtLink>
                         <div class="d-flex" role="search">
                             <input class="form-control me-2" type="search" :placeholder="t('delivery.form.placeholders.search')"
                                 :aria-label="t('common.search')" v-model="keyword" style="width: auto;">

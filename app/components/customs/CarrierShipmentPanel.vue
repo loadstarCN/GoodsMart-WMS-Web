@@ -183,6 +183,22 @@ watch(status, (value: CarrierShipmentStatus | null) => emit('status', value))
 const enabled = computed(() => !!status.value?.enabled)
 const shipment = computed(() => status.value?.shipment || null)
 const activeShipment = computed(() => (isActiveShipment(shipment.value) ? shipment.value : null))
+/** 有效运单的揽收预约：已约上且揽收日没过 */
+const pickupScheduled = computed(() => {
+  const p = activeShipment.value?.pickup
+  return !!p && p.status === 'scheduled' && !p.past
+})
+const pickupText = computed(() => {
+  const p = activeShipment.value?.pickup
+  if (!p || ['cancelled', 'failed', 'dismissed'].includes(p.status)) return t('customs.carrier.pickup.none')
+  if (p.status === 'scheduled' && p.past) return t('customs.carrier.pickup.past', { date: p.pickup_date })
+  if (p.status === 'scheduled') {
+    return t('customs.carrier.pickup.scheduled', {
+      date: p.pickup_date, window: `${p.ready_time || '—'}–${p.close_time || '—'}`, code: p.confirmation_code || '—',
+    })
+  }
+  return t(p.status === 'pending' ? 'customs.carrier.pickup.pending' : 'customs.carrier.pickup.unknown')
+})
 /** 运单正在取消（cancelling）：按进行中处理 */
 const cancellingShipment = computed(() => (isCancellingShipment(shipment.value) ? shipment.value : null))
 const lastCancelled = computed(() =>
@@ -801,6 +817,11 @@ defineExpose({ reload: async () => { await load() } })
           </div>
           <div class="fs-12 text-muted mt-2" v-if="activeShipment.etd_document_id">
             <i class="ri-upload-cloud-2-line me-1"></i>{{ t('customs.carrier.tips.etd-submitted') }}
+          </div>
+          <!-- 上门揽收：没有定期集荷，运单建好后要在「FedEx 揽收」页预约（旧后端没有 pickup 字段时不显示） -->
+          <div class="fs-12 mt-2" :class="pickupScheduled ? 'text-success' : 'text-warning'" v-if="activeShipment.pickup !== undefined">
+            <i class="ri-truck-line me-1"></i>{{ pickupText }}
+            <NuxtLink to="/delivery/pickup" class="ms-1 text-primary">{{ t('customs.carrier.pickup.manage') }}</NuxtLink>
           </div>
           <!-- 建单时 FedEx 返回的提示 -->
           <div class="alert alert-warning-transparent fs-12 py-2 mt-2 mb-0" v-if="alerts.length > 0">

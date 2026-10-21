@@ -117,6 +117,17 @@ export let menuData = [
     },
 
     {
+        path: '/delivery/pickup',
+        permission: 'delivery_read',
+        type: 'link',
+        title: 'nav.pickup',
+        icon: 'ri-calendar-check-line',
+        selected: false,
+        active: false,
+        dirchange: false,
+    },
+
+    {
         headTitle: 'nav.WarehouseManger'
     },
     {

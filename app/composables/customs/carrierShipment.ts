@@ -28,6 +28,7 @@
  */
 import type { HttpRequestError } from '~/utils/http'
 import type { PdfDocumentRef } from '~/composables/customs/customsDocuments'
+import type { PickupSummary } from '~/composables/customs/carrierPickup'
 
 export interface CarrierShipmentBlocker {
   code: string
@@ -72,6 +73,8 @@ export interface CarrierShipment {
   updated_at?: string | null
   cancelled_at: string | null
   cancelled_by?: any
+  /** 最近一次包含这张运单的揽收预约（没有为 null；旧后端没有该字段） */
+  pickup?: PickupSummary | null
 }
 
 export interface CarrierLabelPart {

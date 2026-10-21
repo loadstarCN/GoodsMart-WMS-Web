@@ -37,7 +37,8 @@
     "InventoryManger": "Inventory Management",
     "DNManger": "DN Management",
     "apikeys": "API Keys",
-    "webhook-logs": "Push Logs"
+    "webhook-logs": "Push Logs",
+    "pickup": "FedEx Pickups"
   },
   "button": {
     "back-to-home": "Back to Home",
@@ -1029,6 +1030,125 @@
     },
     "validation": {
       "tracking-too-long": "Tracking number must be at most {max} characters"
+    },
+    "pickup": {
+      "title": "FedEx Pickups",
+      "nav-button": "FedEx Pickups",
+      "intro": "We have no regular scheduled pickup with FedEx, so FedEx does not come automatically. Once a FedEx shipment is created, schedule a courier pickup here: pickups are booked per warehouse and date, one pickup can cover several shipments, and the package count / weight are the totals of the selected shipments' packages.",
+      "select-warehouse": "Pickups are scheduled per warehouse. Select a warehouse in the header first.",
+      "disabled": "FedEx is not enabled (API credentials not configured, or this company is not allowed to use FedEx), so pickups cannot be scheduled.",
+      "location": {
+        "address": "Pickup address",
+        "contact": "Contact",
+        "phone": "Phone",
+        "hint": "Address, contact and phone come from the warehouse settings (the company's English address is used when the warehouse has none). Change them in the warehouse / company settings."
+      },
+      "blockers": {
+        "title": "Pickups cannot be scheduled yet:",
+        "FEDEX_NOT_CONFIGURED": "FedEx is not configured (API key / secret key / account number)",
+        "FEDEX_CONFIG_INVALID": "FedEx configuration is invalid (allowed company ID list)",
+        "FEDEX_COMPANY_NOT_ALLOWED": "This company is not allowed to use FedEx",
+        "PICKUP_ADDRESS_MISSING": "Neither the warehouse nor the company has an English address; fill it in the warehouse settings",
+        "PICKUP_ADDRESS_INVALID": "The English address cannot be converted to the FedEx format: separate street and city with commas, e.g. \"9-4 Izumoji Tawaracho, Kita-ku, Kyoto 603-8135\"",
+        "PICKUP_PHONE_INVALID": "The contact phone must have 8-13 digits; fix it in the warehouse (or company) settings"
+      },
+      "shipments": {
+        "title": "Shipments awaiting pickup",
+        "empty": "No FedEx shipments awaiting pickup (shipped DNs are not listed)",
+        "selected": "{count} selected, {packages} packages / {weight} kg",
+        "select-all": "Select all schedulable shipments"
+      },
+      "fields": {
+        "tracking-number": "Tracking number",
+        "delivery-task": "Delivery task",
+        "packages": "Packages / weight",
+        "packages-value": "{count} pkg / {weight} kg",
+        "service": "Service",
+        "ship-date": "Ship date",
+        "pickup-status": "Pickup",
+        "pickup-date": "Pickup date",
+        "time-window": "Time window",
+        "status": "Status",
+        "confirmation-code": "Confirmation / location",
+        "shipments": "Shipments",
+        "created": "Scheduled at",
+        "actions": "Actions"
+      },
+      "row-status": {
+        "none": "Not scheduled",
+        "scheduled": "Scheduled {date} {window} (confirmation {code})",
+        "past": "The last pickup date ({date}) has passed; schedule again if the courier did not come",
+        "pending": "Scheduling…",
+        "unknown": "Pickup result unclear; check it in the pickup list below"
+      },
+      "status": {
+        "pending": "Scheduling",
+        "scheduled": "Scheduled",
+        "done": "Date passed",
+        "cancelled": "Cancelled",
+        "failed": "Not scheduled",
+        "unknown": "Unclear",
+        "dismissed": "Dismissed"
+      },
+      "reasons": {
+        "cancel_unclear": "The result of the last cancellation is unclear (FedEx may have cancelled it); retry the cancellation",
+        "cancel_refused": "FedEx refused the last cancellation; the pickup is still scheduled",
+        "already_cancelled": "FedEx reported the pickup as already cancelled",
+        "stale": "The pickup request did not finish in time"
+      },
+      "pickups": {
+        "title": "Pickups",
+        "empty": "No pickups in the last 14 days",
+        "hint": "Shows pickups dated within the last 14 days; unclear ones are always shown. A pickup cannot be changed: cancel it and schedule again."
+      },
+      "operations": {
+        "schedule": "Schedule pickup",
+        "cancel": "Cancel pickup",
+        "retry-cancel": "Retry cancellation",
+        "dismiss": "Checked, dismiss",
+        "refresh": "Refresh"
+      },
+      "modal": {
+        "title": "Schedule a FedEx courier pickup",
+        "summary": "{count} shipments, {packages} packages / {weight} kg",
+        "loading-availability": "Asking FedEx for available pickup times…",
+        "availability-failed": "Could not get the available times from FedEx ({message}). You can still schedule with the times below; FedEx will check them.",
+        "no-options": "FedEx returned no available pickup dates; enter the date and times yourself.",
+        "today": "today",
+        "date": "Pickup date",
+        "ready-time": "Packages ready at",
+        "close-time": "Latest pickup time",
+        "limits": "Packages must be ready by {cutoff}; at least {minutes} minutes between ready time and latest pickup time.",
+        "remarks": "Message for the courier",
+        "remarks-placeholder": "e.g. Please ring the bell / warehouse entrance on 1F",
+        "remarks-hint": "Optional, up to {max} characters",
+        "email": "Send confirmation to",
+        "email-hint": "Optional. FedEx emails the pickup confirmation (with the confirmation number) to this address (in English)",
+        "no-change": "A pickup cannot be changed once scheduled; to change the time, cancel it and schedule again.",
+        "submit": "Schedule"
+      },
+      "validation": {
+        "ready-time": "Select the time the packages are ready",
+        "close-time": "Select the latest pickup time",
+        "close-before-ready": "The latest pickup time must be later than the ready time",
+        "after-cutoff": "The ready time cannot be later than the cutoff time {cutoff}",
+        "access-time": "The latest pickup time must be at least {minutes} minutes after the ready time"
+      },
+      "confirm-title": "Schedule pickup",
+      "confirm": "{date} {window}, {count} shipments / {packages} packages / {weight} kg. A pickup cannot be changed once scheduled, only cancelled and scheduled again.",
+      "scheduled-toast": "Pickup scheduled, confirmation {code}",
+      "cancel-confirm-title": "Cancel pickup",
+      "cancel-confirm": "Cancel the pickup on {date} {window} (confirmation {code})? Its shipments can then be scheduled again.",
+      "cancelled-toast": "Pickup cancelled",
+      "dismiss-confirm-title": "Dismiss unclear pickup",
+      "dismiss-confirm": "The result of the pickup request for {date} {window} is unclear; FedEx may have scheduled it. Check the FedEx confirmation email or call FedEx first, and dismiss it only if it was not scheduled (or has been cancelled with FedEx). Its shipments can then be scheduled again.",
+      "tips": {
+        "unknown": "FedEx may have scheduled the pickup: check the confirmation email or call FedEx, then use \"Checked, dismiss\" in the pickup list and schedule again. Until then the shipments cannot be scheduled again, to avoid booking the courier twice.",
+        "failed": "The pickup was not scheduled; you can change the time and try again.",
+        "cancel-unclear": "FedEx may have cancelled it; retry the cancellation.",
+        "permission-denied": "FedEx refused the request: make sure the FedEx API project has the Pickup Request API enabled and the credentials are correct.",
+        "transaction-id": "FedEx transaction ID"
+      }
     }
   },
   "action-results": {
@@ -1768,6 +1888,14 @@
           "save_failed": "FedEx processed the request, but saving the result in WMS failed",
           "cancel_in_progress": "Cancellation in progress"
         }
+      },
+      "pickup": {
+        "none": "No pickup scheduled yet (no regular pickup: FedEx will not come automatically)",
+        "scheduled": "Pickup scheduled: {date} {window} (confirmation {code})",
+        "past": "The pickup date {date} has passed; schedule again if the courier did not come",
+        "pending": "Scheduling the pickup…",
+        "unknown": "Pickup result unclear; check it on the FedEx Pickups page",
+        "manage": "Schedule / view"
       }
     }
   },
@@ -1864,6 +1992,10 @@
     "code-44004": "This record is referenced by documents or stock and cannot be deleted. Deactivate it instead.",
     "code-44005": "This conflicts with existing data (for example, a duplicate code). Check and try again.",
     "code-44009": "This location has operation history and cannot be deleted. Deactivate it instead.",
-    "code-16123": "Invalid batch submission ID; reload the page and submit again"
+    "code-16123": "Invalid batch submission ID; reload the page and submit again",
+    "code-16130": "FedEx pickups cannot be scheduled yet; fix the problems listed on the page first (e.g. warehouse English address, contact phone)",
+    "code-16131": "Invalid pickup details ({field}); check and submit again",
+    "code-16132": "Some of the selected shipments are already scheduled, shipped or cancelled; refresh and select again",
+    "code-16133": "This pickup cannot be cancelled or dismissed now (it may be cancelled, past its date or already settled); refresh the page"
   }
 }

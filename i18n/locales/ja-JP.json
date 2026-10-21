@@ -37,7 +37,8 @@
     "InventoryManger": "在庫管理",
     "DNManger": "DN管理",
     "apikeys": "APIキー",
-    "webhook-logs": "プッシュログ"
+    "webhook-logs": "プッシュログ",
+    "pickup": "FedEx 集荷"
   },
   "button": {
     "back-to-home": "ホームに戻る",
@@ -1029,6 +1030,125 @@
     },
     "validation": {
       "tracking-too-long": "運送状番号は {max} 文字以内で入力してください"
+    },
+    "pickup": {
+      "title": "FedEx 集荷予約",
+      "nav-button": "FedEx 集荷",
+      "intro": "FedEx とは定期集荷の契約がないため、FedEx は自動では来ません。FedEx の送り状を作成したら、ここで集荷を予約してください。集荷は倉庫と日付ごとに予約し、1 回で複数の送り状をまとめられます。個数・重量は選んだ送り状の箱の合計です。",
+      "select-warehouse": "集荷は倉庫ごとに予約します。先にヘッダーで倉庫を選んでください。",
+      "disabled": "FedEx が有効になっていません（API 認証情報が未設定、または本会社が FedEx の利用許可リストにない）ため、予約できません。",
+      "location": {
+        "address": "集荷先住所",
+        "contact": "担当者",
+        "phone": "電話",
+        "hint": "住所・担当者・電話は倉庫の設定から取ります（倉庫に英文住所がない場合は会社の英文住所）。変更は倉庫 / 会社の設定で行ってください。"
+      },
+      "blockers": {
+        "title": "現在は予約できません：",
+        "FEDEX_NOT_CONFIGURED": "FedEx が未設定です（API Key / Secret Key / アカウント番号）",
+        "FEDEX_CONFIG_INVALID": "FedEx の設定に誤りがあります（利用許可する会社 ID の一覧）",
+        "FEDEX_COMPANY_NOT_ALLOWED": "本会社は FedEx の利用許可リストにありません",
+        "PICKUP_ADDRESS_MISSING": "倉庫にも会社にも英文住所がありません。倉庫の設定で入力してください",
+        "PICKUP_ADDRESS_INVALID": "英文住所を FedEx の形式に変換できません。番地と市区町村をカンマで区切ってください（例：「9-4 Izumoji Tawaracho, Kita-ku, Kyoto 603-8135」）",
+        "PICKUP_PHONE_INVALID": "電話番号は 8～13 桁の数字にしてください（倉庫または会社の設定で変更）"
+      },
+      "shipments": {
+        "title": "集荷待ちの送り状",
+        "empty": "集荷待ちの FedEx 送り状はありません（出荷済みの出庫指示は表示しません）",
+        "selected": "{count} 件選択、計 {packages} 個 / {weight} kg",
+        "select-all": "予約できる送り状をすべて選択"
+      },
+      "fields": {
+        "tracking-number": "追跡番号",
+        "delivery-task": "配送タスク",
+        "packages": "個数 / 重量",
+        "packages-value": "{count} 個 / {weight} kg",
+        "service": "サービス",
+        "ship-date": "出荷日",
+        "pickup-status": "集荷",
+        "pickup-date": "集荷日",
+        "time-window": "集荷時間帯",
+        "status": "状態",
+        "confirmation-code": "確認番号 / 拠点",
+        "shipments": "送り状",
+        "created": "予約日時",
+        "actions": "操作"
+      },
+      "row-status": {
+        "none": "未予約",
+        "scheduled": "予約済み {date} {window}（確認番号 {code}）",
+        "past": "前回予約した集荷日 {date} は過ぎました。集荷に来なかった場合は再予約してください",
+        "pending": "予約中…",
+        "unknown": "予約結果が不明です。下の予約履歴で確認してください"
+      },
+      "status": {
+        "pending": "予約中",
+        "scheduled": "予約済み",
+        "done": "集荷日経過",
+        "cancelled": "取消済み",
+        "failed": "予約できず",
+        "unknown": "結果不明",
+        "dismissed": "無効化済み"
+      },
+      "reasons": {
+        "cancel_unclear": "前回の取消結果が不明です（FedEx 側で取消済みの可能性あり）。取消を再試行してください",
+        "cancel_refused": "前回の取消は FedEx に拒否されました。予約は有効なままです",
+        "already_cancelled": "FedEx からこの予約は取消済みと返されました",
+        "stale": "予約リクエストが長時間完了していません"
+      },
+      "pickups": {
+        "title": "予約履歴",
+        "empty": "直近 14 日間の集荷予約はありません",
+        "hint": "集荷日が直近 14 日以内の予約を表示します（結果不明のものは常に表示）。予約後は変更できません。取り消して予約し直してください。"
+      },
+      "operations": {
+        "schedule": "集荷を予約",
+        "cancel": "予約を取消",
+        "retry-cancel": "取消を再試行",
+        "dismiss": "確認済み・無効化",
+        "refresh": "更新"
+      },
+      "modal": {
+        "title": "FedEx の集荷を予約",
+        "summary": "送り状 {count} 件、計 {packages} 個 / {weight} kg",
+        "loading-availability": "FedEx に予約可能な時間を問い合わせ中…",
+        "availability-failed": "FedEx の予約可能時間を取得できませんでした（{message}）。下の時間で予約することもできます（FedEx 側で確認されます）。",
+        "no-options": "FedEx から予約可能な集荷日が返されませんでした。日付と時間を入力してください。",
+        "today": "今日",
+        "date": "集荷日",
+        "ready-time": "集荷準備完了時間",
+        "close-time": "最終集荷可能時間",
+        "limits": "{cutoff} までに準備完了してください。準備完了から最終集荷可能時間まで {minutes} 分以上空けてください。",
+        "remarks": "ドライバーへのメッセージ",
+        "remarks-placeholder": "例：インターホンを押してください / 1 階倉庫入口",
+        "remarks-hint": "任意、{max} 文字まで（英語または日本語）",
+        "email": "確認メールの送信先",
+        "email-hint": "任意。FedEx から集荷予約の確認（確認番号付き、英語）がこのアドレスに届きます",
+        "no-change": "予約後は変更できません。時間を変える場合は取り消して予約し直してください。",
+        "submit": "予約"
+      },
+      "validation": {
+        "ready-time": "集荷準備完了時間を選んでください",
+        "close-time": "最終集荷可能時間を選んでください",
+        "close-before-ready": "最終集荷可能時間は準備完了時間より後にしてください",
+        "after-cutoff": "準備完了時間は締め切り {cutoff} より後にできません",
+        "access-time": "最終集荷可能時間は準備完了時間の {minutes} 分以上後にしてください"
+      },
+      "confirm-title": "集荷予約の確認",
+      "confirm": "{date} {window}、送り状 {count} 件 / {packages} 個 / {weight} kg。予約後は変更できず、取り消して予約し直すことになります。",
+      "scheduled-toast": "集荷を予約しました（確認番号 {code}）",
+      "cancel-confirm-title": "集荷予約の取消",
+      "cancel-confirm": "{date} {window} の集荷予約（確認番号 {code}）を取り消しますか？取り消すと、これらの送り状は再予約できます。",
+      "cancelled-toast": "集荷予約を取り消しました",
+      "dismiss-confirm-title": "結果不明の予約を無効化",
+      "dismiss-confirm": "{date} {window} の予約は結果が不明で、FedEx 側では予約済みの可能性があります。先に FedEx の確認メールを見るか FedEx に電話して確認し、予約されていない（または FedEx で取消済み）場合のみ無効化してください。無効化すると、これらの送り状は再予約できます。",
+      "tips": {
+        "unknown": "FedEx 側で予約済みの可能性があります。確認メールを見るか FedEx に電話して確認し、予約履歴の「確認済み・無効化」を押してから予約し直してください。それまでは二重手配を防ぐため、これらの送り状は再予約できません。",
+        "failed": "予約できませんでした。時間を変えて予約し直せます。",
+        "cancel-unclear": "FedEx 側で取消済みの可能性があります。取消を再試行してください。",
+        "permission-denied": "FedEx にリクエストを拒否されました。FedEx API プロジェクトで Pickup Request API が有効か、認証情報が正しいか確認してください。",
+        "transaction-id": "FedEx トランザクション ID"
+      }
     }
   },
   "action-results": {
@@ -1768,6 +1888,14 @@
           "save_failed": "FedEx では処理済みですが、WMS への保存に失敗しました",
           "cancel_in_progress": "取消処理中"
         }
+      },
+      "pickup": {
+        "none": "集荷はまだ予約されていません（定期集荷がないため FedEx は自動では来ません）",
+        "scheduled": "集荷予約済み：{date} {window}（確認番号 {code}）",
+        "past": "予約した集荷日 {date} は過ぎました。集荷に来なかった場合は再予約してください",
+        "pending": "集荷を予約中…",
+        "unknown": "集荷予約の結果が不明です。「FedEx 集荷」ページで確認してください",
+        "manage": "予約 / 確認"
       }
     }
   },
@@ -1864,6 +1992,10 @@
     "code-44004": "このデータは伝票や在庫から参照されているため削除できません。無効化してください",
     "code-44005": "既存のデータと競合しています（コードの重複など）。確認してから再試行してください",
     "code-44009": "このロケーションには作業履歴があるため削除できません。無効化してください",
-    "code-16123": "バッチ送信 ID が不正です。ページを再読み込みしてから再送信してください"
+    "code-16123": "バッチ送信 ID が不正です。ページを再読み込みしてから再送信してください",
+    "code-16130": "現在は FedEx の集荷を予約できません。先にページに表示された問題（倉庫の英文住所・電話など）を解消してください",
+    "code-16131": "予約内容に誤りがあります（{field}）。確認して再送信してください",
+    "code-16132": "選んだ送り状の中に、予約済み・出荷済み・取消済みのものがあります。更新して選び直してください",
+    "code-16133": "この集荷予約は現在、取消・無効化できません（取消済み、集荷日経過、または結果確定済みの可能性）。ページを更新してください"
   }
 }
