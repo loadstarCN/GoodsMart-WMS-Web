@@ -7,8 +7,7 @@
  * - 问题清单（错误 / 警告），每条给出补的地方；报关数据缺的、错的在「补录报关数据」里改（需 dn_edit）
  * - 打包完成前不列「还没打包完 / 还没录箱子」，也不显示单证状态、运单和自动建单的申告价额调整
  * - 箱子、承运商运单只读（面单在运单区打印）；当前 CI / PL 可查看、打印、下载（历史版本在任务页）
- * - 录箱子、FedEx 建 / 取消运单、生成单证都在打包 / 配送任务的海外发货区（ExportShippingPanel）做，
- *   这里只给提示和跳转：有配送任务时去配送任务，否则去该出库单的打包任务列表
+ * - 录箱子、FedEx 建 / 取消运单、生成单证都在打包 / 配送任务的海外发货区（ExportShippingPanel）做，这里不放入口
  */
 import { countryName } from '~/data/countries'
 import {
@@ -89,12 +88,6 @@ const ready = computed(() => !!view.value?.ready)
 const packagesReadonlyReason = computed(() =>
   locked.value ? t('customs.status.locked') : t('customs.tips.packages-on-task')
 )
-/** 办出荷手续的任务页：已有配送任务时去配送任务，否则去该出库单的打包任务列表（已拣货 / 已打包才有） */
-const taskLink = computed(() => {
-  const deliveryTaskId = carrierStatus.value?.delivery_task_id
-  if (deliveryTaskId) return `/delivery/detail/${deliveryTaskId}`
-  return ['picked', 'packed'].includes(String(props.dnStatus || '')) ? `/packing/?dn_id=${props.dnId}` : null
-})
 
 const customs = computed<Record<string, any>>(() => view.value?.customs || {})
 const consignee = computed<Record<string, any>>(() => view.value?.consignee || customs.value?.consignee || {})
@@ -235,12 +228,6 @@ defineExpose({ reload: reloadAll })
             <i class="ri-error-warning-line me-1 fs-16 align-middle"></i>
             <span class="fw-semibold">{{ t('customs.tips.documents-outdated') }}</span>
           </div>
-        </div>
-        <div class="alert alert-info-transparent d-flex flex-wrap align-items-center justify-content-between gap-2 fs-13" v-if="!locked">
-          <div><i class="ri-information-line me-1"></i>{{ t('customs.tips.operate-on-task') }}</div>
-          <NuxtLink :to="taskLink" class="btn btn-sm btn-primary-light" v-if="taskLink">
-            <i class="ri-arrow-right-line me-1"></i>{{ t('customs.operations.open-task') }}
-          </NuxtLink>
         </div>
 
         <div class="alert alert-warning-transparent" v-if="!view.customs">{{ t('customs.tips.no-snapshot') }}</div>
