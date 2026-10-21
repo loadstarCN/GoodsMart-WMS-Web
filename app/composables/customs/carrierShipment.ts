@@ -249,7 +249,7 @@ export const isCancellingShipment = (shipment: CarrierShipment | null | undefine
   !!shipment && shipment.status === 'cancelling'
 
 /**
- * 单证概要用的运单状态：
+ * 运单概要状态（配送页据此切换流程提示）：
  * - unresolved：有结果不明的运单（FedEx 上可能已生成）
  * - cancel-unresolved：运单取消结果不明（cancelling 且没有在进行，FedEx 上可能还有效）
  * - creating / cancelling：建单中 / 取消中（结果不明记录进行中，或运单本身在取消中）

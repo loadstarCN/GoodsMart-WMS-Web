@@ -9,9 +9,9 @@ const detailsOf = (error: BizErrorLike): Record<string, any> => {
 
 /**
  * 自动运单记录的状态 → 文案后缀：
- * - unknown（建单结果不明）→ unresolved：先到 FedEx Ship Manager 核对，再在单证卡片取消或确认作废
+ * - unknown（建单结果不明）→ unresolved：先到 FedEx Ship Manager 核对，再在打包 / 配送任务的海外发货区取消或确认作废
  * - pending（建单中）→ in-progress：等它结束
- * - cancelling（取消中 / 取消结果不明）→ cancelling：等取消结束，或在单证卡片重试取消 / 核对后确认作废
+ * - cancelling（取消中 / 取消结果不明）→ cancelling：等取消结束，或在打包 / 配送任务的海外发货区重试取消 / 核对后确认作废
  * - active（有效）→ ''：用基础文案（先取消运单）
  */
 const carrierRecordVariant = (status: unknown): string => {

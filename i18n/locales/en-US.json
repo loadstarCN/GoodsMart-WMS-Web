@@ -942,7 +942,7 @@
       "packing-operation-message": "{operator} packed {packedQuantity} items.",
       "cancel-confirm-title": "Cancel DN?",
       "cancel-confirm": "DN-{id} will be cancelled: the stock it reserves is released, its picking task is deactivated and the DN is closed. A DN whose picking has started cannot be cancelled. This cannot be undone.",
-      "cancel-confirm-picked": "DN-{id} will be cancelled: picked / packed goods are returned to stock awaiting putaway and must be put away again; reservations are released, related tasks are deactivated and the DN is closed. If the DN has an unfinished FedEx shipment, cancel it on the export documents card first. This cannot be undone."
+      "cancel-confirm-picked": "DN-{id} will be cancelled: picked / packed goods are returned to stock awaiting putaway and must be put away again; reservations are released, related tasks are deactivated and the DN is closed. If the DN has an unfinished FedEx shipment, cancel it in the Export shipment section of the packing or delivery task first. This cannot be undone."
     }
   },
   "picking": {
@@ -1416,7 +1416,7 @@
   },
   "customs": {
     "title": "Export Documents",
-    "packing-title": "Export shipment: packages",
+    "shipping-title": "Export shipment: packages, shipment & documents",
     "export-badge": "Export",
     "errors": "Errors",
     "warnings": "Warnings",
@@ -1497,16 +1497,21 @@
       "download": "Download",
       "history": "History",
       "refresh": "Refresh",
-      "open-card": "Open export documents on the DN",
       "edit-exporter": "Edit exporter profile",
       "reissue": "Re-issue Documents",
+      "open-task": "Open packing / delivery task",
+      "view-dn-data": "View customs data on the DN",
       "edit-warehouse": "Edit warehouse export info"
     },
     "tips": {
       "not-on-invoice": "Not on the invoice (packed quantity is 0)",
       "origin-master": "Saved to the goods master",
+      "origin-fix-title": "Set country of origin",
+      "data-from-order": "Customs data such as HS codes, English descriptions, unit values and incoterms comes with the DN from the ordering system; corrections must be made there.",
       "issue-need-packed": "Available after packing is completed (packed)",
       "issue-not-ready": "Resolve the errors listed below first",
+      "operate-on-task": "Record packages, create the FedEx shipment, issue documents and print labels in the Export shipment section of the packing or delivery task.",
+      "packages-on-task": "Packages are recorded in the Export shipment section of the packing or delivery task",
       "issued-new": "Version {version} issued",
       "issued-same": "No changes; version {version} kept",
       "documents-voided": "{count} existing document(s) voided because packages changed. Please issue again.",
@@ -1580,10 +1585,10 @@
     },
     "workflow": {
       "step1": "Record packages (weight, dimensions) when packing",
-      "step2": "Create the shipment: preferably click “Create FedEx Shipment” on the DN's export documents card (the tracking number is saved and the declared value is submitted automatically). If FedEx is not enabled or the shipment cannot be created there, create it manually in the carrier's system (enter the declared value for carriage if shown) and get the tracking number (AWB). Do not create one manually while the documents card shows “Result unknown”, “Creating” or “Cancelling”",
-      "step2-unresolved": "Create the shipment: this DN has a FedEx shipment whose result is unknown or still in progress, so it may already exist in FedEx. Do not create one manually in the carrier's system; check and resolve it on the DN's export documents card first",
+      "step2": "Create the shipment: preferably click “Create FedEx Shipment” under “Carrier Shipment” below (the tracking number is saved and the declared value is submitted automatically). If FedEx is not enabled or the shipment cannot be created there, create it manually in the carrier's system (enter the declared value for carriage if shown) and get the tracking number (AWB). Do not create one manually while it shows “Result unknown”, “Creating” or “Cancelling” below",
+      "step2-unresolved": "Create the shipment: this DN has a FedEx shipment whose result is unknown or still in progress, so it may already exist in FedEx. Do not create one manually in the carrier's system; check and resolve it under “Carrier Shipment” below first",
       "step3": "If created manually, save the tracking number on this page (already saved when created automatically)",
-      "step4": "Issue and print the documents (CI / PL) on the DN, plus the shipping label if created automatically",
+      "step4": "Issue and print the documents (CI / PL) below, plus the shipping label if created automatically",
       "step5": "Complete the shipment"
     },
     "carrier": {
@@ -1724,12 +1729,6 @@
           "save_failed": "FedEx processed the request, but saving the result in WMS failed",
           "cancel_in_progress": "Cancellation in progress"
         }
-      },
-      "summary": {
-        "unresolved": "The shipment may already exist in FedEx. Do not create another one manually in the carrier's system; check and resolve it on the DN's export documents card first.",
-        "cancel-unresolved": "It is not yet certain whether this shipment was cancelled in FedEx. Do not create another one manually in the carrier's system; retry the cancellation or check and dismiss it on the DN's export documents card first.",
-        "in-progress": "Do not create a shipment manually in the carrier's system until this finishes. See the result on the DN's export documents card.",
-        "open-card": "Resolve on the documents card"
       }
     }
   },
@@ -1743,7 +1742,7 @@
     "code-16067": "Packages cannot be changed in the current status (only when picked or packed)",
     "code-16068": "Document requirements are not met",
     "code-16069": "Issue a valid Commercial Invoice (CI) and Packing List (PL) before shipping",
-    "code-16069-outdated": "The Commercial Invoice (CI) / Packing List (PL) is outdated (customs data, packages or the tracking number changed after issuing). Re-issue them on the DN's export documents card before shipping.",
+    "code-16069-outdated": "The Commercial Invoice (CI) / Packing List (PL) is outdated (customs data, packages or the tracking number changed after issuing). Re-issue them in the Export shipment section of the packing or delivery task before shipping.",
     "code-16070": "Not an export shipment",
     "code-16071": "Document not found",
     "code-14019": "Exporter profile text is too long",
@@ -1752,20 +1751,20 @@
     "code-16073": "FedEx returned an error",
     "code-16074": "FedEx timed out",
     "code-16075": "There is no valid shipment (or no unresolved shipment to clear)",
-    "code-16076": "This DN has an automatically created FedEx shipment, so the packages and customs data cannot be changed. To change them, cancel the shipment on the DN's export documents card first.",
-    "code-16076-unresolved": "This DN has a FedEx shipment whose result is unknown (the packages and customs data may already have been submitted with it), so they cannot be changed. First check it in FedEx Ship Manager as described on the DN's export documents card, dismiss it there with “Checked”, then make the changes.",
-    "code-16076-in-progress": "A FedEx shipment for this DN is being created, so the packages and customs data cannot be changed until it finishes. Check the result on the DN's export documents card later.",
-    "code-16076-cancelling": "The FedEx shipment for this DN is being cancelled or the result of cancelling it is unknown, so the packages and customs data cannot be changed. Wait for the cancellation, or retry it / check and dismiss it on the DN's export documents card.",
+    "code-16076": "This DN has an automatically created FedEx shipment, so the packages and customs data cannot be changed. To change them, cancel the shipment in the Export shipment section of the packing or delivery task first.",
+    "code-16076-unresolved": "This DN has a FedEx shipment whose result is unknown (the packages and customs data may already have been submitted with it), so they cannot be changed. First check it in FedEx Ship Manager as described in the Export shipment section of the packing or delivery task, dismiss it there with “Checked”, then make the changes.",
+    "code-16076-in-progress": "A FedEx shipment for this DN is being created, so the packages and customs data cannot be changed until it finishes. Check the result in the Export shipment section of the packing or delivery task later.",
+    "code-16076-cancelling": "The FedEx shipment for this DN is being cancelled or the result of cancelling it is unknown, so the packages and customs data cannot be changed. Wait for the cancellation, or retry it / check and dismiss it in the Export shipment section of the packing or delivery task.",
     "code-16076-document-changed": "The declared data submitted with the shipment differs from the current data. Cancel the shipment first, then issue the documents again.",
     "code-16077": "Invalid label printing option (A4 or THERMAL only)",
-    "code-16078": "This DN has an automatically created FedEx shipment {tracking_number}. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. To change them, cancel that shipment on the DN's export documents card first.",
-    "code-16078-no-tracking": "This DN has an automatically created FedEx shipment. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. To change them, cancel that shipment on the DN's export documents card first.",
-    "code-16078-unresolved": "This DN has a FedEx shipment whose result is unknown. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. First check it in FedEx Ship Manager as described on the DN's export documents card, then dismiss it there with “Checked”.",
-    "code-16078-in-progress": "A FedEx shipment for this DN is being created. Until it finishes, the tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. Check the result on the DN's export documents card later.",
-    "code-16078-cancelling": "The FedEx shipment for this DN is being cancelled or the result of cancelling it is unknown. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. Wait for the cancellation, or retry it / check and dismiss it on the DN's export documents card.",
-    "code-16079": "This DN has a FedEx shipment whose result is unknown (it may exist in FedEx). Until it is checked in FedEx Ship Manager and resolved as described on the DN's export documents card, shipments cannot be created, the tracking number cannot be changed and the shipment cannot be completed.",
-    "code-16079-in-progress": "A FedEx shipment for this DN is being created. Until it finishes, the tracking number cannot be saved and the shipment cannot be completed. Check the result on the DN's export documents card later.",
-    "code-16079-cancelling": "The FedEx shipment for this DN is being cancelled or the result of cancelling it is unknown, so the tracking number cannot be saved and the shipment cannot be completed. Wait for the cancellation, or retry it / check and dismiss it on the DN's export documents card.",
+    "code-16078": "This DN has an automatically created FedEx shipment {tracking_number}. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. To change them, cancel that shipment in the Export shipment section of the packing or delivery task first.",
+    "code-16078-no-tracking": "This DN has an automatically created FedEx shipment. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. To change them, cancel that shipment in the Export shipment section of the packing or delivery task first.",
+    "code-16078-unresolved": "This DN has a FedEx shipment whose result is unknown. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. First check it in FedEx Ship Manager as described in the Export shipment section of the packing or delivery task, then dismiss it there with “Checked”.",
+    "code-16078-in-progress": "A FedEx shipment for this DN is being created. Until it finishes, the tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. Check the result in the Export shipment section of the packing or delivery task later.",
+    "code-16078-cancelling": "The FedEx shipment for this DN is being cancelled or the result of cancelling it is unknown. The tracking number and carrier cannot be changed, and delivery tasks cannot be created or deleted. Wait for the cancellation, or retry it / check and dismiss it in the Export shipment section of the packing or delivery task.",
+    "code-16079": "This DN has a FedEx shipment whose result is unknown (it may exist in FedEx). Until it is checked in FedEx Ship Manager and resolved as described in the Export shipment section of the packing or delivery task, shipments cannot be created, the tracking number cannot be changed and the shipment cannot be completed.",
+    "code-16079-in-progress": "A FedEx shipment for this DN is being created. Until it finishes, the tracking number cannot be saved and the shipment cannot be completed. Check the result in the Export shipment section of the packing or delivery task later.",
+    "code-16079-cancelling": "The FedEx shipment for this DN is being cancelled or the result of cancelling it is unknown, so the tracking number cannot be saved and the shipment cannot be completed. Wait for the cancellation, or retry it / check and dismiss it in the Export shipment section of the packing or delivery task.",
     "code-16080": "The tracking number printed on the Commercial Invoice (CI) is {document_tracking_number}, which differs from the entered {tracking_number}. Ship with the tracking number on the CI; if the tracking number really changed, save the new one and re-issue the CI / PL first.",
     "code-16081": "Shipping cost must be a non-negative number",
     "code-16052": "This DN cannot be cancelled in its current status: shipped, completed or closed DNs cannot be cancelled",
@@ -1787,9 +1786,9 @@
     "code-16089": "Nothing has been picked; the picking task cannot be completed. If the goods cannot be picked, cancel the DN instead",
     "code-16093": "The shipment has changed: you acted on {expected}, but it is now {actual}. The latest status has been loaded; please check it and try again.",
     "code-16094": "FedEx did not confirm that shipment {tracking_number} is cancelled, so it cannot be dismissed. Cancel it in FedEx Ship Manager (or try again later), then dismiss it again.",
-    "code-16095": "FedEx created shipment {tracking_number}, but saving it in WMS failed and the automatic cancellation did not succeed. Retry the cancellation on the DN's export documents card, or check it in FedEx Ship Manager and dismiss it.",
+    "code-16095": "FedEx created shipment {tracking_number}, but saving it in WMS failed and the automatic cancellation did not succeed. Retry the cancellation in the Export shipment section of the packing or delivery task, or check it in FedEx Ship Manager and dismiss it.",
     "code-16095-cancelled": "FedEx created shipment {tracking_number}, but saving it in WMS failed, so it was cancelled automatically. Fix the problem and create the shipment again.",
-    "code-16110": "This DN has an unfinished FedEx shipment, so it cannot be cancelled. Cancel the shipment on the DN's export documents card first (if its result is unknown, check it in FedEx Ship Manager and dismiss it), then cancel the DN.",
+    "code-16110": "This DN has an unfinished FedEx shipment, so it cannot be cancelled. Cancel the shipment in the Export shipment section of the packing or delivery task first (if its result is unknown, check it in FedEx Ship Manager and dismiss it), then cancel the DN.",
     "code-10012": "Invalid number (the price must not be negative, and the discount price must not exceed the price)",
     "code-10013": "Password is required",
     "code-12007": "You cannot assign roles or permissions you do not have, or manage staff with higher privileges",

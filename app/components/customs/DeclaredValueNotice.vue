@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 /**
- * 运送保险提示（出库单单证卡片、打包 / 发货详情的单证概要用）
+ * 运送保险提示（出库单单证卡片、打包 / 配送任务的海外发货区用）
  *
  * - 报关快照带运送申告价额（declared_value_carriage）→ 按建单方式提示：
  *   manual（手工建单）：在承运商系统登记出货时填这个申告价额
@@ -15,7 +15,7 @@ import { declaredAmountOrNull, type DeclaredValueMode } from '~/composables/cust
 
 const props = withDefaults(defineProps<{
   customs: Record<string, any> | null | undefined
-  /** 紧凑显示（单证概要里用） */
+  /** 紧凑显示 */
   compact?: boolean
   mode?: DeclaredValueMode
   /** 随 FedEx 运单实际（将）提交的申告价额，与快照不同时才传；null = 不提交 */

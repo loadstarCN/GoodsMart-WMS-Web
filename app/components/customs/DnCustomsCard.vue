@@ -1,19 +1,17 @@
 <script lang="ts" setup>
 /**
- * 出库单详情 · 海外出荷単証卡片
+ * 出库单详情 · 海外出荷単証卡片（看报关数据和出荷结果）
  *
  * - 报关概要、逐行明细（缺原产国的行可就地选择并保存到商品主数据）、运费 / 保险费与发票总额
  * - 运送申告价额提示（手工建单时提示在承运商系统填写；自动建单时注明已随运单提交）
- * - 箱子编辑（cm / kg 录入，保存换算 mm）
- * - 承运商运单（FedEx 自动建单、面单、取消）
  * - 问题清单（错误 / 警告）
- * - 生成单证、打印 CI / PL、历史版本
- * - DN 发货后只读（仍可查看、打印）
+ * - 箱子、承运商运单只读；打印 CI / PL、面单，历史版本
+ * - 录箱子、FedEx 建 / 取消运单、生成单证都在打包 / 配送任务的海外发货区（ExportShippingPanel）做，
+ *   这里只给提示和跳转：有配送任务时去配送任务，否则去该出库单的打包任务列表
  */
 import { countryName } from '~/data/countries'
 import {
   DN_LOCKED_STATUSES,
-  DN_PACKAGE_EDITABLE_STATUSES,
   formatBytes,
   formatHsCode,
   formatMoney,
@@ -49,13 +47,8 @@ const { busyDocId, printDoc, viewDoc, downloadDoc, downloadRawDoc } = useCustoms
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 const view = ref<CustomsView | null>(null)
-const issuing = ref(false)
 const carrierRef = ref<{ reload: () => Promise<void> } | null>(null)
 const carrierStatus = ref<CarrierShipmentStatus | null>(null)
-/** 箱子编辑器（暴露 dirty：有未保存的修改） */
-const packagesRef = ref<{ reload: () => Promise<void>; dirty: boolean } | null>(null)
-/** 箱子有未保存的修改：此时建运单 / 生成单证会用已保存的旧箱子，先拦下提示保存 */
-const packagesDirty = computed(() => !!packagesRef.value?.dirty)
 let scrolled = false
 
 // ------------------ 读取 ----------------------
@@ -92,20 +85,16 @@ const reloadAll = async () => {
 
 // ------------------ 状态 ----------------------
 const locked = computed(() => !!view.value?.locked || DN_LOCKED_STATUSES.includes(String(props.dnStatus || '')))
-const canEditPackages = computed(() => !locked.value && DN_PACKAGE_EDITABLE_STATUSES.includes(String(props.dnStatus || '')))
-const isPacked = computed(() => props.dnStatus === 'packed')
 const ready = computed(() => !!view.value?.ready)
-const canIssue = computed(() => !locked.value && isPacked.value && ready.value)
-const issueHint = computed(() => {
-  if (locked.value) return ''
-  if (!isPacked.value) return t('customs.tips.issue-need-packed')
-  if (!ready.value) return t('customs.tips.issue-not-ready')
-  if (packagesDirty.value) return t('customs.tips.packages-unsaved-before-issue')
-  return ''
-})
 const packagesReadonlyReason = computed(() =>
-  locked.value ? t('customs.status.locked') : t('customs.packages.readonly-status')
+  locked.value ? t('customs.status.locked') : t('customs.tips.packages-on-task')
 )
+/** 办出荷手续的任务页：已有配送任务时去配送任务，否则去该出库单的打包任务列表（已拣货 / 已打包才有） */
+const taskLink = computed(() => {
+  const deliveryTaskId = carrierStatus.value?.delivery_task_id
+  if (deliveryTaskId) return `/delivery/detail/${deliveryTaskId}`
+  return ['picked', 'packed'].includes(String(props.dnStatus || '')) ? `/packing/?dn_id=${props.dnId}` : null
+})
 
 const customs = computed<Record<string, any>>(() => view.value?.customs || {})
 const consignee = computed<Record<string, any>>(() => view.value?.consignee || customs.value?.consignee || {})
@@ -172,43 +161,6 @@ const problemFieldText = (p: CustomsProblem) => {
 // 签发人：后端只给用户 id 时显示「用户 #id」
 const userText = (u: any) => formatUserRef(u, t)
 
-// ------------------ 生成单证 ----------------------
-const issue = async () => {
-  if (!canIssue.value || issuing.value) return
-  // 箱子有未保存的修改：单证会按已保存的旧箱子生成，先保存箱子
-  if (packagesDirty.value) {
-    showAlert(t('customs.operations.issue'), t('customs.tips.packages-unsaved-before-issue'), 'warning')
-    return
-  }
-  const prevVersion = Math.max(0, ...(view.value?.current_documents || []).map((d: CustomsDocumentMeta) => Number(d.version) || 0))
-  issuing.value = true
-  await httpRequest<any>(`/api/warehouse/dn/${props.dnId}/customs-documents/issue`, {
-    method: 'POST',
-    body: {},
-    onSuccess: async (data) => {
-      const version = data?.version ?? ''
-      if (version !== '' && Number(version) === prevVersion) {
-        showToast(t('customs.tips.issued-same', { version }), 'success')
-      } else {
-        showToast(t('customs.tips.issued-new', { version }), 'success')
-      }
-      await reloadAll()
-      if (historyOpen.value) await loadHistory()
-    },
-    onError: (error) => {
-      // 16068：单证条件不全，details.problems 是最新的问题清单
-      const latest = error.details?.problems
-      if (error.code === 16068 && Array.isArray(latest) && view.value) {
-        view.value = { ...view.value, problems: latest, ready: false }
-      }
-      showToast(bizErrorMessage(error), 'error')
-    },
-    onFinally: () => {
-      issuing.value = false
-    },
-  })
-}
-
 // ------------------ 历史版本 ----------------------
 const historyOpen = ref(false)
 const historyLoading = ref(false)
@@ -265,12 +217,6 @@ const saveOrigin = async (line: CustomsLine) => {
   })
 }
 
-// ------------------ 箱子保存后 ----------------------
-const onPackagesSaved = async () => {
-  await reloadAll()
-  if (historyOpen.value) await loadHistory()
-}
-
 // ------------------ 承运商运单：建单 / 取消后运单号变了，单证随之更新 ----------------------
 const onCarrierChanged = async () => {
   await load()
@@ -302,11 +248,6 @@ defineExpose({ reload: reloadAll })
         </template>
       </div>
       <div class="btn-list">
-        <button type="button" class="btn btn-sm" v-if="!locked" :class="outdated ? 'btn-danger btn-issue-outdated' : 'btn-primary'"
-          :disabled="!canIssue || issuing" :title="issueHint" @click="issue">
-          <span v-if="issuing" class="spinner-border spinner-border-sm me-1"></span>
-          <i v-else class="ri-file-add-line me-1"></i>{{ t('customs.operations.issue') }}
-        </button>
         <button type="button" class="btn btn-sm btn-primary-light" :disabled="!ci || busyDocId !== null"
           @click="printDoc(dnId, ci)">
           <span v-if="ci && busyDocId === ci.id" class="spinner-border spinner-border-sm me-1"></span>
@@ -341,14 +282,13 @@ defineExpose({ reload: reloadAll })
             <i class="ri-error-warning-line me-1 fs-16 align-middle"></i>
             <span class="fw-semibold">{{ t('customs.tips.documents-outdated') }}</span>
           </div>
-          <button type="button" class="btn btn-sm btn-light" :disabled="!canIssue || issuing" @click="issue">
-            <span v-if="issuing" class="spinner-border spinner-border-sm me-1"></span>
-            <i v-else class="ri-file-add-line me-1"></i>{{ t('customs.operations.reissue') }}
-          </button>
         </div>
-        <p class="fs-12 text-muted mb-3" v-if="issueHint">
-          <i class="ri-information-line me-1"></i>{{ issueHint }}
-        </p>
+        <div class="alert alert-info-transparent d-flex flex-wrap align-items-center justify-content-between gap-2 fs-13" v-if="!locked">
+          <div><i class="ri-information-line me-1"></i>{{ t('customs.tips.operate-on-task') }}</div>
+          <NuxtLink :to="taskLink" class="btn btn-sm btn-primary-light" v-if="taskLink">
+            <i class="ri-arrow-right-line me-1"></i>{{ t('customs.operations.open-task') }}
+          </NuxtLink>
+        </div>
 
         <div class="alert alert-warning-transparent" v-if="!view.customs">{{ t('customs.tips.no-snapshot') }}</div>
         <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" :carrier-value="carrierDeclaredValue" v-else />
@@ -586,14 +526,12 @@ defineExpose({ reload: reloadAll })
           <!-- ===== 箱子 ===== -->
           <div class="col-12">
             <h6 class="fw-semibold mb-2">{{ t('customs.sections.packages') }}</h6>
-            <DnPackagesEditor ref="packagesRef" :dn-id="dnId" :packages="packagesForEditor" :editable="canEditPackages"
-              :readonly-reason="packagesReadonlyReason" @saved="onPackagesSaved" />
+            <DnPackagesEditor :dn-id="dnId" :packages="packagesForEditor" :readonly-reason="packagesReadonlyReason" />
           </div>
 
-          <!-- ===== 承运商运单 ===== -->
+          <!-- ===== 承运商运单（只读：建单 / 取消在任务页） ===== -->
           <div class="col-12">
-            <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" :locked="locked" :customs="view.customs"
-              :packages-dirty="packagesDirty"
+            <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" locked :customs="view.customs"
               :warehouse-id="warehouseId" :package-count="totals?.package_count ?? packagesForEditor.length"
               @status="carrierStatus = $event" @changed="onCarrierChanged" />
           </div>
@@ -703,9 +641,6 @@ defineExpose({ reload: reloadAll })
 </template>
 
 <style scoped>
-.btn-issue-outdated {
-  box-shadow: 0 0 0 0.2rem rgba(var(--danger-rgb, 220, 53, 69), 0.35);
-}
 .customs-dl dt,
 .customs-dl dd {
   margin-bottom: 0.35rem;

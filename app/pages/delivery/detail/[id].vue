@@ -109,7 +109,7 @@ const completeTask = async () => {
             // 后端拒绝完成发货；文案按缺失 / 过期区分（见 useBizError）
             if (error.code === 16069) {
                 customsBlockedReason.value = bizErrorMessage(error);
-                docStatusRef.value?.reload();
+                shippingRef.value?.reload();
                 showAlert(t('customs.tips.delivery-blocked-title'), customsBlockedReason.value, 'error');
                 return;
             }
@@ -117,8 +117,8 @@ const completeTask = async () => {
             // 需要按文案处理，用弹窗而不是一闪而过的提示
             if (SHIPPING_BLOCK_CODES.includes(Number(error.code))) {
                 // 16079 按 details.unresolved.status 区分：建单中 / 取消中或取消结果不明 / 建单结果不明（见 useBizError）；
-                // 同时刷新单证概要，显示运单的最新状态
-                if (Number(error.code) === 16079 && isExport.value) docStatusRef.value?.reload();
+                // 同时刷新海外发货区，显示运单的最新状态
+                if (Number(error.code) === 16079 && isExport.value) shippingRef.value?.reload();
                 showAlert(t('customs.tips.delivery-blocked-title'), bizErrorMessage(error), 'error');
                 return;
             }
@@ -219,16 +219,35 @@ onMounted(async() => {
   await fetchData();
 });
 
-// ------------------ 海外出荷：单证状态 ----------------------
+// ------------------ 海外出荷：本页办完建运单、出单证、打面单（ExportShippingPanel） ----------------------
 const { bizErrorMessage } = useBizError();
 const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.value?.dn?.customs));
 const customsBlockedReason = ref<string | null>(null);
-const docStatusRef = ref<{ reload: () => Promise<void> } | null>(null);
-/** 单证概要读到的 FedEx 自动运单状态：结果不明 / 建单中 / 取消中时，流程第 2 步改成「先到单证卡片处理，不要手工建运单」 */
+const shippingRef = ref<{ reload: () => Promise<void> } | null>(null);
+/** 海外发货区读到的 FedEx 自动运单状态：结果不明 / 建单中 / 取消中时，流程第 2 步改成「先在下方处理，不要手工建运单」 */
 const carrierStatus = ref<CarrierShipmentStatus | null>(null);
 const carrierPending = computed(() => ['unresolved', 'cancel-unresolved', 'creating', 'cancelling'].includes(carrierSummaryState(carrierStatus.value)));
 const workflowStepKey = (n: number) =>
   n === 2 && carrierPending.value ? 'customs.workflow.step2-unresolved' : `customs.workflow.step${n}`;
+
+/**
+ * 在本页 FedEx 建单 / 取消、生成单证后：后端已把运单号（和承运商）写到配送任务上，只同步这两项，
+ * 画面上其余输入（运费、运输方式、备注等）保持不动
+ */
+const syncTrackingFromTask = async () => {
+  await httpRequest<any>(`/api/warehouse/delivery/${taskId}`, {
+    method: 'GET',
+    onSuccess: (data) => {
+      if (!itemData.value) return;
+      itemData.value.tracking_number = data?.tracking_number ?? null;
+      if (data?.carrier_id) {
+        itemData.value.carrier_id = data.carrier_id;
+        itemData.value.carrier = data.carrier;
+        selectedCarrier.value = data.carrier;
+      }
+    },
+  });
+};
 
 /** 完成发货 / 保存运单号时要弹窗说明的业务码：自动运单锁定（16078）/ 结果不明（16079）/ 与 CI 上的运单号不一致（16080） */
 const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092];
@@ -261,7 +280,7 @@ const saveTracking = async () => {
       }
       if (isExport.value) {
         showToast(t('delivery.tips.tracking-saved-reissue'), 'warning');
-        docStatusRef.value?.reload();
+        shippingRef.value?.reload();
       } else {
         showToast(t('action-results.success'), 'success');
       }
@@ -493,35 +512,27 @@ const saveTracking = async () => {
   </div>
   <!--End::row-1 -->
 
-  <!-- 海外出荷単証：没有当前有效的 CI 和 PL 时后端拒绝完成发货（16069） -->
+  <!-- 海外发货：箱子、FedEx 运单、CI / PL 在本页办完；没有当前有效的 CI 和 PL 时后端拒绝完成发货（16069） -->
   <div class="row" v-if="itemData && isExport">
     <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-header">
-          <div class="card-title">
-            <i class="ri-earth-line me-1 align-middle"></i>{{ t('customs.title') }}
+      <ExportShippingPanel ref="shippingRef" :dn-id="itemData.dn_id" :dn-status="itemData?.dn?.status"
+        :warehouse-id="itemData?.dn?.warehouse_id" @carrier-status="carrierStatus = $event" @changed="syncTrackingFromTask">
+        <div class="alert alert-danger-transparent d-flex align-items-start gap-2" v-if="customsBlockedReason">
+          <i class="ri-error-warning-line fs-16"></i>
+          <div>
+            <div class="fw-semibold">{{ t('customs.tips.delivery-blocked-title') }}</div>
+            <div>{{ customsBlockedReason }}</div>
           </div>
         </div>
-        <div class="card-body">
-          <div class="alert alert-danger-transparent d-flex align-items-start gap-2" v-if="customsBlockedReason">
-            <i class="ri-error-warning-line fs-16"></i>
-            <div>
-              <div class="fw-semibold">{{ t('customs.tips.delivery-blocked-title') }}</div>
-              <div>{{ customsBlockedReason }}</div>
-            </div>
-          </div>
-          <template v-else-if="itemData?.status === 'pending' || itemData?.status === 'in_progress'">
-            <p class="fs-12 text-muted mb-1">
-              <i class="ri-information-line me-1"></i>{{ t('customs.tips.delivery-requires-documents') }}
-            </p>
-            <ol class="fs-12 text-muted mb-3 ps-4">
-              <li v-for="n in 5" :key="n" :class="{ 'text-danger fw-semibold': n === 2 && carrierPending }">{{ t(workflowStepKey(n)) }}</li>
-            </ol>
-          </template>
-          <CustomsDocStatus ref="docStatusRef" :dn-id="itemData.dn_id" :key="`docs-${itemData.dn_id}-${itemData.status}`"
-            @carrier-status="carrierStatus = $event" />
-        </div>
-      </div>
+        <template v-else-if="itemData?.status === 'pending' || itemData?.status === 'in_progress'">
+          <p class="fs-12 text-muted mb-1">
+            <i class="ri-information-line me-1"></i>{{ t('customs.tips.delivery-requires-documents') }}
+          </p>
+          <ol class="fs-12 text-muted mb-3 ps-4">
+            <li v-for="n in 5" :key="n" :class="{ 'text-danger fw-semibold': n === 2 && carrierPending }">{{ t(workflowStepKey(n)) }}</li>
+          </ol>
+        </template>
+      </ExportShippingPanel>
     </div>
   </div>
 

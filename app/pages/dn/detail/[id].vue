@@ -132,7 +132,7 @@ const cancelDN = async () => {
             done = true;
         },
         onError: (error) => {
-            // 16052 状态已变 / 16053 拣货已开始 / 16110 有未结束的 FedEx 自动运单（要先在单证卡片取消运单）
+            // 16052 状态已变 / 16053 拣货已开始 / 16110 有未结束的 FedEx 自动运单（要先在打包 / 配送任务的海外发货区取消运单）
             conflict = error.status === 409;
             if (error.code === 16110) {
                 showAlert(t('dn.tips.cancel-confirm-title'), bizErrorMessage(error), 'warning');

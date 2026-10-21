@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 /**
- * 出库单单证卡片 · 承运商运单（FedEx 自动建单）
+ * 海外发货 · 承运商运单（FedEx 自动建单）
+ * 打包 / 配送任务的海外发货区可操作；出库单详情的单证卡片里只读（locked）
  *
  * - 未启用：不显示按钮，只提示手工建运单
  * - 可建：「在 FedEx 建运单」+ 面单打印方式（A4 普通打印机 / 热敏标签机；上次的选择 → 后端默认 → A4）；
@@ -63,7 +64,7 @@ import {
 
 const props = withDefaults(defineProps<{
   dnId: number | string
-  /** DN 已发货（只读）：不能建单、不能取消 */
+  /** 只读（DN 已发货，或在出库单详情只看）：不能建单、取消、确认作废 */
   locked?: boolean
   /** 箱数（建单确认文案用） */
   packageCount?: number | null
@@ -342,6 +343,10 @@ const labelFormatText = (format: string | null | undefined) => {
 }
 
 const deliveryTaskId = computed(() => status.value?.delivery_task_id || null)
+/** 「前往配送任务」：已经在这张配送任务页上时不显示 */
+const route = useRoute()
+const showDeliveryLink = computed(() =>
+  !!deliveryTaskId.value && route.path.replace(/\/$/, '') !== `/delivery/detail/${deliveryTaskId.value}`)
 const packageTrackingNumbers = computed(() => {
   const list = activeShipment.value?.package_tracking_numbers
   return Array.isArray(list) ? list.filter(Boolean) : []
@@ -922,7 +927,7 @@ defineExpose({ reload: async () => { await load() } })
                 <span class="badge bg-light text-default ms-1" v-if="b.goods_code">{{ b.goods_code }}</span>
                 <span class="text-muted fs-11 ms-1" v-if="b.field">({{ b.field }})</span>
                 <NuxtLink :to="`/delivery/detail/${deliveryTaskId}`" class="fs-12 ms-2"
-                  v-if="deliveryTaskId && DELIVERY_TASK_BLOCKERS.includes(b.code)">
+                  v-if="showDeliveryLink && DELIVERY_TASK_BLOCKERS.includes(b.code)">
                   {{ t('customs.carrier.operations.open-delivery') }}
                 </NuxtLink>
                 <template v-if="EXPORTER_BLOCKERS.includes(b.code)">
@@ -939,7 +944,7 @@ defineExpose({ reload: async () => { await load() } })
           </p>
           <p class="fs-12 text-muted mb-0" v-if="!locked">
             <i class="ri-information-line me-1"></i>{{ t('customs.carrier.tips.auto') }}
-            <NuxtLink :to="`/delivery/detail/${deliveryTaskId}`" class="ms-1" v-if="deliveryTaskId">
+            <NuxtLink :to="`/delivery/detail/${deliveryTaskId}`" class="ms-1" v-if="showDeliveryLink">
               {{ t('customs.carrier.operations.open-delivery') }}
             </NuxtLink>
           </p>
