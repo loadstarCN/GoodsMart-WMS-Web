@@ -4,21 +4,21 @@
  *
  * - 报关概要、逐行明细（缺原产国的行可就地选择并保存到商品主数据）、运费 / 保险费与发票总额
  * - 运送申告价额提示（手工建单时提示在承运商系统填写；自动建单时注明已随运单提交）
- * - 问题清单（错误 / 警告）
- * - 箱子、承运商运单只读；打印 CI / PL、面单，历史版本
+ * - 问题清单（错误 / 警告），每条给出补的地方；报关数据缺的、错的在「补录报关数据」里改（需 dn_edit）
+ * - 打包完成前不列「还没打包完 / 还没录箱子」，也不显示单证状态、运单和自动建单的申告价额调整
+ * - 箱子、承运商运单只读（面单在运单区打印）；当前 CI / PL 可查看、打印、下载（历史版本在任务页）
  * - 录箱子、FedEx 建 / 取消运单、生成单证都在打包 / 配送任务的海外发货区（ExportShippingPanel）做，
  *   这里只给提示和跳转：有配送任务时去配送任务，否则去该出库单的打包任务列表
  */
 import { countryName } from '~/data/countries'
 import {
+  CUSTOMS_WORKFLOW_PROBLEMS,
   DN_LOCKED_STATUSES,
   formatBytes,
   formatHsCode,
   formatMoney,
   formatUserRef,
   hasNonAscii,
-  isPdfDocument,
-  normalizeDocumentList,
   pickCurrentDocument,
   useCustomsPdfActions,
   type CustomsDocumentMeta,
@@ -42,7 +42,7 @@ const props = defineProps<{
 const { t, te, locale } = useI18n()
 const route = useRoute()
 const { bizErrorMessage } = useBizError()
-const { busyDocId, printDoc, viewDoc, downloadDoc, downloadRawDoc } = useCustomsPdfActions()
+const { busyDocId, printDoc, viewDoc, downloadDoc } = useCustomsPdfActions()
 
 const loading = ref(false)
 const loadError = ref<string | null>(null)
@@ -103,9 +103,17 @@ const currency = computed(() => String(customs.value?.currency || 'JPY'))
 const lines = computed<CustomsLine[]>(() => view.value?.lines || [])
 const totals = computed(() => view.value?.totals || null)
 const exporter = computed<Record<string, any> | null>(() => view.value?.exporter || null)
-const problems = computed<CustomsProblem[]>(() => view.value?.problems || [])
-const errorProblems = computed(() => problems.value.filter((p: CustomsProblem) => p.level === 'error'))
-const warningProblems = computed(() => problems.value.filter((p: CustomsProblem) => p.level !== 'error'))
+/** 打包完成（或已发货）后才看单证状态、运单；之前只看数据 */
+const shippingStage = computed(() => locked.value || props.dnStatus === 'packed')
+/** 打包完成前不把「还没打包完 / 还没录箱子」当问题列出 */
+const problems = computed<CustomsProblem[]>(() => {
+  const all = view.value?.problems || []
+  return shippingStage.value ? all : all.filter((p: CustomsProblem) => !CUSTOMS_WORKFLOW_PROBLEMS.includes(p.code))
+})
+const staffStore = useStaffStore()
+/** 能补录报关快照：DN 未发货、有出库单编辑权限（PUT customs 需 dn_edit） */
+const canEditCustoms = computed(() => !locked.value && !!view.value?.customs && staffStore.hasPermission('dn_edit'))
+const editorOpen = ref(false)
 const ci = computed(() => pickCurrentDocument(view.value?.current_documents, 'commercial_invoice'))
 const pl = computed(() => pickCurrentDocument(view.value?.current_documents, 'packing_list'))
 const currentDocuments = computed(() => [ci.value, pl.value].filter((d): d is CustomsDocumentMeta => !!d))
@@ -128,66 +136,17 @@ const weight = (v: number | null | undefined) =>
 const jpExportWarned = (line: CustomsLine) =>
   problems.value.some((p: CustomsProblem) => p.code === 'JP_EXPORT_CODE_MISMATCH' && p.goods_code === line.goods_code)
 
-const problemText = (p: CustomsProblem) => {
-  const key = `customs.problems.${p.code}`
-  return te(key) ? t(key) : (p.message || p.code)
-}
 const docTypeText = (type: string) => {
   const key = `customs.doc-types.${type}`
   return te(key) ? t(key) : type
-}
-const voidReasonText = (reason: string | null | undefined) => {
-  if (!reason) return ''
-  const key = `customs.void-reasons.${reason}`
-  return te(key) ? t(key) : reason
 }
 const exportReasonText = (reason: string | null | undefined) => {
   if (!reason) return ''
   const key = `customs.export-reasons.${String(reason).toUpperCase()}`
   return te(key) ? `${reason}（${t(key)}）` : String(reason)
 }
-const EXPORTER_FIELD_KEYS: Record<string, string> = {
-  legal_name_en: 'company.fields.legal-name-en',
-  address_en: 'company.fields.address-en',
-  phone: 'common.fields.phone',
-  country_code: 'company.fields.country-code',
-}
-const problemFieldText = (p: CustomsProblem) => {
-  if (!p.field) return ''
-  const name = String(p.field).split('.').pop() || ''
-  if (p.code === 'EXPORTER_PROFILE_INCOMPLETE' && EXPORTER_FIELD_KEYS[name]) return t(EXPORTER_FIELD_KEYS[name])
-  return String(p.field)
-}
 // 签发人：后端只给用户 id 时显示「用户 #id」
 const userText = (u: any) => formatUserRef(u, t)
-
-// ------------------ 历史版本 ----------------------
-const historyOpen = ref(false)
-const historyLoading = ref(false)
-const history = ref<CustomsDocumentMeta[]>([])
-
-const loadHistory = async () => {
-  historyLoading.value = true
-  await httpRequest<any>(`/api/warehouse/dn/${props.dnId}/customs-documents/`, {
-    method: 'GET',
-    onSuccess: (data) => {
-      history.value = normalizeDocumentList(data)
-        .slice()
-        .sort((a, b) => (Number(b.version) - Number(a.version)) || String(a.doc_type).localeCompare(String(b.doc_type)))
-    },
-    onError: (error) => {
-      showToast(bizErrorMessage(error), 'error')
-    },
-    onFinally: () => {
-      historyLoading.value = false
-    },
-  })
-}
-
-const toggleHistory = async () => {
-  historyOpen.value = !historyOpen.value
-  if (historyOpen.value) await loadHistory()
-}
 
 // ------------------ 缺原产国：就地补录（写入商品主数据） ----------------------
 const originDraft = reactive<Record<string, string | null>>({})
@@ -220,7 +179,11 @@ const saveOrigin = async (line: CustomsLine) => {
 // ------------------ 承运商运单：建单 / 取消后运单号变了，单证随之更新 ----------------------
 const onCarrierChanged = async () => {
   await load()
-  if (historyOpen.value) await loadHistory()
+}
+
+// ------------------ 报关数据补录后：问题、单证（可能被作废）、运单条件都要刷新 ----------------------
+const onCustomsSaved = async () => {
+  await reloadAll()
 }
 
 defineExpose({ reload: reloadAll })
@@ -231,7 +194,7 @@ defineExpose({ reload: reloadAll })
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
       <div class="card-title d-flex align-items-center flex-wrap gap-2">
         <span><i class="ri-earth-line me-1 align-middle"></i>{{ t('customs.title') }}</span>
-        <template v-if="view">
+        <template v-if="view && shippingStage">
           <span class="badge bg-secondary-transparent" v-if="locked">
             <i class="ri-lock-line me-1"></i>{{ t('customs.status.locked') }}
           </span>
@@ -248,18 +211,8 @@ defineExpose({ reload: reloadAll })
         </template>
       </div>
       <div class="btn-list">
-        <button type="button" class="btn btn-sm btn-primary-light" :disabled="!ci || busyDocId !== null"
-          @click="printDoc(dnId, ci)">
-          <span v-if="ci && busyDocId === ci.id" class="spinner-border spinner-border-sm me-1"></span>
-          <i v-else class="ri-printer-line me-1"></i>{{ t('customs.operations.print-ci') }}
-        </button>
-        <button type="button" class="btn btn-sm btn-primary-light" :disabled="!pl || busyDocId !== null"
-          @click="printDoc(dnId, pl)">
-          <span v-if="pl && busyDocId === pl.id" class="spinner-border spinner-border-sm me-1"></span>
-          <i v-else class="ri-printer-line me-1"></i>{{ t('customs.operations.print-pl') }}
-        </button>
-        <button type="button" class="btn btn-sm btn-light" @click="toggleHistory">
-          <i class="ri-history-line me-1"></i>{{ t('customs.operations.history') }}
+        <button type="button" class="btn btn-sm btn-primary-light" v-if="canEditCustoms" @click="editorOpen = true">
+          <i class="ri-edit-line me-1"></i>{{ t('customs.operations.edit-customs') }}
         </button>
         <button type="button" class="btn btn-sm btn-light" :disabled="loading" :title="t('customs.operations.refresh')"
           @click="reloadAll">
@@ -291,7 +244,8 @@ defineExpose({ reload: reloadAll })
         </div>
 
         <div class="alert alert-warning-transparent" v-if="!view.customs">{{ t('customs.tips.no-snapshot') }}</div>
-        <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" :carrier-value="carrierDeclaredValue" v-else />
+        <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode"
+          :carrier-value="shippingStage ? carrierDeclaredValue : null" v-else />
 
         <div class="row gy-3">
           <!-- ===== 报关概要 ===== -->
@@ -362,36 +316,8 @@ defineExpose({ reload: reloadAll })
             <div class="text-success fs-13" v-if="problems.length === 0">
               <i class="ri-checkbox-circle-line me-1"></i>{{ t('customs.tips.no-problems') }}
             </div>
-            <div class="mb-2" v-if="errorProblems.length > 0">
-              <div class="fw-semibold text-danger fs-13 mb-1">
-                <i class="ri-close-circle-line me-1"></i>{{ t('customs.errors') }}（{{ errorProblems.length }}）
-              </div>
-              <ul class="mb-0 fs-13 ps-3">
-                <li v-for="(p, i) in errorProblems" :key="`e-${i}`" :title="p.message || ''">
-                  {{ problemText(p) }}
-                  <span class="badge bg-light text-default ms-1" v-if="p.goods_code">{{ p.goods_code }}</span>
-                  <span class="text-muted fs-11 ms-1" v-if="p.field">({{ problemFieldText(p) }})</span>
-                  <template v-if="p.code === 'EXPORTER_PROFILE_INCOMPLETE'">
-                    <NuxtLink to="/company" class="fs-12 ms-1">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
-                    <NuxtLink :to="`/warehouse/edit/${warehouseId}`" class="fs-12 ms-2" v-if="warehouseId">
-                      {{ t('customs.operations.edit-warehouse') }}
-                    </NuxtLink>
-                  </template>
-                </li>
-              </ul>
-            </div>
-            <div v-if="warningProblems.length > 0">
-              <div class="fw-semibold text-warning fs-13 mb-1">
-                <i class="ri-error-warning-line me-1"></i>{{ t('customs.warnings') }}（{{ warningProblems.length }}）
-              </div>
-              <ul class="mb-0 fs-13 ps-3">
-                <li v-for="(p, i) in warningProblems" :key="`w-${i}`" :title="p.message || ''">
-                  {{ problemText(p) }}
-                  <span class="badge bg-light text-default ms-1" v-if="p.goods_code">{{ p.goods_code }}</span>
-                  <span class="text-muted fs-11 ms-1" v-if="p.field">({{ problemFieldText(p) }})</span>
-                </li>
-              </ul>
-            </div>
+            <CustomsProblemList :problems="problems" :lines="lines" :warehouse-id="warehouseId"
+              :can-edit-customs="canEditCustoms" @edit-customs="editorOpen = true" />
           </div>
 
           <!-- ===== 明细 ===== -->
@@ -529,8 +455,8 @@ defineExpose({ reload: reloadAll })
             <DnPackagesEditor :dn-id="dnId" :packages="packagesForEditor" :readonly-reason="packagesReadonlyReason" />
           </div>
 
-          <!-- ===== 承运商运单（只读：建单 / 取消在任务页） ===== -->
-          <div class="col-12">
+          <!-- ===== 承运商运单（只读：建单 / 取消在任务页；打包完成后才有） ===== -->
+          <div class="col-12" v-if="shippingStage">
             <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" locked :customs="view.customs"
               :warehouse-id="warehouseId" :package-count="totals?.package_count ?? packagesForEditor.length"
               @status="carrierStatus = $event" @changed="onCarrierChanged" />
@@ -575,66 +501,11 @@ defineExpose({ reload: reloadAll })
               </table>
             </div>
             <p class="text-muted fs-13 mb-0" v-else>{{ t('customs.tips.no-documents') }}</p>
-
-            <!-- 历史版本 -->
-            <div class="mt-3" v-if="historyOpen">
-              <div class="fw-semibold fs-13 mb-2">{{ t('customs.operations.history') }}</div>
-              <div class="d-flex justify-content-center py-2" v-if="historyLoading">
-                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-              </div>
-              <div class="table-responsive" v-else-if="history.length > 0">
-                <table class="table table-sm table-bordered align-middle mb-0 fs-12">
-                  <thead>
-                    <tr>
-                      <th scope="col">{{ t('customs.fields.doc-type') }}</th>
-                      <th scope="col">{{ t('customs.fields.version') }}</th>
-                      <th scope="col">{{ t('customs.fields.document-number') }}</th>
-                      <th scope="col">{{ t('customs.fields.status') }}</th>
-                      <th scope="col">{{ t('customs.fields.issued-at') }}</th>
-                      <th scope="col">{{ t('customs.fields.void-reason') }}</th>
-                      <th scope="col">SHA-256</th>
-                      <th scope="col">{{ t('common.fields.action') }}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="doc in history" :key="doc.id">
-                      <td>{{ docTypeText(doc.doc_type) }}</td>
-                      <td>v{{ doc.version }}</td>
-                      <td class="font-monospace">{{ doc.document_number }}</td>
-                      <td>
-                        <span class="badge" :class="doc.status === 'void' ? 'bg-danger-transparent' : 'bg-success-transparent'">
-                          {{ t(`customs.doc-status.${doc.status === 'void' ? 'void' : 'issued'}`) }}
-                        </span>
-                      </td>
-                      <td>{{ $dayjs(doc.issued_at, 'YYYY-MM-DD HH:mm') }}</td>
-                      <td>
-                        <template v-if="doc.status === 'void'">
-                          {{ voidReasonText(doc.void_reason) }}
-                          <span class="text-muted ms-1" v-if="doc.voided_at">{{ $dayjs(doc.voided_at, 'YYYY-MM-DD HH:mm') }}</span>
-                        </template>
-                      </td>
-                      <td class="font-monospace" :title="doc.sha256 || ''">{{ (doc.sha256 || '').slice(0, 12) }}</td>
-                      <td>
-                        <!-- PDF（CI / PL / PDF 面单）：查看、下载；ZPL / EPL 指令文件面单：只能按原格式下载 -->
-                        <div class="hstack gap-1" v-if="isPdfDocument(doc)">
-                          <button type="button" class="btn btn-icon btn-sm btn-primary-light" :title="t('customs.operations.view')"
-                            :disabled="busyDocId !== null" @click="viewDoc(dnId, doc)"><i class="ri-eye-line"></i></button>
-                          <button type="button" class="btn btn-icon btn-sm btn-light" :title="t('customs.operations.download')"
-                            :disabled="busyDocId !== null" @click="downloadDoc(dnId, doc)"><i class="ri-download-line"></i></button>
-                        </div>
-                        <div class="hstack gap-1" v-else>
-                          <button type="button" class="btn btn-icon btn-sm btn-light" :title="t('customs.operations.download')"
-                            :disabled="busyDocId !== null" @click="downloadRawDoc(dnId, doc)"><i class="ri-download-line"></i></button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p class="text-muted fs-13 mb-0" v-else>{{ t('customs.tips.no-documents') }}</p>
-            </div>
           </div>
         </div>
+
+        <CustomsSnapshotEditor v-model:open="editorOpen" :dn-id="dnId" :customs="view.customs" :lines="lines"
+          :fallback-consignee="view.consignee" @saved="onCustomsSaved" />
       </template>
     </div>
   </div>

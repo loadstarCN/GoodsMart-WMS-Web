@@ -1435,6 +1435,7 @@
       "export-reason": "出口原因",
       "recipient-country": "收货国",
       "recipient-tax-id": "收货人税号",
+      "tax-id-type": "税号类型",
       "consignee": "收货人",
       "jan": "JAN",
       "goods-name": "品名",
@@ -1463,6 +1464,17 @@
       "jp-export-code": "出口统计编号",
       "declared-value-carriage": "运送申告价额"
     },
+    "consignee-fields": {
+      "company": "公司",
+      "name": "联系人",
+      "address-line1": "地址 1",
+      "address-line2": "地址 2",
+      "city": "城市",
+      "state": "州 / 省",
+      "postal-code": "邮编",
+      "country": "国家",
+      "phone": "电话"
+    },
     "doc-types": {
       "commercial_invoice": "商业发票（CI）",
       "packing_list": "装箱单（PL）",
@@ -1479,7 +1491,12 @@
       "shipment_cancelled": "运单已取消"
     },
     "export-reasons": {
-      "SALE": "销售"
+      "SALE": "销售",
+      "GIFT": "赠品",
+      "SAMPLE": "样品",
+      "RETURN": "退货",
+      "REPAIR": "维修",
+      "PERSONAL_EFFECTS": "个人物品"
     },
     "status": {
       "ready": "可出单证",
@@ -1500,16 +1517,21 @@
       "edit-exporter": "编辑公司出口资料",
       "reissue": "重新生成单证",
       "open-task": "前往打包 / 配送任务",
-      "view-dn-data": "查看出库单的报关数据",
-      "edit-warehouse": "编辑仓库出口资料"
+      "edit-warehouse": "编辑仓库出口资料",
+      "edit-customs": "补录报关数据",
+      "fix": "补录",
+      "edit-carrier": "编辑承运商",
+      "edit-weight": "补录重量"
     },
     "tips": {
       "not-on-invoice": "已打包数量为 0，不上发票",
       "origin-master": "保存到商品主数据",
       "origin-fix-title": "补录原产国",
-      "data-from-order": "HS 编码、英文品名、单价、贸易条款等报关数据随出库单从下单系统传来，有误需由下单方更正。",
+      "data-from-order": "报关数据随出库单从下单系统传来，缺的或有误的可以在这里补录。",
+      "data-need-dn-edit": "报关数据随出库单从下单系统传来；补录需要出库单编辑权限，请联系有权限的人处理。",
       "issue-need-packed": "打包完成（packed）后才能生成",
       "issue-not-ready": "请先处理下方问题清单中的错误",
+      "shipping-after-packed": "下一步：打包完成后，在这里 FedEx 建运单、生成并打印单证（CI / PL）和面单。",
       "operate-on-task": "录箱子、FedEx 建运单、生成单证和打印面单，都在打包或配送任务的「海外发货」区操作。",
       "packages-on-task": "箱子在打包或配送任务的「海外发货」区录入",
       "issued-new": "已生成第 {version} 版",
@@ -1561,6 +1583,23 @@
       "title-domestic": "箱子（可选）",
       "domestic-tip": "国内单可选录入，用于记录箱数、重量和尺寸。"
     },
+    "editor": {
+      "title": "补录报关数据",
+      "sections": {
+        "basic": "单据信息",
+        "consignee": "收货人",
+        "lines": "明细"
+      },
+      "tips": {
+        "source": "报关数据随出库单从下单系统传来，这里补录或修改只改 WMS 里的数据；下单系统如果再次发送报关数据，会覆盖这里的修改。已生成的单证内容有变时会作废，需要重新生成。",
+        "invoice-fallback": "留空时用出库单的订单号",
+        "consignee-fallback": "没有单独填写收货人，单证使用出库单的收货人（灰色提示）。收货人不同时再填写。",
+        "origin-on-goods": "原产国是商品主数据，在明细或海外发货区的「补录原产国」里填写。"
+      },
+      "saved": "报关数据已保存",
+      "saved-voided": "报关数据已保存，{count} 份现有单证已作废，请重新生成",
+      "tax-id-other": "其他"
+    },
     "problems": {
       "NOT_PACKED": "尚未打包完成",
       "PACKAGES_MISSING": "还没有录入箱子",
@@ -1581,7 +1620,9 @@
       "NET_WEIGHT_UNKNOWN": "有商品未录重量，无法计算净重",
       "GROSS_LT_NET": "总毛重小于净重",
       "JP_EXPORT_CODE_MISMATCH": "出口统计编号格式不对，或前 6 位与 HS 编码不一致",
-      "JP_EXPORT_CODE_MISSING": "货值合计超过 20 万日元，日本出口申报需要 9 位出口统计编号"
+      "JP_EXPORT_CODE_MISSING": "货值合计超过 20 万日元，日本出口申报需要 9 位出口统计编号",
+      "CARRIER_NON_LATIN_TEXT": "印在 CI 上的承运商名称含有非拉丁字符，请在承运商资料里改成英文名",
+      "JP_EXPORT_VALUE_UNVERIFIED": "货值不是日元，无法自动判断是否超过 20 万日元；超过时日本出口申报需要 9 位出口统计编号，请人工确认"
     },
     "workflow": {
       "step1": "打包时录入箱子（重量、尺寸）",

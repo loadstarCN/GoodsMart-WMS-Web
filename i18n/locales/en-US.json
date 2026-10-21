@@ -1435,6 +1435,7 @@
       "export-reason": "Reason for Export",
       "recipient-country": "Destination",
       "recipient-tax-id": "Recipient Tax ID",
+      "tax-id-type": "Tax ID type",
       "consignee": "Consignee",
       "jan": "JAN",
       "goods-name": "Name",
@@ -1463,6 +1464,17 @@
       "jp-export-code": "JP Export Stat. Code",
       "declared-value-carriage": "Declared Value for Carriage"
     },
+    "consignee-fields": {
+      "company": "Company",
+      "name": "Contact name",
+      "address-line1": "Address line 1",
+      "address-line2": "Address line 2",
+      "city": "City",
+      "state": "State / province",
+      "postal-code": "Postal code",
+      "country": "Country",
+      "phone": "Phone"
+    },
     "doc-types": {
       "commercial_invoice": "Commercial Invoice (CI)",
       "packing_list": "Packing List (PL)",
@@ -1479,7 +1491,12 @@
       "shipment_cancelled": "Shipment cancelled"
     },
     "export-reasons": {
-      "SALE": "Sale"
+      "SALE": "Sale",
+      "GIFT": "Gift",
+      "SAMPLE": "Sample",
+      "RETURN": "Return",
+      "REPAIR": "Repair",
+      "PERSONAL_EFFECTS": "Personal effects"
     },
     "status": {
       "ready": "Ready",
@@ -1500,16 +1517,21 @@
       "edit-exporter": "Edit exporter profile",
       "reissue": "Re-issue Documents",
       "open-task": "Open packing / delivery task",
-      "view-dn-data": "View customs data on the DN",
-      "edit-warehouse": "Edit warehouse export info"
+      "edit-warehouse": "Edit warehouse export info",
+      "edit-customs": "Complete customs data",
+      "fix": "Fix",
+      "edit-carrier": "Edit carrier",
+      "edit-weight": "Set weight"
     },
     "tips": {
       "not-on-invoice": "Not on the invoice (packed quantity is 0)",
       "origin-master": "Saved to the goods master",
       "origin-fix-title": "Set country of origin",
-      "data-from-order": "Customs data such as HS codes, English descriptions, unit values and incoterms comes with the DN from the ordering system; corrections must be made there.",
+      "data-from-order": "Customs data comes with the DN from the ordering system; fill in anything missing or wrong here.",
+      "data-need-dn-edit": "Customs data comes with the DN from the ordering system; completing it requires DN edit permission, so ask someone who has it.",
       "issue-need-packed": "Available after packing is completed (packed)",
       "issue-not-ready": "Resolve the errors listed below first",
+      "shipping-after-packed": "Next: once packing is completed, create the FedEx shipment and issue / print the documents (CI / PL) and label here.",
       "operate-on-task": "Record packages, create the FedEx shipment, issue documents and print labels in the Export shipment section of the packing or delivery task.",
       "packages-on-task": "Packages are recorded in the Export shipment section of the packing or delivery task",
       "issued-new": "Version {version} issued",
@@ -1561,6 +1583,23 @@
       "title-domestic": "Packages (optional)",
       "domestic-tip": "Optional for domestic shipments; use it to record box count, weight and dimensions."
     },
+    "editor": {
+      "title": "Complete customs data",
+      "sections": {
+        "basic": "Invoice details",
+        "consignee": "Consignee",
+        "lines": "Lines"
+      },
+      "tips": {
+        "source": "Customs data comes with the DN from the ordering system. Changes made here only update WMS; if the ordering system sends the customs data again, it overwrites them. Issued documents whose content changes are voided and must be re-issued.",
+        "invoice-fallback": "Leave blank to use the DN's order number",
+        "consignee-fallback": "No separate consignee is entered, so the documents use the DN's recipient (shown in grey). Fill this in only if the consignee is different.",
+        "origin-on-goods": "Country of origin is goods master data; set it in the lines or under “Set country of origin” in the Export shipment section."
+      },
+      "saved": "Customs data saved",
+      "saved-voided": "Customs data saved; {count} issued document(s) were voided, please re-issue them",
+      "tax-id-other": "Other"
+    },
     "problems": {
       "NOT_PACKED": "Packing is not completed",
       "PACKAGES_MISSING": "No packages recorded",
@@ -1581,7 +1620,9 @@
       "NET_WEIGHT_UNKNOWN": "Net weight unknown (some goods have no weight)",
       "GROSS_LT_NET": "Gross weight is less than net weight",
       "JP_EXPORT_CODE_MISMATCH": "Export statistical code is invalid or its first 6 digits differ from the HS code",
-      "JP_EXPORT_CODE_MISSING": "Goods value (FOB) exceeds JPY 200,000; the Japanese export declaration requires the 9-digit statistical code"
+      "JP_EXPORT_CODE_MISSING": "Goods value (FOB) exceeds JPY 200,000; the Japanese export declaration requires the 9-digit statistical code",
+      "CARRIER_NON_LATIN_TEXT": "The carrier name printed on the CI contains non-Latin characters; rename the carrier in English",
+      "JP_EXPORT_VALUE_UNVERIFIED": "The goods value is not in JPY, so whether it exceeds 200,000 JPY cannot be checked automatically; if it does, the 9-digit Japanese export statistics code is required. Please check manually"
     },
     "workflow": {
       "step1": "Record packages (weight, dimensions) when packing",

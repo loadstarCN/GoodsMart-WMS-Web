@@ -1435,6 +1435,7 @@
       "export-reason": "輸出理由",
       "recipient-country": "仕向国",
       "recipient-tax-id": "受取人の税番号",
+      "tax-id-type": "税番号の種類",
       "consignee": "荷受人",
       "jan": "JAN",
       "goods-name": "品名",
@@ -1463,6 +1464,17 @@
       "jp-export-code": "輸出統計番号",
       "declared-value-carriage": "運送申告価額"
     },
+    "consignee-fields": {
+      "company": "会社名",
+      "name": "担当者",
+      "address-line1": "住所 1",
+      "address-line2": "住所 2",
+      "city": "都市",
+      "state": "州・県",
+      "postal-code": "郵便番号",
+      "country": "国",
+      "phone": "電話番号"
+    },
     "doc-types": {
       "commercial_invoice": "コマーシャルインボイス（CI）",
       "packing_list": "パッキングリスト（PL）",
@@ -1479,7 +1491,12 @@
       "shipment_cancelled": "運送状の取り消し"
     },
     "export-reasons": {
-      "SALE": "販売"
+      "SALE": "販売",
+      "GIFT": "贈答品",
+      "SAMPLE": "サンプル",
+      "RETURN": "返品",
+      "REPAIR": "修理",
+      "PERSONAL_EFFECTS": "個人用品"
     },
     "status": {
       "ready": "発行可能",
@@ -1500,16 +1517,21 @@
       "edit-exporter": "会社の輸出者情報を編集",
       "reissue": "単証を再発行",
       "open-task": "梱包・配送タスクへ",
-      "view-dn-data": "出荷指示の通関データを見る",
-      "edit-warehouse": "倉庫の出荷元情報を編集"
+      "edit-warehouse": "倉庫の出荷元情報を編集",
+      "edit-customs": "通関データを補完",
+      "fix": "補完",
+      "edit-carrier": "運送会社を編集",
+      "edit-weight": "重量を登録"
     },
     "tips": {
       "not-on-invoice": "梱包数 0 のためインボイスに載りません",
       "origin-master": "商品マスタに保存されます",
       "origin-fix-title": "原産国の登録",
-      "data-from-order": "HS コード・英文品名・単価・貿易条件などの通関データは、出荷指示とともに発注側のシステムから届きます。誤りは発注側で修正してください。",
+      "data-from-order": "通関データは出荷指示とともに発注側のシステムから届きます。不足や誤りはここで補完できます。",
+      "data-need-dn-edit": "通関データは出荷指示とともに発注側のシステムから届きます。補完には出荷指示の編集権限が必要です。権限のある担当者に依頼してください。",
       "issue-need-packed": "梱包完了（packed）後に発行できます",
       "issue-not-ready": "下の確認事項（エラー）を解消してください",
+      "shipping-after-packed": "次のステップ：梱包が完了したら、ここで FedEx 運送状の作成、単証（CI / PL）とラベルの発行・印刷を行います。",
       "operate-on-task": "箱情報の登録、FedEx 運送状の作成、単証の発行、ラベル印刷は、梱包タスクまたは配送タスクの「海外出荷」欄で行います。",
       "packages-on-task": "箱情報は梱包タスクまたは配送タスクの「海外出荷」欄で登録します",
       "issued-new": "第 {version} 版を発行しました",
@@ -1561,6 +1583,23 @@
       "title-domestic": "箱情報（任意）",
       "domestic-tip": "国内出荷では任意入力です。箱数・重量・寸法の記録に使えます。"
     },
+    "editor": {
+      "title": "通関データの補完",
+      "sections": {
+        "basic": "書類情報",
+        "consignee": "荷受人",
+        "lines": "明細"
+      },
+      "tips": {
+        "source": "通関データは出荷指示とともに発注側のシステムから届きます。ここでの補完・修正は WMS のデータだけに反映され、発注側から通関データが再送されると上書きされます。発行済みの単証は内容が変わると無効になり、再発行が必要です。",
+        "invoice-fallback": "空欄のときは出荷指示の注文番号を使用",
+        "consignee-fallback": "荷受人が個別に入力されていないため、単証には出荷指示の受取人を使用します（グレーの表示）。荷受人が異なるときだけ入力してください。",
+        "origin-on-goods": "原産国は商品マスタの項目です。明細または海外出荷欄の「原産国の登録」で入力してください。"
+      },
+      "saved": "通関データを保存しました",
+      "saved-voided": "通関データを保存しました。既存の単証 {count} 件が無効になったため、再発行してください",
+      "tax-id-other": "その他"
+    },
     "problems": {
       "NOT_PACKED": "梱包が完了していません",
       "PACKAGES_MISSING": "箱情報が登録されていません",
@@ -1581,7 +1620,9 @@
       "NET_WEIGHT_UNKNOWN": "重量未登録の商品があるため、正味重量を計算できません",
       "GROSS_LT_NET": "総重量が正味重量より小さくなっています",
       "JP_EXPORT_CODE_MISMATCH": "輸出統計番号の形式が正しくないか、先頭 6 桁が HS コードと一致しません",
-      "JP_EXPORT_CODE_MISSING": "商品の価額（FOB）が 20 万円を超えるため、日本の輸出申告に 9 桁の輸出統計番号が必要です"
+      "JP_EXPORT_CODE_MISSING": "商品の価額（FOB）が 20 万円を超えるため、日本の輸出申告に 9 桁の輸出統計番号が必要です",
+      "CARRIER_NON_LATIN_TEXT": "CI に印字される運送会社名に非ラテン文字が含まれています。運送会社マスタで英語名に変更してください",
+      "JP_EXPORT_VALUE_UNVERIFIED": "貨物価額が円建てではないため、20 万円を超えるか自動判定できません。超える場合は 9 桁の輸出統計品目番号が必要です。手動で確認してください"
     },
     "workflow": {
       "step1": "梱包で箱情報（重量・寸法）を登録",

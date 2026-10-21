@@ -46,6 +46,16 @@ export interface CustomsProblem {
   message?: string | null
 }
 
+/** 出在报关快照上的问题：在「补录报关数据」里改（PUT /dn/<id>/customs，需 dn_edit） */
+export const CUSTOMS_SNAPSHOT_PROBLEMS = [
+  'INCOTERM_MISSING', 'EXPORT_REASON_MISSING', 'CURRENCY_INVALID', 'RECIPIENT_COUNTRY_MISSING',
+  'RECIPIENT_TAX_ID_MISSING', 'NON_LATIN_TEXT', 'LINE_MISSING', 'HS_CODE_MISSING', 'DESCRIPTION_MISSING',
+  'DESCRIPTION_NOT_ASCII', 'UNIT_VALUE_MISSING', 'JP_EXPORT_CODE_MISMATCH', 'JP_EXPORT_CODE_MISSING',
+  'JP_EXPORT_VALUE_UNVERIFIED',
+]
+/** 流程状态（还没打包完 / 还没录箱子），打包中不算要补的问题 */
+export const CUSTOMS_WORKFLOW_PROBLEMS = ['NOT_PACKED', 'PACKAGES_MISSING']
+
 export interface CustomsLine {
   goods_id: number | null
   goods_code: string
@@ -62,6 +72,8 @@ export interface CustomsLine {
   jp_export_code?: string | null
   origin_country: string | null
   origin_source?: string | null
+  /** 商品主数据的单件重量（kg）；没有时算不出净重 */
+  unit_weight_kg?: number | null
 }
 
 export interface CustomsTotals {

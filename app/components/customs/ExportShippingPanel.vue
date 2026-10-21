@@ -2,17 +2,19 @@
 /**
  * 打包 / 配送任务 · 海外发货（箱子、承运商运单、CI / PL）
  *
- * 打包之后的出荷手续都在任务页上做完，不用再回出库单详情：
- * - 问题清单；缺原产国的商品可就地补录（写入商品主数据），其余报关数据随出库单从下单方传来，只提示到出库单核对
- * - 箱子编辑（cm / kg 录入，保存换算 mm；DN 已拣货 / 已打包时可编辑）
- * - 承运商运单（FedEx 自动建单、面单、取消）
- * - 生成 / 重新生成单证、打印 CI / PL、历史版本
- * - DN 发货后只读（仍可查看、打印）
+ * 打包之后的出荷手续都在任务页上做完，不用再回出库单详情。分两段显示：
+ * - 打包中（DN 未到 packed）：只有问题清单和箱子——边打包边录箱子、补报关数据；
+ *   「还没打包完 / 还没录箱子」是流程状态，不列为问题；运单和单证只提示「打包完成后在这里办」
+ * - 打包完成后（及发货后只读）：再加运送申告价额、承运商运单（FedEx 建单、面单、取消）、
+ *   生成 / 重新生成单证、打印 CI / PL、历史版本
+ * 问题清单里每条都有补的地方：报关快照的点「补录」（需 dn_edit），缺原产国就地补录（写入商品主数据），
+ * 商品重量 / 出口资料 / 承运商名给对应编辑页
  * 默认插槽放在卡片正文最上面（配送页放发货拦截原因、流程提示）。
  * DN 状态变了（如打包完成）只重新读取、不重建组件，免得丢掉未保存的箱子。
  */
-import { countryName } from '~/data/countries'
 import {
+  CUSTOMS_SNAPSHOT_PROBLEMS,
+  CUSTOMS_WORKFLOW_PROBLEMS,
   DN_LOCKED_STATUSES,
   DN_PACKAGE_EDITABLE_STATUSES,
   formatBytes,
@@ -114,9 +116,18 @@ const packagesReadonlyReason = computed(() =>
   locked.value ? t('customs.status.locked') : t('customs.packages.readonly-status')
 )
 
-const problems = computed<CustomsProblem[]>(() => view.value?.problems || [])
-const errorProblems = computed(() => problems.value.filter((p: CustomsProblem) => p.level === 'error'))
-const warningProblems = computed(() => problems.value.filter((p: CustomsProblem) => p.level !== 'error'))
+/** 打包完成（或已发货只读）后才显示运单、单证；打包中只录箱子、补数据 */
+const shippingStage = computed(() => locked.value || isPacked.value)
+/** 打包中不把「还没打包完 / 还没录箱子」当问题列出 */
+const problems = computed<CustomsProblem[]>(() => {
+  const all = view.value?.problems || []
+  return shippingStage.value ? all : all.filter((p: CustomsProblem) => !CUSTOMS_WORKFLOW_PROBLEMS.includes(p.code))
+})
+const staffStore = useStaffStore()
+/** 能补录报关快照：DN 未发货、有出库单编辑权限（PUT customs 需 dn_edit） */
+const canEditCustoms = computed(() => !locked.value && !!view.value?.customs && staffStore.hasPermission('dn_edit'))
+const hasSnapshotProblems = computed(() => problems.value.some((p: CustomsProblem) => CUSTOMS_SNAPSHOT_PROBLEMS.includes(p.code)))
+const editorOpen = ref(false)
 /** 缺原产国、能就地补录的商品（原产国是商品主数据，仓库可以补；其余报关数据来自下单方） */
 const originMissingLines = computed<CustomsLine[]>(() =>
   (view.value?.lines || []).filter((line: CustomsLine) => !line.origin_country && !!line.goods_id))
@@ -132,10 +143,6 @@ const carrierDeclaredValue = computed(() => carrierDeclaredValueOverride(carrier
 /** 当前单证与最新数据（如新存的运单号）不一致 → 需要重新生成 */
 const outdated = computed(() => !locked.value && !!view.value?.documents_outdated && !!(ci.value || pl.value))
 
-const problemText = (p: CustomsProblem) => {
-  const key = `customs.problems.${p.code}`
-  return te(key) ? t(key) : (p.message || p.code)
-}
 const docTypeText = (type: string) => {
   const key = `customs.doc-types.${type}`
   return te(key) ? t(key) : type
@@ -144,18 +151,6 @@ const voidReasonText = (reason: string | null | undefined) => {
   if (!reason) return ''
   const key = `customs.void-reasons.${reason}`
   return te(key) ? t(key) : reason
-}
-const EXPORTER_FIELD_KEYS: Record<string, string> = {
-  legal_name_en: 'company.fields.legal-name-en',
-  address_en: 'company.fields.address-en',
-  phone: 'common.fields.phone',
-  country_code: 'company.fields.country-code',
-}
-const problemFieldText = (p: CustomsProblem) => {
-  if (!p.field) return ''
-  const name = String(p.field).split('.').pop() || ''
-  if (p.code === 'EXPORTER_PROFILE_INCOMPLETE' && EXPORTER_FIELD_KEYS[name]) return t(EXPORTER_FIELD_KEYS[name])
-  return String(p.field)
 }
 // 签发人：后端只给用户 id 时显示「用户 #id」
 const userText = (u: any) => formatUserRef(u, t)
@@ -260,6 +255,13 @@ const onPackagesSaved = async () => {
   if (historyOpen.value) await loadHistory()
 }
 
+// ------------------ 报关数据补录后：问题、单证（可能被作废）、建单条件都要刷新 ----------------------
+const onCustomsSaved = async () => {
+  await reloadAll()
+  if (historyOpen.value) await loadHistory()
+  emit('changed')
+}
+
 // ------------------ 承运商运单：建单 / 取消后运单号变了，单证随之更新 ----------------------
 const onCarrierChanged = async () => {
   await load()
@@ -275,7 +277,7 @@ defineExpose({ reload: reloadAll })
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
       <div class="card-title d-flex align-items-center flex-wrap gap-2">
         <span><i class="ri-earth-line me-1 align-middle"></i>{{ t('customs.shipping-title') }}</span>
-        <template v-if="view">
+        <template v-if="view && shippingStage">
           <span class="badge bg-secondary-transparent" v-if="locked">
             <i class="ri-lock-line me-1"></i>{{ t('customs.status.locked') }}
           </span>
@@ -320,42 +322,15 @@ defineExpose({ reload: reloadAll })
         </div>
 
         <div class="alert alert-warning-transparent" v-if="!view.customs">{{ t('customs.tips.no-snapshot') }}</div>
-        <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" :carrier-value="carrierDeclaredValue" v-else />
+        <DeclaredValueNotice :customs="view.customs" :mode="declaredValueMode" :carrier-value="carrierDeclaredValue"
+          v-else-if="shippingStage" />
 
         <div class="row gy-3">
           <!-- ===== 问题清单 ===== -->
           <div class="col-12" v-if="problems.length > 0">
             <h6 class="fw-semibold mb-2">{{ t('customs.sections.problems') }}</h6>
-            <div class="mb-2" v-if="errorProblems.length > 0">
-              <div class="fw-semibold text-danger fs-13 mb-1">
-                <i class="ri-close-circle-line me-1"></i>{{ t('customs.errors') }}（{{ errorProblems.length }}）
-              </div>
-              <ul class="mb-0 fs-13 ps-3">
-                <li v-for="(p, i) in errorProblems" :key="`e-${i}`" :title="p.message || ''">
-                  {{ problemText(p) }}
-                  <span class="badge bg-light text-default ms-1" v-if="p.goods_code">{{ p.goods_code }}</span>
-                  <span class="text-muted fs-11 ms-1" v-if="p.field">({{ problemFieldText(p) }})</span>
-                  <template v-if="p.code === 'EXPORTER_PROFILE_INCOMPLETE'">
-                    <NuxtLink to="/company" class="fs-12 ms-1">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
-                    <NuxtLink :to="`/warehouse/edit/${warehouseId}`" class="fs-12 ms-2" v-if="warehouseId">
-                      {{ t('customs.operations.edit-warehouse') }}
-                    </NuxtLink>
-                  </template>
-                </li>
-              </ul>
-            </div>
-            <div class="mb-2" v-if="warningProblems.length > 0">
-              <div class="fw-semibold text-warning fs-13 mb-1">
-                <i class="ri-error-warning-line me-1"></i>{{ t('customs.warnings') }}（{{ warningProblems.length }}）
-              </div>
-              <ul class="mb-0 fs-13 ps-3">
-                <li v-for="(p, i) in warningProblems" :key="`w-${i}`" :title="p.message || ''">
-                  {{ problemText(p) }}
-                  <span class="badge bg-light text-default ms-1" v-if="p.goods_code">{{ p.goods_code }}</span>
-                  <span class="text-muted fs-11 ms-1" v-if="p.field">({{ problemFieldText(p) }})</span>
-                </li>
-              </ul>
-            </div>
+            <CustomsProblemList :problems="problems" :lines="view.lines" :warehouse-id="warehouseId"
+              :can-edit-customs="canEditCustoms" @edit-customs="editorOpen = true" />
 
             <!-- 缺原产国：就地补录到商品主数据 -->
             <div class="border rounded p-2 mb-2" v-if="!locked && originMissingLines.length > 0">
@@ -378,10 +353,14 @@ defineExpose({ reload: reloadAll })
               <div class="fs-11 text-muted">{{ t('customs.tips.origin-master') }}</div>
             </div>
 
-            <p class="fs-12 text-muted mb-0">
-              <i class="ri-information-line me-1"></i>{{ t('customs.tips.data-from-order') }}
-              <NuxtLink :to="`/dn/detail/${dnId}#customs-documents`" class="ms-1">{{ t('customs.operations.view-dn-data') }}</NuxtLink>
-            </p>
+            <div class="d-flex flex-wrap align-items-center gap-2" v-if="hasSnapshotProblems">
+              <button type="button" class="btn btn-sm btn-primary-light" v-if="canEditCustoms" @click="editorOpen = true">
+                <i class="ri-edit-line me-1"></i>{{ t('customs.operations.edit-customs') }}
+              </button>
+              <span class="fs-12 text-muted">
+                <i class="ri-information-line me-1"></i>{{ t(canEditCustoms ? 'customs.tips.data-from-order' : 'customs.tips.data-need-dn-edit') }}
+              </span>
+            </div>
           </div>
 
           <!-- ===== 箱子 ===== -->
@@ -391,15 +370,22 @@ defineExpose({ reload: reloadAll })
               :readonly-reason="packagesReadonlyReason" @saved="onPackagesSaved" />
           </div>
 
+          <!-- ===== 下一步（打包中）===== -->
+          <div class="col-12" v-if="!shippingStage">
+            <div class="border rounded p-3 text-muted fs-13">
+              <i class="ri-arrow-right-circle-line me-1"></i>{{ t('customs.tips.shipping-after-packed') }}
+            </div>
+          </div>
+
           <!-- ===== 承运商运单 ===== -->
-          <div class="col-12">
+          <div class="col-12" v-if="shippingStage">
             <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" :locked="locked" :customs="view.customs"
               :packages-dirty="packagesDirty" :warehouse-id="warehouseId" :package-count="packageCount"
               @status="onCarrierStatus" @changed="onCarrierChanged" />
           </div>
 
           <!-- ===== 单证 ===== -->
-          <div class="col-12">
+          <div class="col-12" v-if="shippingStage">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
               <h6 class="fw-semibold mb-0">{{ t('customs.sections.documents') }}</h6>
               <div class="btn-list">
@@ -480,6 +466,7 @@ defineExpose({ reload: reloadAll })
                       <th scope="col">{{ t('customs.fields.status') }}</th>
                       <th scope="col">{{ t('customs.fields.issued-at') }}</th>
                       <th scope="col">{{ t('customs.fields.void-reason') }}</th>
+                      <th scope="col">SHA-256</th>
                       <th scope="col">{{ t('common.fields.action') }}</th>
                     </tr>
                   </thead>
@@ -500,6 +487,7 @@ defineExpose({ reload: reloadAll })
                           <span class="text-muted ms-1" v-if="doc.voided_at">{{ $dayjs(doc.voided_at, 'YYYY-MM-DD HH:mm') }}</span>
                         </template>
                       </td>
+                      <td class="font-monospace" :title="doc.sha256 || ''">{{ (doc.sha256 || '').slice(0, 12) }}</td>
                       <td>
                         <!-- PDF（CI / PL / PDF 面单）：查看、下载；ZPL / EPL 指令文件面单：只能按原格式下载 -->
                         <div class="hstack gap-1" v-if="isPdfDocument(doc)">
@@ -521,6 +509,9 @@ defineExpose({ reload: reloadAll })
             </div>
           </div>
         </div>
+
+        <CustomsSnapshotEditor v-model:open="editorOpen" :dn-id="dnId" :customs="view.customs" :lines="view.lines"
+          :fallback-consignee="view.consignee" @saved="onCustomsSaved" />
       </template>
     </div>
   </div>
