@@ -1,8 +1,9 @@
 <script lang="ts" setup>
 /**
- * 打包 / 配送任务 · 海外发货：按「箱子 → 单证 → 运单 → 发货」排开，每步一行状态 + 该做的操作。
+ * 打包 / 配送任务 · 海外发货：按「箱子 → 单证 → 运单 → 预约揽收 → 发货」排开，每步一行状态 + 该做的操作。
  * 单证（CI / PL）不印运单号和承运商，打包完成就能出：PL 放箱内、CI 随箱；运单和承运商是配送的事。
- * 打包页（stage = packing）只有箱子、单证两步；配送页四步都有。
+ * 打包页（stage = packing）只有箱子、单证两步；配送页都有，其中「预约揽收」只在承运商要另约揽收
+ * （integration.books_pickups，如 FedEx 没有定期集荷）或这张运单已经约过时出现（PickupShippingStep）。
  *
  * - 打包中（DN 未到 packed）：只能录箱子；单证、运单显示「打包完成后」。「还没打包完 / 还没录箱子」是流程状态，不当问题列
  * - 打包完成后（及发货后只读）：单证（生成 / 打印 CI、PL、历史版本）、运单（配送页：CarrierShipmentPanel，有在线对接就建运单，
@@ -214,6 +215,12 @@ const hasShipment = computed(() =>
 
 /** 配送页才有运单、发货两步 */
 const forDelivery = computed(() => props.stage !== 'packing')
+/** 预约揽收：承运商要另约揽收，或这张运单已经约过 */
+const showPickupStep = computed(() => {
+  if (!forDelivery.value) return false
+  const shipment = carrierStatus.value?.shipment ?? null
+  return !!carrierStatus.value?.integration?.books_pickups || (isActiveShipment(shipment) && !!shipment.pickup)
+})
 
 /** 单证：CI 和 PL 都有、不过期就算完成 */
 const documentsVersion = computed(() => Math.max(0, ...[ci.value, pl.value].filter(Boolean).map((d) => Number(d?.version) || 0)))
@@ -340,6 +347,11 @@ const onCustomsSaved = async () => {
   await reloadAll()
   if (historyOpen.value) await loadHistory()
   emit('changed')
+}
+
+// ------------------ 预约揽收后：运单上的揽收概要要重读 ----------------------
+const onPickupChanged = async () => {
+  await carrierRef.value?.reload()
 }
 
 // ------------------ 承运商运单：建单 / 取消 / 存运单号后运单号变了，单证随之更新 ----------------------
@@ -479,16 +491,20 @@ defineExpose({ reload: reloadAll })
             <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" :locked="locked" :customs="view.customs"
               :packages-dirty="packagesDirty" :warehouse-id="warehouseId" :package-count="packageCount"
               :task-id="taskId" :tracking-editable="trackingEditable" :hidden-blocker-codes="listedProblemCodes"
-              :can-edit-customs="canEditCustoms"
+              :can-edit-customs="canEditCustoms" :show-pickup="false"
               @status="onCarrierStatus" @changed="onCarrierChanged" @edit-customs="editorOpen = true" />
             <DeclaredValueNotice class="mt-2" compact :customs="view.customs" :mode="declaredValueMode"
               :carrier-value="carrierDeclaredValue" v-if="view.customs && declaredValueMode === 'manual' && !locked" />
           </template>
         </ShippingStep>
 
-        <!-- ===== 4 发货（配送页） ===== -->
-        <ShippingStep :index="4" :title="t('customs.steps.ship')" :state="shipStep.state" :summary="shipStep.summary" last
-          v-if="forDelivery">
+        <!-- ===== 4 预约揽收（配送页，承运商要另约揽收时） ===== -->
+        <PickupShippingStep :index="4" :status="carrierStatus" :warehouse-id="warehouseId" :ready="shippingStage"
+          :locked="locked" v-if="showPickupStep" @changed="onPickupChanged" />
+
+        <!-- ===== 4 / 5 发货（配送页） ===== -->
+        <ShippingStep :index="showPickupStep ? 5 : 4" :title="t('customs.steps.ship')" :state="shipStep.state"
+          :summary="shipStep.summary" last v-if="forDelivery">
           <template #actions v-if="$slots['ship-actions'] && !locked">
             <slot name="ship-actions" :ready="shipStep.state === 'current'" />
           </template>

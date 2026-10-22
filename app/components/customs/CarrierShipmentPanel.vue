@@ -73,6 +73,8 @@ const props = withDefaults(defineProps<{
   hiddenBlockerCodes?: string[]
   /** 能补录报关数据（收货人缺电话等时给「补录」） */
   canEditCustoms?: boolean
+  /** 运单卡片里显示揽收一行（配送页的步骤清单有单独的「预约揽收」一步，那里不重复） */
+  showPickup?: boolean
 }>(), {
   locked: false,
   packageCount: null,
@@ -83,6 +85,7 @@ const props = withDefaults(defineProps<{
   trackingEditable: false,
   hiddenBlockerCodes: () => [],
   canEditCustoms: false,
+  showPickup: true,
 })
 
 const emit = defineEmits<{
@@ -187,14 +190,14 @@ const portalName = computed(() => integration.value?.portal_name || t('customs.c
 const shipment = computed(() => status.value?.shipment || null)
 const activeShipment = computed(() => (isActiveShipment(shipment.value) ? shipment.value : null))
 /** 运单卡片里显示揽收一行：承运商要另约揽收，或这张运单已经有过预约 */
-const showPickup = computed(() => {
+const pickupVisible = computed(() => {
   const s = activeShipment.value
-  return !!s && s.pickup !== undefined && (!!integration.value?.books_pickups || !!s.pickup)
+  return props.showPickup && !!s && s.pickup !== undefined && (!!integration.value?.books_pickups || !!s.pickup)
 })
-const pickupLink = computed(() => {
-  const carrierId = status.value?.carrier?.id
-  return carrierId ? `/delivery/pickup?carrier_id=${carrierId}` : '/delivery/pickup'
-})
+const pickupLink = computed(() => ({
+  path: '/delivery/pickup',
+  query: { carrier_id: status.value?.carrier?.id ?? undefined, warehouse_id: props.warehouseId ?? undefined },
+}))
 /** 有效运单的揽收预约：已约上且揽收日没过 */
 const pickupScheduled = computed(() => {
   const p = activeShipment.value?.pickup
@@ -860,7 +863,7 @@ defineExpose({ reload: async () => { await load() } })
           <template v-if="activeShipment.etd_document_id"> · {{ t('customs.carrier.tips.etd-submitted') }}</template>
         </div>
         <!-- 上门揽收：没有定期集荷的承运商，运单建好后要在「上门揽收」页另约 -->
-        <div class="fs-12 mt-1" :class="pickupScheduled ? 'text-success' : 'text-warning'" v-if="showPickup">
+        <div class="fs-12 mt-1" :class="pickupScheduled ? 'text-success' : 'text-warning'" v-if="pickupVisible">
           <i class="ri-truck-line me-1"></i>{{ pickupText }}
           <NuxtLink :to="pickupLink" class="ms-1">
             {{ pickupScheduled ? t('customs.carrier.pickup.view') : t('customs.carrier.pickup.manage') }}

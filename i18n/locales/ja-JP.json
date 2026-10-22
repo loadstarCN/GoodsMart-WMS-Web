@@ -1173,7 +1173,9 @@
         "email": "確認メールの送信先",
         "email-hint": "任意。{carrier} が確認番号をこのアドレスに送ります（英語）",
         "no-change": "依頼後は変更できません。時間を変えるときは取消して依頼し直してください。",
-        "submit": "依頼する"
+        "submit": "依頼する",
+        "shipments": "今回の送り状",
+        "this-one": "この出荷"
       },
       "validation": {
         "ready-time": "準備完了時刻を選んでください",
@@ -1934,7 +1936,11 @@
         "pending": "集荷を依頼中…",
         "unknown": "集荷依頼の結果が不明です。集荷依頼画面で確認してください",
         "manage": "集荷を依頼",
-        "view": "確認"
+        "view": "確認",
+        "book": "集荷を依頼",
+        "page": "集荷依頼画面",
+        "stale": "送り状の状態が変わったため更新しました",
+        "booked-today": "今日 {window} の集荷はすでに依頼済みです（確認番号 {code}）。ドライバーが来たときにこの荷物も一緒に渡せるので、もう一度依頼しなくても構いません。"
       }
     },
     "steps": {
@@ -1953,7 +1959,9 @@
       "ready-to-ship": "出荷できます",
       "shipped": "出荷済み",
       "problems-title": "先に対応が必要（{count} 件）",
-      "warnings-title": "確認してください（{count} 件）"
+      "warnings-title": "確認してください（{count} 件）",
+      "pickup": "集荷依頼",
+      "pickup-after-shipment": "送り状の作成後"
     }
   },
   "biz-errors": {

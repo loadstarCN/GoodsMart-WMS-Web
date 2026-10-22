@@ -1173,7 +1173,9 @@
         "email": "确认邮件发到",
         "email-hint": "选填。{carrier} 会把确认号发到这个邮箱（英文邮件）",
         "no-change": "约好后不能改，要改时间请取消重约。",
-        "submit": "预约"
+        "submit": "预约",
+        "shipments": "这次带的运单",
+        "this-one": "本单"
       },
       "validation": {
         "ready-time": "请选择几点备好货",
@@ -1934,7 +1936,11 @@
         "pending": "揽收预约中…",
         "unknown": "揽收预约结果不明，请到揽收页核对",
         "manage": "去约揽收",
-        "view": "查看"
+        "view": "查看",
+        "book": "预约揽收",
+        "page": "揽收页",
+        "stale": "运单状态有变化，已刷新",
+        "booked-today": "今天 {window} 已经约过一次揽收（确认号 {code}），快递员来时可以把这票一起交给他，不一定要再约。"
       }
     },
     "steps": {
@@ -1953,7 +1959,9 @@
       "ready-to-ship": "可以发货了",
       "shipped": "已发货",
       "problems-title": "先处理这 {count} 项",
-      "warnings-title": "请留意（{count}）"
+      "warnings-title": "请留意（{count}）",
+      "pickup": "预约揽收",
+      "pickup-after-shipment": "建好运单后"
     }
   },
   "biz-errors": {

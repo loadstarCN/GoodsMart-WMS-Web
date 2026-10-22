@@ -341,6 +341,7 @@ const normalizeIntegration = (data: any): CarrierIntegrationInfo | null => {
     portal_url: toStringOrNull(data.portal_url),
     enabled: data.enabled !== false,
     ready: !!data.ready,
+    books_pickups: !!data.books_pickups,
   }
 }
 

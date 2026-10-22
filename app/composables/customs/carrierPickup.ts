@@ -15,6 +15,9 @@
  *       failed = 没约上、运单已放开；unknown = 结果不明、运单仍被占着）
  */
 
+import type { HttpRequestError } from '~/utils/http'
+import { extractCarrierErrors, type CarrierApiErrorItem } from '~/composables/customs/carrierShipment'
+
 export interface PickupBlocker {
   code: string
   message?: string | null
@@ -197,4 +200,48 @@ export const formatPickupAddress = (location: PickupLocation | null | undefined)
   const a = location?.address
   if (!a) return ''
   return [...(a.streetLines || []), a.city, a.postalCode, a.countryCode].filter(Boolean).join(', ')
+}
+
+/** 揽收时间段 12:00–18:00 */
+export const pickupTimeWindow = (p: { ready_time?: string | null; close_time?: string | null }): string =>
+  `${p.ready_time || '—'}–${p.close_time || '—'}`
+
+/** 重量（kg）最多两位小数 */
+export const formatPickupWeight = (value: number | string | null | undefined): string => {
+  const n = Number(value)
+  return Number.isFinite(n) ? String(Math.round(n * 100) / 100) : '—'
+}
+
+/** 确认邮件地址记在本机（下次预约预填） */
+export const PICKUP_EMAIL_STORAGE_KEY = 'wms.carrierPickup.notificationEmail'
+
+export interface PickupFailure {
+  summary: string
+  /** 承运商回的错误原文（只有承运商报错 / 超时时有） */
+  errors: CarrierApiErrorItem[]
+  transactionId: string | null
+}
+
+type Translate = (key: string, params?: Record<string, unknown>) => string
+
+/**
+ * 揽收接口失败 → 显示用的摘要（结果不明 / 没约上 / 取消结果不明各补一句该怎么办）+ 承运商错误原文 + 交易 ID。
+ * carrier：文案里的承运商名
+ */
+export const describePickupFailure = (
+  error: HttpRequestError,
+  carrier: string,
+  t: Translate,
+  bizErrorMessage: (error: HttpRequestError) => string,
+): PickupFailure => {
+  const { errors, transactionId, permissionDenied } = extractCarrierErrors(error.details)
+  let summary = bizErrorMessage(error)
+  const pickup = error.details?.pickup
+  if (permissionDenied) summary = t('delivery.pickup.tips.permission-denied', { carrier })
+  else if (pickup && typeof pickup === 'object') {
+    if (pickup.status === 'unknown') summary = `${summary} ${t('delivery.pickup.tips.unknown', { carrier })}`
+    else if (pickup.status === 'failed') summary = `${summary} ${t('delivery.pickup.tips.failed')}`
+    else if (pickup.reason === 'cancel_unclear') summary = `${summary} ${t('delivery.pickup.tips.cancel-unclear', { carrier })}`
+  }
+  return { summary, errors: error.code === 16073 || error.code === 16074 ? errors : [], transactionId }
 }

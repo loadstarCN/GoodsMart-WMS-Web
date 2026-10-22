@@ -1173,7 +1173,9 @@
         "email": "Send confirmation to",
         "email-hint": "Optional. {carrier} emails the confirmation number to this address (in English)",
         "no-change": "A booked pickup can't be changed; to change the time, cancel it and book again.",
-        "submit": "Book"
+        "submit": "Book",
+        "shipments": "Shipments in this pickup",
+        "this-one": "This one"
       },
       "validation": {
         "ready-time": "Choose when the packages are ready",
@@ -1934,7 +1936,11 @@
         "pending": "Booking the pickup…",
         "unknown": "Pickup booking unclear; check it on the Pickups page",
         "manage": "Book pickup",
-        "view": "View"
+        "view": "View",
+        "book": "Book pickup",
+        "page": "Pickups",
+        "stale": "The shipment has changed; refreshed",
+        "booked-today": "A pickup is already booked for today, {window} (confirmation {code}). You can hand this one to the courier too; booking again isn't required."
       }
     },
     "steps": {
@@ -1953,7 +1959,9 @@
       "ready-to-ship": "Ready to ship",
       "shipped": "Shipped",
       "problems-title": "Fix these first ({count})",
-      "warnings-title": "Please check ({count})"
+      "warnings-title": "Please check ({count})",
+      "pickup": "Courier pickup",
+      "pickup-after-shipment": "After the shipment is created"
     }
   },
   "biz-errors": {
