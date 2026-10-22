@@ -1,15 +1,17 @@
 /**
- * FedEx 上门揽收预约（没有和 FedEx 签定期集荷：自动建好的运单要另约快递员上门）
+ * 上门揽收预约（承运商在线对接支持预约揽收时，如 FedEx：没有定期集荷，自动建好的运单要另约快递员上门）
  *
- * 揽收按「当前仓库 + 日期」约，一次带多张运单，件数 / 总重量按所带运单的箱子合计。接口都按页头的当前仓库（X-WAREHOUSE-ID）：
- * GET  /warehouse/dn/carrier-pickups                 待揽收运单（shipments）与最近的预约（pickups）、前置条件（blockers）、揽收地点
- * GET  /warehouse/dn/carrier-pickups/availability    FedEx 开放的揽收日与可选时间（只查询，不预约）
- * POST /warehouse/dn/carrier-pickups                 body {shipment_ids, pickup_date, ready_time, close_time, remarks?, notification_email?}
- *                                                    → 201 {pickup, alerts, message}
+ * 揽收按「当前仓库 + 承运商 + 日期」约，一次带多张该承运商的运单，件数 / 总重量按所带运单的箱子合计。
+ * 接口都按页头的当前仓库（X-WAREHOUSE-ID）；承运商用 carrier_id（不带 = 本公司第一个能约揽收的承运商）：
+ * GET  /warehouse/dn/carrier-pickups?carrier_id=               能约揽收的承运商（carriers）、待揽收运单（shipments）、
+ *                                                              最近的预约（pickups）、前置条件（blockers）、揽收地点
+ * GET  /warehouse/dn/carrier-pickups/availability?carrier_id=  承运商开放的揽收日与可选时间（只查询，不预约）
+ * POST /warehouse/dn/carrier-pickups                 body {carrier_id, shipment_ids, pickup_date, ready_time, close_time, remarks?,
+ *                                                    notification_email?} → 201 {pickup, alerts, message}
  * POST /warehouse/dn/carrier-pickups/<id>/cancel     取消（已约上、揽收日没过）
- * POST /warehouse/dn/carrier-pickups/<id>/dismiss    body {confirm: true}：结果不明的预约，核对 FedEx 后作废，运单可重新预约
+ * POST /warehouse/dn/carrier-pickups/<id>/dismiss    body {confirm: true}：结果不明的预约，向承运商核对后作废，运单可重新预约
  * 失败：409 16130（blockers）/ 400 16131（参数，field）/ 409 16132（所选运单不能约，details.shipments）/
- *       409 16133（当前状态不能取消 / 作废）/ 502 16073 / 504 16074（FedEx 报错 / 超时，details.pickup：
+ *       409 16133（当前状态不能取消 / 作废）/ 502 16073 / 504 16074（承运商报错 / 超时，details.pickup：
  *       failed = 没约上、运单已放开；unknown = 结果不明、运单仍被占着）
  */
 
@@ -42,6 +44,8 @@ export interface PickupShipmentRow {
   delivery_task_id: number | null
   tracking_number: string | null
   service_type: string | null
+  /** 服务的显示名（International Economy）；旧后端没有 */
+  service_name?: string | null
   ship_date: string | null
   package_count: number
   weight_kg: number
@@ -57,6 +61,9 @@ export interface PickupLocation {
 
 export interface CarrierPickup {
   id: number
+  /** 对接插件代码（fedex） */
+  carrier?: string
+  carrier_id?: number | null
   status: string
   reason: string | null
   error_message: string | null
@@ -83,9 +90,24 @@ export interface CarrierPickup {
   can_dismiss: boolean
 }
 
-export interface PickupOverview {
+/** 能约揽收的承运商 */
+export interface PickupCarrier {
+  id: number
+  name: string
+  code: string | null
+  /** 对接插件代码（fedex） */
+  adapter: string | null
+  /** 对接已启用 */
   enabled: boolean
-  carrier: string
+}
+
+export interface PickupOverview {
+  /** 当前承运商的对接可以约揽收（启用、设置齐全） */
+  enabled: boolean
+  /** 当前承运商（没有能约揽收的承运商时为 null） */
+  carrier: PickupCarrier | null
+  carriers: PickupCarrier[]
+  integration: { code: string; name: string; portal_name: string | null; portal_url: string | null } | null
   warehouse_id: number
   today: string
   timezone: string

@@ -1,15 +1,15 @@
 /**
- * 承运商运单（FedEx 自动建单）相关的类型与工具
+ * 承运商运单（经承运商对接自动建单，后端插件见 warehouse/carrier/integrations；内置 FedEx）相关的类型与工具
  *
  * GET  /warehouse/dn/<dn_id>/carrier-shipment          状态（是否启用、能否建单、blockers、最近一张运单）
  * POST /warehouse/dn/<dn_id>/carrier-shipment          建单（body.label_format）→ 201 状态 + alerts；
  *                                                      运单号存到配送任务，CI / PL 自动带运单号重新签发
  * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   body {tracking_number}：取消运单（DN 未发货时）→ 200 状态
- * POST /warehouse/dn/<dn_id>/carrier-shipment/dismiss  body {confirm: true, unresolved_id}：操作员已在 FedEx Ship Manager 核对
- *                                                      「FedEx 上没有这张运单或已手工取消」后，解除结果不明的运单 → 200 状态
+ * POST /warehouse/dn/<dn_id>/carrier-shipment/dismiss  body {confirm: true, unresolved_id}：操作员已在承运商后台（integration.portal_name）
+ *                                                      核对「那边没有这张运单或已手工取消」后，解除结果不明的运单 → 200 状态
  *   取消 / 解除都带上确认框里展示的目标（运单号 / 结果不明记录的 id）：与服务端当前记录不符 → 409 16093（details.expected / actual），
  *   免得解除 / 取消的是别人刚建的、没人核对过的另一张运单
- * 失败：409 16072（details.blockers）/ 502 16073（FedEx 报错，details.errors / transaction_id / action）/
+ * 失败：409 16072（details.blockers）/ 502 16073（承运商报错，details.errors / transaction_id / action）/
  *       504 16074（超时，details.maybe_processed / unresolved）/ 409 16075（没有有效运单 / 没有可解除的运单）/
  *       400 16077（label_format 不合法）/ 409 16079（有结果不明的运单，details.unresolved）/ 409 16093（目标已变）
  * 运单记录可能处于 cancelling：reason cancel_in_progress = 正在取消（按「进行中」处理，定时刷新）；
@@ -17,14 +17,14 @@
  * can_cancel：可以（重试）取消——有效运单、取消结果不明的运单、带运单号的结果不明记录（如 compensation_failed）
  * 取消结果不明：502 16073 / 504 16074（details.maybe_processed = true、unresolved）→ 重新读取，提示核对 / 重试
  * 建单后 WMS 保存失败：502 16095（details.tracking_number / compensation{attempted, cancelled, …} / unresolved）
- * 确认作废带运单号的记录：先请 FedEx 取消，FedEx 没确认 → 409 16094（details.tracking_number）
- * 结果不明（unresolved）：FedEx 超时、补偿失败、响应异常等，运单可能已在 FedEx 生成；有它时 can_create = false，
- * 要先到 FedEx Ship Manager 核对（有就取消），再在这里解除（can_dismiss）后才能重新建单。
+ * 确认作废带运单号的记录：先请承运商取消，承运商没确认 → 409 16094（details.tracking_number）
+ * 结果不明（unresolved）：承运商超时、补偿失败、响应异常等，运单可能已在承运商那边生成；有它时 can_create = false，
+ * 要先到承运商后台核对（有就取消），再在这里解除（can_dismiss）后才能重新建单。
+ * carrier = DN 当前的承运商（发货任务的，没有用 DN 的）；integration = 它的在线对接（null = 没有对接，手工建运单、填运单号）。
  * 申告价额高于已打包货值时后端自动压到货值：warnings 里 DECLARED_VALUE_CAPPED（GET 预告 / POST 实际），
  * 运单上的 declared_value 是实际提交值。有有效自动运单时改配送任务的运单号 → 409 16078。
  * 面单文件与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file（doc_type = shipping_label）
- * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动：A4 = Letter 页上半页面单（A4 纸、实际大小 100%），
- *   热敏 = 4×6 英寸页面（100×150mm 纸）。后端配置成 ZPLII / EPL2 时才是指令文件，要用标签机的打印程序打开）
+ * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动；对接设置成 ZPLII / EPL2 时才是指令文件，要用标签机的打印程序打开）
  */
 import type { HttpRequestError } from '~/utils/http'
 import type { PdfDocumentRef } from '~/composables/customs/customsDocuments'
@@ -39,11 +39,16 @@ export interface CarrierShipmentBlocker {
 
 export interface CarrierShipment {
   id?: number
+  /** 对接插件代码（如 fedex） */
   carrier?: string | null
+  /** 建单用的承运商 */
+  carrier_id?: number | null
   tracking_number: string | null
   /** active：有效；cancelling：取消中；cancelled：已取消 */
   status: string
   service_type: string | null
+  /** 服务显示名（International Economy） */
+  service_name?: string | null
   net_charge: number | string | null
   currency: string | null
   label_document_id: number | null
@@ -100,49 +105,76 @@ export interface CarrierWarning {
 }
 
 /**
- * 结果不明的自动运单（FedEx 超时 / 补偿失败 / 响应异常等）。
- * pending = 建单进行中（别人或另一个画面正在建）；cancelling = 取消进行中；unknown = 已结束但不知道 FedEx 上有没有生成
+ * 结果不明的自动运单（承运商超时 / 补偿失败 / 响应异常等）。
+ * pending = 建单进行中（别人或另一个画面正在建）；cancelling = 取消进行中；unknown = 已结束但不知道承运商那边有没有生成
  */
 export interface CarrierUnresolvedShipment {
   id: number | null
   status: string
   /** in_progress / timeout / compensation_failed / bad_response / stale … */
   reason: string | null
-  /** 已知的运单号（FedEx 返回过、但没能确认保存时） */
+  /** 已知的运单号（承运商返回过、但没能确认保存时） */
   tracking_number: string | null
-  /** FedEx 交易 ID（在 FedEx 侧查找用） */
+  /** 承运商的交易号（在承运商那边查找用） */
   transaction_id: string | null
   created_at: string | null
   updated_at: string | null
 }
 
-export interface CarrierShipmentStatus {
-  /** 功能是否启用（凭证未配置 = 未启用） */
+/** DN 当前的承运商 */
+export interface CarrierRef {
+  id: number | null
+  name: string
+  code: string | null
+}
+
+/** 承运商的在线对接（自动建运单） */
+export interface CarrierIntegrationInfo {
+  /** 插件代码（fedex） */
+  code: string
+  /** 显示名（FedEx） */
+  name: string
+  /** 承运商自己的发货后台（结果不明时去那里核对 / 取消），如 FedEx Ship Manager */
+  portal_name: string | null
+  portal_url: string | null
   enabled: boolean
-  carrier: string | null
+  /** 启用且设置齐全 */
+  ready: boolean
+  /** 建好的运单要另约上门揽收（没有定期集荷）；旧后端没有该字段 */
+  books_pickups?: boolean
+}
+
+export interface CarrierShipmentStatus {
+  /** 承运商有可用的对接（启用、设置齐全） */
+  enabled: boolean
+  carrier: CarrierRef | null
+  /** 承运商的在线对接；null = 没有对接（手工建运单、填运单号） */
+  integration: CarrierIntegrationInfo | null
   can_create: boolean
   blockers: CarrierShipmentBlocker[]
   /** 最近一张运单（有效的优先，可能已取消）；从未建过为 null */
   shipment: CarrierShipment | null
-  /** 开了电子贸易单证（ETD）：建单时 CI 电子提交给 FedEx */
+  /** 开了电子单证（ETD）：建单时 CI 电子提交给承运商 */
   etd_enabled?: boolean
   /** 报关快照的运送申告价额：有值时自动建单按箱分摊随运单提交 */
   declared_value_carriage?: number | null
   delivery_task_id?: number | null
-  /** 后端配置的默认面单打印方式 */
+  /** 发货任务上现在的运单号（自动建的或手工填的） */
+  tracking_number?: string | null
+  /** 对接设置里的默认面单打印方式 */
   default_label_format?: string | null
   /** 各打印方式对应的文件格式 / 纸张类型 */
   label_formats?: Record<string, { image_type?: string | null; stock_type?: string | null }> | null
   warnings?: CarrierWarning[]
   /** 结果不明的运单（没有为 null）；有它时 can_create = false */
   unresolved?: CarrierUnresolvedShipment | null
-  /** 可以解除结果不明的运单（操作员核对 FedEx 后） */
+  /** 可以解除结果不明的运单（操作员核对承运商后台后） */
   can_dismiss?: boolean
   /** 可以（重试）取消运单；旧后端没有该字段（undefined）时按「有有效运单」判断 */
   can_cancel?: boolean
 }
 
-/** 建单成功时 FedEx 返回的提示（如 CUSTOMVALUE.GREATER.THAN.DECLAREDVALUE） */
+/** 建单成功时承运商返回的提示（如 FedEx 的 CUSTOMVALUE.GREATER.THAN.DECLAREDVALUE） */
 export interface CarrierAlert {
   code: string | null
   alert_type: string | null
@@ -153,9 +185,9 @@ export interface CarrierAlert {
 export const CARRIER_BIZ_CODES = {
   /** 409：建单前置条件不满足（details.blockers） */
   BLOCKED: 16072,
-  /** 502：FedEx 报错 */
+  /** 502：承运商报错 */
   CARRIER_ERROR: 16073,
-  /** 504：FedEx 超时 */
+  /** 504：承运商超时 */
   CARRIER_TIMEOUT: 16074,
   /** 409：没有有效运单（取消时） */
   NO_ACTIVE_SHIPMENT: 16075,
@@ -169,13 +201,13 @@ export const CARRIER_BIZ_CODES = {
   DOCUMENT_TRACKING_MISMATCH: 16080,
   /** 409：取消 / 解除的目标与服务端当前记录不符（details.expected / actual） */
   TARGET_MISMATCH: 16093,
-  /** 409：确认作废带运单号的记录时 FedEx 没确认已取消（details.tracking_number） */
+  /** 409：确认作废带运单号的记录时承运商没确认已取消（details.tracking_number） */
   DISMISS_NOT_CONFIRMED: 16094,
-  /** 502：FedEx 已建运单但 WMS 保存失败（details.compensation / unresolved） */
+  /** 502：承运商已建运单但保存失败（details.compensation / unresolved） */
   SAVE_FAILED: 16095,
 } as const
 
-/** 承运商返回的错误原文（FedEx errors[].code / message） */
+/** 承运商返回的错误原文（errors[].code / message） */
 export interface CarrierApiErrorItem {
   code: string | null
   message: string | null
@@ -190,9 +222,9 @@ export interface CarrierRequestFailure {
   transactionId: string | null
   /** 承运商超时：运单可能已生成，重试前要先确认 */
   timeout: boolean
-  /** FedEx 侧的动作（create / etd_upload / cancel） */
+  /** 承运商那边的动作（create / etd_upload / cancel） */
   action: string | null
-  /** FedEx 拒绝权限（API 项目没开通相应接口） */
+  /** 承运商拒绝权限（账号没开通相应接口） */
   permissionDenied: boolean
 }
 
@@ -253,8 +285,8 @@ export const isCancellingShipment = (shipment: CarrierShipment | null | undefine
 
 /**
  * 运单概要状态（配送页据此切换流程提示）：
- * - unresolved：有结果不明的运单（FedEx 上可能已生成）
- * - cancel-unresolved：运单取消结果不明（cancelling 且没有在进行，FedEx 上可能还有效）
+ * - unresolved：有结果不明的运单（承运商那边可能已生成）
+ * - cancel-unresolved：运单取消结果不明（cancelling 且没有在进行，承运商那边可能还有效）
  * - creating / cancelling：建单中 / 取消中（结果不明记录进行中，或运单本身在取消中）
  * - active：有效运单；none：没有
  */
@@ -273,7 +305,7 @@ export const carrierSummaryState = (status: CarrierShipmentStatus | null | undef
 
 /**
  * 建单失败后要立刻重新读取状态的情况：超时 / 有结果不明运单 / 网关错误 / 网络断开
- * （运单可能已在 FedEx 生成，按钮状态要以后端最新的 unresolved / can_create 为准）；
+ * （运单可能已在承运商那边生成，按钮状态要以后端最新的 unresolved / can_create 为准）；
  * 409 16072 前置条件不满足（别人刚建好 / 取消了运单、DN 状态变了等）/ 16075 也重读，免得画面停在旧状态。
  * httpRequest 网络异常时 status = -1。
  */
@@ -294,17 +326,37 @@ export const isActiveShipment = (shipment: CarrierShipment | null | undefined): 
  * 接口返回可能是完整状态，也可能只是运单本身（建单 / 取消的返回）；
  * 能拼出完整状态时返回状态，否则返回 null（调用方重新读取）。
  */
+const normalizeCarrierRef = (data: any): CarrierRef | null => {
+  if (!data) return null
+  if (typeof data !== 'object') return { id: null, name: String(data), code: String(data) }
+  return { id: toNumberOrNull(data.id), name: String(data.name ?? data.code ?? ''), code: toStringOrNull(data.code) }
+}
+
+const normalizeIntegration = (data: any): CarrierIntegrationInfo | null => {
+  if (!data || typeof data !== 'object' || !data.code) return null
+  return {
+    code: String(data.code),
+    name: String(data.name || data.code),
+    portal_name: toStringOrNull(data.portal_name),
+    portal_url: toStringOrNull(data.portal_url),
+    enabled: data.enabled !== false,
+    ready: !!data.ready,
+  }
+}
+
 export const normalizeCarrierStatus = (data: any): CarrierShipmentStatus | null => {
   if (!data || typeof data !== 'object' || typeof data.enabled !== 'boolean') return null
   return {
     enabled: data.enabled,
-    carrier: data.carrier ?? null,
+    carrier: normalizeCarrierRef(data.carrier),
+    integration: normalizeIntegration(data.integration),
     can_create: !!data.can_create,
     blockers: Array.isArray(data.blockers) ? data.blockers : [],
     shipment: data.shipment && typeof data.shipment === 'object' ? data.shipment : null,
     etd_enabled: !!data.etd_enabled,
     declared_value_carriage: data.declared_value_carriage ?? null,
     delivery_task_id: data.delivery_task_id ?? null,
+    tracking_number: toStringOrNull(data.tracking_number),
     default_label_format: data.default_label_format ?? null,
     label_formats: data.label_formats && typeof data.label_formats === 'object' ? data.label_formats : null,
     warnings: extractCarrierWarnings(data),
@@ -314,7 +366,7 @@ export const normalizeCarrierStatus = (data: any): CarrierShipmentStatus | null 
   }
 }
 
-/** 建单返回的 FedEx 提示 */
+/** 建单返回的承运商提示 */
 export const extractCarrierAlerts = (data: any): CarrierAlert[] =>
   (Array.isArray(data?.alerts) ? data.alerts : [])
     .filter((a: any) => a && typeof a === 'object' && (a.code || a.message))
@@ -421,7 +473,10 @@ export const labelPrinterBridge: {
   },
 }
 
-/** FedEx 服务类型显示：INTERNATIONAL_ECONOMY → International Economy */
+/** 服务显示名：后端给了 service_name 用它，否则按代码拼（INTERNATIONAL_ECONOMY → International Economy） */
+export const serviceNameOf = (shipment: CarrierShipment | null | undefined): string =>
+  shipment?.service_name || formatServiceType(shipment?.service_type)
+
 export const formatServiceType = (code: string | null | undefined): string => {
   if (!code) return ''
   return String(code)
@@ -440,7 +495,7 @@ export const extractCarrierErrors = (details: any): {
   transactionId: string | null
   action: string | null
   permissionDenied: boolean
-  /** 超时时 FedEx 侧可能已经处理（默认按可能已处理） */
+  /** 超时时承运商那边可能已经处理（默认按可能已处理） */
   maybeProcessed: boolean
 } => {
   if (!details || typeof details !== 'object') {
@@ -477,11 +532,11 @@ export const declaredAmountOrNull = (v: unknown): number | null => {
 }
 
 /**
- * 随 FedEx 运单提交（或自动建单时将提交）的申告价额与报关快照不同时，返回实际值（null = 不提交申告价额）；
+ * 随运单提交（或自动建单时将提交）的申告价额与报关快照不同时，返回实际值（null = 不提交申告价额）；
  * 相同或无从判断时返回 undefined（照快照显示）。0 按「没有申告价额」处理。
  */
 export const carrierDeclaredValueOverride = (status: CarrierShipmentStatus | null | undefined): number | null | undefined => {
-  if (!status?.enabled) return undefined
+  if (!status?.integration) return undefined
   const snapshot = declaredAmountOrNull(status.declared_value_carriage)
   const shipment = status.shipment
   if (isActiveShipment(shipment)) {
@@ -493,10 +548,10 @@ export const carrierDeclaredValueOverride = (status: CarrierShipmentStatus | nul
   return capped ? declaredAmountOrNull(capped.applied) : undefined
 }
 
-/** 申告价额提示的模式：manual=手工建单时填写；auto=自动建单会随运单提交；submitted=已随运单提交 */
+/** 申告价额提示的模式：manual=手工建运单时填写；auto=自动建单会随运单提交；submitted=已随运单提交 */
 export type DeclaredValueMode = 'manual' | 'auto' | 'submitted'
 
 export const declaredValueModeOf = (status: CarrierShipmentStatus | null | undefined): DeclaredValueMode => {
-  if (!status?.enabled) return 'manual'
+  if (!status?.integration) return 'manual'
   return isActiveShipment(status.shipment) ? 'submitted' : 'auto'
 }

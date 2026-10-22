@@ -225,10 +225,7 @@ defineExpose({ reload: load, dirty })
       </div>
     </div>
     <template v-else>
-      <p class="fs-12 text-muted mb-2" v-if="editable">
-        <i class="ri-information-line me-1"></i>{{ t('customs.packages.tip') }}
-      </p>
-      <p class="fs-12 text-muted mb-2" v-else-if="readonlyReason">
+      <p class="fs-12 text-muted mb-2" v-if="!editable && readonlyReason">
         <i class="ri-lock-line me-1"></i>{{ readonlyReason }}
       </p>
 

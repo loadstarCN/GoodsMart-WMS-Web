@@ -12,6 +12,7 @@ const itemData = ref(null);
 
 // 获取国际化方法
 const { t } = useI18n();
+const staffStore = useStaffStore();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -63,6 +64,22 @@ onMounted(async() => {
                   <div>
                     <p class="fs-18 fw-semibold mb-3">{{ itemData?.name}} <span
                         class="badge rounded-pill bg-info fs-10 fw-normal ms-2">{{ itemData?.location_type }}</span><span v-if="itemData?.code" class="badge rounded-pill bg-secondary fs-10 fw-normal ms-2">{{ itemData?.code }}</span></p>
+
+                    <div class="mb-4">
+                      <p class="fs-15 fw-semibold mb-1">{{ t('carrier.integration.title') }} :</p>
+                      <p class="text-muted mb-0">
+                        <template v-if="itemData?.integration">
+                          <i class="ri-plug-line me-1"></i>{{ itemData.integration.name }}
+                          <span class="badge ms-1" :class="itemData.integration.enabled ? 'bg-success-transparent' : 'bg-light text-muted'">
+                            {{ itemData.integration.enabled ? t('carrier.integration.on') : t('carrier.integration.off') }}
+                          </span>
+                        </template>
+                        <template v-else>{{ t('carrier.integration.none-detail') }}</template>
+                        <NuxtLink :to="`/carrier/edit/${itemData?.id}`" class="ms-2 fs-13" v-if="staffStore.hasPermission('carrier_edit')">
+                          {{ t('carrier.integration.open-settings') }}
+                        </NuxtLink>
+                      </p>
+                    </div>
 
                     <div class="mb-4" v-if="itemData?.address">
                       <p class="fs-15 fw-semibold mb-1">{{t('common.fields.address')}} :</p>

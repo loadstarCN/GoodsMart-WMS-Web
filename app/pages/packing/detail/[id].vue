@@ -255,7 +255,7 @@ onMounted(async() => {
   await fetchData();
 });
 
-// ------------------ 海外出荷：打包完成后在本页录箱子、建运单、出单证（ExportShippingPanel）；国内单只录箱子 ----------------------
+// ------------------ 海外出荷：本页录箱子、打包完成后出单证（ExportShippingPanel，运单在配送任务办）；国内单只录箱子 ----------------------
 const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.value?.dn?.customs));
 const dnStatus = computed(() => String(itemData.value?.dn?.status || ''));
 const packagesEditable = computed(() => DN_PACKAGE_EDITABLE_STATUSES.includes(dnStatus.value));
@@ -464,12 +464,12 @@ const packagesReadonlyReason = computed(() =>
   </div>
   <!--End::row-1 -->
 
-  <!-- 海外单：箱子、FedEx 运单、CI / PL 都在本页办完；国内单：箱子可选录入 -->
+  <!-- 海外单：箱子、CI / PL 在本页办完（运单在配送任务）；国内单：箱子可选录入 -->
   <!-- 用 itemData 而非 loading 判断：刷新任务数据时不卸载，避免丢失未保存的箱子 -->
   <div class="row" v-if="itemData && itemData.dn_id">
     <div class="col-xl-12">
       <ExportShippingPanel :dn-id="itemData.dn_id" :dn-status="dnStatus" :warehouse-id="itemData?.dn?.warehouse_id"
-        v-if="isExport" />
+        stage="packing" v-if="isExport" />
       <div class="card custom-card" v-else>
         <div class="card-header">
           <div class="card-title">

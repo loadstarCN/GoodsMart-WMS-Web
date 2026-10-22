@@ -186,6 +186,10 @@ const activeTab = computed(() => {
                                     <td class="d-none d-md-table-cell">{{ carrier?.id }}</td>
                                     <td>
                                       <NuxtLink :to="`/carrier/detail/${carrier?.id}`">{{ carrier?.name }}</NuxtLink>
+                                      <span class="badge ms-2" :class="carrier.integration.enabled ? 'bg-success-transparent' : 'bg-light text-muted'"
+                                        v-if="carrier?.integration" :title="$t('carrier.integration.title')">
+                                        <i class="ri-plug-line me-1"></i>{{ carrier.integration.name }}
+                                      </span>
                                     </td>
                                     <td class="d-none d-lg-table-cell">{{ carrier?.code }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(carrier?.updated_at) }}</td>

@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 /**
- * FedEx 上门揽收预约（当前仓库）
+ * 上门揽收预约（当前仓库）
  *
- * 我们没有和 FedEx 签定期集荷：FedEx 运单建好后，要在这里约快递员上门。揽收按「仓库 + 日期」约，一次带多张运单，
- * 件数 / 总重量按所选运单的箱子合计。
- * - 待揽收运单：FedEx 自动运单（有效、出库单未发货）。已被预约占着的（预约中 / 已约上且揽收日没过 / 结果不明）不能勾选；
+ * 承运商的在线对接支持预约揽收时（如 FedEx，没有定期集荷），运单建好后要在这里约快递员上门。揽收按「仓库 + 承运商 + 日期」约，
+ * 一次带多张该承运商的运单，件数 / 总重量按所选运单的箱子合计。有多个能约揽收的承运商时在页头切换（?carrier_id=）。
+ * - 待揽收运单：该承运商的自动运单（有效、出库单未发货）。已被预约占着的（预约中 / 已约上且揽收日没过 / 结果不明）不能勾选；
  *   揽收日过了还没发货的可以重新预约（快递员没来 / 忘了完成发货）
- * - 预约：先向 FedEx 查可约日期与可选时间（下拉），默认 FedEx 给的默认时间；约好后不能改，只能取消重约
- * - 预约结果不明（FedEx 超时等）：运单仍被占着，核对 FedEx 后「确认作废」才能重新预约
- * - 取消：已约上、揽收日没过；FedEx 取消结果不明时可重试
+ * - 预约：先向承运商查可约日期与可选时间（下拉），默认承运商给的默认时间；约好后不能改，只能取消重约
+ * - 预约结果不明（承运商超时等）：运单仍被占着，向承运商核对后「确认作废」才能重新预约
+ * - 取消：已约上、揽收日没过；取消结果不明时可重试
  */
 import type { HttpRequestError } from '~/utils/http'
 import { extractCarrierErrors, formatServiceType, type CarrierApiErrorItem } from '~/composables/customs/carrierShipment'
@@ -23,6 +23,7 @@ import {
   pickupUrl,
   type CarrierPickup,
   type PickupAvailability,
+  type PickupOption,
   type PickupOverview,
   type PickupShipmentRow,
 } from '~/composables/customs/carrierPickup'
@@ -32,6 +33,8 @@ definePageMeta({})
 const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
 const warehouseStore = useWarehouseStore()
+const route = useRoute()
+const router = useRouter()
 
 const dataToPass = computed(() => ({
   current: t('delivery.pickup.title'),
@@ -45,6 +48,17 @@ const loading = ref(true)
 const loadError = ref<string | null>(null)
 const overview = ref<PickupOverview | null>(null)
 const selected = ref<number[]>([])
+
+/** 当前承运商：地址栏 ?carrier_id=，没有用后端给的默认（第一个能约揽收的承运商） */
+const queryCarrierId = (): number | null => {
+  const n = Number(route.query.carrier_id)
+  return Number.isInteger(n) && n > 0 ? n : null
+}
+const carrierId = ref<number | null>(queryCarrierId())
+const carrierQuery = () => (carrierId.value ? `?carrier_id=${carrierId.value}` : '')
+/** 文案里的承运商名：对接插件名（FedEx），没有用承运商名 */
+const carrierName = computed(() => overview.value?.integration?.name || overview.value?.carrier?.name || t('delivery.pickup.carrier'))
+const carrierOptions = computed(() => overview.value?.carriers || [])
 
 interface Failure {
   summary: string
@@ -61,20 +75,37 @@ const fetchOverview = async () => {
     return
   }
   loading.value = true
-  await httpRequest<PickupOverview>(PICKUPS_URL, {
+  await httpRequest<PickupOverview>(`${PICKUPS_URL}${carrierQuery()}`, {
     onSuccess: (data: PickupOverview) => {
       overview.value = data
       loadError.value = null
+      carrierId.value = data.carrier?.id ?? null
       const selectable = new Set(data.shipments.filter((r) => r.can_schedule).map((r) => r.shipment_id))
-      selected.value = selected.value.filter((id) => selectable.has(id))
+      selected.value = selected.value.filter((id: number) => selectable.has(id))
     },
     onError: (error) => {
+      // 地址栏里的承运商不对（已删除 / 不是本公司的）：退回默认承运商
+      if (error.code === 16131 && carrierId.value) {
+        carrierId.value = null
+        router.replace({ query: { ...route.query, carrier_id: undefined } })
+        fetchOverview()
+        return
+      }
       loadError.value = bizErrorMessage(error)
     },
     onFinally: () => {
       loading.value = false
     },
   })
+}
+
+const switchCarrier = (id: number) => {
+  if (id === carrierId.value) return
+  carrierId.value = id
+  selected.value = []
+  listFailure.value = null
+  router.replace({ query: { ...route.query, carrier_id: String(id) } })
+  fetchOverview()
 }
 
 watch(() => warehouseStore.currentWarehouse?.id, () => {
@@ -86,14 +117,14 @@ onMounted(fetchOverview)
 
 // ------------------ 待揽收运单 ----------------------
 const shipments = computed(() => overview.value?.shipments || [])
-const schedulable = computed(() => shipments.value.filter((r) => r.can_schedule))
-const allSelected = computed(() => schedulable.value.length > 0 && schedulable.value.every((r) => selected.value.includes(r.shipment_id)))
+const schedulable = computed(() => shipments.value.filter((r: PickupShipmentRow) => r.can_schedule))
+const allSelected = computed(() => schedulable.value.length > 0 && schedulable.value.every((r: PickupShipmentRow) => selected.value.includes(r.shipment_id)))
 const toggleAll = () => {
-  selected.value = allSelected.value ? [] : schedulable.value.map((r) => r.shipment_id)
+  selected.value = allSelected.value ? [] : schedulable.value.map((r: PickupShipmentRow) => r.shipment_id)
 }
-const selectedRows = computed(() => shipments.value.filter((r) => selected.value.includes(r.shipment_id)))
-const selectedPackages = computed(() => selectedRows.value.reduce((sum, r) => sum + (Number(r.package_count) || 0), 0))
-const selectedWeight = computed(() => formatWeight(selectedRows.value.reduce((sum, r) => sum + (Number(r.weight_kg) || 0), 0)))
+const selectedRows = computed(() => shipments.value.filter((r: PickupShipmentRow) => selected.value.includes(r.shipment_id)))
+const selectedPackages = computed(() => selectedRows.value.reduce((sum: number, r: PickupShipmentRow) => sum + (Number(r.package_count) || 0), 0))
+const selectedWeight = computed(() => formatWeight(selectedRows.value.reduce((sum: number, r: PickupShipmentRow) => sum + (Number(r.weight_kg) || 0), 0)))
 const canSchedule = computed(() => !!overview.value?.enabled && !overview.value.blockers.length && selected.value.length > 0)
 
 const formatWeight = (value: number | string | null | undefined): string => {
@@ -126,11 +157,12 @@ const describeFailure = (error: HttpRequestError): Failure => {
   const { errors, transactionId, permissionDenied } = extractCarrierErrors(error.details)
   let summary = bizErrorMessage(error)
   const pickup = error.details?.pickup
-  if (permissionDenied) summary = t('delivery.pickup.tips.permission-denied')
+  const carrier = { carrier: carrierName.value }
+  if (permissionDenied) summary = t('delivery.pickup.tips.permission-denied', carrier)
   else if (pickup && typeof pickup === 'object') {
-    if (pickup.status === 'unknown') summary = `${summary} ${t('delivery.pickup.tips.unknown')}`
+    if (pickup.status === 'unknown') summary = `${summary} ${t('delivery.pickup.tips.unknown', carrier)}`
     else if (pickup.status === 'failed') summary = `${summary} ${t('delivery.pickup.tips.failed')}`
-    else if (pickup.reason === 'cancel_unclear') summary = `${summary} ${t('delivery.pickup.tips.cancel-unclear')}`
+    else if (pickup.reason === 'cancel_unclear') summary = `${summary} ${t('delivery.pickup.tips.cancel-unclear', carrier)}`
   }
   return { summary, errors: error.code === 16073 || error.code === 16074 ? errors : [], transactionId }
 }
@@ -150,8 +182,8 @@ const form = reactive({
   notification_email: '',
 })
 
-const availableOptions = computed(() => (availability.value?.options || []).filter((o) => o.available))
-const currentOption = computed(() => availableOptions.value.find((o) => o.pickup_date === form.pickup_date) || null)
+const availableOptions = computed(() => (availability.value?.options || []).filter((o: PickupOption) => o.available))
+const currentOption = computed(() => availableOptions.value.find((o: PickupOption) => o.pickup_date === form.pickup_date) || null)
 const readyChoices = computed(() => currentOption.value?.ready_times || [])
 const closeChoices = computed(() => currentOption.value?.latest_times || [])
 const timeProblem = computed(() => pickupTimeProblem(currentOption.value, form.ready_time, form.close_time))
@@ -210,7 +242,7 @@ const openModal = async () => {
   form.notification_email = loadEmail()
   showModal.value = true
   availabilityLoading.value = true
-  await httpRequest<PickupAvailability>(`${PICKUPS_URL}/availability`, {
+  await httpRequest<PickupAvailability>(`${PICKUPS_URL}/availability${carrierQuery()}`, {
     onSuccess: (data: PickupAvailability) => {
       availability.value = data
       const first = (data.options || []).find((o) => o.available)
@@ -253,6 +285,7 @@ const submit = async () => {
   await httpRequest<{ pickup: CarrierPickup }>(PICKUPS_URL, {
     method: 'POST',
     body: {
+      carrier_id: carrierId.value,
       shipment_ids: selected.value,
       pickup_date: form.pickup_date,
       ready_time: form.ready_time,
@@ -309,7 +342,7 @@ const cancelPickup = async (pickup: CarrierPickup) => {
 const dismissPickup = async (pickup: CarrierPickup) => {
   const confirmed = await showConfirm(
     t('delivery.pickup.dismiss-confirm-title'),
-    t('delivery.pickup.dismiss-confirm', { date: pickup.pickup_date, window: timeWindow(pickup) }),
+    t('delivery.pickup.dismiss-confirm', { date: pickup.pickup_date, window: timeWindow(pickup), carrier: carrierName.value }),
     t('button.confirm'),
     t('button.cancel'),
   )
@@ -335,7 +368,7 @@ const dismissPickup = async (pickup: CarrierPickup) => {
 const pickupReasonText = (pickup: CarrierPickup): string => {
   if (!pickup.reason) return ''
   const key = `delivery.pickup.reasons.${pickup.reason}`
-  return te(key) ? t(key) : ''
+  return te(key) ? t(key, { carrier: carrierName.value }) : ''
 }
 </script>
 
@@ -358,19 +391,37 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
     <template v-if="overview">
       <!-- 说明 + 揽收地点 -->
       <div class="card custom-card">
-        <div class="card-header justify-content-between">
-          <div class="card-title">{{ t('delivery.pickup.title') }}</div>
-          <button type="button" class="btn btn-sm btn-light" :disabled="loading" @click="fetchOverview">
-            <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
-            <i v-else class="ri-refresh-line me-1"></i>{{ t('delivery.pickup.operations.refresh') }}
-          </button>
+        <div class="card-header justify-content-between flex-wrap gap-2">
+          <div class="card-title">
+            {{ t('delivery.pickup.title') }}
+            <span class="badge bg-light text-default ms-1 fs-12 align-middle" v-if="overview.carrier && carrierOptions.length <= 1">
+              {{ overview.carrier.name }}
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <select class="form-select form-select-sm" style="width: auto" :aria-label="t('delivery.pickup.carrier')"
+              :value="carrierId ?? ''" :disabled="loading" v-if="carrierOptions.length > 1"
+              @change="switchCarrier(Number(($event.target as HTMLSelectElement).value))">
+              <option v-for="c in carrierOptions" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-light" :disabled="loading" @click="fetchOverview">
+              <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="ri-refresh-line me-1"></i>{{ t('delivery.pickup.operations.refresh') }}
+            </button>
+          </div>
         </div>
         <div class="card-body">
           <p class="fs-13 text-muted mb-3">{{ t('delivery.pickup.intro') }}</p>
-          <div class="alert alert-secondary-transparent fs-13 mb-3" v-if="!overview.enabled">
-            {{ t('delivery.pickup.disabled') }}
+          <!-- 没有能约揽收的承运商：去承运商里设在线对接 -->
+          <div class="alert alert-secondary-transparent fs-13 mb-3" v-if="!overview.carrier">
+            {{ t('delivery.pickup.no-carrier') }}
+            <NuxtLink to="/carrier" class="ms-1">{{ t('delivery.pickup.carrier-list') }}</NuxtLink>
           </div>
-          <div class="row gy-2 fs-13">
+          <div class="alert alert-secondary-transparent fs-13 mb-3" v-else-if="!overview.enabled">
+            {{ t('delivery.pickup.disabled', { carrier: carrierName }) }}
+            <NuxtLink :to="`/carrier/edit/${overview.carrier.id}`" class="ms-1">{{ t('delivery.pickup.setup-link') }}</NuxtLink>
+          </div>
+          <div class="row gy-2 fs-13" v-if="overview.carrier">
             <div class="col-md-6">
               <div class="text-muted fs-12">{{ t('delivery.pickup.location.address') }}</div>
               <div>{{ formatPickupAddress(overview.pickup_location) || '—' }}</div>
@@ -389,8 +440,8 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
               <div class="font-monospace">{{ overview.pickup_location?.contact?.phoneNumber || '—' }}</div>
             </div>
           </div>
-          <div class="fs-12 text-muted mt-2">{{ t('delivery.pickup.location.hint') }}</div>
-          <div class="alert alert-warning-transparent fs-13 mt-3 mb-0" v-if="overview.blockers.length">
+          <div class="fs-12 text-muted mt-2" v-if="overview.carrier">{{ t('delivery.pickup.location.hint') }}</div>
+          <div class="alert alert-warning-transparent fs-13 mt-3 mb-0" v-if="overview.carrier && overview.blockers.length">
             <div class="fw-semibold mb-1">{{ t('delivery.pickup.blockers.title') }}</div>
             <ul class="mb-0 ps-3">
               <li v-for="(b, i) in overview.blockers" :key="`b-${i}`">{{ blockerText(b) }}</li>
@@ -451,7 +502,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
                     <span v-else>—</span>
                   </td>
                   <td>{{ t('delivery.pickup.fields.packages-value', { count: row.package_count, weight: formatWeight(row.weight_kg) }) }}</td>
-                  <td class="d-none d-md-table-cell">{{ formatServiceType(row.service_type) || '—' }}</td>
+                  <td class="d-none d-md-table-cell">{{ row.service_name || formatServiceType(row.service_type) || '—' }}</td>
                   <td class="d-none d-md-table-cell">{{ row.ship_date || '—' }}</td>
                   <td :class="rowPickupColor(row)" class="text-wrap">{{ rowPickupText(row) }}</td>
                 </tr>
@@ -478,7 +529,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
               </li>
             </ul>
             <div class="fs-12 mt-1" v-if="listFailure.transactionId">
-              {{ t('delivery.pickup.tips.transaction-id') }}: <span class="font-monospace">{{ listFailure.transactionId }}</span>
+              {{ t('delivery.pickup.tips.transaction-id', { carrier: carrierName }) }}: <span class="font-monospace">{{ listFailure.transactionId }}</span>
             </div>
           </div>
           <div class="table-responsive">
@@ -513,7 +564,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
                   </td>
                   <td>{{ t('delivery.pickup.fields.packages-value', { count: p.package_count, weight: formatWeight(p.total_weight_kg) }) }}</td>
                   <td class="d-none d-lg-table-cell font-monospace fs-12 text-wrap" style="max-width: 260px">
-                    {{ (p.shipments || []).map((s) => s.tracking_number).filter(Boolean).join(', ') || '—' }}
+                    {{ (p.shipments || []).map((s: CarrierPickup['shipments'][number]) => s.tracking_number).filter(Boolean).join(', ') || '—' }}
                   </td>
                   <td class="d-none d-xl-table-cell">
                     {{ $dayjs(p.created_at, 'YYYY-MM-DD HH:mm') || '—' }}
@@ -553,7 +604,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h6 class="modal-title">{{ t('delivery.pickup.modal.title') }}</h6>
+            <h6 class="modal-title">{{ t('delivery.pickup.modal.title') }} · {{ overview?.carrier?.name }}</h6>
             <button type="button" class="btn-close" :disabled="submitting" @click="closeModal"></button>
           </div>
           <div class="modal-body">
@@ -563,13 +614,13 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
             </div>
 
             <div class="fs-12 text-muted mb-2" v-if="availabilityLoading">
-              <span class="spinner-border spinner-border-sm me-1"></span>{{ t('delivery.pickup.modal.loading-availability') }}
+              <span class="spinner-border spinner-border-sm me-1"></span>{{ t('delivery.pickup.modal.loading-availability', { carrier: carrierName }) }}
             </div>
             <div class="alert alert-warning-transparent fs-12 py-2" v-else-if="availabilityError">
-              {{ t('delivery.pickup.modal.availability-failed', { message: availabilityError }) }}
+              {{ t('delivery.pickup.modal.availability-failed', { message: availabilityError, carrier: carrierName }) }}
             </div>
             <div class="alert alert-warning-transparent fs-12 py-2" v-else-if="availability && !availableOptions.length">
-              {{ t('delivery.pickup.modal.no-options') }}
+              {{ t('delivery.pickup.modal.no-options', { carrier: carrierName }) }}
             </div>
 
             <div class="row g-3">
@@ -610,7 +661,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
               <div class="col-md-5">
                 <label class="form-label">{{ t('delivery.pickup.modal.email') }}</label>
                 <input type="email" class="form-control" v-model="form.notification_email" maxlength="80" autocomplete="email">
-                <div class="form-text">{{ t('delivery.pickup.modal.email-hint') }}</div>
+                <div class="form-text">{{ t('delivery.pickup.modal.email-hint', { carrier: carrierName }) }}</div>
               </div>
             </div>
             <div class="fs-12 text-muted mt-3">{{ t('delivery.pickup.modal.no-change') }}</div>
@@ -623,7 +674,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
                 </li>
               </ul>
               <div class="fs-12 mt-1" v-if="modalFailure.transactionId">
-                {{ t('delivery.pickup.tips.transaction-id') }}: <span class="font-monospace">{{ modalFailure.transactionId }}</span>
+                {{ t('delivery.pickup.tips.transaction-id', { carrier: carrierName }) }}: <span class="font-monospace">{{ modalFailure.transactionId }}</span>
               </div>
             </div>
           </div>

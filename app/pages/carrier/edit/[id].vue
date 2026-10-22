@@ -174,6 +174,10 @@ onMounted(async() => {
         </div>
       </div>
     </div>
+    <!-- 在线对接（自动建运单）：单独保存，不随上面的承运商资料一起提交 -->
+    <div class="col-xl-12">
+      <CarrierIntegrationCard :carrier-id="itemId" :editable="staffStore.hasPermission('carrier_edit')" />
+    </div>
   </div>
   <!--End::row-1 -->
 </template>

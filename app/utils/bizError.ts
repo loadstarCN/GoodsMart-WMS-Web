@@ -9,7 +9,7 @@ const detailsOf = (error: BizErrorLike): Record<string, any> => {
 
 /**
  * 自动运单记录的状态 → 文案后缀：
- * - unknown（建单结果不明）→ unresolved：先到 FedEx Ship Manager 核对，再在打包 / 配送任务的海外发货区取消或确认作废
+ * - unknown（建单结果不明）→ unresolved：先到承运商后台核对，再在打包 / 配送任务的海外发货区取消或确认作废
  * - pending（建单中）→ in-progress：等它结束
  * - cancelling（取消中 / 取消结果不明）→ cancelling：等取消结束，或在打包 / 配送任务的海外发货区重试取消 / 核对后确认作废
  * - active（有效）→ ''：用基础文案（先取消运单）
@@ -40,7 +40,7 @@ const messageParams = (error: BizErrorLike): Record<string, any> => {
  *   自动运单结果不明 / 建单中 / 取消中（details.status = unknown / pending / cancelling）→ code-16078-unresolved / -in-progress / -cancelling；
  *   没带运单号（新建 / 删除配送任务被拒）→ code-16078-no-tracking
  * - 16079：按 details.unresolved.status 区分：建单中 → -in-progress；取消中 / 取消结果不明 → -cancelling；建单结果不明 → 基础文案
- * - 16095：FedEx 已建运单但 WMS 保存失败，已自动取消（details.compensation.cancelled = true）→ code-16095-cancelled
+ * - 16095：承运商已建运单但保存失败，已自动取消（details.compensation.cancelled = true）→ code-16095-cancelled
  */
 export const bizErrorVariant = (error: BizErrorLike): string => {
   if (!error) return ''
