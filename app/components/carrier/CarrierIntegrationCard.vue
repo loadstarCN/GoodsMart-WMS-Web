@@ -70,7 +70,7 @@ const testResult = ref<{ ok: boolean; message: string; detail: string } | null>(
 /** 插件给的多语言文本：按当前语言取，没有用英文 */
 const localized = (text: Record<string, string> | null | undefined): string => {
   if (!text) return ''
-  const iso = localeProperties.value?.iso || 'en-US'
+  const iso = String(localeProperties.value?.iso || 'en-US')
   return text[iso] || text['en-US'] || Object.values(text)[0] || ''
 }
 

@@ -9,8 +9,8 @@ let loading = ref(true);
 const route = useRoute();
 const asnId = route.params.id;
 
-const itemData = ref(null);
-const itemSortingData = ref(null);
+const itemData = ref<any>(null);
+const itemSortingData = ref<any>(null);
 const { t } = useI18n();
 // 按权限显示操作按钮（鉴权仍以后端为准）
 const staffStore = useStaffStore();

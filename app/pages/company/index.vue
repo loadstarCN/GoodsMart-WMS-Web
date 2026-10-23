@@ -21,7 +21,7 @@ const router = useRouter()
 let route = useRoute();
 let loading = ref(true);
 
-const itemData = ref({
+const itemData = ref<Record<string, any>>({
   name: null,
   address: null,
   phone: null,
@@ -50,7 +50,7 @@ const nonLatin = computed<Record<string, boolean>>(() => {
   return Object.fromEntries(exportTextFields.map((f) => [f, hasNonLatin(data?.[f])]))
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   name: null,
   email: null,
 })

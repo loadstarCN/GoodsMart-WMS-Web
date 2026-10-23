@@ -8,8 +8,8 @@ let loading = ref(true);
 const route = useRoute();
 const taskId = route.params.id;
 
-const itemData = ref(null);
-const currentItem = ref(null);
+const itemData = ref<any>(null);
+const currentItem = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
 const { bizErrorMessage } = useBizError();
@@ -238,7 +238,7 @@ const hasUnsavedChanges = computed(() => {
   }) ?? false
 })
 
-function completeFn(item: any) {
+function completeFn() {
 
   // 强制获取最新计算值
   if (hasUnsavedChanges.value) {
@@ -263,8 +263,8 @@ function completeFn(item: any) {
 
 
 const isLoading = ref(false);
-const selectedLocation = ref(null);
-const locationSelectedOptions = ref([]);
+const selectedLocation = ref<any>(null);
+const locationSelectedOptions = ref<any[]>([]);
 const nameWithQuantity = (({ location,quantity }: any) => {
   return `[${location.location_type}] ${location.code} (${quantity})`
 })

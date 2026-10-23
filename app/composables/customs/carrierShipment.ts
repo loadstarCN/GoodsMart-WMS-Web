@@ -74,8 +74,9 @@ export interface CarrierShipment {
   /** 面单 PDF 的组成（每箱面单、国际件的 AWB 副本 AUXILIARY 等） */
   label_parts?: CarrierLabelPart[] | null
   created_at: string | null
-  /** 建单人：后端目前只给用户 id */
+  /** 建单人：用户 id；created_by_user = {id, user_name, …}（新后端才有） */
   created_by: any
+  created_by_user?: any
   /** 状态最后变化时间（取消中的运单按它判断是否卡住） */
   updated_at?: string | null
   cancelled_at: string | null

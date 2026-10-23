@@ -180,7 +180,7 @@ const activeTab = computed(() => {
 // 6个月的统计数据
 import { useChartMonthOptions } from '@/composables/chart/useChartMonthOptions';
 const listViewOptions = useChartMonthOptions(6);
-const listViewSeries = ref([]);
+const listViewSeries = ref<any[]>([]);
 
 
 const fetchMonthlyStatsData = async () => {
@@ -206,7 +206,7 @@ const fetchMonthlyStatsData = async () => {
 };
 
 // 统计数据
-const statsData = ref([]);
+const statsData = ref<any[]>([]);
 const fetchStatsData = async () => {
     loading.value = true;
     const data = await httpRequest('/api/warehouse/dn/status-overview-stats', {

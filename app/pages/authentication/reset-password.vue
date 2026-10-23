@@ -31,7 +31,7 @@ const formState = reactive({
   confirmPassword: ''
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   current_password: null,
   new_password: null,
   confirm_password: null

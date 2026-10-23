@@ -20,7 +20,7 @@ let route = useRoute();
 const itemId = route.params.id;
 let loading = ref(true);
 
-const itemData = ref({
+const itemData = ref<Record<string, any>>({
   name: null,
   address: null,
   phone: null,
@@ -30,7 +30,7 @@ const itemData = ref({
   company_id: staffStore.staffInfo?.company_id,
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   name: null,
   email: null,
 })

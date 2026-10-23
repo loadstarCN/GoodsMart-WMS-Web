@@ -13,8 +13,8 @@ const router = useRouter();
 let route = useRoute();
 const productId = route.params.id;
 
-const itemData = ref(null);
-const tabData = ref(null);
+const itemData = ref<any>(null);
+const tabData = ref<any>(null);
 
 // 获取国际化方法
 const { t, locale } = useI18n();
@@ -27,7 +27,7 @@ const dataToPass = computed(() => ({
   list: [t('nav.warehouse'), t('nav.goods')]
 }));
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   location: null,
   quantity: null,
   reason: null,
@@ -37,17 +37,17 @@ const errors = ref({
 
 // 处理库位选择
 const isLoading = ref(false);
-const selectedLocation = ref(null);
-const locationSelectedOptions = ref([]);
-const quantity = ref(null);
-const maxQuantity = ref(null);
-const remark = ref(null);
-const reason = ref(null);
+const selectedLocation = ref<any>(null);
+const locationSelectedOptions = ref<any[]>([]);
+const quantity = ref<any>(null);
+const maxQuantity = ref<any>(null);
+const remark = ref<any>(null);
+const reason = ref<any>(null);
 
-const selectedFromLocation = ref(null);
-const selectedToLocation = ref(null);
-const locationFromSelectedOptions = ref([]);
-const locationToSelectedOptions = ref([]);
+const selectedFromLocation = ref<any>(null);
+const selectedToLocation = ref<any>(null);
+const locationFromSelectedOptions = ref<any[]>([]);
+const locationToSelectedOptions = ref<any[]>([]);
 
 const fetchLocationData = async (code: string, targetRef: Ref<any[]>) => {
   if (!code) return;
@@ -793,7 +793,7 @@ onMounted(async() => {
   </div>
 
 
-  <div class="modal fade" :class="{ show: showModal, 'd-block': showModal }" id="transferModal" tabindex="-1" aria-labelledby="transferModalLabel" aria-hidden="true">
+  <div class="modal fade" id="transferModal" tabindex="-1" aria-labelledby="transferModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">

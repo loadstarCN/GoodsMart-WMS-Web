@@ -2,6 +2,7 @@
 import { createVuetify } from "vuetify";
 import { VTooltip, VBtn, VOverlay } from "vuetify/components";
 import { Ripple } from "vuetify/directives";
+// @ts-expect-error vue3-easy-data-table 的类型声明没写默认导出，运行时（ESM 包）是有的
 import Vue3EasyDataTable from 'vue3-easy-data-table';
 import 'vue3-easy-data-table/dist/style.css';
 import VueApexCharts from "../components/UI/apexcharts.vue";

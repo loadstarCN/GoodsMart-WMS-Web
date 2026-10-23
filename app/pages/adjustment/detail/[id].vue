@@ -8,7 +8,7 @@ let loading = ref(true);
 const route = useRoute();
 const taskId = route.params.id;
 
-const itemData = ref(null);
+const itemData = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
 // 按权限显示审批 / 完成 / 取消按钮（鉴权仍以后端为准）
@@ -108,7 +108,7 @@ const cancelAdjustment = async () => {
     canceling.value = false;
 };
 
-function completeFn(item: any) {
+function completeFn() {
 
   // 使用封装的确认对话框
   showConfirm(

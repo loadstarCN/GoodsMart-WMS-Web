@@ -1,11 +1,11 @@
 export const useInventorySearch = () => {
   const state = reactive({
     code: '',         
-    results: [],       
+    results: [] as any[],       
     total: 0,        
     loading: false,   
-    selected: {       
-      goods: null,
+    selected: {
+      goods: null as any,
       goods_id: null as number | null,
       max_qty: null as number | null,
       quantity: null as number | null,
@@ -35,8 +35,9 @@ export const useInventorySearch = () => {
   };
 
   const resetSelection = () => {
-    state.selected = { 
-      goods: null, goods_id: null, quantity: null,remark: '' 
+    // max_qty 也要清：以前漏了，换一件商品前会留着上一件的最大可出库数
+    state.selected = {
+      goods: null, goods_id: null, max_qty: null, quantity: null, remark: ''
     };
   };
   const resetState = () => {
@@ -44,8 +45,8 @@ export const useInventorySearch = () => {
     state.results = [];
     state.total = 0;
     state.loading = false;
-    state.selected = { 
-      goods: null, goods_id: null, quantity: null, remark: '' 
+    state.selected = {
+      goods: null, goods_id: null, max_qty: null, quantity: null, remark: ''
     };
   }
 

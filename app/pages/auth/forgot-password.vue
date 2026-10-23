@@ -11,7 +11,7 @@ const cookieLang = useCookie('i18n_lang', { maxAge: 2592000 });
 const currentLang = ref(cookieLang.value || 'en');
 
 const setLocale = async (lang: string) => {
-  await setI18nLocale(lang);
+  await setI18nLocale(lang as 'en' | 'zh' | 'ja');
   cookieLang.value = lang;
   currentLang.value = lang;
 };
@@ -134,7 +134,7 @@ onUnmounted(() => {
       <div class="position-absolute top-0 end-0 p-3" style="z-index: 10;">
         <div class="dropdown">
           <a href="javascript:void(0);" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
-            <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang" class="rounded-circle me-1" style="width:16px;height:16px;">{{ languages[currentLang] }}
+            <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang" class="rounded-circle me-1" style="width:16px;height:16px;">{{ languages[currentLang as keyof typeof languages] }}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
             <li v-for="lang in ['en', 'zh', 'ja']" :key="lang">

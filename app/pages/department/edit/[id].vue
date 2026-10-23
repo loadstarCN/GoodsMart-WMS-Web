@@ -24,13 +24,13 @@ let route = useRoute();
 const itemId = route.params.id;
 let loading = ref(true);
 
-const itemData = ref({
+const itemData = ref<Record<string, any>>({
   name: null,  
   description: null,
   company_id: staffStore.staffInfo?.company_id,
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   name: null
 })
 

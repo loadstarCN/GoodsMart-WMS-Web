@@ -20,7 +20,7 @@ const router = useRouter()
 const { bizErrorMessage } = useBizError()
 
 // 创建响应式表单引用
-const dnItem = ref({
+const dnItem = ref<Record<string, any>>({
   warehouse_id: null,
   recipient_id: null,
   carrier_id: null,
@@ -39,10 +39,10 @@ const dnItem = ref({
 const selectOptions = reactive({
   dn_types: dnTypesOptions,
   transportation_modes: dnTransportationModesOptions,
-  warehouses:[]
+  warehouses: [] as any[]
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   dn_type: null,
   wareshouse: null,
   recipient: null,
@@ -53,7 +53,7 @@ const errors = ref({
 });
 
 //处理仓库选择
-const selectWareshouse = ref(null);
+const selectWareshouse = ref<any>(null);
 
 const shouldDisableWarehouseSelect = computed(() => {
   return selectOptions.warehouses.length === 1;
@@ -86,8 +86,8 @@ watch(
 
 // 处理收件人选择
 const isLoading = ref(false);
-const selectedRecipient = ref(null);
-const recipientSelectedOptions = ref([]);
+const selectedRecipient = ref<any>(null);
+const recipientSelectedOptions = ref<any[]>([]);
 
 const fetchRecipientData = async (name:string) => {
   if (!name) {
@@ -125,8 +125,8 @@ watch(
 );
 
 // 处理承运商选择
-const selectedCarrier = ref(null);
-const carrierSelectedOptions = ref([]);
+const selectedCarrier = ref<any>(null);
+const carrierSelectedOptions = ref<any[]>([]);
 
 const fetchCarrierData = async (name:string) => {
   if (!name) {
@@ -327,7 +327,7 @@ const deleteItem = (detail:any) => {
   }
 }
 
-const selectItem = ref({});
+const selectItem = ref<Record<string, any>>({});
 const tempRemark = ref('');
 
 const editRemark = (item:any) => {
@@ -642,7 +642,7 @@ const saveRemark = () => {
               goodsSearch.selected.max_qty }})</span>
             <input v-maska:[] type="number" class="form-control number-format" id="product-quantity" data-maska="0"
               data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('common.placeholders.quantity')" min="1" step="1"
-              v-model="goodsSearch.selected.quantity" :max="goodsSearch.selected.max_qty"
+              v-model="goodsSearch.selected.quantity" :max="goodsSearch.selected.max_qty ?? undefined"
               @change="clampValue(goodsSearch.selected)" />
             <div v-if="errors.quantity" class="invalid-feedback d-block">{{ errors.quantity }}</div>
           </div>

@@ -7,11 +7,11 @@ definePageMeta({
 
 let loading = ref(true);
 const route = useRoute();
-const dnId = route.params.id;
+const dnId = String(route.params.id);
 
-const itemData = ref(null);
-const itemPickingData = ref(null);
-const itemPackingData = ref(null);
+const itemData = ref<any>(null);
+const itemPickingData = ref<any>(null);
+const itemPackingData = ref<any>(null);
 const { t } = useI18n();
 // 按权限显示操作按钮（鉴权仍以后端为准）
 const staffStore = useStaffStore();

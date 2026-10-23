@@ -12,8 +12,8 @@ let loading = ref(true);
 const route = useRoute();
 const asnId = route.params.id;
 
-const itemData = ref(null);
-const itemSortingData = ref(null);
+const itemData = ref<any>(null);
+const itemSortingData = ref<any>(null);
 const { t } = useI18n();
 
 const fetchData = async () => {
@@ -166,7 +166,7 @@ fetchData();
                   <tbody>
                     
                     <tr v-for="(detail, index) in itemData?.details" >
-                      <td class="tm_width_1">#{{ index+1 }}</td>
+                      <td class="tm_width_1">#{{ Number(index) + 1 }}</td>
                       <td class="tm_width_1">{{detail.goods?.code}}</td>
                       <td class="tm_width_4">{{detail.goods?.name}}</td>
                       

@@ -18,7 +18,7 @@ const warehouseStore = useWarehouseStore()
 const router = useRouter()
 
 // 创建响应式表单引用
-const taskItem = ref({
+const taskItem = ref<Record<string, any>>({
   task_name: null,
   warehouse_id: null,
   scheduled_date: null,  
@@ -27,16 +27,16 @@ const taskItem = ref({
 
 // 配置化选项集合
 const selectOptions = reactive({
-  warehouses:[]
+  warehouses: [] as any[]
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   wareshouse: null,
   task_details: null,
 });
 
 //处理仓库选择
-const selectWareshouse = ref(null);
+const selectWareshouse = ref<any>(null);
 
 const shouldDisableWarehouseSelect = computed(() => {
   return selectOptions.warehouses.length === 1;

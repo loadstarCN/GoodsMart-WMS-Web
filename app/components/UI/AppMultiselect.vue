@@ -9,12 +9,13 @@ const attrs = useAttrs()
 
 const mergedPlaceholder = computed(() => {
   // If a placeholder was explicitly provided, use it; otherwise use translated default
-  return attrs.placeholder ?? t('common.select-placeholder')
+  return (attrs.placeholder as string | undefined) ?? t('common.select-placeholder')
 })
 </script>
 
 <template>
-  <VueMultiselect v-bind="{ ...$attrs, placeholder: mergedPlaceholder }">
+  <!-- 透传给 vue-multiselect 的 attrs 类型是 unknown，必填的 options 由使用方传 -->
+  <VueMultiselect v-bind="({ ...$attrs, placeholder: mergedPlaceholder } as any)">
     <template v-for="(_, name) in $slots" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}" />
     </template>

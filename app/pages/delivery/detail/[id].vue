@@ -8,9 +8,9 @@ definePageMeta({
 
 let loading = ref(true);
 const route = useRoute();
-const taskId = route.params.id;
+const taskId = String(route.params.id);
 
-const itemData = ref(null);
+const itemData = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
 // 计算属性转换
@@ -27,7 +27,7 @@ const selectOptions = reactive({
 })
 
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   tracking_number: null,
   carrier: null,
   transportation_mode: null,
@@ -159,7 +159,7 @@ const signTask = async () => {
     return data;   
 };
 
-function completeFn(item: any) {
+function completeFn() {
 
   // 使用封装的确认对话框
   showConfirm(
@@ -179,8 +179,8 @@ function completeFn(item: any) {
 
 // 处理承运商选择
 const isLoading = ref(false);
-const selectedCarrier = ref(null);
-const carrierSelectedOptions = ref([]);
+const selectedCarrier = ref<any>(null);
+const carrierSelectedOptions = ref<any[]>([]);
 
 
 const fetchCarrierData = async (name:string) => {

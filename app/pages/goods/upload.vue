@@ -15,7 +15,7 @@ const staffStore = useStaffStore()
 
 const is_end = ref(false)
 const uploading = ref(false)
-const result = ref("")
+const result = ref<any>("")
 const selectedOption = ref<'skip' | 'active' | 'append' | 'override'>('skip')
 
 // 下载模板
@@ -40,7 +40,7 @@ const selectedFile = ref<File | null>(null)
 const handleFileSelect = (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files?.length) {
-    selectedFile.value = input.files[0];
+    selectedFile.value = input.files[0] ?? null;
   }
 }
 

@@ -22,7 +22,7 @@ const dataToPass = computed(() => ({
 const warehouseStore = useWarehouseStore()
 const router = useRouter()
 
-const itemData = ref({
+const itemData = ref<Record<string, any>>({
   code: null,
   location_type: 'standard',
   warehouse_id: null,
@@ -33,7 +33,7 @@ const itemData = ref({
   capacity: null  
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   name: null,
   location_type: null,
   warehouse: null
@@ -43,7 +43,7 @@ const errors = ref({
 // 配置化选项集合
 const selectOptions = reactive({
   location_type: locationTypesOptions,
-  warehouses:[]
+  warehouses: [] as any[]
 })
 
 // ------------------ 提交保存 ----------------------
@@ -87,7 +87,7 @@ const addLocation = async () => {
 
 
 //处理仓库选择
-const selectWareshouse = ref(null);
+const selectWareshouse = ref<any>(null);
 
 const shouldDisableWarehouseSelect = computed(() => {
   return selectOptions.warehouses.length === 1;
@@ -109,7 +109,7 @@ watch(
   (newVal:any) => {
     if (newVal) {
       itemData.value.warehouse_id = newVal.id;  // 将对象 ID 同步到表单
-      errors.value.wareshouse = null; // 清除错误信息
+      errors.value.warehouse = null; // 清除错误信息（以前写成 wareshouse，选了仓库后「请选择仓库」不消失）
     } else {
       itemData.value.warehouse_id = null;       // 清空选择时重置
     }

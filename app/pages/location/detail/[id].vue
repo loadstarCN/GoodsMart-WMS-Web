@@ -12,8 +12,8 @@ const router = useRouter();
 let route = useRoute();
 const locationId = route.params.id;
 
-const itemData = ref(null);
-const tabData = ref(null);
+const itemData = ref<any>(null);
+const tabData = ref<any>(null);
 
 // 获取国际化方法
 const { t } = useI18n();
@@ -26,7 +26,7 @@ const dataToPass = computed(() => ({
   list: [t('nav.warehouse'), t('nav.location')]
 }));
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   goods: null,
   location: null,
   quantity: null,
@@ -35,15 +35,15 @@ const errors = ref({
 
 // 处理库位选择
 const isLoading = ref(false);
-const selectedGoods = ref(null);
-const goodsSelectedOptions = ref([]);
-const quantity = ref(null);
-const maxQuantity = ref(null);
-const remark = ref(null);
-const reason = ref(null);
+const selectedGoods = ref<any>(null);
+const goodsSelectedOptions = ref<any[]>([]);
+const quantity = ref<any>(null);
+const maxQuantity = ref<any>(null);
+const remark = ref<any>(null);
+const reason = ref<any>(null);
 
-const selectedLocation = ref(null);
-const locationSelectedOptions = ref([]);
+const selectedLocation = ref<any>(null);
+const locationSelectedOptions = ref<any[]>([]);
 
 const fetchLocationData = async (code: string) => {
   if (!code) return;
@@ -344,7 +344,7 @@ onMounted(async() => {
               <div class="row flex-column justify-content-center align-items-center">
                 <div class="col-xxl-12 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-md-5 mb-3">
                   <LocationBox :depth=itemData.depth :width=itemData.width :height=itemData.height
-                    :capacity=itemData.capacity :usagePercentage=null />
+                    :capacity=itemData.capacity />
                 </div>
               </div>
             </div>

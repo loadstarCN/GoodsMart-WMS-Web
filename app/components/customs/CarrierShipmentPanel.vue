@@ -48,6 +48,7 @@ import {
   type CarrierAlert,
   type CarrierRequestFailure,
   type CarrierShipmentBlocker,
+  type CarrierShipment,
   type CarrierShipmentStatus,
   type CarrierWarning,
   type LabelFormat,
@@ -286,7 +287,7 @@ const refreshTracking = async () => {
 
 /** 运单正在取消（cancelling）：按进行中处理 */
 const cancellingShipment = computed(() => (isCancellingShipment(shipment.value) ? shipment.value : null))
-const lastCancelled = computed(() =>
+const lastCancelled = computed<CarrierShipment | null>(() =>
   (shipment.value && !isActiveShipment(shipment.value) && !isCancellingShipment(shipment.value) ? shipment.value : null))
 /** 结果不明的运单（承运商那边可能已生成）：有它时不能建单 */
 const unresolved = computed(() => status.value?.unresolved || null)

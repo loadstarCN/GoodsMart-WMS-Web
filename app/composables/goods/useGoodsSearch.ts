@@ -1,7 +1,7 @@
 export const useGoodsSearch = () => {
   const state = reactive({
     code: '',         
-    results: [],       
+    results: [] as any[],       
     total: 0,        
     loading: false,   
     selected: {       

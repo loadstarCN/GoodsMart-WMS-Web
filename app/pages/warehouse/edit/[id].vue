@@ -22,7 +22,7 @@ let route = useRoute();
 const itemId = route.params.id;
 let loading = ref(true);
 
-const itemData = ref({
+const itemData = ref<Record<string, any>>({
   name: null,
   address: null,
   phone: null,
@@ -37,7 +37,7 @@ const itemData = ref({
   contact_name_en: null,
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   name: null
 })
 
@@ -49,8 +49,8 @@ const selectOptions = reactive({
 
 // 处理供应商选择
 const isLoading = ref(false);
-const selectedStaff = ref(null);
-const staffSelectedOptions = ref([]);
+const selectedStaff = ref<any>(null);
+const staffSelectedOptions = ref<any[]>([]);
 
 const fetchStaffData = async (name:string) => {
   if (!name) {

@@ -13,6 +13,8 @@ export type CustomsDocType = 'commercial_invoice' | 'packing_list'
 
 export interface CustomsDocumentMeta {
   id: number
+  /** 签发人 {id, user_name, …}（新后端才有） */
+  issued_by_user?: any
   dn_id: number
   doc_type: CustomsDocType
   version: number

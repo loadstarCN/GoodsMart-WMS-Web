@@ -57,6 +57,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # 类型检查（vue-tsc）：有类型错误就不部署。2026-10-23 清到 0（之前 app/types/dayjs.d.ts 没写成模块，
+      # 把 vue / #app 的类型整个替换掉了，大部分模板等于没被检查）
+      - name: Type check
+        run: npm run typecheck
+
       - name: Build
         run: npm run build
 

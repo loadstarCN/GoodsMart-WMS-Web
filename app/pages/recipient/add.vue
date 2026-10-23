@@ -16,7 +16,7 @@ const dataToPass = computed(() => ({
 const staffStore = useStaffStore()
 const router = useRouter()
 
-const itemData = ref({
+const itemData = ref<Record<string, any>>({
   name: null,
   address: null,
   phone: null,
@@ -27,7 +27,7 @@ const itemData = ref({
   company_id: staffStore.staffInfo?.company_id,
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   name: null,
   email: null,
   country: null,  

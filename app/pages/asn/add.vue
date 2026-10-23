@@ -19,7 +19,7 @@ const warehouseStore = useWarehouseStore()
 const router = useRouter()
 
 // 创建响应式表单引用
-const asnItem = ref({
+const asnItem = ref<Record<string, any>>({
   supplier_id: null,
   tracking_number: null,
   carrier_id: null,
@@ -33,10 +33,10 @@ const asnItem = ref({
 // 配置化选项集合
 const selectOptions = reactive({
   asn_types: asnTypesOptions,
-  warehouses:[]
+  warehouses: [] as any[]
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   asn_type: null,
   wareshouse: null,
   supplier: null,
@@ -45,7 +45,7 @@ const errors = ref({
 });
 
 //处理仓库选择
-const selectWareshouse = ref(null);
+const selectWareshouse = ref<any>(null);
 
 const shouldDisableWarehouseSelect = computed(() => {
   return selectOptions.warehouses.length == 1;
@@ -77,8 +77,8 @@ watch(
 
 // 处理供应商选择
 const isLoading = ref(false);
-const selectedSupplier = ref(null);
-const supplierSelectedOptions = ref([]);
+const selectedSupplier = ref<any>(null);
+const supplierSelectedOptions = ref<any[]>([]);
 
 const fetchSupplierData = async (name:string) => {
   if (!name) {
@@ -116,8 +116,8 @@ watch(
 );
 
 // 处理承运商选择
-const selectedCarrier = ref(null);
-const carrierSelectedOptions = ref([]);
+const selectedCarrier = ref<any>(null);
+const carrierSelectedOptions = ref<any[]>([]);
 
 const fetchCarrierData = async (name:string) => {
   if (!name) {
@@ -267,7 +267,7 @@ const deleteItem = (detail:any) => {
   }
 }
 
-const selectItem = ref({});
+const selectItem = ref<Record<string, any>>({});
 const tempRemark = ref('');
 
 const editRemark = (item:any) => {

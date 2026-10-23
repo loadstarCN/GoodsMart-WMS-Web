@@ -22,7 +22,7 @@ let route = useRoute();
 const itemId = route.params.id;
 let loading = ref(true);
 
-const itemData = ref({
+const itemData = ref<Record<string, any>>({
   user_name: null,
   email: null,
   avatar: null,
@@ -37,7 +37,7 @@ const itemData = ref({
   roles: []  
 })
 
-const errors = ref({
+const errors = ref<Record<string, any>>({
   user_name: null,
   password: null,
   email: null,
@@ -48,8 +48,8 @@ const errors = ref({
 // 配置化选项集合
 const selectOptions = reactive({
   roles: staffRolesOptions,
-  warehouses:[],
-  departments: []
+  warehouses: [] as any[],
+  departments: [] as any[]
 })
 
 
@@ -89,7 +89,7 @@ const saveStaff = async () => {
   if (Object.values(errors.value).some(v => v)) return
 
   // 检查仓库是否选择
-  itemData.value.warehouse_ids = itemData.value.warehouses.map(w => w.id)
+  itemData.value.warehouse_ids = itemData.value.warehouses.map((w: any) => w.id)
 
   submitting.value = true
   await httpRequest(`/api/warehouse/staff/${itemId}`, {
@@ -120,7 +120,7 @@ const generatePassword = () => {
 
 
 // 处理收件人选择
-const selectedDepartment = ref(null);
+const selectedDepartment = ref<any>(null);
 
 const fetchDepartmentData = async () => {
     const data = await httpRequest<PaginationData>('/api/warehouse/department/', {

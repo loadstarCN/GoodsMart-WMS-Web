@@ -9,7 +9,7 @@ declare module '#app' {
   }
 }
 
-declare module '@vue/runtime-core' {
+declare module 'vue' {
   export interface ComponentCustomProperties {
     $currency: (
       value: number,

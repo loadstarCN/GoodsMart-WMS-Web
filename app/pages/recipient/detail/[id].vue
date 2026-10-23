@@ -8,7 +8,7 @@ let loading = ref(true);
 let route = useRoute();
 const itemId = route.params.id;
 
-const itemData = ref(null);
+const itemData = ref<any>(null);
 
 // 获取国际化方法
 const { t } = useI18n();
