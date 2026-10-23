@@ -5,6 +5,8 @@
  * POST /warehouse/dn/<dn_id>/carrier-shipment          建单（body.label_format）→ 201 状态 + alerts；
  *                                                      运单号存到配送任务，CI / PL 自动带运单号重新签发
  * POST /warehouse/dn/<dn_id>/carrier-shipment/cancel   body {tracking_number}：取消运单（DN 未发货时）→ 200 状态
+ * POST /warehouse/dn/<dn_id>/carrier-shipment/track    立即查一次跟踪（定时任务也在查）：揽收后自动完成发货、送达后自动签收
+ *                                                      → 200 状态 + tracking_sync；没有可跟踪的运单 → 409 16134
  * POST /warehouse/dn/<dn_id>/carrier-shipment/dismiss  body {confirm: true, unresolved_id}：操作员已在承运商后台（integration.portal_name）
  *                                                      核对「那边没有这张运单或已手工取消」后，解除结果不明的运单 → 200 状态
  *   取消 / 解除都带上确认框里展示的目标（运单号 / 结果不明记录的 id）：与服务端当前记录不符 → 409 16093（details.expected / actual），
@@ -80,6 +82,37 @@ export interface CarrierShipment {
   cancelled_by?: any
   /** 最近一次包含这张运单的揽收预约（没有为 null；旧后端没有该字段） */
   pickup?: PickupSummary | null
+  /** 承运商跟踪（插件能跟踪时定时查；没查过为 null；旧后端没有该字段） */
+  tracking?: CarrierTracking | null
+}
+
+/** 跟踪状态（后端 carrier.integrations.base.TRACK_*） */
+export type CarrierTrackingStatus = 'label_created' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'exception' | 'unknown'
+
+export interface CarrierTrackingEvent {
+  time: string | null
+  code: string | null
+  description: string | null
+  location: string | null
+}
+
+/** 运单的跟踪结果：揽收后 WMS 自动完成发货、送达后自动签收 */
+export interface CarrierTracking {
+  status: CarrierTrackingStatus | null
+  /** 承运商自己的状态码（FedEx OC / PU / DL …）与说明 */
+  code: string | null
+  status_text: string | null
+  picked_up_at: string | null
+  delivered_at: string | null
+  /** 预计送达日（目的地当地日期 YYYY-MM-DD） */
+  estimated_delivery: string | null
+  /** 扫描记录，新的在前 */
+  events: CarrierTrackingEvent[]
+  /** 最近一次查询失败的原因（保留上次的结果） */
+  error: string | null
+  synced_at: string | null
+  /** 自动完成发货 / 签收没做成的原因（如单证过期、计划发货日在后），处理后下一轮再试 */
+  problem: string | null
 }
 
 export interface CarrierLabelPart {
@@ -142,6 +175,8 @@ export interface CarrierIntegrationInfo {
   ready: boolean
   /** 建好的运单要另约上门揽收（没有定期集荷）；旧后端没有该字段 */
   books_pickups?: boolean
+  /** 能查跟踪：揽收后自动完成发货、送达后自动签收；旧后端没有该字段 */
+  tracks_shipments?: boolean
 }
 
 export interface CarrierShipmentStatus {
@@ -342,6 +377,7 @@ const normalizeIntegration = (data: any): CarrierIntegrationInfo | null => {
     enabled: data.enabled !== false,
     ready: !!data.ready,
     books_pickups: !!data.books_pickups,
+    tracks_shipments: !!data.tracks_shipments,
   }
 }
 

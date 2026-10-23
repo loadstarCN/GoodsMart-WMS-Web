@@ -83,6 +83,7 @@ const eventTypes = [
   'dn.picked',
   'dn.packed',
   'dn.delivered',
+  'dn.tracking_updated',
   'dn.completed',
   'dn.cancelled',
   'goods.spec_updated',

@@ -214,6 +214,60 @@ const pickupText = computed(() => {
   }
   return t(p.status === 'pending' ? 'customs.carrier.pickup.pending' : 'customs.carrier.pickup.unknown')
 })
+// ------------------ 跟踪（插件能跟踪时：揽收后自动完成发货、送达后自动签收） ----------------------
+const tracking = computed(() => activeShipment.value?.tracking || null)
+const trackingVisible = computed(() => !!activeShipment.value && (!!integration.value?.tracks_shipments || !!tracking.value))
+const trackingText = computed(() => {
+  const tr = tracking.value
+  if (!tr || !tr.status) return t('customs.carrier.tracking.none')
+  const parts = [t(`customs.carrier.tracking.status.${tr.status}`, { carrier: carrierName.value })]
+  if (tr.status_text) parts[0] += `（${tr.status_text}）`
+  const latest = tr.events?.[0]
+  if (latest && tr.status !== 'label_created') {
+    parts.push(t('customs.carrier.tracking.latest', {
+      event: [latest.description, latest.location].filter(Boolean).join(' · ') || latest.code || '—',
+    }))
+  }
+  if (tr.status === 'delivered' && tr.delivered_at) {
+    parts.push(t('customs.carrier.tracking.delivered-at', { time: dayjs(tr.delivered_at).format('YYYY-MM-DD HH:mm') }))
+  } else if (tr.estimated_delivery) {
+    parts.push(t('customs.carrier.tracking.eta', { date: tr.estimated_delivery }))
+  }
+  return parts.join(' · ')
+})
+const trackingClass = computed(() => {
+  const s = tracking.value?.status
+  if (s === 'exception' || s === 'unknown') return 'text-danger'
+  if (s === 'delivered') return 'text-success'
+  if (s === 'in_transit' || s === 'out_for_delivery') return 'text-primary'
+  return 'text-muted'
+})
+const trackingRefreshing = ref(false)
+/** 立即查一次跟踪；揽收 / 送达了会当场自动完成发货 / 签收（父组件要重读发货任务） */
+const refreshTracking = async () => {
+  if (trackingRefreshing.value || busy.value) return
+  trackingRefreshing.value = true
+  let result: any = null
+  await httpRequest<any>(`${carrierShipmentUrl(props.dnId)}/track`, {
+    method: 'POST',
+    onSuccess: (data) => {
+      result = data
+    },
+    onError: (error) => showToast(bizErrorMessage(error), 'warning'),
+  })
+  if (result) {
+    const next = normalizeCarrierStatus(result)
+    const notified = next ? applyStatus(next) : await load()
+    const sync = result.tracking_sync || {}
+    if (sync.shipped || sync.signed) {
+      showToast(t(sync.signed ? 'customs.carrier.tracking.auto-signed' : 'customs.carrier.tracking.auto-shipped',
+        { carrier: carrierName.value }), 'success')
+      if (!notified) emit('changed')
+    }
+  }
+  trackingRefreshing.value = false
+}
+
 /** 运单正在取消（cancelling）：按进行中处理 */
 const cancellingShipment = computed(() => (isCancellingShipment(shipment.value) ? shipment.value : null))
 const lastCancelled = computed(() =>
@@ -868,6 +922,22 @@ defineExpose({ reload: async () => { await load() } })
           <NuxtLink :to="pickupLink" class="ms-1">
             {{ pickupScheduled ? t('customs.carrier.pickup.view') : t('customs.carrier.pickup.manage') }}
           </NuxtLink>
+        </div>
+        <!-- 承运商跟踪：揽收后自动完成发货、送达后自动签收（定时查，也可以手动刷新） -->
+        <div class="fs-12 mt-1" v-if="trackingVisible">
+          <i class="ri-route-line me-1"></i><span :class="trackingClass">{{ trackingText }}</span>
+          <span class="text-muted ms-1" v-if="tracking?.synced_at">
+            · {{ t('customs.carrier.tracking.synced', { time: $dayjs(tracking.synced_at, 'MM-DD HH:mm') }) }}
+          </span>
+          <a href="#" class="ms-1" :class="{ disabled: trackingRefreshing || busy }" @click.prevent="refreshTracking">
+            <span v-if="trackingRefreshing" class="spinner-border spinner-border-sm me-1"></span>{{ t('customs.carrier.tracking.refresh') }}
+          </a>
+        </div>
+        <div class="fs-12 mt-1 text-danger" v-if="tracking?.problem">
+          <i class="ri-error-warning-line me-1"></i>{{ t('customs.carrier.tracking.problem', { reason: tracking.problem }) }}
+        </div>
+        <div class="fs-12 mt-1 text-warning" v-if="tracking?.error">
+          {{ t('customs.carrier.tracking.error', { reason: tracking.error }) }}
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">

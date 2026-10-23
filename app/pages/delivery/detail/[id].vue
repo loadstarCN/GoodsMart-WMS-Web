@@ -275,6 +275,11 @@ const syncTrackingFromTask = async () => {
     method: 'GET',
     onSuccess: (data) => {
       if (!itemData.value) return;
+      // 任务状态变了（如刷新跟踪时承运商已揽收，自动完成了发货）：整页重读
+      if (data?.status && data.status !== itemData.value.status) {
+        fetchData();
+        return;
+      }
       itemData.value.tracking_number = data?.tracking_number ?? null;
       if (data?.carrier_id) {
         itemData.value.carrier_id = data.carrier_id;

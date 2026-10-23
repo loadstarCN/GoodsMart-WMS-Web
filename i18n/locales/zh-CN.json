@@ -1941,6 +1941,26 @@
         "page": "揽收页",
         "stale": "运单状态有变化，已刷新",
         "booked-today": "今天 {window} 已经约过一次揽收（确认号 {code}），快递员来时可以把这票一起交给他，不一定要再约。"
+      },
+      "tracking": {
+        "none": "揽收后会自动完成发货、送达后自动签收（定时查询跟踪）",
+        "status": {
+          "label_created": "{carrier} 还没揽收",
+          "in_transit": "运输中",
+          "out_for_delivery": "派送中",
+          "delivered": "已送达",
+          "exception": "跟踪异常，请到 {carrier} 查看",
+          "unknown": "跟踪状态无法识别"
+        },
+        "latest": "最新：{event}",
+        "eta": "预计 {date} 送达",
+        "delivered-at": "{time} 送达",
+        "synced": "{time} 查询",
+        "refresh": "刷新跟踪",
+        "problem": "没能自动完成发货 / 签收：{reason}",
+        "error": "最近一次查询失败：{reason}",
+        "auto-shipped": "{carrier} 已揽收，已自动完成发货",
+        "auto-signed": "{carrier} 已送达，已自动签收"
       }
     },
     "steps": {

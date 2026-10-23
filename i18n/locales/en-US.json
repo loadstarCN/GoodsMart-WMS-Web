@@ -1941,6 +1941,26 @@
         "page": "Pickups",
         "stale": "The shipment has changed; refreshed",
         "booked-today": "A pickup is already booked for today, {window} (confirmation {code}). You can hand this one to the courier too; booking again isn't required."
+      },
+      "tracking": {
+        "none": "Shipping is completed automatically once the carrier picks up, and signed once delivered (tracking is checked periodically)",
+        "status": {
+          "label_created": "Not picked up by {carrier} yet",
+          "in_transit": "In transit",
+          "out_for_delivery": "Out for delivery",
+          "delivered": "Delivered",
+          "exception": "Tracking exception - check with {carrier}",
+          "unknown": "Unrecognized tracking status"
+        },
+        "latest": "Latest: {event}",
+        "eta": "Estimated delivery {date}",
+        "delivered-at": "Delivered {time}",
+        "synced": "checked {time}",
+        "refresh": "Refresh tracking",
+        "problem": "Could not complete shipping / signing automatically: {reason}",
+        "error": "The last tracking check failed: {reason}",
+        "auto-shipped": "{carrier} picked up the parcel; shipping was completed automatically",
+        "auto-signed": "{carrier} delivered the parcel; it was signed automatically"
       }
     },
     "steps": {

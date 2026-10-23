@@ -1941,6 +1941,26 @@
         "page": "集荷依頼画面",
         "stale": "送り状の状態が変わったため更新しました",
         "booked-today": "今日 {window} の集荷はすでに依頼済みです（確認番号 {code}）。ドライバーが来たときにこの荷物も一緒に渡せるので、もう一度依頼しなくても構いません。"
+      },
+      "tracking": {
+        "none": "集荷されると自動で出荷完了、配達されると自動で受領にします（追跡を定期的に確認）",
+        "status": {
+          "label_created": "{carrier} はまだ集荷していません",
+          "in_transit": "輸送中",
+          "out_for_delivery": "配達中",
+          "delivered": "配達済み",
+          "exception": "追跡に異常があります。{carrier} で確認してください",
+          "unknown": "追跡ステータスを判別できません"
+        },
+        "latest": "最新：{event}",
+        "eta": "{date} 配達予定",
+        "delivered-at": "{time} 配達",
+        "synced": "{time} 確認",
+        "refresh": "追跡を更新",
+        "problem": "出荷完了 / 受領を自動でできませんでした：{reason}",
+        "error": "直近の追跡確認に失敗しました：{reason}",
+        "auto-shipped": "{carrier} が集荷したため、自動で出荷完了にしました",
+        "auto-signed": "{carrier} が配達したため、自動で受領にしました"
       }
     },
     "steps": {
