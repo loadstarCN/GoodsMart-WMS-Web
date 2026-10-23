@@ -65,7 +65,24 @@ export interface CarrierShipment {
   label_format?: string | null
   /** 面单文件格式（PDF / ZPLII / EPL2 …） */
   image_type?: string | null
-  etd_document_id?: number | null
+  etd_document_id?: string | null
+  /** FedEx Ship API returns these requirements for this origin, destination and shipment. */
+  trade_documents?: {
+    etd_type?: string | null
+    required_documents?: string[]
+    generation_details?: {
+      type?: string | null
+      minimum_copies_required?: number | null
+      letterhead?: string | null
+      electronic_signature?: string | null
+    }[]
+    prohibited_documents?: string[]
+    regulatory_requirements?: {
+      paper_documents?: { document_type: string; name: string; document_url?: string | null }[]
+      messages?: string[]
+    } | null
+    uploaded_documents?: Record<string, unknown>
+  } | null
   label_stock_type?: string | null
   /** 面单文件名 / 校验值（没有时下载用 label_<运单号>.<扩展名>，校验看响应头 X-Content-SHA256） */
   label_file_name?: string | null
@@ -192,6 +209,7 @@ export interface CarrierShipmentStatus {
   shipment: CarrierShipment | null
   /** 开了电子单证（ETD）：建单时 CI 电子提交给承运商 */
   etd_enabled?: boolean
+  regulatory_check_enabled?: boolean
   /** 报关快照的运送申告价额：有值时自动建单按箱分摊随运单提交 */
   declared_value_carriage?: number | null
   delivery_task_id?: number | null
@@ -392,6 +410,7 @@ export const normalizeCarrierStatus = (data: any): CarrierShipmentStatus | null 
     blockers: Array.isArray(data.blockers) ? data.blockers : [],
     shipment: data.shipment && typeof data.shipment === 'object' ? data.shipment : null,
     etd_enabled: !!data.etd_enabled,
+    regulatory_check_enabled: !!data.regulatory_check_enabled,
     declared_value_carriage: data.declared_value_carriage ?? null,
     delivery_task_id: data.delivery_task_id ?? null,
     tracking_number: toStringOrNull(data.tracking_number),

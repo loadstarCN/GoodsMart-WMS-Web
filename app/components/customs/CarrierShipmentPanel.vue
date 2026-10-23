@@ -111,6 +111,29 @@ const loadError = ref<string | null>(null)
 /** 后端还没有这个接口（旧版本）：整块不显示 */
 const unsupported = ref(false)
 const status = ref<CarrierShipmentStatus | null>(null)
+type TradeDocument = { document_type: string; name: string; required: boolean; support_type?: string | null;
+  document_url?: string | null; message?: string | null }
+type TradeRequirements = { documents: TradeDocument[]; missing_documents: TradeDocument[];
+  paper_documents: TradeDocument[]; upload_packing_list: boolean; messages?: string[] }
+const tradeRequirements = ref<TradeRequirements | null>(null)
+const tradeLoading = ref(false)
+const tradeError = ref<string | null>(null)
+const tradeFiles = ref<Record<string, File>>({})
+let tradeRequestId = 0
+const tradeFileKey = (doc: TradeDocument) => `${doc.document_type}|${doc.name}`
+const allTradeFilesSelected = computed(() => (tradeRequirements.value?.missing_documents || [])
+  .every((doc) => !!tradeFiles.value[tradeFileKey(doc)]))
+const chooseTradeFile = (doc: TradeDocument, event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  const key = tradeFileKey(doc)
+  if (!file) { delete tradeFiles.value[key]; return }
+  if (file.type !== 'application/pdf' || file.size > 5 * 1024 * 1024) {
+    delete tradeFiles.value[key]
+    showToast(t('customs.carrier.tips.trade-pdf-limit'), 'error')
+    return
+  }
+  tradeFiles.value[key] = file
+}
 const creating = ref(false)
 const cancelling = ref(false)
 const dismissing = ref(false)
@@ -127,6 +150,24 @@ let labelFormatChosen = false
 const shipmentSignature = (s: CarrierShipmentStatus | null) => {
   const sh = s?.shipment
   return `${sh?.id ?? ''}|${sh?.tracking_number ?? ''}|${sh?.status ?? ''}|${s?.tracking_number ?? ''}`
+}
+
+const loadTradeRequirements = async () => {
+  const requestId = ++tradeRequestId
+  tradeRequirements.value = null
+  tradeError.value = null
+  tradeFiles.value = {}
+  if (!status.value?.regulatory_check_enabled || !status.value.can_create) {
+    tradeLoading.value = false
+    return
+  }
+  tradeLoading.value = true
+  await httpRequest<TradeRequirements>(`${carrierShipmentUrl(props.dnId)}/trade-requirements`, {
+    method: 'GET',
+    onSuccess: (data) => { if (requestId === tradeRequestId) tradeRequirements.value = data },
+    onError: (error) => { if (requestId === tradeRequestId) tradeError.value = bizErrorMessage(error) },
+    onFinally: () => { if (requestId === tradeRequestId) tradeLoading.value = false },
+  })
 }
 
 /**
@@ -173,6 +214,7 @@ const load = async (): Promise<boolean> => {
       loading.value = false
     },
   })
+  await loadTradeRequirements()
   return notified
 }
 
@@ -193,6 +235,18 @@ const carrierName = computed(() => integration.value?.name || status.value?.carr
 const portalName = computed(() => integration.value?.portal_name || t('customs.carrier.portal-fallback', { carrier: carrierName.value }))
 const shipment = computed(() => status.value?.shipment || null)
 const activeShipment = computed(() => (isActiveShipment(shipment.value) ? shipment.value : null))
+const tradeDocuments = computed(() => activeShipment.value?.trade_documents || null)
+const paperDocuments = computed(() => (tradeDocuments.value?.generation_details || [])
+  .filter((item) => Number(item.minimum_copies_required) > 0))
+const regulatoryPaperDocuments = computed(() => tradeDocuments.value?.regulatory_requirements?.paper_documents || [])
+const electronicWithOriginals = computed(() =>
+  tradeDocuments.value?.etd_type === 'ELECTRONIC_DOCUMENTS_WITH_ORIGINALS')
+const fedexDocumentName = (type?: string | null) => {
+  if (type === 'COMMERCIAL_OR_PRO_FORMA_INVOICE' || type === 'COMMERCIAL_INVOICE')
+    return t('customs.carrier.tips.commercial-invoice')
+  if (type === 'AIR_WAYBILL') return t('customs.carrier.tips.air-waybill')
+  return String(type || '').replaceAll('_', ' ')
+}
 /** 运单卡片里显示揽收一行：承运商要另约揽收，或这张运单已经有过预约 */
 const pickupVisible = computed(() => {
   const s = activeShipment.value
@@ -315,7 +369,8 @@ const cancelTargetTracking = computed(() =>
 const canRetryCancel = computed(() => canCancel.value && !activeShipment.value && !!unresolved.value && !unresolvedInProgress.value)
 const canCreate = computed(() =>
   !!integration.value && !props.locked && !!status.value?.can_create && !activeShipment.value && !cancellingShipment.value
-  && !unresolved.value)
+  && !unresolved.value && !tradeLoading.value && !tradeError.value
+  && (!status.value?.regulatory_check_enabled || (!!tradeRequirements.value && allTradeFilesSelected.value)))
 const busy = computed(() =>
   creating.value || cancelling.value || dismissing.value || savingTracking.value || trackingRefreshing.value)
 const unresolvedReasonText = computed(() => {
@@ -644,9 +699,19 @@ const create = async () => {
   let created: any = null
   // 在回调里赋值：用 as 声明，避免 TS 把它收窄成 null
   let failedWith = null as HttpRequestError | null
+  const body = new FormData()
+  body.append('label_format', format)
+  for (const doc of tradeRequirements.value?.missing_documents || []) {
+    const file = tradeFiles.value[tradeFileKey(doc)]
+    if (file) {
+      body.append('trade_documents', file)
+      body.append('trade_document_types', doc.document_type)
+      body.append('trade_document_names', doc.name)
+    }
+  }
   await httpRequest<any>(carrierShipmentUrl(props.dnId), {
     method: 'POST',
-    body: { label_format: format },
+    body,
     onSuccess: (data) => {
       created = data ?? {}
     },
@@ -750,6 +815,7 @@ const cancel = async () => {
   if (done) {
     const next = normalizeCarrierStatus(result)
     const notified = next ? applyStatus(next) : await load()
+    if (next) await loadTradeRequirements()
     showToast(t('customs.carrier.cancelled', { tracking: tracking || '—' }), 'success')
     // 已因运单变化通知过就不再重复通知
     if (!notified) emit('changed')
@@ -818,6 +884,7 @@ const dismiss = async () => {
   const next = done ? normalizeCarrierStatus(result) : null
   if (next) {
     applyStatus(next)
+    await loadTradeRequirements()
   } else {
     await load()
   }
@@ -934,6 +1001,23 @@ defineExpose({ reload: async () => { await load() } })
           <template v-if="declaredValueText"> · {{ declaredValueText }}</template>
           <template v-if="activeShipment.etd_document_id"> · {{ t('customs.carrier.tips.etd-submitted') }}</template>
         </div>
+        <div class="alert alert-warning py-2 mt-2 mb-1 fs-12" v-if="electronicWithOriginals || paperDocuments.length || regulatoryPaperDocuments.length">
+          <strong>{{ t('customs.carrier.tips.paper-required') }}</strong>
+          <span v-for="(item, i) in paperDocuments" :key="`paper-${item.type}-${i}`" class="d-block">
+            {{ t('customs.carrier.tips.paper-copies', { document: fedexDocumentName(item.type), copies: item.minimum_copies_required }) }}
+          </span>
+          <span v-for="item in regulatoryPaperDocuments" :key="`${item.document_type}-${item.name}`" class="d-block">
+            {{ t('customs.carrier.tips.trade-paper-document', { document: item.name }) }}
+          </span>
+          <span v-if="!paperDocuments.length && !regulatoryPaperDocuments.length" class="d-block">{{ t('customs.carrier.tips.paper-check-label') }}</span>
+        </div>
+        <div class="fs-12 text-muted mt-1" v-if="tradeDocuments?.required_documents?.length">
+          {{ t('customs.carrier.tips.fedex-required-documents') }}
+          {{ tradeDocuments.required_documents.map(fedexDocumentName).join(', ') }}
+        </div>
+        <div class="fs-12 text-warning mt-1" v-for="(message, i) in tradeDocuments?.regulatory_requirements?.messages || []" :key="`fedex-advice-${i}`">
+          {{ message }}
+        </div>
         <!-- 上门揽收：没有定期集荷的承运商，运单建好后要在「上门揽收」页另约 -->
         <div class="fs-12 mt-1" :class="pickupScheduled ? 'text-success' : 'text-warning'" v-if="pickupVisible">
           <i class="ri-truck-line me-1"></i>{{ pickupText }}
@@ -1033,6 +1117,38 @@ defineExpose({ reload: async () => { await load() } })
 
         <!-- 有在线对接：创建运单 -->
         <template v-else-if="integration">
+          <div class="alert alert-warning fs-12 mt-2 mb-2" v-if="!locked && status.etd_enabled">
+            {{ t('customs.carrier.tips.trade-signature-warning') }}
+          </div>
+          <div class="alert alert-light fs-12 mt-2 mb-2" v-if="!locked && status.regulatory_check_enabled && status.can_create">
+            <span v-if="tradeLoading">{{ t('customs.carrier.tips.trade-checking') }}</span>
+            <span class="text-danger" v-else-if="tradeError">{{ tradeError }}</span>
+            <template v-else-if="tradeRequirements">
+              <strong>{{ t('customs.carrier.tips.trade-requirements') }}</strong>
+              <span class="d-block" v-if="!tradeRequirements.documents.length">{{ t('customs.carrier.tips.trade-no-documents') }}</span>
+              <span class="d-block" v-for="(doc, i) in tradeRequirements.documents" :key="`trade-${i}`">
+                {{ doc.name }} · {{ t(doc.required ? 'customs.carrier.tips.trade-required' : 'customs.carrier.tips.trade-optional') }}
+                <template v-if="doc.required && doc.document_type === 'COMMERCIAL_INVOICE'"> · {{ t('customs.carrier.tips.trade-ci-ready') }}</template>
+                <template v-if="doc.required && tradeRequirements.upload_packing_list && (doc.document_type === 'PACKING_LIST' || (doc.document_type === 'OTHER' && doc.name.toUpperCase().includes('PACKING LIST')))"> · {{ t('customs.carrier.tips.trade-pl-upload') }}</template>
+                <template v-if="tradeRequirements.missing_documents.includes(doc)"> · {{ t('customs.carrier.tips.trade-missing') }}</template>
+                <a v-if="doc.document_url" :href="doc.document_url" target="_blank" rel="noopener" class="ms-1">{{ t('customs.carrier.tips.trade-source') }}</a>
+              </span>
+              <span class="d-block text-warning" v-for="(doc, i) in tradeRequirements.paper_documents" :key="`trade-paper-${i}`">
+                {{ t('customs.carrier.tips.trade-paper-document', { document: doc.name }) }}
+              </span>
+              <span class="d-block text-warning" v-for="(message, i) in tradeRequirements.messages || []" :key="`trade-advice-${i}`">
+                {{ message }}
+              </span>
+              <span class="d-block text-danger mt-1" v-if="tradeRequirements.missing_documents.length">{{ t('customs.carrier.tips.trade-blocked') }}</span>
+              <label class="d-block mt-1" v-for="(doc, i) in tradeRequirements.missing_documents" :key="`upload-${i}`">
+                {{ doc.name }} <input type="file" accept="application/pdf,.pdf" class="form-control form-control-sm mt-1"
+                  @change="chooseTradeFile(doc, $event)">
+              </label>
+            </template>
+            <button type="button" class="btn btn-link btn-sm p-0 mt-1" :disabled="tradeLoading" @click="loadTradeRequirements">
+              {{ t('customs.carrier.tips.trade-refresh') }}
+            </button>
+          </div>
           <div class="d-flex flex-wrap align-items-center gap-2" v-if="!locked">
             <button type="button" class="btn btn-primary" :disabled="!canCreate || busy || packagesDirty" @click="create">
               <span v-if="creating" class="spinner-border spinner-border-sm me-1"></span>
