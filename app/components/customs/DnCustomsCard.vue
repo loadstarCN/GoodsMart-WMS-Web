@@ -445,7 +445,7 @@ defineExpose({ reload: reloadAll })
           <!-- ===== 承运商运单（只读：建单 / 取消在任务页；打包完成后才有） ===== -->
           <div class="col-12" v-if="shippingStage">
             <h6 class="fw-semibold mb-2">{{ t('customs.carrier.title') }}</h6>
-            <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" locked :customs="view.customs"
+            <CarrierShipmentPanel ref="carrierRef" :dn-id="dnId" locked :tracking-refresh="false" :customs="view.customs"
               :warehouse-id="warehouseId" :package-count="totals?.package_count ?? packagesForEditor.length"
               @status="carrierStatus = $event" @changed="onCarrierChanged" />
           </div>

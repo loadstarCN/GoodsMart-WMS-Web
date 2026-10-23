@@ -75,6 +75,8 @@ const props = withDefaults(defineProps<{
   canEditCustoms?: boolean
   /** 运单卡片里显示揽收一行（配送页的步骤清单有单独的「预约揽收」一步，那里不重复） */
   showPickup?: boolean
+  /** 给「刷新跟踪」：刷新可能当场完成发货 / 签收，只在配送页给（出库单详情的只读卡片不给） */
+  trackingRefresh?: boolean
 }>(), {
   locked: false,
   packageCount: null,
@@ -86,6 +88,7 @@ const props = withDefaults(defineProps<{
   hiddenBlockerCodes: () => [],
   canEditCustoms: false,
   showPickup: true,
+  trackingRefresh: true,
 })
 
 const emit = defineEmits<{
@@ -228,8 +231,14 @@ const trackingText = computed(() => {
       event: [latest.description, latest.location].filter(Boolean).join(' · ') || latest.code || '—',
     }))
   }
-  if (tr.status === 'delivered' && tr.delivered_at) {
-    parts.push(t('customs.carrier.tracking.delivered-at', { time: dayjs(tr.delivered_at).format('YYYY-MM-DD HH:mm') }))
+  if (tr.status === 'delivered') {
+    // 送达时刻：只有日期（没有时分）时不补 00:00；没有就不写，也不再写「预计送达」
+    const at = tr.delivered_at || ''
+    if (at.length > 10) {
+      parts.push(t('customs.carrier.tracking.delivered-at', { time: dayjs(at).format('YYYY-MM-DD HH:mm') }))
+    } else if (at) {
+      parts.push(t('customs.carrier.tracking.delivered-at', { time: at }))
+    }
   } else if (tr.estimated_delivery) {
     parts.push(t('customs.carrier.tracking.eta', { date: tr.estimated_delivery }))
   }
@@ -243,7 +252,11 @@ const trackingClass = computed(() => {
   return 'text-muted'
 })
 const trackingRefreshing = ref(false)
-/** 立即查一次跟踪；揽收 / 送达了会当场自动完成发货 / 签收（父组件要重读发货任务） */
+const canRefreshTracking = computed(() => props.trackingRefresh && trackingVisible.value)
+/**
+ * 立即查一次跟踪；揽收 / 送达了会当场自动完成发货 / 签收。定时任务也可能早就做了（这次 shipped = 0），
+ * 所以刷新完总是通知父组件重读发货任务（父组件按任务状态有没有变决定要不要整页重读）
+ */
 const refreshTracking = async () => {
   if (trackingRefreshing.value || busy.value) return
   trackingRefreshing.value = true
@@ -262,8 +275,11 @@ const refreshTracking = async () => {
     if (sync.shipped || sync.signed) {
       showToast(t(sync.signed ? 'customs.carrier.tracking.auto-signed' : 'customs.carrier.tracking.auto-shipped',
         { carrier: carrierName.value }), 'success')
-      if (!notified) emit('changed')
     }
+    if (!notified) emit('changed')
+  } else {
+    // 失败（如运单刚被取消 → 16134）：按服务端最新状态显示
+    await load()
   }
   trackingRefreshing.value = false
 }
@@ -299,7 +315,8 @@ const canRetryCancel = computed(() => canCancel.value && !activeShipment.value &
 const canCreate = computed(() =>
   !!integration.value && !props.locked && !!status.value?.can_create && !activeShipment.value && !cancellingShipment.value
   && !unresolved.value)
-const busy = computed(() => creating.value || cancelling.value || dismissing.value || savingTracking.value)
+const busy = computed(() =>
+  creating.value || cancelling.value || dismissing.value || savingTracking.value || trackingRefreshing.value)
 const unresolvedReasonText = computed(() => {
   const reason = unresolved.value?.reason
   if (!reason) return ''
@@ -929,9 +946,10 @@ defineExpose({ reload: async () => { await load() } })
           <span class="text-muted ms-1" v-if="tracking?.synced_at">
             · {{ t('customs.carrier.tracking.synced', { time: $dayjs(tracking.synced_at, 'MM-DD HH:mm') }) }}
           </span>
-          <a href="#" class="ms-1" :class="{ disabled: trackingRefreshing || busy }" @click.prevent="refreshTracking">
+          <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline fs-12" v-if="canRefreshTracking"
+            :disabled="busy" @click="refreshTracking">
             <span v-if="trackingRefreshing" class="spinner-border spinner-border-sm me-1"></span>{{ t('customs.carrier.tracking.refresh') }}
-          </a>
+          </button>
         </div>
         <div class="fs-12 mt-1 text-danger" v-if="tracking?.problem">
           <i class="ri-error-warning-line me-1"></i>{{ t('customs.carrier.tracking.problem', { reason: tracking.problem }) }}

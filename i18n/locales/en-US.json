@@ -2082,6 +2082,7 @@
     "code-16131": "Invalid pickup details ({field}); check and try again",
     "code-16132": "Some of the selected shipments are already booked, shipped, cancelled or belong to another carrier; refresh and select again",
     "code-16133": "This pickup can't be cancelled or dismissed now (it may be cancelled, past its date or already settled); refresh the page",
+    "code-16134": "This DN has no automatic shipment that can be tracked (it may have just been cancelled, or the carrier integration is incomplete); refresh the page",
     "code-16124": "The integration settings aren't valid; check the highlighted field",
     "code-16125": "This carrier still has unfinished shipments (they're cancelled with these settings). Finish them before removing or changing the integration."
   }
