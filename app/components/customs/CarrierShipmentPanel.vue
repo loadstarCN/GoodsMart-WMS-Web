@@ -7,6 +7,8 @@
  *   不能建时列出原因（报关数据类的问题由「报关单证」一步列，这里不重复：hiddenBlockerCodes）；
  *   对接临时不可用时也可以改成手工填运单号
  * - 没有对接，或运单方式是手工（manualOnly）：在承运商网站 / 软件建好运单后手工填运单号（有发货任务时直接填）
+ * - 运单方式是文件（fileMode）：导出 / 导回由外层 FlowWaybillFileDetail 做，这里只显示导回的运单；
+ *   手工填运单号收起，作为退路（导出后等导回的 exported 记录不算「已取消」）
  * 已建运单：运单号、服务、运费；打印 / 下载面单（PDF 新标签页打开；ZPL / EPL 下载指令文件）；取消运单（二次确认）
  * 结果不明（unresolved：超时 / 补偿失败 / 响应异常）：一句话说明 + 可展开的处理步骤（到承运商后台核对），
  *   给「重试取消」（can_cancel）/「已处理，解除锁定」（can_dismiss，二次确认）；pending / cancelling（别人正在建 / 取消）
@@ -53,6 +55,7 @@ import {
   type CarrierWarning,
   type LabelFormat,
 } from '~/composables/customs/carrierShipment'
+import { isExportedShipment } from '~/composables/shipping/carrierFile'
 
 const props = withDefaults(defineProps<{
   dnId: number | string
@@ -82,6 +85,8 @@ const props = withDefaults(defineProps<{
   showTracking?: boolean
   /** 承运商的运单方式不是 api（手工 / 文件）：不给「创建运单」，直接填运单号（已有的在线运单照常显示、可取消） */
   manualOnly?: boolean
+  /** 运单方式是文件：说明与导出 / 导回在外层，手工填运单号默认收起 */
+  fileMode?: boolean
 }>(), {
   locked: false,
   packageCount: null,
@@ -96,6 +101,7 @@ const props = withDefaults(defineProps<{
   trackingRefresh: true,
   showTracking: true,
   manualOnly: false,
+  fileMode: false,
 })
 
 const emit = defineEmits<{
@@ -107,7 +113,7 @@ const emit = defineEmits<{
   (e: 'edit-customs'): void
 }>()
 
-const { t, te } = useI18n()
+const { t, te, localeProperties } = useI18n()
 const { bizErrorMessage } = useBizError()
 const { busyDocId, viewDoc, downloadDoc, downloadRawDoc, fetchFile } = useCustomsPdfActions()
 const staffStore = useStaffStore()
@@ -349,7 +355,8 @@ const refreshTracking = async () => {
 /** 运单正在取消（cancelling）：按进行中处理 */
 const cancellingShipment = computed(() => (isCancellingShipment(shipment.value) ? shipment.value : null))
 const lastCancelled = computed<CarrierShipment | null>(() =>
-  (shipment.value && !isActiveShipment(shipment.value) && !isCancellingShipment(shipment.value) ? shipment.value : null))
+  (shipment.value && !isActiveShipment(shipment.value) && !isCancellingShipment(shipment.value)
+    && !isExportedShipment(shipment.value) ? shipment.value : null))
 /** 结果不明的运单（承运商那边可能已生成）：有它时不能建单 */
 const unresolved = computed(() => status.value?.unresolved || null)
 /** 别人正在建 / 取消（pending / cancelling 且不能解除）：只显示进行中 */
@@ -482,6 +489,9 @@ const labelDoc = computed(() => labelDocumentOf(activeShipment.value))
 const labelImageType = computed(() => labelImageTypeOf(activeShipment.value))
 const pdfLabel = computed(() => isPdfLabel(activeShipment.value))
 const auxiliaryLabel = computed(() => hasAuxiliaryLabel(activeShipment.value))
+/** 手工 / 文件来源、没有面单文件的运单：面单在承运商那边打 */
+const labelElsewhere = computed(() => !!activeShipment.value && !labelDoc.value
+  && ['manual', 'file'].includes(String(activeShipment.value.source || '')))
 /** 这家承运商支持的打印方式（对接设置里有的），没有时按两种都有 */
 const labelFormatOptions = computed<LabelFormat[]>(() => {
   const supported = Object.keys(status.value?.label_formats || {})
@@ -561,7 +571,7 @@ const declaredValueText = computed(() => {
 const shipmentFacts = computed(() => {
   const s = activeShipment.value
   if (!s) return []
-  const facts = [serviceNameOf(s)]
+  const facts = [serviceNameOf(s, String(localeProperties.value?.iso || '') || null)]
   if (s.net_charge !== null && s.net_charge !== undefined && s.net_charge !== '') {
     facts.push(formatMoney(Number(s.net_charge), s.currency || 'JPY'))
   }
@@ -1053,7 +1063,11 @@ defineExpose({ reload: async () => { await load() } })
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-          <template v-if="pdfLabel">
+          <!-- 手工 / 文件来源的运单：面单在承运商网站或软件里打，WMS 里没有面单文件，不给打印按钮 -->
+          <span class="fs-12 text-muted" v-if="labelElsewhere">
+            {{ t(activeShipment.source === 'file' ? 'shipping.file.label-elsewhere' : 'customs.carrier.tips.no-label', { carrier: carrierName }) }}
+          </span>
+          <template v-else-if="pdfLabel">
             <button type="button" class="btn btn-sm btn-primary" :disabled="!labelDoc || busyDocId !== null"
               @click="viewDoc(dnId, labelDoc)">
               <span v-if="labelDoc && busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
@@ -1081,7 +1095,7 @@ defineExpose({ reload: async () => { await load() } })
             {{ activePrintHint.text }}<template v-if="pdfLabel && auxiliaryLabel"> · {{ t('customs.carrier.tips.print-copies') }}</template>
             <i class="ri-question-line ms-1" v-if="activePrintHint.help"></i>
           </span>
-          <span class="fs-12 text-muted" v-else-if="!labelDoc">{{ t('customs.carrier.tips.no-label') }}</span>
+          <span class="fs-12 text-muted" v-else-if="!labelDoc && !labelElsewhere">{{ t('customs.carrier.tips.no-label') }}</span>
           <button type="button" class="btn btn-sm btn-link text-danger ms-auto px-0" v-if="canCancel" :disabled="busy" @click="cancel">
             <span v-if="cancelling" class="spinner-border spinner-border-sm me-1"></span>{{ t('customs.carrier.operations.cancel') }}
           </button>
@@ -1209,6 +1223,13 @@ defineExpose({ reload: async () => { await load() } })
           </div>
         </template>
 
+        <!-- 文件方式：导出 / 导回在外层；对接临时不可用等时的退路：手工填运单号 -->
+        <div class="mt-1" v-else-if="fileMode">
+          <a href="#" class="fs-12 text-muted" v-if="canEnterTracking && !manualOpen && !savedTracking" @click.prevent="manualOpen = true">
+            {{ t('shipping.file.manual-fallback') }}
+          </a>
+        </div>
+
         <!-- 没有在线对接 / 运单方式是手工：在承运商网站或软件建运单 -->
         <p class="fs-13 mb-2" v-else-if="!locked">
           {{ t(integration
@@ -1220,7 +1241,7 @@ defineExpose({ reload: async () => { await load() } })
 
         <!-- 手工运单号：没有对接时一直显示；有对接时点开或已经填过才显示 -->
         <form class="d-flex flex-wrap align-items-center gap-2" @submit.prevent="saveTracking"
-          v-if="status.carrier && canEnterTracking && (!integration || manualOnly || manualOpen || savedTracking)">
+          v-if="status.carrier && canEnterTracking && (fileMode ? (manualOpen || savedTracking) : (!integration || manualOnly || manualOpen || savedTracking))">
           <div class="input-group input-group-sm carrier-tracking-input">
             <span class="input-group-text">{{ t('customs.carrier.fields.tracking-number') }}</span>
             <input type="text" class="form-control font-monospace" v-model="manualTracking" :maxlength="TRACKING_MAX_LENGTH"

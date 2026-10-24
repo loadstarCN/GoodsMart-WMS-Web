@@ -1,13 +1,14 @@
 <script lang="ts" setup>
 import { currenciesOptions } from '~/data/selectOptions'
 import { hasNonLatin } from '~/composables/customs/customsDocuments'
+import { addressFieldLabel } from '~/composables/address/structuredAddress'
 
 // 定义页面元数据
 definePageMeta({
 })
 
 // 获取国际化方法
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
 
 // 计算属性转换
@@ -32,7 +33,16 @@ const itemData = ref<Record<string, any>>({
   address_en: null,
   country_code: 'JP',  // 后端输出不再默认 JP，新建时前端默认选日本
   contact_name_en: null,
+  // 结构化地址（后端 doc/shipping-flow.md §6.2；address_en 是拉丁地址的单行写法）
+  admin_area: null,
+  locality: null,
+  address_line1: null,
+  address_line2: null,
+  latin: null,
 })
+
+/** 仓库的拉丁转写只有地址（联系人英文名另有 contact_name_en） */
+const WAREHOUSE_LATIN_KEYS = ['address_line1', 'address_line2', 'locality', 'admin_area'] as const
 
 const errors = ref<Record<string, any>>({
   name: null
@@ -101,20 +111,31 @@ const addWarehouse = async () => {
   await httpRequest('/api/warehouse/warehouse/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: itemData.value,
+    // 邮编两个名字都给（zip_code 即 postal_code，两个不同后端 400 14019）
+    body: { ...itemData.value, postal_code: itemData.value.zip_code ?? null },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
       // 刷新员工信息与页头仓库下拉，并校验当前仓库
       await staffStore.refreshStaffInfo();
-      await router.push('/warehouse/')          
+      await router.push('/warehouse/')
     },
     onError: (error) => {
-      // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案
       submitting.value = false
+      // 结构化地址的字段不对（14019，field 为 admin_area / latin.xxx 等）：指明是哪一项
+      if (error.code === 14019 && ADDRESS_ERROR_FIELD.test(String(error.field || ''))) {
+        showToast(t('address.errors.invalid-field', {
+          field: addressFieldLabel(error.field, itemData.value.country_code, t, te), message: error.message || '—',
+        }), 'error')
+        return
+      }
+      // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案
       showToast(bizErrorMessage(error), 'error')
     }
   })
 }
+
+/** 14019 里属于结构化地址的 field（其余如出口资料的字段用业务码的文案） */
+const ADDRESS_ERROR_FIELD = /^(postal_code|zip_code|admin_area|locality|address_line1|address_line2|latin(\..+)?)$/
 
 
 
@@ -129,7 +150,7 @@ const addWarehouse = async () => {
         <div class="card-body add-products p-0">
           <div class="p-4">
             <div class="row gx-5">
-              <div class="col-xxl-6 col-xl-12">
+              <div class="col-xxl-8 col-xl-12">
                 <div class="card custom-card shadow-none mb-0 border-0">
                   <div class="card-body p-0">
                     <div class="row gy-3 mb-3">
@@ -142,16 +163,6 @@ const addWarehouse = async () => {
                         <div v-if="errors.name" class="invalid-feedback d-block">{{ errors.name }}</div>
                       </div>
 
-                      <div class="col-xl-12">
-                        <label for="warehouse-address" class="form-label">{{t('common.fields.address')}}</label>
-                        <input type="text" class="form-control" id="warehouse-address" :placeholder="t('common.placeholders.address')"
-                          v-model="itemData.address">
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="warehouse-zip_code" class="form-label">{{t('common.fields.zip')}}</label>
-                        <input type="text" class="form-control" id="warehouse-zip_code" :placeholder="t('common.placeholders.zip')"
-                          v-model="itemData.zip_code">
-                      </div>
                       <div class="col-xl-6">
                         <label for="warehouse-phone" class="form-label">{{t('common.fields.phone')}}</label>
                         <input type="text" class="form-control" id="warehouse-phone" :placeholder="t('common.placeholders.phone')"
@@ -164,19 +175,16 @@ const addWarehouse = async () => {
                         </VueMultiselect>
                       </div>
 
+                      <!-- 结构化地址（国家、按国家排顺序的地址；拉丁转写 = 出口单证 / 国际面单的英文地址，address_en 跟着生成） -->
+                      <div class="col-xl-12 mt-4">
+                        <h6 class="fw-semibold mb-3"><i class="ri-map-pin-line me-1"></i>{{ t('address.title') }}</h6>
+                        <StructuredAddressFields v-model="itemData" id-prefix="warehouse" country-key="country_code"
+                          legacy-latin-key="address_en" :latin-keys="[...WAREHOUSE_LATIN_KEYS]" />
+                      </div>
+
                       <div class="col-xl-12 mt-4">
                         <h6 class="fw-semibold mb-1"><i class="ri-earth-line me-1"></i>{{ t('warehouse.sections.export') }}</h6>
-                        <p class="fs-12 text-muted mb-0">{{ t('warehouse.tips.export') }}</p>
-                      </div>
-                      <div class="col-xl-12">
-                        <label for="warehouse-address-en" class="form-label">{{ t('warehouse.fields.address-en') }}</label>
-                        <textarea class="form-control" id="warehouse-address-en" rows="2" maxlength="500"
-                          :placeholder="t('warehouse.form.placeholders.address-en')" v-model="itemData.address_en"></textarea>
-                        <div class="form-text text-warning" v-if="hasNonLatin(itemData.address_en)">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="warehouse-country-code" class="form-label">{{ t('warehouse.fields.country-code') }}</label>
-                        <CountrySelect id="warehouse-country-code" v-model="itemData.country_code" />
+                        <p class="fs-12 text-muted mb-0">{{ t('warehouse.tips.export') }} {{ t('warehouse.tips.export-latin') }}</p>
                       </div>
                       <div class="col-xl-6">
                         <label for="warehouse-contact-name-en" class="form-label">{{ t('warehouse.fields.contact-name-en') }}</label>

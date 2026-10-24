@@ -1,9 +1,20 @@
 <script lang="ts" setup>
 /**
- * 出库单列表：页签是发货的工作队列（按 shipping_stage：作业中 / 待建运单 / 待揽收 / 待交承运商 / 运输中 / 异常 / 已签收 / 已关闭），
- * 出库单状态（status）在右边的下拉里另选，两个条件可以一起用。每行显示发货阶段、承运商与运单号。
+ * 出库单列表：页签是发货的工作队列（按 shipping_stage：作业中 / 待建运单 / 待导回 / 待揽收 / 待交承运商 / 运输中 / 异常 /
+ * 已签收 / 已关闭），出库单状态（status）在右边的下拉里另选，两个条件可以一起用。每行显示发货阶段、承运商与运单号。
+ * 「待建运单」「待导回」两个页签有文件方式的批量操作（有运单方式 = 文件的承运商时才显示）：勾选出库单 →
+ * 「导出文件」（勾选的要是同一家文件方式的承运商；有问题的行整批不导出，列出逐行问题）/「导回运单号」（选承运商 + 预览 → 确认）；
+ * 旁边是该承运商最近的导出 / 导入文件。
  */
-import { SHIPPING_STAGE_TABS } from '~/composables/shipping/shippingFlow'
+import { FILE_BATCH_STAGES, SHIPPING_STAGE_TABS } from '~/composables/shipping/shippingFlow'
+import {
+  CARRIER_FILE_BIZ_CODES,
+  exportCarrierFile,
+  exportProblemRows,
+  type ExportProblemRow,
+  type FileCarrierOption,
+} from '~/composables/shipping/carrierFile'
+import type { HttpRequestError } from '~/utils/http'
 
 // 定义页面元数据
 definePageMeta({
@@ -153,8 +164,110 @@ const setStageFilter = (stage: string | null) => {
 
 const activeStage = computed(() => {
   const stage = String(route.query.shipping_stage || '')
-  return (SHIPPING_STAGE_TABS as string[]).includes(stage) || stage === 'awaiting_number' ? stage : 'all'
+  return (SHIPPING_STAGE_TABS as string[]).includes(stage) ? stage : 'all'
 })
+
+// ------------------ 文件方式的批量操作（待建运单：导出；待导回：导回运单号） ----------------------
+/** 运单方式 = 文件的承运商（启用中的） */
+const fileCarriers = ref<FileCarrierOption[]>([])
+const loadFileCarriers = async () => {
+    await httpRequest<any>('/api/warehouse/carrier/', {
+        method: 'GET',
+        params: { all: true },
+        onSuccess: (data) => {
+            const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+            fileCarriers.value = items
+                .filter((c: any) => c && c.waybill_method === 'file' && c.is_active !== false)
+                .map((c: any) => ({ id: Number(c.id), name: String(c.name || c.code || c.id) }))
+        },
+    })
+}
+/** 导出 / 导回要发货的权限（与建运单相同：打包或配送的编辑权限） */
+const canShipEdit = computed(() => staffStore.hasPermission('packing_edit', 'delivery_edit'))
+const batchMode = computed(() => (FILE_BATCH_STAGES as string[]).includes(activeStage.value)
+    && fileCarriers.value.length > 0 && canShipEdit.value)
+
+const selectedIds = ref<number[]>([])
+const pageIds = computed<number[]>(() => (pageData.value?.items || []).map((dn: any) => Number(dn.id)))
+const allSelected = computed(() => pageIds.value.length > 0 && pageIds.value.every((id: number) => selectedIds.value.includes(id)))
+const toggleAll = () => {
+    selectedIds.value = allSelected.value ? [] : [...pageIds.value]
+}
+const selectedRows = computed<any[]>(() => (pageData.value?.items || []).filter((dn: any) => selectedIds.value.includes(Number(dn.id))))
+/** 这一行的承运商：当前发货任务的（shipping.carrier_id），没有用 DN 的 */
+const rowCarrierId = (dn: any): number | null => {
+    const id = dn?.shipping?.carrier_id ?? dn?.carrier_id ?? dn?.carrier?.id
+    return id === null || id === undefined || id === '' ? null : Number(id)
+}
+const rowCarrierName = (dn: any): string => String(dn?.shipping?.carrier_name || dn?.carrier?.name || '')
+/** 勾选的出库单共同的文件方式承运商（不是同一家 / 不是文件方式时 null） */
+const selectedFileCarrier = computed<FileCarrierOption | null>(() => {
+    const ids = [...new Set(selectedRows.value.map(rowCarrierId))]
+    if (ids.length !== 1 || ids[0] === null) return null
+    return fileCarriers.value.find((c: FileCarrierOption) => c.id === ids[0]) || null
+})
+const defaultFileCarrierId = computed<number | null>(() =>
+    selectedFileCarrier.value?.id ?? (fileCarriers.value.length === 1 ? fileCarriers.value[0]!.id : null))
+/** 勾选的出库单都在同一个仓库时传给后端（批次按仓库记） */
+const selectedWarehouseId = computed<number | null>(() => {
+    const ids = [...new Set(selectedRows.value.map((dn: any) => dn?.warehouse_id ?? dn?.warehouse?.id ?? null))]
+    return ids.length === 1 && ids[0] !== null && ids[0] !== undefined ? Number(ids[0]) : null
+})
+
+const exporting = ref(false)
+const exportProblems = ref<ExportProblemRow[]>([])
+watch(() => route.query, () => {
+    selectedIds.value = []
+    exportProblems.value = []
+})
+const exportSelected = async () => {
+    if (exporting.value || !selectedRows.value.length) return
+    exportProblems.value = []
+    const title = t('shipping.file.batch-export-title')
+    const rows = selectedRows.value
+    const noCarrier = rows.filter((dn: any) => rowCarrierId(dn) === null)
+    if (noCarrier.length) {
+        showAlert(title, t('shipping.file.batch-no-carrier', { dns: noCarrier.map((dn: any) => `DN-${dn.id}`).join(', ') }), 'warning')
+        return
+    }
+    const carrierIds = [...new Set(rows.map(rowCarrierId))]
+    if (carrierIds.length > 1) {
+        const names = [...new Set(rows.map(rowCarrierName).filter(Boolean))]
+        showAlert(title, t('shipping.file.batch-mixed-carriers', { carriers: names.join(t('shipping.list-separator')) || '—' }), 'warning')
+        return
+    }
+    const carrier = selectedFileCarrier.value
+    if (!carrier) {
+        showAlert(title, t('shipping.file.batch-not-file', { carrier: rowCarrierName(rows[0]) || '—' }), 'warning')
+        return
+    }
+    exporting.value = true
+    let fileName: string | null = null
+    try {
+        fileName = await exportCarrierFile({
+            carrier_id: carrier.id,
+            dn_ids: rows.map((dn: any) => Number(dn.id)),
+            warehouse_id: selectedWarehouseId.value,
+        })
+    } catch (e) {
+        const error = e as HttpRequestError
+        if (error.code === CARRIER_FILE_BIZ_CODES.EXPORT_PROBLEMS) exportProblems.value = exportProblemRows(error)
+        if (!exportProblems.value.length) showToast(bizErrorMessage(error), 'error')
+    } finally {
+        exporting.value = false
+    }
+    if (fileName) {
+        showToast(t('shipping.file.batch-exported-toast', { count: rows.length, file: fileName }), 'success')
+        selectedIds.value = []
+        await fetchData()
+    }
+}
+
+const importOpen = ref(false)
+const onImported = async () => {
+    selectedIds.value = []
+    await fetchData()
+}
 
 // 出库单状态（status）筛选：下拉
 const DN_STATUSES = ['pending', 'in_progress', 'picked', 'packed', 'delivered', 'completed', 'closed']
@@ -225,6 +338,7 @@ onMounted(async() => {
     fetchData();
     fetchStatsData();
     fetchMonthlyStatsData();
+    loadFileCarriers();
 });
 
 </script>
@@ -282,10 +396,33 @@ onMounted(async() => {
                         </select>
                     </div>
 
+                    <!-- 文件方式的批量操作 -->
+                    <div class="dn-file-batch d-flex flex-wrap align-items-center gap-2 mb-3" v-if="batchMode">
+                        <span class="fs-13 text-muted">{{ t('shipping.file.batch-selected', { count: selectedIds.length }) }}</span>
+                        <button type="button" class="btn btn-sm" :class="activeStage === 'awaiting_waybill' ? 'btn-primary' : 'btn-light'"
+                            :disabled="!selectedIds.length || exporting" @click="exportSelected">
+                            <span v-if="exporting" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="ri-file-download-line me-1"></i>{{ t('shipping.file.export-csv') }}
+                        </button>
+                        <button type="button" class="btn btn-sm" :class="activeStage === 'awaiting_number' ? 'btn-primary' : 'btn-light'"
+                            @click="importOpen = true">
+                            <i class="ri-file-upload-line me-1"></i>{{ t('shipping.actions.import_numbers') }}
+                        </button>
+                        <CarrierFileBatches class="ms-auto" :carriers="fileCarriers" :carrier-id="selectedFileCarrier?.id ?? null"
+                            :warehouse-id="selectedWarehouseId" />
+                        <div class="fs-12 text-muted w-100">{{ t(activeStage === 'awaiting_number' ? 'shipping.file.batch-hint-import' : 'shipping.file.batch-hint-export') }}</div>
+                    </div>
+                    <CarrierExportProblems class="mb-3" :rows="exportProblems" closable v-if="exportProblems.length"
+                        @close="exportProblems = []" />
+
                     <div class="table-responsive">
                         <table class="table text-nowrap table-bordered">
                             <thead>
                                 <tr>
+                                    <th scope="col" class="dn-select-col" v-if="batchMode">
+                                        <input class="form-check-input" type="checkbox" :checked="allSelected" :disabled="!pageIds.length"
+                                            :aria-label="t('shipping.file.select-all')" @change="toggleAll">
+                                    </th>
                                     <th scope="col" class="">{{ t('common.fields.id') }}</th>
                                     <th scope="col">{{ t('common.entities.warehouse') }}</th>
                                     <th scope="col" class="d-none d-lg-table-cell">{{ t('common.entities.recipient') }}</th>
@@ -301,6 +438,10 @@ onMounted(async() => {
                             </thead>
                             <tbody>
                                 <tr v-for="dn in pageData?.items" class="invoice-list">
+                                    <td class="dn-select-col" v-if="batchMode">
+                                        <input class="form-check-input" type="checkbox" :value="Number(dn.id)" v-model="selectedIds"
+                                            :aria-label="`DN-${dn.id}`">
+                                    </td>
                                     <td class="">
                                         <NuxtLink :to="`/dn/detail/${dn?.id}`" class="text-default">DN-{{ dn?.id }}
                                         </NuxtLink>
@@ -419,6 +560,12 @@ onMounted(async() => {
     </div>
     <!-- End::row-1 -->
 
+    <CarrierImportModal v-model:open="importOpen" :carriers="fileCarriers" :carrier-id="defaultFileCarrierId"
+        :warehouse-id="selectedWarehouseId" @imported="onImported" />
 </template>
 
-<style scoped></style>
+<style scoped>
+.dn-select-col {
+    width: 2.25rem;
+}
+</style>

@@ -543,7 +543,8 @@
       "export": "Ship From (English)"
     },
     "tips": {
-      "export": "Printed on documents as Ship From when it differs from the company address."
+      "export": "Printed on documents as Ship From when it differs from the company address.",
+      "export-latin": "The English address is under \"Latin (for international labels)\" above."
     }
   },
   "location": {
@@ -724,7 +725,7 @@
       "help": {
         "waybill": {
           "api": "WMS creates the waybill through the integration and gets the label and tracking number. If the carrier's system is down you can still enter a number by hand.",
-          "file": "Export a file for the carrier's software, then import the tracking numbers (coming later).",
+          "file": "Export a CSV in the carrier software's format, print the labels there, then import the tracking numbers back. No API contract needed.",
           "manual": "Print the label on the carrier's website or software, then enter or scan the tracking number in WMS."
         },
         "pickup": {
@@ -759,6 +760,37 @@
         "auto-sign-days": "Enter a whole number of days from 1 to 90, or leave it blank",
         "contact": "At most 255 characters"
       }
+    },
+    "file": {
+      "title": "File export / import",
+      "intro": "Export a CSV in the import format of the carrier's software, print the labels there, then import the file with the tracking numbers back into WMS. Each exported row carries the DN reference (DN + number) that matches it back.",
+      "preset": "File format (preset)",
+      "preset-none": "Choose a format",
+      "preset-other": "Other",
+      "no-presets": "No presets on the server; you can enter a template under Advanced below.",
+      "preset-missing": "The saved preset {code} isn't on the server any more",
+      "verified": "Verified",
+      "unverified": "Not yet verified by importing into the carrier software; test one import first.",
+      "account": "Account details",
+      "account-hint": "Account values written into the exported file (customer code, billing code and so on).",
+      "tracking-url": "Preset tracking page:",
+      "use-tracking-url": "Use it",
+      "tracking-url-in-use": "In use",
+      "columns": "Exported columns ({count})",
+      "column-header": "Header",
+      "column-required": "Required",
+      "column-max-length": "Max length",
+      "template": "Advanced: template override (JSON)",
+      "template-hint": "Only the parts to change (same structure as the preset); leave blank to use the preset as is. Without a preset, enter a complete template.",
+      "template-placeholder": "Leave blank to use the preset",
+      "template-valid": "Valid JSON",
+      "template-format": "Format",
+      "validation": {
+        "template-json": "The template must be a JSON object",
+        "preset-required": "Choose a preset (or enter a template) for file mode",
+        "account-required": "Enter {field}"
+      },
+      "version": "Based on: {version}"
     }
   },
   "recipient": {
@@ -1052,6 +1084,33 @@
       "cancel-confirm-title": "Cancel DN?",
       "cancel-confirm": "DN-{id} will be cancelled: the stock it reserves is released, its picking task is deactivated and the DN is closed. A DN whose picking has started cannot be cancelled. This cannot be undone.",
       "cancel-confirm-picked": "DN-{id} will be cancelled: picked / packed goods are returned to stock awaiting putaway and must be put away again; reservations are released, related tasks are deactivated and the DN is closed. If the DN has an unfinished carrier shipment, cancel it in the Waybill step of the shipping flow first. This cannot be undone."
+    },
+    "ship-to": {
+      "title": "Ship-to address",
+      "tip": "Filled in from the recipient when you choose one, and can be changed for this DN. Labels and carrier files use this address.",
+      "name": "Recipient name",
+      "required": "Enter the ship-to address (the structured fields or the single-line address)",
+      "invalid-field": "Invalid ship-to {field} ({message})",
+      "unstructured-hint": "No structured address: this DN ships to the single-line address, with the recipient's name, phone and postal code on the label.",
+      "effective": "Address currently used on labels",
+      "effective-hint": "This DN has no ship-to address of its own, so labels and carrier files use the recipient's address. To change it for this DN, copy it into the form below first.",
+      "use-effective": "Copy into the form",
+      "edit": "Edit ship-to address",
+      "edit-title": "Edit ship-to address",
+      "edit-hint": "Changes this DN only (the recipient master data stays the same). Labels and carrier files use this address; it can't be changed once the waybill is created or exported.",
+      "edit-from-effective": "This DN has no address of its own yet, so the recipient's address is filled in below; once saved, this DN uses it.",
+      "saved": "Ship-to address saved",
+      "from-recipient": "(no address saved on this DN; the recipient data is used)",
+      "locked-reasons": {
+        "WAYBILL_EXISTS": "The waybill has been created or exported with the current address, so it can't be changed. Cancel the waybill (or discard the export) in the Waybill step of the shipping flow first.",
+        "DN_SHIPPED": "Already shipped; the ship-to address can't be changed.",
+        "DN_CLOSED": "The DN is closed; the ship-to address can't be changed."
+      }
+    },
+    "shipping-options": {
+      "title": "Shipping service options",
+      "hint": "Delivery date, time slot and other options sent to the carrier with the waybill; empty ones use the default. They can't be changed once the waybill is created or exported.",
+      "no-carrier": "Choose a carrier to set service options such as the delivery date and time slot, or set them later in the Waybill step of the shipping flow."
     }
   },
   "picking": {
@@ -2043,8 +2102,8 @@
     "code-16068": "Document requirements are not met",
     "code-16070": "Not an export shipment",
     "code-16071": "Document not found",
-    "code-14019": "Exporter profile text is too long",
-    "code-14020": "Invalid company/warehouse country code (ISO 3166-1 alpha-2)",
+    "code-14019": "\"{field}\" is invalid (not text, too long, or the postal codes differ). Check it and save again",
+    "code-14020": "Invalid country code ({field}): use an ISO 3166-1 alpha-2 code",
     "code-16072": "The shipment can't be created yet",
     "code-16073": "The carrier returned an error",
     "code-16074": "The carrier didn't answer in time",
@@ -2134,7 +2193,17 @@
     "code-16125": "This carrier still has unfinished shipments (they're cancelled with these settings). Finish them before removing or changing the integration.",
     "code-16135": "Invalid handling-method setting ({field}); check it and save again",
     "code-16135-method": "Invalid handling-method setting ({field}). Online (API) methods need the online integration to be on and to support them.",
-    "code-16136": "The handover time can't be later than now"
+    "code-16136": "The handover time can't be later than now",
+    "code-16135-file": "Invalid file-mode setting ({field}): choose a preset, fill in the account values and check the template.",
+    "code-16137": "Some DNs can't be exported (required value missing, too long or unsupported characters), so nothing was exported. Fix the listed problems and export again",
+    "code-16138": "The import file can't be read or doesn't match the carrier's format (encoding, columns, reference). Check that it's this carrier's tracking-number file",
+    "code-16138-carrier": "This carrier can't use file mode right now: its waybill method isn't \"file\", or its file format (preset / template) is incomplete. Check the carrier settings",
+    "code-16139": "Invalid service option ({field}); check it and save again",
+    "code-16076-options-locked": "The waybill has been created or exported, so service options can't be changed. Cancel the waybill (or discard the export for file mode) in the Waybill step first",
+    "code-16138-account": "Fill in the carrier's file-mode account fields ({field}) in the carrier settings before exporting",
+    "code-16138-request": "The request is invalid ({field}). Reload the page and try again",
+    "code-16075-discard": "This DN has no export waiting for its tracking number (it may have been imported or discarded already); the page has been refreshed",
+    "code-16076-ship-to-locked": "The waybill has been created or exported with the current address, so the ship-to address can't be changed. Cancel the waybill (or discard the export) in the Waybill step first"
   },
   "shipping": {
     "title": "Shipping flow",
@@ -2216,7 +2285,8 @@
       "open_tracking": "Carrier tracking page",
       "sign": "Confirm delivery",
       "issue_documents": "Issue documents",
-      "edit_packages": "Edit packages"
+      "edit_packages": "Edit packages",
+      "discard_export": "Discard export"
     },
     "summary": {
       "order-number": "Order {number}",
@@ -2238,7 +2308,10 @@
       "waybill-unresolved": "Shipment result unclear; check and resolve it",
       "waybill-pending": "Creating the shipment with {carrier}",
       "waybill-cancelling": "Cancelling the shipment",
-      "transit-waiting": "Waiting for carrier tracking"
+      "transit-waiting": "Waiting for carrier tracking",
+      "waybill-exported": "Exported {time}; waiting for the tracking number",
+      "waybill-exported-no-time": "Exported; waiting for the tracking number",
+      "waybill-file": "Export a file for {carrier}'s software"
     },
     "documents": {
       "problems-title": "Fix these first ({count})",
@@ -2339,7 +2412,197 @@
       "NOT_HANDED_OVER": "Not handed over to the carrier yet",
       "NOT_AVAILABLE": "Not available now",
       "SHIPMENT_EXISTS": "The waybill has already been created",
-      "CARRIER_NOT_SET": "No carrier selected"
+      "CARRIER_NOT_SET": "No carrier selected",
+      "FILE_NOT_CONFIGURED": "The carrier's file format isn't set up",
+      "WAYBILL_EXISTS": "There is already another waybill (created online, entered by hand or imported)"
+    },
+    "file": {
+      "intro": "Export this DN as a file, import it into {carrier}'s software and print the label there, then import the file with the tracking number back.",
+      "export-csv": "Export CSV",
+      "export-again": "Export again",
+      "exported-title": "Exported, waiting for the tracking number",
+      "exported-at": "Exported {time}",
+      "batch": "Batch #{id}",
+      "exported-next": "Print the label in {carrier}'s software, then import the tracking-number file it produces.",
+      "exported-toast": "Exported {file}",
+      "discard-confirm-title": "Discard the export?",
+      "discard-confirm": "The DN goes back to awaiting waybill. If the label was already printed in {carrier}'s software, delete it there too.",
+      "discarded-toast": "Export discarded",
+      "manual-fallback": "Enter the tracking number by hand instead",
+      "export-problems": "{count} DN(s) have problems; nothing was exported",
+      "export-problems-hint": "Fix the problems below (address, phone and so on) and export again. Over-long names and addresses are not cut off automatically.",
+      "fields": {
+        "dn": "DN",
+        "order-number": "Order no.",
+        "column": "Column",
+        "problem": "Problem",
+        "line": "Line",
+        "reference": "Reference",
+        "tracking-numbers": "Tracking no.",
+        "result": "Result",
+        "message": "Message"
+      },
+      "problem-codes": {
+        "REQUIRED": "Required but empty",
+        "TOO_LONG": "Too long: {length} {unit}, at most {max}",
+        "UNENCODABLE": "Has characters the file encoding can't hold: {characters}",
+        "CHARACTER_NOT_ALLOWED": "Has characters the carrier software doesn't accept (outside JIS level 1 and 2): {characters}",
+        "DN_NOT_FOUND": "DN not found (or it belongs to another warehouse)",
+        "OTHER_WAREHOUSE": "Belongs to another warehouse; export DNs of one warehouse at a time",
+        "NOT_PACKED": "Not packed yet",
+        "DN_SHIPPED": "Already shipped",
+        "DN_CLOSED": "The DN is closed (cancelled)",
+        "NO_OPEN_TASK": "No open delivery task",
+        "CARRIER_NOT_SET": "The delivery task has no carrier yet",
+        "OTHER_CARRIER": "The DN's carrier is a different one",
+        "WAYBILL_EXISTS": "Already has a waybill (created online, entered by hand or imported)",
+        "TRACKING_NUMBER_EXISTS": "The delivery task already has a tracking number",
+        "OPTION_INVALID": "A service option value is invalid; choose it again in the DN's Waybill step"
+      },
+      "units": {
+        "chars": "characters",
+        "sjis-bytes": "bytes (Shift_JIS)"
+      },
+      "import-title": "Import tracking numbers",
+      "import-intro": "Choose the file exported from {carrier}'s software after printing the labels. Rows are matched to DNs by the reference written at export (DN + number). You'll see a preview before anything is saved.",
+      "choose-carrier": "Choose a carrier",
+      "no-file-carriers": "No carrier uses file mode",
+      "file": "File",
+      "file-hint": "CSV or text file; the encoding (Shift_JIS / UTF-8) follows the carrier's format.",
+      "preview": "Preview",
+      "preview-intro": "Preview of {file}: only matched rows will be saved.",
+      "only-problems": "Only rows that need attention",
+      "already-has-number-hint": "Rows marked \"Has another number\" are not changed; to replace a number, do it on the DN.",
+      "results": {
+        "matched": "Matched",
+        "not_found": "DN not found",
+        "already_has_number": "Has another number",
+        "same_number": "Already imported",
+        "invalid": "Can't import"
+      },
+      "choose-again": "Choose another file",
+      "apply": "Save {count} matched rows",
+      "import-done": "Saved {count} matched rows",
+      "import-done-toast": "Imported {count} tracking-number rows",
+      "recent-files": "Recent files",
+      "no-batches": "No exports or imports yet",
+      "batch-kinds": {
+        "export": "Export",
+        "import": "Import"
+      },
+      "batch-rows": "{count} rows",
+      "batch-export-title": "Export file",
+      "batch-no-carrier": "These DNs have no carrier yet: {dns}",
+      "batch-mixed-carriers": "Export one carrier at a time. The selected DNs use: {carriers}",
+      "batch-not-file": "{carrier} isn't set to file mode; change its waybill method to File and choose a format in the carrier settings.",
+      "batch-exported-toast": "Exported {count} DN(s): {file}",
+      "batch-selected": "{count} selected",
+      "batch-hint-export": "Select DNs of one carrier that uses file mode, then export. After printing, import the tracking numbers on the awaiting tracking no. tab.",
+      "batch-hint-import": "Import the tracking-number file from the carrier software, or select DNs to export them again.",
+      "select-all": "Select all on this page",
+      "label-elsewhere": "The label is printed in {carrier}'s software"
+    },
+    "options": {
+      "title": "Service options",
+      "locked": "Locked",
+      "none": "Not set (defaults apply)",
+      "hint": "Delivery date, time slot and other options sent with the waybill. They can't be changed once the waybill is created or exported.",
+      "unset": "Not set",
+      "unset-default": "Not set (default: {value})",
+      "invalid-money": "Enter an amount of 0 or more",
+      "saved": "Service options saved",
+      "lock-hint": "Locked once the waybill is created or exported",
+      "invalid-field": "Invalid value ({message})",
+      "locked-reasons": {
+        "WAYBILL_EXISTS": "The waybill has been created or exported, so these can't be changed. Cancel the waybill (or discard the export) first",
+        "DN_SHIPPED": "Already shipped; they can't be changed"
+      }
+    }
+  },
+  "address": {
+    "title": "Address",
+    "tips": {
+      "country": "Choose the country first; the address fields and their order follow that country's format."
+    },
+    "fields": {
+      "name": "Name",
+      "organization": "Company / organization",
+      "postal_code": {
+        "default": "Postal code",
+        "JP": "Postal code",
+        "US": "ZIP code",
+        "GB": "Postcode",
+        "AU": "Postcode"
+      },
+      "admin_area": {
+        "default": "State / province / region",
+        "JP": "Prefecture",
+        "US": "State",
+        "CA": "Province",
+        "AU": "State / territory",
+        "CN": "Province",
+        "GB": "County (optional)",
+        "KR": "Province / metropolitan city",
+        "TW": "County / city"
+      },
+      "locality": {
+        "default": "City / town",
+        "JP": "City / ward / town",
+        "CN": "City / district",
+        "GB": "Town / city",
+        "KR": "City / district",
+        "TW": "District / township"
+      },
+      "dependent_locality": {
+        "default": "District / neighbourhood (optional)",
+        "JP": "Town area (optional)"
+      },
+      "address_line1": {
+        "default": "Address line 1 (street and number)",
+        "JP": "Street / block number"
+      },
+      "address_line2": {
+        "default": "Address line 2 (apartment, suite, floor; optional)",
+        "JP": "Building / room (optional)"
+      }
+    },
+    "placeholders": {
+      "organization": "Optional",
+      "postal_code": {
+        "JP": "100-0004",
+        "US": "94105"
+      },
+      "admin_area": {
+        "JP": "東京都"
+      },
+      "locality": {
+        "JP": "千代田区"
+      },
+      "address_line1": {
+        "JP": "大手町1-2-3",
+        "default": "123 Main St"
+      },
+      "address_line2": {
+        "JP": "○○ビル 5F"
+      }
+    },
+    "preview": "Formatted address",
+    "legacy": "Single-line address",
+    "legacy-auto": "Generated from the fields above.",
+    "legacy-hint": "Used where a single line is needed (old data, printed DNs and so on).",
+    "use-formatted": "Use the address above",
+    "latin": {
+      "title": "Latin (for international labels)",
+      "hint": "If the address above isn't in Latin letters (e.g. Japanese or Chinese), enter the romanized version here. International labels and documents use it; fields left blank fall back to the text above.",
+      "non-latin": "Contains non-Latin characters",
+      "preview": "Latin preview",
+      "legacy": "English address (single line, for documents)",
+      "legacy-hint": "Printed as Ship From on export documents; generated from the Latin fields above when they are filled.",
+      "preview-non-latin": "Some text is not in Latin letters: fields left blank use the local text above."
+    },
+    "legacy-differs": "Differs from the address above and will be kept as is when saved. To replace it:",
+    "errors": {
+      "invalid-field": "Invalid address field {field} ({message})"
     }
   }
 }

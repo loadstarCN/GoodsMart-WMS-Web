@@ -7,7 +7,8 @@
  * 点开看这一步的详细内容，用已有的组件做事：
  * - 打包：DnPackagesEditor（录箱子）
  * - 报关单证：FlowDocumentsDetail（CI / PL、签发、历史、报关问题、补录、报关数据明细）
- * - 运单：CarrierShipmentPanel（在线建单 / 面单 / 取消 / 结果不明的处理，或手工填运单号）
+ * - 运单：CarrierShipmentPanel（在线建单 / 面单 / 取消 / 结果不明的处理，或手工填运单号）；运单方式是文件时上面加
+ *   FlowWaybillFileDetail（导出文件 / 导回运单号 / 作废导出）；承运商声明了服务选项时下面加 ShippingOptionsEditor
  * - 揽收：FlowPickupDetail（在线预约 / 手工记录 / 定期集荷 / 自送）
  * - 交承运商：FlowHandoverDetail（完成发货，可填实际时刻）
  * - 运输中：FlowTransitDetail（跟踪、扫描记录、刷新、承运商查询页）
@@ -29,6 +30,7 @@ import {
 import {
   isActiveShipment,
   isPdfLabel,
+  formatServiceType,
   labelDocumentOf,
   serviceNameOf,
   type CarrierShipment,
@@ -36,7 +38,9 @@ import {
   type DeclaredValueMode,
 } from '~/composables/customs/carrierShipment'
 import { pickupTimeWindow, type PickupSummary } from '~/composables/customs/carrierPickup'
+import { fileExportInfoOf, normalizeShippingOptions } from '~/composables/shipping/carrierFile'
 import {
+  FILE_WAYBILL_ACTIONS,
   HIDDEN_ACTIONS,
   activeStepKey,
   flowActionEnabled,
@@ -264,6 +268,11 @@ const canEnterTracking = computed(() => flowActionEnabled(waybillStep.value, 'en
 /** 运单方式不是 api：运单一步只填运单号 */
 const waybillManualOnly = computed(() => !!carrier.value && carrier.value.methods.waybill !== 'api'
   && !flowActionOf(waybillStep.value, 'create_waybill'))
+/** 运单方式是文件（或后端给了文件方式的操作）：运单一步加导出 / 导回 */
+const waybillFileMode = computed(() => carrier.value?.methods.waybill === 'file'
+  || FILE_WAYBILL_ACTIONS.some((key: string) => !!flowActionOf(waybillStep.value, key)))
+/** 运单服务选项（承运商声明了才有） */
+const waybillOptions = computed(() => normalizeShippingOptions(waybillStep.value?.summary?.options))
 const packageCount = computed(() => {
   const n = Number(packingStep.value?.summary?.package_count)
   return Number.isFinite(n) ? n : null
@@ -365,13 +374,23 @@ const summaryText = (step: FlowStep): string => {
       const tracking = String(s.tracking_number || '')
       if (tracking) {
         const source = s.source && te(`shipping.waybill-sources.${s.source}`) ? t(`shipping.waybill-sources.${s.source}`) : ''
-        const service = String(s.service || '') || serviceNameOf(waybillShipment.value)
+        // 服务显示名（service_name），没有时按运单记录 / 服务代码拼，不直接显示 INTERNATIONAL_ECONOMY 这样的代码
+        // 文件方式的服务名称按界面语言（service_label）；其它用 service_name
+        const service = serviceNameOf(waybillShipment.value, locale.value) || String(s.service_name || '') || formatServiceType(s.service)
         return [tracking, source, service].filter(Boolean).join(' · ')
+      }
+      // 文件方式：已导出、等导回运单号
+      const exported = fileExportInfoOf(s)
+      if (exported) {
+        return exported.exported_at
+          ? t('shipping.summary.waybill-exported', { time: formatLocaleDateTime(exported.exported_at, locale.value) })
+          : t('shipping.summary.waybill-exported-no-time')
       }
       if (!carrier.value) return t('shipping.summary.no-carrier')
       if (step.state === 'todo' || step.state === 'blocked') return ''
-      return t(carrier.value.methods.waybill === 'api' ? 'shipping.summary.waybill-api' : 'shipping.summary.waybill-manual',
-        { carrier: carrier.value.name })
+      const method = carrier.value.methods.waybill
+      return t(method === 'api' ? 'shipping.summary.waybill-api'
+        : method === 'file' ? 'shipping.summary.waybill-file' : 'shipping.summary.waybill-manual', { carrier: carrier.value.name })
     }
     case 'pickup': {
       const method = String(s.method || carrier.value?.methods.pickup || 'none')
@@ -418,16 +437,16 @@ const summaryText = (step: FlowStep): string => {
 const EXPAND_ACTIONS = ['create_waybill', 'enter_tracking', 'cancel_waybill', 'dismiss_waybill', 'issue_documents',
   'edit_packages', 'complete_shipping', 'sign']
 /** 展开后直接执行的操作（详细内容的 run） */
-const RUN_ACTIONS = ['book_pickup', 'record_pickup', 'cancel_pickup', 'refresh_tracking']
+const RUN_ACTIONS = ['book_pickup', 'record_pickup', 'cancel_pickup', 'refresh_tracking', 'export_file', 'import_numbers']
 const headerActions = (step: FlowStep): FlowAction[] => {
   if (isExpanded(step.key)) return []
   return step.actions.filter((a: FlowAction) => a.enabled && !HIDDEN_ACTIONS.includes(a.key)
     && (EXPAND_ACTIONS.includes(a.key) || RUN_ACTIONS.includes(a.key) || a.key === 'print_label' || a.key === 'open_tracking'))
     // 取消类的放到详细内容里（要看清楚再取消）
-    .filter((a: FlowAction) => !['cancel_waybill', 'dismiss_waybill', 'cancel_pickup'].includes(a.key))
+    .filter((a: FlowAction) => !['cancel_waybill', 'dismiss_waybill', 'cancel_pickup', 'discard_export'].includes(a.key))
 }
 const PRIMARY_ACTIONS = ['create_waybill', 'enter_tracking', 'book_pickup', 'record_pickup', 'complete_shipping', 'sign',
-  'issue_documents', 'edit_packages']
+  'issue_documents', 'edit_packages', 'export_file', 'import_numbers']
 const ACTION_ICONS: Record<string, string> = {
   create_waybill: 'ri-file-add-line',
   enter_tracking: 'ri-edit-line',
@@ -440,6 +459,8 @@ const ACTION_ICONS: Record<string, string> = {
   sign: 'ri-checkbox-circle-line',
   issue_documents: 'ri-file-text-line',
   edit_packages: 'ri-inbox-archive-line',
+  export_file: 'ri-file-download-line',
+  import_numbers: 'ri-file-upload-line',
 }
 
 const trackingUrlOf = (step: FlowStep): string => String(step.summary?.tracking_url || carrier.value?.tracking_url || '').trim()
@@ -562,11 +583,17 @@ defineExpose({ reload })
 
             <!-- 运单 -->
             <template v-else-if="step.key === 'waybill'">
+              <!-- 文件方式：导出文件 / 导回运单号 / 作废导出 -->
+              <FlowWaybillFileDetail v-if="waybillFileMode" class="mb-2" :ref="(el: any) => setRunner('waybill', el)"
+                :dn-id="dnId" :step="step" :carrier="carrier" :warehouse-id="warehouse" :locked="locked" @changed="refresh" />
               <CarrierShipmentPanel :ref="setCarrierRef" :dn-id="dnId" :locked="locked" :customs="customsView?.customs ?? null"
                 :packages-dirty="packagesDirty" :warehouse-id="warehouse" :package-count="packageCount"
                 :task-id="tasks.delivery" :tracking-editable="canEnterTracking" :hidden-blocker-codes="documentsProblemCodes"
                 :can-edit-customs="canEditCustoms" :show-pickup="false" :show-tracking="false" :tracking-refresh="false"
-                :manual-only="waybillManualOnly" @changed="refresh" @edit-customs="editorOpen = true" />
+                :manual-only="waybillManualOnly" :file-mode="waybillFileMode" @changed="refresh" @edit-customs="editorOpen = true" />
+              <!-- 运单服务选项（配送日、时间带……）：建运单 / 导出后锁定 -->
+              <ShippingOptionsEditor v-if="waybillOptions && waybillOptions.schema.length" :dn-id="dnId" :options="waybillOptions"
+                :locked="locked" @saved="refresh" />
               <ShippingFlowActionNotes :actions="step.actions" :carrier-name="carrier?.name"
                 :tracking-number="step.summary?.tracking_number" v-if="!locked" />
             </template>

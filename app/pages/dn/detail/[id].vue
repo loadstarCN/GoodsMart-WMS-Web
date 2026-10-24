@@ -4,10 +4,13 @@
  * - 页头：单号、订单号、状态、国内 / 跨境（目的国）、承运商、当前发货阶段，以及打印 / 编辑 / 关闭 / 取消
  * - 主区域：发货流程（DnShippingFlow full）——每一步的状态、实际时刻、来源和操作都在这里；
  *   跨境件的报关单证（CI / PL、报关问题、报关数据明细）在流程的「报关单证」一步里
- * - 下面是商品明细，右边是出库单资料（收件人、地址、计划发货日等）
+ * - 下面是商品明细，右边是出库单资料（收件人、地址、计划发货日等）；收件地址按面单实际用的（ship_to 快照，没有时
+ *   ship_to_effective：收件人的结构化地址）按国家排版，带拉丁转写时另列（国际面单用），都没有时显示旧的单行地址。
+ *   没发货、没关闭时可以「改收件地址」（DnShipToEditModal：打包后也能改，如承运商文件报地址超长；建运单 / 导出后锁定）
  */
 import { countryName } from '~/data/countries'
 import type { ShippingFlow } from '~/composables/shipping/shippingFlow'
+import { formatAddressLines, hasLatinAddress, hasStructuredAddress, type StructuredAddress } from '~/composables/address/structuredAddress'
 
 // 定义页面元数据
 definePageMeta({
@@ -61,6 +64,30 @@ const routeBadge = computed(() => {
   const country = code ? `${code} ${countryName(code, locale.value)}` : '—';
   return { cls: 'bg-info-transparent', icon: 'ri-earth-line', text: t('shipping.route.international', { country }) };
 });
+// ------------------ 收件地址（ship_to 快照，没有时面单实际用的 ship_to_effective；按国家排版） ----------------------
+const shipTo = computed<StructuredAddress | null>(() => {
+  for (const s of [itemData.value?.ship_to, itemData.value?.ship_to_effective]) {
+    if (s && typeof s === 'object' && hasStructuredAddress(s)) return s as StructuredAddress;
+  }
+  return null;
+});
+/** 显示的是收件人的结构化地址（本单没有自己的快照） */
+const shipToFromRecipient = computed(() => !!shipTo.value && !(itemData.value?.ship_to && hasStructuredAddress(itemData.value.ship_to)));
+/** 改收件地址：没发货、没关闭（建运单 / 导出后由后端锁定，弹窗里说明） */
+const canEditShipTo = computed(() => !!itemData.value && !['delivered', 'completed', 'closed'].includes(String(itemData.value.status))
+  && staffStore.hasPermission('dn_edit', 'packing_edit', 'delivery_edit'));
+const shipToOpen = ref(false);
+const onShipToSaved = async () => {
+  await Promise.all([fetchData(), flowRef.value?.reload()]);
+};
+const shipToLines = computed(() => formatAddressLines(shipTo.value, {
+  style: 'local', withNames: true, withCountry: true, countryLabel: (code: string) => countryName(code, locale.value),
+}));
+const shipToLatinLines = computed(() => (shipTo.value && hasLatinAddress(shipTo.value)
+  ? formatAddressLines(shipTo.value, { style: 'latin', withNames: true, countryLabel: (code: string) => countryName(code, 'en') })
+  : []));
+const shipToContact = computed(() => [shipTo.value?.phone, shipTo.value?.email].filter(Boolean).join(' · '));
+
 /** 流程里做了操作（如完成发货、签收）：DN 的状态、数量随之变化 */
 const onFlowChanged = () => {
     fetchData();
@@ -259,7 +286,25 @@ const cancelDN = async () => {
                         </div>
                         <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('common.entities.carrier')}} :</span> {{ itemData?.carrier?.name }}</p>
                         <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('common.entities.recipient')}} :</span> {{ itemData?.recipient?.name }}</p>
-                        <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('dn.fields.shipping-address')}} :</span> {{ itemData?.shipping_address}}</p>
+                        <div class="mb-2 text-muted" v-if="shipTo">
+                            <span class="fw-semibold text-default">{{t('dn.fields.shipping-address')}} :</span>
+                            <a href="#" class="fs-12 ms-2" v-if="canEditShipTo" @click.prevent="shipToOpen = true">
+                                <i class="ri-edit-line me-1"></i>{{ t('dn.ship-to.edit') }}</a>
+                            <div class="fs-11 text-muted" v-if="shipToFromRecipient">{{ t('dn.ship-to.from-recipient') }}</div>
+                            <div class="dn-ship-to mt-1">
+                                <div v-for="(line, i) in shipToLines" :key="`st-${i}`">{{ line }}</div>
+                                <div class="fs-12" v-if="shipToContact">{{ shipToContact }}</div>
+                            </div>
+                            <details class="fs-12 mt-1" v-if="shipToLatinLines.length">
+                                <summary class="text-primary">{{ t('address.latin.title') }}</summary>
+                                <div class="dn-ship-to mt-1">
+                                    <div v-for="(line, i) in shipToLatinLines" :key="`stl-${i}`">{{ line }}</div>
+                                </div>
+                            </details>
+                        </div>
+                        <p class="mb-2 text-muted" v-else><span class="fw-semibold text-default">{{t('dn.fields.shipping-address')}} :</span> {{ itemData?.shipping_address}}
+                            <a href="#" class="fs-12 ms-2" v-if="canEditShipTo" @click.prevent="shipToOpen = true">
+                                <i class="ri-edit-line me-1"></i>{{ t('dn.ship-to.edit') }}</a></p>
                         <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('dn.fields.scheduled-date')}} :</span> {{ itemData?.expected_shipping_date}}</p>
                         <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('dn.fields.order-no')}} :</span> {{ itemData?.order_number}}</p>
                         <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('dn.fields.transportation')}} :</span> {{ itemData?.transportation_mode ? t('dn.transportation.'+itemData.transportation_mode) : '' }}</p>
@@ -277,5 +322,16 @@ const cancelDN = async () => {
             </div>
         </div>
     </div>
+    <DnShipToEditModal v-model:open="shipToOpen" :dn-id="dnId" @saved="onShipToSaved" />
 </template>
-<style scoped></style>
+<style scoped>
+.dn-ship-to {
+    border-left: 2px solid var(--default-border);
+    padding-left: 0.5rem;
+    color: var(--default-text-color);
+}
+
+details summary {
+    cursor: pointer;
+}
+</style>

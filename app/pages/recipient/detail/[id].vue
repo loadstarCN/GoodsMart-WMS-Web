@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { hasStructuredAddress } from '~/composables/address/structuredAddress'
+import { countryOptionLabel } from '~/data/countries'
 
 // 定义页面元数据
 definePageMeta({
@@ -11,7 +13,7 @@ const itemId = route.params.id;
 const itemData = ref<any>(null);
 
 // 获取国际化方法
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -48,6 +50,11 @@ onMounted(async() => {
   await fetchData();
 });
 
+// 地址的显示：收件方名称已是标题，排版里只带公司（organization）行
+const addressForView = computed(() => (itemData.value ? { ...itemData.value, name: null } : null));
+const hasAddress = computed(() => !!itemData.value
+  && (hasStructuredAddress(itemData.value) || !!String(itemData.value.address ?? '').trim()));
+
 
 </script>
 
@@ -70,10 +77,10 @@ onMounted(async() => {
                     <p class="fs-18 fw-semibold mb-3">{{ itemData?.name}} <span
                         class="badge rounded-pill bg-info fs-10 fw-normal ms-2">{{ itemData?.location_type }}</span></p>
 
-                    <div class="mb-4" v-if="itemData?.address">
+                    <!-- 地址：结构化地址按国家排版（+ 拉丁转写），旧数据只有单行地址 -->
+                    <div class="mb-4" v-if="hasAddress">
                       <p class="fs-15 fw-semibold mb-1">{{t('common.fields.address')}} :</p>
-                      <p class="text-muted mb-0">{{ itemData.address }} {{ itemData.zip_code }}
-                      </p>
+                      <StructuredAddressView class="text-muted" :address="addressForView" :legacy="itemData.address" with-names />
                     </div>
                     <div class="mb-4" v-if="itemData?.phone">
                       <p class="fs-15 fw-semibold mb-1">{{t('common.fields.phone')}} :</p>
@@ -92,7 +99,7 @@ onMounted(async() => {
                     </div>
                     <div class="mb-4" v-if="itemData?.country">
                       <p class="fs-15 fw-semibold mb-1">{{t('common.fields.country')}} :</p>
-                      <p class="text-muted mb-0">{{ itemData.country }}
+                      <p class="text-muted mb-0">{{ countryOptionLabel(itemData.country, locale) || itemData.country }}
                       </p>
                     </div>
 

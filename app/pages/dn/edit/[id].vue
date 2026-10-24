@@ -1,13 +1,29 @@
 <script lang="ts" setup>
 import { useInventorySearch } from '~/composables/goods/useInventorySearch';
 import { dnTypesOptions,dnTransportationModesOptions } from '~/data/selectOptions'
+import {
+  addressFieldLabel,
+  cleanShipTo,
+  formatAddressOneLine,
+  hasStructuredAddress,
+  shipToFromRecipient,
+  type StructuredAddress,
+} from '~/composables/address/structuredAddress'
+import type { ServiceOption } from '~/composables/shipping/carrierFile'
+import {
+  loadCarrierServiceOptions,
+  optionKeyOfError,
+  optionsChange,
+  optionsToForm,
+} from '~/composables/dn/shippingOptionsForm'
+import { useShippingAddressLine } from '~/composables/dn/shippingAddressLine'
 
 // 定义页面元数据
 definePageMeta({
 });
 
 // 获取国际化方法
-const { t } = useI18n();
+const { t, te } = useI18n();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -49,6 +65,8 @@ const fetchData = async () => {
         params: route.query,
         onSuccess: async(data) => {
           dnItem.value = data;
+          initShipTo(data);
+          originalOptions.value = data?.shipping_options && typeof data.shipping_options === 'object' ? { ...data.shipping_options } : null;
           const original: Record<string, number> = {};
           (data?.details ?? []).forEach((d: any) => {
             const key = String(d.goods_id);
@@ -145,11 +163,106 @@ watch(
     if (newVal) {
       dnItem.value.recipient_id = newVal.id;  // 将对象 ID 同步到表单
       errors.value.recipient = null; // 清除错误信息
+      // 换了收货方（不是打开页面时带出的本单收货方）：收件地址按新收货方的地址重新填写
+      if (shipToRecipientId.value !== null && String(newVal.id) !== String(shipToRecipientId.value)) {
+        applyRecipient(newVal.id);
+      }
     } else {
       dnItem.value.recipient_id = null;       // 清空选择时重置
     }
   },
   { immediate: true }  // 初始化时立即触发
+);
+
+// ------------------ 收件地址（ship_to，后端 doc/shipping-flow.md §6.2） ----------------------
+/**
+ * 收件地址：结构化的 ship_to（DnShipToFields）+ 单行地址 shipping_address（页面上另一栏，空着或与排版一致时跟着
+ * 结构化字段自动生成，见 composables/dn/shippingAddressLine.ts）。
+ * 打开时按本单的 ship_to 快照填写；本单没有快照（旧单 / 收货方没有结构化地址）时结构化字段空着，只有单行地址，
+ * 另显示面单实际用的地址（ship_to_effective），可以一键填进表单。换了收货方时按新收货方的地址重新填写。
+ * 提交：填了结构化地址 → ship_to 替换快照；原来有快照、现在清空了 → ship_to: null；原来就没有 → 不带（不改）。
+ */
+const shipTo = ref<Record<string, any>>({})
+const shipToStructured = computed(() => hasStructuredAddress(shipTo.value))
+const shippingAddress = computed<string | null>({
+  get: () => dnItem.value.shipping_address ?? null,
+  set: (value: string | null) => { dnItem.value.shipping_address = value },
+})
+const {
+  auto: addressAuto,
+  differs: addressDiffers,
+  formatted: addressFormatted,
+  reset: resetAddressLine,
+  onInput: onAddressInput,
+  useFormatted: useFormattedAddress,
+} = useShippingAddressLine(shipTo, shippingAddress)
+/** 打开时本单的 ship_to 快照（null = 没有） */
+const originalShipTo = ref<StructuredAddress | null>(null)
+/** 面单 / 承运商文件实际用的地址（ship_to → 收货方的结构化字段 → 单行地址） */
+const effectiveShipTo = ref<StructuredAddress | null>(null)
+/** 收件地址表单是按哪个收货方填的（换收货方时重新填） */
+const shipToRecipientId = ref<number | string | null>(null)
+
+const initShipTo = (data: any) => {
+  originalShipTo.value = data?.ship_to && typeof data.ship_to === 'object' ? cleanShipTo(data.ship_to) : null
+  effectiveShipTo.value = data?.ship_to_effective && typeof data.ship_to_effective === 'object' ? data.ship_to_effective : null
+  shipTo.value = { ...(originalShipTo.value || {}) }
+  shipToRecipientId.value = data?.recipient_id ?? null
+  resetAddressLine()
+}
+
+/** 本单没有快照、表单也没填结构化地址时，显示面单实际用的地址 */
+const showEffective = computed(() => !originalShipTo.value && !shipToStructured.value
+  && hasStructuredAddress(effectiveShipTo.value))
+const useEffective = () => {
+  // 单行地址不动：与填进来的地址不一致时，输入框下面会提示并可以一键换成排版的写法
+  shipTo.value = { ...(cleanShipTo(effectiveShipTo.value) || {}) }
+}
+
+let recipientSeq = 0
+const applyRecipient = async (recipientId: number | string) => {
+  const seq = ++recipientSeq
+  shipToRecipientId.value = recipientId
+  const data = await httpRequest<any>(`/api/warehouse/recipient/${recipientId}`, {
+    method: 'GET',
+    onError: (error) => showToast(error.message, 'error'),
+  })
+  if (seq !== recipientSeq || !data) return  // 期间又换了收货方
+  const address = shipToFromRecipient(data)
+  shipTo.value = address
+  // 有结构化地址时单行地址按它生成（与后端一致）；没有时用收货方的单行地址（旧数据）
+  shippingAddress.value = hasStructuredAddress(address) ? formatAddressOneLine(address, 'local') : (data.address || null)
+  resetAddressLine()
+  errors.value.shipping_address = null
+}
+
+// ------------------ 运单服务选项（shipping_options，§6.4） ----------------------
+/** 所选承运商声明的选项（GET /carrier/<id> 的 service_options）；没有承运商 / 没有声明时不显示 */
+const optionSchema = ref<ServiceOption[]>([])
+const optionForm = ref<Record<string, string>>({})
+const optionErrors = ref<Record<string, string>>({})
+const optionsLoading = ref(false)
+/** 打开时本单的选项值（只提交改了的项，其余照旧） */
+const originalOptions = ref<Record<string, any> | null>(null)
+let carrierSeq = 0
+watch(
+  () => dnItem.value.carrier_id,
+  async (carrierId: any) => {
+    const seq = ++carrierSeq
+    optionErrors.value = {}
+    if (!carrierId) {
+      optionSchema.value = []
+      optionsLoading.value = false
+      return
+    }
+    optionsLoading.value = true
+    const schema = await loadCarrierServiceOptions(carrierId)
+    if (seq !== carrierSeq) return  // 期间又换了承运商
+    optionSchema.value = schema
+    // 按本单已存的值填；换承运商时同名的选项保留已填的值
+    optionForm.value = optionsToForm(schema, originalOptions.value, optionForm.value)
+    optionsLoading.value = false
+  },
 );
 
 // 处理承运商选择
@@ -216,16 +329,22 @@ onMounted(async() => {
 const submitting = ref(false)
 const editDN = async () => {
   if (submitting.value) return
+  const addressText = String(dnItem.value.shipping_address ?? '').trim()
   errors.value = {
     dn_type: !dnItem.value.dn_type ? t('common.validation.type-required') : null,
     wareshouse: !dnItem.value.warehouse_id ? t('common.validation.warehouse-required') : null,
     recipient: !dnItem.value.recipient_id ? t('common.validation.recipient-required') : null,
-    shipping_address: !dnItem.value.shipping_address ? t('common.validation.address-required') : null,
-    expected_shipping_date: !dnItem.value.expected_shipping_date ? t('common.validation.expected-shipping-date-required') : null,    
+    // 单行地址或结构化地址（ship_to）之一（只有 ship_to 时后端按它生成单行地址）
+    shipping_address: !addressText && !shipToStructured.value ? t('dn.ship-to.required') : null,
+    expected_shipping_date: !dnItem.value.expected_shipping_date ? t('common.validation.expected-shipping-date-required') : null,
     details: dnItem.value.details.length === 0 ? t('common.validation.goods-item-required') : null
   }
 
-  if (Object.values(errors.value).some(v => v)) return
+  // 服务选项：只提交改了的项；金额要是 0 以上的数字
+  const optionResult = optionsChange(optionSchema.value, optionForm.value, originalOptions.value)
+  optionErrors.value = Object.fromEntries(optionResult.invalid.map((key: string) => [key, t('shipping.options.invalid-money')]))
+
+  if (Object.values(errors.value).some(v => v) || optionResult.invalid.length) return
 
   // 有明细数量超出可用量：不提交（该行下方已提示）
   const exceeded: any = dnItem.value.details.find((item: any) => exceedsMax(item))
@@ -238,17 +357,36 @@ const editDN = async () => {
     dnItem.value.expected_shipping_date = safeFormatDate(dnItem.value.expected_shipping_date);
   }
 
+  // 读进来的 ship_to / shipping_options 不原样回传：按表单决定带不带
+  const body: Record<string, any> = { ...dnItem.value, shipping_address: addressText || null }
+  delete body.ship_to
+  delete body.ship_to_effective
+  delete body.shipping_options
+  if (shipToStructured.value) body.ship_to = cleanShipTo(shipTo.value)   // 替换快照
+  else if (originalShipTo.value) body.ship_to = null                      // 清空了结构化地址：去掉快照
+  if (optionResult.changed) body.shipping_options = optionResult.options
+
   submitting.value = true
   await httpRequest(`/api/warehouse/dn/${dnId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: dnItem.value,
+    body,
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
-      await router.push('/dn/')          
+      await router.push('/dn/')
     },
     onError: (error) => {
       submitting.value = false
+      // 服务选项不合法（16139，field = shipping_options.<key>）：标在该项下面
+      const optionKey = error.code === 16139 ? optionKeyOfError(error.field) : null
+      if (optionKey) optionErrors.value = { [optionKey]: t('shipping.options.invalid-field', { message: error.message || '—' }) }
+      // 收件地址的字段不对（14019 文本超长 / 14020 国家代码，field = ship_to.xxx）：指明是哪一项
+      if ((error.code === 14019 || error.code === 14020) && String(error.field || '').startsWith('ship_to')) {
+        showToast(t('dn.ship-to.invalid-field', {
+          field: addressFieldLabel(error.field, shipTo.value.country, t, te), message: error.message || '—',
+        }), 'error')
+        return
+      }
       // 库存不足（16032）等按业务码显示原因
       showToast(bizErrorMessage(error), 'error')
     }
@@ -494,6 +632,46 @@ const saveRemark = () => {
           <div v-if="errors.details" class="invalid-feedback d-block">{{ errors.details }}</div>
         </div>
       </div>
+
+      <!-- 收件地址：本单的 ship_to 快照；没有快照时只有单行地址，另显示面单实际用的地址 -->
+      <div class="card custom-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="ri-map-pin-line me-1"></i>{{ t('dn.ship-to.title') }} <abbr title="required" aria-hidden="true" class="text-danger">*</abbr>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="fs-12 text-muted mb-3">{{ t('dn.ship-to.tip') }}</p>
+          <div class="alert alert-light fs-13 mb-3" v-if="showEffective">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+              <div>
+                <div class="fw-semibold mb-1">{{ t('dn.ship-to.effective') }}</div>
+                <div class="fs-12 text-muted mb-2">{{ t('dn.ship-to.effective-hint') }}</div>
+                <StructuredAddressView :address="effectiveShipTo" postal-key="postal_code" with-names />
+              </div>
+              <button type="button" class="btn btn-sm btn-primary-light" @click="useEffective">{{ t('dn.ship-to.use-effective') }}</button>
+            </div>
+          </div>
+          <DnShipToFields v-model="shipTo" id-prefix="dn-ship-to" />
+
+          <!-- 单行地址：空着或与上面的排版一致时跟着结构化字段自动生成；手工改过的不覆盖 -->
+          <div class="mt-3">
+            <label for="dn-shipping-address" class="form-label">{{ t('dn.fields.shipping-address') }}</label>
+            <input type="text" class="form-control" id="dn-shipping-address" maxlength="255"
+              :placeholder="t('dn.form.placeholders.shipping-address')" :value="dnItem.shipping_address ?? ''"
+              @input="onAddressInput(($event.target as HTMLInputElement).value)">
+            <div class="form-text" :class="{ 'text-warning': addressDiffers && !addressAuto && !!String(dnItem.shipping_address ?? '').trim() }">
+              <template v-if="addressAuto && addressFormatted">{{ t('address.legacy-auto') }}</template>
+              <template v-else-if="addressDiffers && String(dnItem.shipping_address ?? '').trim()">{{ t('address.legacy-differs') }}</template>
+              <template v-else-if="!shipToStructured">{{ t('dn.ship-to.unstructured-hint') }}</template>
+              <template v-else>{{ t('address.legacy-hint') }}</template>
+              <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline fs-12" v-if="addressDiffers && !addressAuto"
+                @click="useFormattedAddress">{{ t('address.use-formatted') }}</button>
+            </div>
+            <div v-if="errors.shipping_address" class="invalid-feedback d-block">{{ errors.shipping_address }}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="col-xxl-3">
@@ -553,14 +731,6 @@ const saveRemark = () => {
             </div>
 
             <div class="mb-3">
-              <label class="form-label">{{t('dn.fields.shipping-address')}} <abbr title="required" aria-hidden="true"
-                  class="text-danger">*</abbr></label>
-              <input type="text" class="form-control" id="service-charges" :placeholder="t('dn.form.placeholders.shipping-address')"
-                v-model="dnItem.shipping_address">
-              <div v-if="errors.shipping_address" class="invalid-feedback d-block">{{ errors.shipping_address }}</div>
-            </div>
-
-            <div class="mb-3">
               <label class="form-label">{{t('common.entities.carrier')}}</label>
               <div class="flex-nowrap input-group-custom">
                 <VueMultiselect :searchable="true" :show-labels="false" v-model="selectedCarrier"
@@ -568,6 +738,21 @@ const saveRemark = () => {
                   :internal-search="false" label="name" track-by="id" :options-limit="100"
                   @search-change="fetchCarrierData" />
               </div>
+              <div class="form-text fs-12" v-if="!dnItem.carrier_id">{{ t('dn.shipping-options.no-carrier') }}</div>
+            </div>
+
+            <!-- 运单服务选项：只在所选承运商声明了选项时显示 -->
+            <div class="mb-3" v-if="dnItem.carrier_id && (optionsLoading || optionSchema.length)">
+              <label class="form-label">{{ t('dn.shipping-options.title') }}</label>
+              <div class="d-flex justify-content-center" v-if="optionsLoading">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                  <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
+                </div>
+              </div>
+              <template v-else>
+                <p class="fs-12 text-muted mb-2">{{ t('dn.shipping-options.hint') }}</p>
+                <ShippingOptionsFields v-model="optionForm" :schema="optionSchema" id-prefix="dn-option" :errors="optionErrors" />
+              </template>
             </div>
 
             <div class="form-group mb-3">

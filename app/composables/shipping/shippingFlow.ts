@@ -11,7 +11,8 @@
  * - refresh_tracking → POST /dn/<id>/carrier-shipment/track；open_tracking → 承运商公开查询页（新标签页）
  * - sign → PUT /delivery/<task>/sign/ {signed_at}
  * - issue_documents → POST /dn/<id>/customs-documents/issue；edit_packages → PUT /dn/<id>/packages（DnPackagesEditor）
- * - export_file / import_numbers 是第二期（文件方式），现在不显示
+ * - export_file → POST /dn/carrier-files/export（文件下载）；import_numbers → POST /dn/carrier-files/import（预览 → 确认）；
+ *   discard_export → POST /dn/<id>/carrier-shipment/discard-export（FlowWaybillFileDetail，文件方式见 carrierFile.ts）
  */
 
 export type FlowStepKey =
@@ -121,13 +122,20 @@ export const FLOW_STAGE_GROUPS: { key: string; steps: FlowStepKey[] }[] = [
   { key: 'delivered', steps: ['delivered'] },
 ]
 
-/** 列表的工作队列（DN 列表的页签；awaiting_number 是第二期的文件方式，先不列） */
+/** 列表的工作队列（DN 列表的页签；awaiting_number = 文件方式已导出、等导回运单号） */
 export const SHIPPING_STAGE_TABS: ShippingStage[] = [
-  'preparing', 'awaiting_waybill', 'awaiting_pickup', 'awaiting_handover', 'in_transit', 'exception', 'delivered', 'closed',
+  'preparing', 'awaiting_waybill', 'awaiting_number', 'awaiting_pickup', 'awaiting_handover', 'in_transit', 'exception',
+  'delivered', 'closed',
 ]
 
-/** 第二期才有的操作：不显示 */
-export const HIDDEN_ACTIONS = ['export_file', 'import_numbers']
+/** 文件方式的批量操作所在的页签：待建运单（批量导出）、待导回（批量导入） */
+export const FILE_BATCH_STAGES: ShippingStage[] = ['awaiting_waybill', 'awaiting_number']
+
+/** 界面不显示的操作（现在没有；留着给以后还没接上的操作用） */
+export const HIDDEN_ACTIONS: string[] = []
+
+/** 文件方式的运单操作 */
+export const FILE_WAYBILL_ACTIONS = ['export_file', 'import_numbers', 'discard_export']
 
 const STAGE_COLORS: Record<string, string> = {
   preparing: 'secondary',

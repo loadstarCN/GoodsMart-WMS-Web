@@ -41,13 +41,24 @@ const messageParams = (error: BizErrorLike): Record<string, any> => {
  * - 16079：按 details.unresolved.status 区分：建单中 → -in-progress；取消中 / 取消结果不明 → -cancelling；建单结果不明 → 基础文案
  * - 16095：承运商已建运单但保存失败，已自动取消（details.compensation.cancelled = true）→ code-16095-cancelled
  * - 16135：承运商的对接方式不能选（field 为 waybill_method / pickup_method / tracking_method）→ code-16135-method；
+ *   文件方式的设置（field 为 file_preset / file_template / file_account.<key>）→ code-16135-file；
  *   其它（定期集荷、查询页、自动签收天数……）用基础文案
+ * - 16137：承运商文件有行不能导出（逐行问题在 details.rows，界面另列表格）→ 基础文案
+ * - 16138：文件方式用不了。409 + field carrier_id（运单方式不是文件 / 没有可用的模板 / 模板不能导入）→ code-16138-carrier；
+ *   409 + field file_account.<key>（必填账号项没填）→ code-16138-account；400 + field file（导入文件没有 / 为空 / 太大 / 读不了）
+ *   → 基础文案；其它 400（carrier_id / dn_ids / warehouse_id / dry_run 不合法）→ code-16138-request
+ * - 16139：运单服务选项不合法（field = options.<key>）→ 基础文案（选项编辑器把它标在该项下面）
+ * - 16076：details.reason = SHIPPING_OPTIONS_LOCKED（建运单 / 导出后改服务选项）→ code-16076-options-locked；
+ *   SHIP_TO_LOCKED（建运单 / 导出后改收件地址）→ code-16076-ship-to-locked
+ * - 16075：作废导出时没有已导出的文件运单（details 带 waybill 键）→ code-16075-discard
  */
 export const bizErrorVariant = (error: BizErrorLike): string => {
   if (!error) return ''
   const details = detailsOf(error)
   if (error.code === 16063 && details.max_decimal_places !== undefined && details.max_decimal_places !== null) return 'decimal-places'
   if (error.code === 16076) {
+    if (details.reason === 'SHIPPING_OPTIONS_LOCKED') return 'options-locked'
+    if (details.reason === 'SHIP_TO_LOCKED') return 'ship-to-locked'
     if (details.reason === 'DOCUMENT_DATA_CHANGED') return 'document-changed'
     const shipment = details.carrier_shipment
     return carrierRecordVariant(shipment && typeof shipment === 'object' ? shipment.status : details.status)
@@ -62,6 +73,15 @@ export const bizErrorVariant = (error: BizErrorLike): string => {
     return compensation && typeof compensation === 'object' && compensation.cancelled === true ? 'cancelled' : ''
   }
   if (error.code === 16135 && /_method$/.test(String(error.field || ''))) return 'method'
+  if (error.code === 16135 && /^file_/.test(String(error.field || ''))) return 'file'
+  if (error.code === 16138) {
+    const field = String(error.field || '')
+    if (field.startsWith('file_account')) return 'account'
+    if (error.status === 409) return 'carrier'
+    if (field && field !== 'file') return 'request'
+    return ''
+  }
+  if (error.code === 16075 && Object.prototype.hasOwnProperty.call(details, 'waybill')) return 'discard'
   if (error.code === 16078 && details.status === 'cancelled') return 'cancelled'
   if (error.code === 16078) {
     const variant = carrierRecordVariant(details.status)

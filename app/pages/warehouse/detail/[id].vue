@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { countryOptionLabel } from '~/data/countries'
+import { hasStructuredAddress } from '~/composables/address/structuredAddress'
 
 // 定义页面元数据
 definePageMeta({
@@ -49,6 +50,10 @@ onMounted(async() => {
   await fetchData();
 });
 
+// 有结构化地址、单行地址或英文地址时显示地址一栏
+const hasAddress = computed(() => !!itemData.value && (hasStructuredAddress(itemData.value)
+  || !!String(itemData.value.address ?? '').trim() || !!String(itemData.value.address_en ?? '').trim()));
+
 
 </script>
 
@@ -71,14 +76,14 @@ onMounted(async() => {
                     <p class="fs-18 fw-semibold mb-3">{{ itemData?.name}} <span
                         class="badge rounded-pill bg-info fs-10 fw-normal ms-2">{{ itemData?.location_type }}</span></p>
 
-                    <div class="mb-4" v-if="itemData?.address">
+                    <!-- 地址：结构化地址按国家排版（+ 拉丁转写 / 英文单行地址 address_en），旧数据只有单行地址 -->
+                    <div class="mb-4" v-if="hasAddress">
                       <p class="fs-15 fw-semibold mb-1">{{t('common.fields.address')}} :</p>
-                      <p class="text-muted mb-0">{{ itemData.address }} {{ itemData.zip_code }}
-                      </p>
+                      <StructuredAddressView class="text-muted" :address="itemData" country-key="country_code"
+                        :legacy="itemData.address" :legacy-latin="itemData.address_en" />
                     </div>
-                    <div class="mb-4" v-if="itemData?.address_en || itemData?.country_code || itemData?.contact_name_en">
+                    <div class="mb-4" v-if="itemData?.country_code || itemData?.contact_name_en">
                       <p class="fs-15 fw-semibold mb-1">{{ t('warehouse.sections.export') }} :</p>
-                      <p class="text-muted mb-0" v-if="itemData.address_en">{{ itemData.address_en }}</p>
                       <p class="text-muted mb-0" v-if="itemData.country_code">{{ countryOptionLabel(itemData.country_code, locale) }}</p>
                       <p class="text-muted mb-0" v-if="itemData.contact_name_en">{{ itemData.contact_name_en }}</p>
                     </div>

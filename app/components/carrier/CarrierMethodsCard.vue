@@ -2,15 +2,18 @@
 /**
  * 承运商的对接方式（承运商编辑页，随承运商资料一起保存：PUT /carrier/<id>）。
  * 每项能力各自选方式，没有 API 合同也能完整走流程（后端 doc/shipping-flow.md §2）：
- * - 运单 waybill_method：api（在线对接建单）/ manual（手填 / 扫码运单号）；file（文件导出导入）是第二期
+ * - 运单 waybill_method：api（在线对接建单）/ file（按承运商软件的格式导出 CSV、导回运单号：选预设、填账号项，
+ *   见 CarrierFileSettings）/ manual（手填 / 扫码运单号）
  * - 揽收 pickup_method：api（在线预约）/ manual（电话 / 网站约好后记一笔，显示约揽收的联系方式 pickup_contact）/
  *   scheduled（定期集荷：pickup_schedule 星期 + 时间段）/ dropoff（自送网点）/ none（不管揽收）
  * - 跟踪 tracking_method：api（定时查，揽收后自动交承运商、送达后自动签收）/ link（只给公开查询页）/ none
  * - 公开查询页 tracking_url_template（{tracking_number} 占位；空 = 用插件内置的）
  * - 自动视为签收 auto_sign_days（1–90，空 = 关）：交承运商 N 天后还没签收、且运单没有 API 跟踪时按规则签收
- * 可选的方式按后端的 available_methods（api 要在线对接已启用、插件支持）。不合法时后端 400 16135（field 指明哪一项）。
+ * 可选的方式按后端的 available_methods（api 要在线对接已启用、插件支持）；file 要有预设或模板，所以后端支持文件方式
+ * （有预设接口）时总是列出，和预设一起保存。不合法时后端 400 16135（field 指明哪一项）。
  */
 import { ISO_WEEKDAYS, isTimeText, type PickupSchedule } from '~/composables/shipping/shippingFlow'
+import { loadFilePresets, type CarrierFilePreset } from '~/composables/shipping/carrierFile'
 
 const carrier = defineModel<Record<string, any>>({ required: true })
 
@@ -42,20 +45,34 @@ onMounted(async () => {
     },
   })
 })
+// 文件方式的预设（GET /carrier/file-presets；旧后端没有 → null，不列文件方式）
+const filePresets = ref<CarrierFilePreset[] | null>(null)
+onMounted(async () => {
+  filePresets.value = await loadFilePresets()
+})
+const fileRef = ref<{ validate: (active: boolean) => boolean; payload: () => Record<string, any> } | null>(null)
 const pluginTemplate = computed(() => {
   const adapter = carrier.value?.integration?.adapter
   return (adapter && plugins.value.find((p: PluginInfo) => p.code === adapter)?.tracking_url_template) || ''
 })
 
+const WAYBILL_ORDER = ['api', 'file', 'manual']
+/** 文件方式能选：后端有预设接口（file 和预设一起保存，不看 available_methods） */
+const fileSupported = computed(() => filePresets.value !== null)
 /** 现在能选的方式；当前值不在里面（如对接停用后还是 api）时也列出来，免得画面上看不到 */
 const optionsOf = (kind: Kind): string[] => {
   const available = carrier.value?.available_methods?.[kind]
   const list: string[] = Array.isArray(available) && available.length ? [...available] : [DEFAULTS[kind]]
+  if (kind === 'waybill' && fileSupported.value && !list.includes('file')) {
+    list.push('file')
+    list.sort((a, b) => WAYBILL_ORDER.indexOf(a) - WAYBILL_ORDER.indexOf(b))
+  }
   const current = carrier.value?.[FIELD[kind]]
   if (current && !list.includes(current)) list.unshift(current)
   return list
 }
 const unavailable = (kind: Kind, value: string): boolean => {
+  if (kind === 'waybill' && value === 'file' && fileSupported.value) return false
   const available = carrier.value?.available_methods?.[kind]
   return Array.isArray(available) && !available.includes(value)
 }
@@ -120,7 +137,8 @@ const validate = (): boolean => {
   }
   if (String(carrier.value?.pickup_contact || '').length > 255) errs.pickup_contact = t('carrier.methods.validation.contact')
   localErrors.value = errs
-  return Object.keys(errs).length === 0
+  const fileValid = fileRef.value ? fileRef.value.validate(methodOf('waybill') === 'file') : true
+  return Object.keys(errs).length === 0 && fileValid
 }
 
 /** 要提交的对接方式字段（规范化：空 = null；不是定期集荷时不带时间表） */
@@ -140,6 +158,8 @@ const payload = (): Record<string, any> => {
     tracking_method: methodOf('tracking'),
     tracking_url_template: template || null,
     auto_sign_days: days === null || days === undefined || String(days).trim() === '' ? null : Number(days),
+    // 文件设置：不是文件方式时也照原样带上（切回来不用重填）；旧后端没有预设接口时不带
+    ...(fileRef.value ? fileRef.value.payload() : {}),
   }
 }
 
@@ -203,6 +223,12 @@ defineExpose({ validate, payload })
               v-model="carrier.pickup_contact">
             <div class="invalid-feedback d-block" v-if="errorOf('pickup_contact')">{{ errorOf('pickup_contact') }}</div>
           </div>
+        </div>
+
+        <!-- 文件方式：预设、账号项、导出的列、模板 -->
+        <div class="col-xl-12" v-if="methodOf('waybill') === 'file' && filePresets">
+          <CarrierFileSettings ref="fileRef" v-model="carrier" :presets="filePresets" :editable="editable"
+            :server-errors="serverErrors" />
         </div>
 
         <!-- 公开查询页 -->

@@ -35,7 +35,16 @@ const itemData = ref<Record<string, any>>({
   address_en: null,
   country_code: null,
   contact_name_en: null,
+  // 结构化地址（后端 doc/shipping-flow.md §6.2；address_en 是拉丁地址的单行写法）
+  admin_area: null,
+  locality: null,
+  address_line1: null,
+  address_line2: null,
+  latin: null,
 })
+
+/** 仓库的拉丁转写只有地址（联系人英文名另有 contact_name_en） */
+const WAREHOUSE_LATIN_KEYS = ['address_line1', 'address_line2', 'locality', 'admin_area'] as const
 
 const errors = ref<Record<string, any>>({
   name: null
@@ -104,7 +113,8 @@ const saveWarehouse = async () => {
   await httpRequest(`/api/warehouse/warehouse/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: itemData.value,
+    // 邮编两个名字都给（zip_code 即 postal_code；读回来的旧 postal_code 不能原样回传，两个不同后端 400 14019）
+    body: { ...itemData.value, postal_code: itemData.value.zip_code ?? null },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
       // 刷新员工信息与页头仓库下拉，并校验当前仓库
@@ -166,7 +176,7 @@ onMounted(async() => {
         <div class="card-body add-products p-0">
           <div class="p-4">
             <div class="row gx-5">
-              <div class="col-xxl-6 col-xl-12">
+              <div class="col-xxl-8 col-xl-12">
                 <div class="card custom-card shadow-none mb-0 border-0">
                   <div class="card-body p-0">
                     <div class="row gy-3 mb-3">
@@ -179,16 +189,6 @@ onMounted(async() => {
                         <div v-if="errors.name" class="invalid-feedback d-block">{{ errors.name }}</div>
                       </div>
 
-                      <div class="col-xl-12">
-                        <label for="warehouse-address" class="form-label">{{t('common.fields.address')}}</label>
-                        <input type="text" class="form-control" id="warehouse-address" :placeholder="t('common.placeholders.address')"
-                          v-model="itemData.address">
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="warehouse-zip_code" class="form-label">{{t('common.fields.zip')}}</label>
-                        <input type="text" class="form-control" id="warehouse-zip_code" :placeholder="t('common.placeholders.zip')"
-                          v-model="itemData.zip_code">
-                      </div>
                       <div class="col-xl-6">
                         <label for="warehouse-phone" class="form-label">{{t('common.fields.phone')}}</label>
                         <input type="text" class="form-control" id="warehouse-phone" :placeholder="t('common.placeholders.phone')"
@@ -201,19 +201,16 @@ onMounted(async() => {
                         </VueMultiselect>
                       </div>
 
+                      <!-- 结构化地址（国家、按国家排顺序的地址；拉丁转写 = 出口单证 / 国际面单的英文地址，address_en 跟着生成） -->
+                      <div class="col-xl-12 mt-4">
+                        <h6 class="fw-semibold mb-3"><i class="ri-map-pin-line me-1"></i>{{ t('address.title') }}</h6>
+                        <StructuredAddressFields v-model="itemData" id-prefix="warehouse" country-key="country_code"
+                          legacy-latin-key="address_en" :latin-keys="[...WAREHOUSE_LATIN_KEYS]" />
+                      </div>
+
                       <div class="col-xl-12 mt-4">
                         <h6 class="fw-semibold mb-1"><i class="ri-earth-line me-1"></i>{{ t('warehouse.sections.export') }}</h6>
-                        <p class="fs-12 text-muted mb-0">{{ t('warehouse.tips.export') }}</p>
-                      </div>
-                      <div class="col-xl-12">
-                        <label for="warehouse-address-en" class="form-label">{{ t('warehouse.fields.address-en') }}</label>
-                        <textarea class="form-control" id="warehouse-address-en" rows="2" maxlength="500"
-                          :placeholder="t('warehouse.form.placeholders.address-en')" v-model="itemData.address_en"></textarea>
-                        <div class="form-text text-warning" v-if="hasNonLatin(itemData.address_en)">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="warehouse-country-code" class="form-label">{{ t('warehouse.fields.country-code') }}</label>
-                        <CountrySelect id="warehouse-country-code" v-model="itemData.country_code" />
+                        <p class="fs-12 text-muted mb-0">{{ t('warehouse.tips.export') }} {{ t('warehouse.tips.export-latin') }}</p>
                       </div>
                       <div class="col-xl-6">
                         <label for="warehouse-contact-name-en" class="form-label">{{ t('warehouse.fields.contact-name-en') }}</label>

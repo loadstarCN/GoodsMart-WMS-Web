@@ -543,7 +543,8 @@
       "export": "发货地资料（英文）"
     },
     "tips": {
-      "export": "与公司地址不同时，作为发货地（Ship From）印在单证上。"
+      "export": "与公司地址不同时，作为发货地（Ship From）印在单证上。",
+      "export-latin": "英文地址在上面地址的「拉丁转写」里。"
     }
   },
   "location": {
@@ -724,7 +725,7 @@
       "help": {
         "waybill": {
           "api": "WMS 通过在线对接建运单，拿到面单和运单号；承运商系统故障时也可以改为手工填运单号。",
-          "file": "导出文件给承运商软件打单，再导回运单号（后续版本）。",
+          "file": "按承运商软件的格式导出 CSV，在承运商软件里打单后把运单号文件导回（不需要 API 合同）。",
           "manual": "在承运商网站或软件打面单，再在 WMS 填写或扫描运单号。"
         },
         "pickup": {
@@ -759,6 +760,37 @@
         "auto-sign-days": "填 1–90 的整数天数，或留空",
         "contact": "最多 255 个字符"
       }
+    },
+    "file": {
+      "title": "文件方式",
+      "intro": "按承运商软件的导入格式导出 CSV，在承运商软件里打印面单，再把带运单号的文件导回 WMS。导出时每行写入出库单的匹配键（DN + 编号），导回时按它找到出库单。",
+      "preset": "文件格式（预设）",
+      "preset-none": "请选择",
+      "preset-other": "其他",
+      "no-presets": "服务器上没有可用的预设；可以在下面的「高级」里填写模板。",
+      "preset-missing": "保存的预设 {code} 在服务器上找不到",
+      "verified": "已实测",
+      "unverified": "此预设还没在承运商软件里实测导入过：请先导出一张试着导入，确认无误后再批量使用。",
+      "account": "账号信息",
+      "account-hint": "写进导出文件的账号项（如客户代码、请求先代码）。",
+      "tracking-url": "预设的公开查询页：",
+      "use-tracking-url": "用作查询页",
+      "tracking-url-in-use": "已在使用",
+      "columns": "导出的列（{count} 列）",
+      "column-header": "列名",
+      "column-required": "必填",
+      "column-max-length": "最大长度",
+      "template": "高级：模板（JSON，覆盖预设的部分）",
+      "template-hint": "只写要改的部分（与预设同一结构）；留空 = 完全用预设。没有选预设时要写完整的模板。",
+      "template-placeholder": "留空 = 用预设",
+      "template-valid": "JSON 格式正确",
+      "template-format": "整理格式",
+      "validation": {
+        "template-json": "模板必须是 JSON 对象",
+        "preset-required": "文件方式要选一个预设（或填写模板）",
+        "account-required": "请填写{field}"
+      },
+      "version": "依据的规格：{version}"
     }
   },
   "recipient": {
@@ -1052,6 +1084,33 @@
       "cancel-confirm-title": "取消发货单？",
       "cancel-confirm": "将取消 DN-{id}：释放该单预占的库存，停用拣货任务，单据关闭。拣货已经开始的不能取消。此操作不能撤销。",
       "cancel-confirm-picked": "将取消 DN-{id}：已拣货 / 已打包的商品会退回待上架库存，需要重新上架；同时释放预占，相关作业任务一并停用，单据关闭。有未结束的运单时需先在发货流程的「运单」一步取消运单。此操作不能撤销。"
+    },
+    "ship-to": {
+      "title": "收件地址",
+      "tip": "选择收货方后按收货方的地址自动填写，可以按本单修改；面单和承运商文件用这里的地址。",
+      "name": "收件人姓名",
+      "required": "请填写收件地址（结构化地址或单行地址）",
+      "invalid-field": "收件地址的「{field}」不对（{message}）",
+      "unstructured-hint": "没有填写结构化地址：本单按这一行地址发货，面单上的姓名、电话、邮编用收货方的。",
+      "effective": "面单当前使用的地址",
+      "effective-hint": "本单没有单独保存收件地址，面单和承运商文件按收货方的地址。要按本单修改，可以先填进下面的表单。",
+      "use-effective": "填入表单",
+      "edit": "改收件地址",
+      "edit-title": "改收件地址",
+      "edit-hint": "只改这张出库单（收货方的资料不变）。面单和承运商文件用这里的地址；建运单或导出后就不能再改。",
+      "edit-from-effective": "本单还没有单独保存收件地址，下面按收货方的地址填好了；保存后本单就用这里的地址。",
+      "saved": "收件地址已保存",
+      "from-recipient": "（本单没有单独保存收件地址，按收货方资料）",
+      "locked-reasons": {
+        "WAYBILL_EXISTS": "运单已按现在的地址建好或已导出，不能再改；要改请先在发货流程的「运单」一步取消运单（文件方式为作废导出）。",
+        "DN_SHIPPED": "已发货，收件地址不能再改。",
+        "DN_CLOSED": "出库单已关闭，收件地址不能再改。"
+      }
+    },
+    "shipping-options": {
+      "title": "运单服务选项",
+      "hint": "配送日、时间带等随运单交给承运商；空着的项用默认值。建运单 / 导出后不能再改。",
+      "no-carrier": "选了承运商后可以设置配送日、时间带等服务选项；也可以稍后在发货流程的「运单」一步设置。"
     }
   },
   "picking": {
@@ -2043,8 +2102,8 @@
     "code-16068": "单证条件不全",
     "code-16070": "不是海外单",
     "code-16071": "单证不存在",
-    "code-14019": "出口资料文本超长",
-    "code-14020": "公司/仓库国家代码不合法（须为 ISO 3166-1 两位代码）",
+    "code-14019": "「{field}」的内容不对（不是文字或太长，或邮编前后不一致），请检查后再保存",
+    "code-14020": "国家代码不对（{field}）：须为 ISO 3166-1 两位代码",
     "code-16072": "现在还不能建运单",
     "code-16073": "承运商返回了错误",
     "code-16074": "承运商没有及时回应",
@@ -2134,7 +2193,17 @@
     "code-16125": "这个承运商还有没结束的运单（取消要用这套设置），先处理完再移除或更换对接",
     "code-16135": "对接方式的设置不对（{field}），请检查后再保存",
     "code-16135-method": "对接方式的设置不对（{field}）：在线（API）方式要先启用在线对接，且插件支持。",
-    "code-16136": "实际交承运商的时间不能晚于现在"
+    "code-16136": "实际交承运商的时间不能晚于现在",
+    "code-16135-file": "文件方式的设置不对（{field}）：请选好预设、填好账号项，并检查模板。",
+    "code-16137": "有出库单不能导出（必填为空、超长或有写不了的字），整批没有导出；请按列出的问题修改后再导出",
+    "code-16138": "导入的文件读不了或与承运商的格式不符（编码、列、匹配键），请确认是这家承运商的运单号文件",
+    "code-16138-carrier": "这家承运商现在不能用文件方式：运单方式不是「文件」，或文件格式（预设 / 模板）不完整。请到承运商设置里检查",
+    "code-16139": "服务选项不对（{field}），请检查后再保存",
+    "code-16076-options-locked": "运单已建好或已导出，服务选项不能再改；要改请先在「运单」一步取消运单（文件方式为作废导出）",
+    "code-16138-account": "请先在承运商设置里填好文件方式的账号项（{field}），再导出",
+    "code-16138-request": "请求的内容不对（{field}），请刷新页面后重试",
+    "code-16075-discard": "这张出库单没有待导回的导出记录（可能已导回运单号或已作废），页面已刷新",
+    "code-16076-ship-to-locked": "运单已按现在的地址建好或已导出，收件地址不能再改；要改请先在「运单」一步取消运单（文件方式为作废导出）"
   },
   "shipping": {
     "title": "发货流程",
@@ -2207,7 +2276,7 @@
       "dismiss_waybill": "解除锁定",
       "print_label": "打印面单",
       "export_file": "导出文件",
-      "import_numbers": "导入运单号",
+      "import_numbers": "导回运单号",
       "book_pickup": "预约揽收",
       "record_pickup": "记录揽收",
       "cancel_pickup": "取消揽收",
@@ -2216,7 +2285,8 @@
       "open_tracking": "承运商查询页",
       "sign": "确认签收",
       "issue_documents": "签发单证",
-      "edit_packages": "录箱子"
+      "edit_packages": "录箱子",
+      "discard_export": "作废导出"
     },
     "summary": {
       "order-number": "订单号 {number}",
@@ -2238,7 +2308,10 @@
       "waybill-unresolved": "建单结果不明，请核对后处理",
       "waybill-pending": "正在向 {carrier} 建运单",
       "waybill-cancelling": "正在取消运单",
-      "transit-waiting": "等承运商的跟踪信息"
+      "transit-waiting": "等承运商的跟踪信息",
+      "waybill-exported": "已导出（{time}），等导回运单号",
+      "waybill-exported-no-time": "已导出，等导回运单号",
+      "waybill-file": "导出文件，在 {carrier} 的软件里打单"
     },
     "documents": {
       "problems-title": "先处理这 {count} 项",
@@ -2339,7 +2412,197 @@
       "NOT_HANDED_OVER": "还没交承运商",
       "NOT_AVAILABLE": "现在不能做",
       "SHIPMENT_EXISTS": "运单已经建好了",
-      "CARRIER_NOT_SET": "还没选承运商"
+      "CARRIER_NOT_SET": "还没选承运商",
+      "FILE_NOT_CONFIGURED": "承运商的文件格式还没设好",
+      "WAYBILL_EXISTS": "已有别的运单（在线建的、手填的或已导回的运单号）"
+    },
+    "file": {
+      "intro": "导出这张出库单的文件，导入 {carrier} 的软件打印面单，再把带运单号的文件导回。",
+      "export-csv": "导出文件",
+      "export-again": "重新导出",
+      "exported-title": "已导出，等导回运单号",
+      "exported-at": "导出于 {time}",
+      "batch": "批次 #{id}",
+      "exported-next": "在 {carrier} 的软件里打印面单后，把它导出的运单号文件导回。",
+      "exported-toast": "已导出 {file}",
+      "discard-confirm-title": "作废导出？",
+      "discard-confirm": "这张出库单回到「待建运单」。如果已经在 {carrier} 的软件里打了单，请在那边也删除。",
+      "discarded-toast": "已作废导出",
+      "manual-fallback": "改为手工填运单号",
+      "export-problems": "{count} 张出库单有问题，整批没有导出",
+      "export-problems-hint": "改好下面的问题（收件地址、电话等）后再导出。地址、姓名超长不会自动截断。",
+      "fields": {
+        "dn": "出库单",
+        "order-number": "订单号",
+        "column": "列",
+        "problem": "问题",
+        "line": "行",
+        "reference": "匹配键",
+        "tracking-numbers": "运单号",
+        "result": "结果",
+        "message": "说明"
+      },
+      "problem-codes": {
+        "REQUIRED": "必填但为空",
+        "TOO_LONG": "太长：{length} {unit}，最多 {max}",
+        "UNENCODABLE": "有文件编码写不了的字：{characters}",
+        "CHARACTER_NOT_ALLOWED": "有承运商软件不收的字（JIS 第 1・2 水准以外）：{characters}",
+        "DN_NOT_FOUND": "找不到这张出库单（或不是本仓库的）",
+        "OTHER_WAREHOUSE": "属于别的仓库：一次只能导出同一仓库的出库单",
+        "NOT_PACKED": "还没打包完",
+        "DN_SHIPPED": "已发货",
+        "DN_CLOSED": "出库单已关闭（取消）",
+        "NO_OPEN_TASK": "没有进行中的配送任务",
+        "CARRIER_NOT_SET": "配送任务还没选承运商",
+        "OTHER_CARRIER": "这张出库单的承运商不是这家",
+        "WAYBILL_EXISTS": "已有运单（在线建的、手填的或已导回的），不再导出",
+        "TRACKING_NUMBER_EXISTS": "配送任务上已经填了运单号",
+        "OPTION_INVALID": "服务选项的值不对，请在出库单的「运单」一步重新选择"
+      },
+      "units": {
+        "chars": "字",
+        "sjis-bytes": "字节（Shift_JIS）"
+      },
+      "import-title": "导回运单号",
+      "import-intro": "选择在 {carrier} 的软件里打完单后导出的文件。按导出时写入的匹配键（DN + 编号）找到出库单；保存前会先预览。",
+      "choose-carrier": "选择承运商",
+      "no-file-carriers": "没有运单方式为「文件」的承运商",
+      "file": "文件",
+      "file-hint": "CSV / 文本文件；编码（Shift_JIS / UTF-8）按承运商的格式识别。",
+      "preview": "预览",
+      "preview-intro": "{file} 的预览：只有「匹配」的行会写入运单号。",
+      "only-problems": "只看要处理的行",
+      "already-has-number-hint": "「已有别的运单号」的行不会改；要换号请到出库单上处理。",
+      "results": {
+        "matched": "匹配",
+        "not_found": "找不到出库单",
+        "already_has_number": "已有别的运单号",
+        "same_number": "已导入过",
+        "invalid": "不能写入"
+      },
+      "choose-again": "换个文件",
+      "apply": "写入 {count} 行",
+      "import-done": "已写入 {count} 行运单号",
+      "import-done-toast": "已导回 {count} 行运单号",
+      "recent-files": "最近的文件",
+      "no-batches": "还没有导出 / 导入过",
+      "batch-kinds": {
+        "export": "导出",
+        "import": "导入"
+      },
+      "batch-rows": "{count} 行",
+      "batch-export-title": "导出文件",
+      "batch-no-carrier": "这些出库单还没选承运商：{dns}",
+      "batch-mixed-carriers": "一次只能导出同一家承运商的出库单。选中的有：{carriers}",
+      "batch-not-file": "{carrier} 的运单方式不是「文件」：请在承运商设置里改为文件方式并选好格式。",
+      "batch-exported-toast": "已导出 {count} 张出库单：{file}",
+      "batch-selected": "已选 {count} 张",
+      "batch-hint-export": "勾选同一家文件方式承运商的出库单后导出；打完单后在「待导回运单号」页签导回运单号。",
+      "batch-hint-import": "导回承运商软件给的运单号文件；也可以勾选后重新导出。",
+      "select-all": "全选本页",
+      "label-elsewhere": "面单在 {carrier} 的软件里打印"
+    },
+    "options": {
+      "title": "服务选项",
+      "locked": "已锁定",
+      "none": "没有指定（用默认值）",
+      "hint": "配送日、时间带等随运单提交的选项；建运单 / 导出后不能再改。",
+      "unset": "不指定",
+      "unset-default": "不指定（默认：{value}）",
+      "invalid-money": "请输入 0 或以上的金额",
+      "saved": "服务选项已保存",
+      "lock-hint": "建运单 / 导出后锁定",
+      "invalid-field": "值不对（{message}）",
+      "locked-reasons": {
+        "WAYBILL_EXISTS": "运单已建好或已导出，不能再改；要改请先取消运单（文件方式为作废导出）",
+        "DN_SHIPPED": "已发货，不能再改"
+      }
+    }
+  },
+  "address": {
+    "title": "地址",
+    "tips": {
+      "country": "先选国家：地址的字段和顺序按国家调整。"
+    },
+    "fields": {
+      "name": "姓名",
+      "organization": "公司 / 机构",
+      "postal_code": {
+        "default": "邮编",
+        "JP": "邮编",
+        "US": "ZIP 邮编",
+        "GB": "邮编（Postcode）",
+        "AU": "邮编（Postcode）"
+      },
+      "admin_area": {
+        "default": "州 / 省 / 地区",
+        "JP": "都道府县",
+        "US": "州",
+        "CA": "省",
+        "AU": "州 / 领地",
+        "CN": "省 / 自治区 / 直辖市",
+        "GB": "郡（可选）",
+        "KR": "道 / 特别市",
+        "TW": "县 / 市"
+      },
+      "locality": {
+        "default": "城市",
+        "JP": "市区町村",
+        "CN": "市 / 区县",
+        "GB": "城镇",
+        "KR": "市 / 区 / 郡",
+        "TW": "乡镇市区"
+      },
+      "dependent_locality": {
+        "default": "区 / 街区（可选）",
+        "JP": "町域（可选）"
+      },
+      "address_line1": {
+        "default": "地址第 1 行（街道、门牌号）",
+        "JP": "町名・番地"
+      },
+      "address_line2": {
+        "default": "地址第 2 行（公寓、楼层、房间，可选）",
+        "JP": "建筑名・房间号（可选）"
+      }
+    },
+    "placeholders": {
+      "organization": "可选",
+      "postal_code": {
+        "JP": "100-0004",
+        "US": "94105"
+      },
+      "admin_area": {
+        "JP": "東京都"
+      },
+      "locality": {
+        "JP": "千代田区"
+      },
+      "address_line1": {
+        "JP": "大手町1-2-3",
+        "default": "123 Main St"
+      },
+      "address_line2": {
+        "JP": "○○ビル 5F"
+      }
+    },
+    "preview": "排版预览",
+    "legacy": "单行地址",
+    "legacy-auto": "按上面的字段自动生成。",
+    "legacy-hint": "需要单行地址的地方用它（旧数据、打印的出库单等）。",
+    "use-formatted": "用上面的地址",
+    "latin": {
+      "title": "拉丁转写（国际面单用）",
+      "hint": "地址不是拉丁字母（如日文、中文）时，在这里填拉丁字母的写法，跨境面单和报关单证用它；没填的项用上面的文字。",
+      "non-latin": "含有非拉丁字符",
+      "preview": "拉丁写法预览",
+      "legacy": "英文地址（单行，单证用）",
+      "legacy-hint": "出口单证上的发货地地址；填了上面的拉丁转写时自动生成。",
+      "preview-non-latin": "还有非拉丁文字：没填转写的项用的是上面的本地文字。"
+    },
+    "legacy-differs": "与上面的地址不一致，保存后仍用这一行；要改成上面的地址请点：",
+    "errors": {
+      "invalid-field": "地址的「{field}」不对（{message}）"
     }
   }
 }

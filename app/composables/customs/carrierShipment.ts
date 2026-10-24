@@ -28,6 +28,7 @@
  * 面单文件与单证共用 GET /warehouse/dn/<dn_id>/customs-documents/<doc_id>/file（doc_type = shipping_label）
  * （A4 与热敏标签机默认都是 PDF，走浏览器 → 打印机驱动；对接设置成 ZPLII / EPL2 时才是指令文件，要用标签机的打印程序打开）
  */
+import { localizedText } from '~/composables/shipping/carrierFile'
 import type { HttpRequestError } from '~/utils/http'
 import type { PdfDocumentRef } from '~/composables/customs/customsDocuments'
 import type { PickupSummary } from '~/composables/customs/carrierPickup'
@@ -41,6 +42,8 @@ export interface CarrierShipmentBlocker {
 
 export interface CarrierShipment {
   id?: number
+  /** 运单来源：api（插件建单）/ file（文件导出 → 导回运单号）/ manual（手填）；旧后端没有 */
+  source?: string | null
   /** 对接插件代码（如 fedex） */
   carrier?: string | null
   /** 建单用的承运商 */
@@ -51,6 +54,8 @@ export interface CarrierShipment {
   service_type: string | null
   /** 服务显示名（International Economy） */
   service_name?: string | null
+  /** 文件方式：服务名称的多语言文字（模板服务选项的名称 {en-US, zh-CN, ja-JP}）；service_name 是它的英文 */
+  service_label?: Record<string, string | null | undefined> | string | null
   net_charge: number | string | null
   currency: string | null
   label_document_id: number | null
@@ -531,8 +536,9 @@ export const labelPrinterBridge: {
 }
 
 /** 服务显示名：后端给了 service_name 用它，否则按代码拼（INTERNATIONAL_ECONOMY → International Economy） */
-export const serviceNameOf = (shipment: CarrierShipment | null | undefined): string =>
-  shipment?.service_name || formatServiceType(shipment?.service_type)
+/** 服务的显示名：文件方式有多语言的 service_label 时按界面语言（iso：zh-CN / ja-JP / en-US）取，否则 service_name，再没有按代码拼 */
+export const serviceNameOf = (shipment: CarrierShipment | null | undefined, iso?: string | null): string =>
+  localizedText(shipment?.service_label, iso) || shipment?.service_name || formatServiceType(shipment?.service_type)
 
 export const formatServiceType = (code: string | null | undefined): string => {
   if (!code) return ''

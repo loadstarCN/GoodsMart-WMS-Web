@@ -27,6 +27,14 @@ const itemData = ref<Record<string, any>>({
   email: null,
   contact: null,
   country: null,
+  // 结构化地址（后端 doc/shipping-flow.md §6.2；zip_code 即 postal_code）
+  organization: null,
+  admin_area: null,
+  locality: null,
+  dependent_locality: null,
+  address_line1: null,
+  address_line2: null,
+  latin: null,
   company_id: staffStore.staffInfo?.company_id,
 })
 
@@ -73,7 +81,8 @@ const saveRecipient = async () => {
   await httpRequest(`/api/warehouse/recipient/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: itemData.value,
+    // 邮编两个名字都给（zip_code 即 postal_code）
+    body: { ...itemData.value, postal_code: itemData.value.zip_code ?? null },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
       await router.push('/recipient/')          
@@ -94,7 +103,8 @@ const fetchData = async () => {
         method: 'GET',
         params: route.query,
         onSuccess: (data) => {
-          itemData.value = data;          
+          // 结构化地址：邮编统一用 zip_code（后端两个名字都给）
+          itemData.value = { ...data, zip_code: data?.zip_code ?? data?.postal_code ?? null };          
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -128,7 +138,7 @@ onMounted(async() => {
         <div class="card-body add-products p-0">
           <div class="p-4">
             <div class="row gx-5">
-              <div class="col-xxl-6 col-xl-12">
+              <div class="col-xxl-8 col-xl-12">
                 <div class="card custom-card shadow-none mb-0 border-0">
                   <div class="card-body p-0">
                     <div class="row gy-3 mb-3">
@@ -140,16 +150,10 @@ onMounted(async() => {
                         <label for="recipient-name" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{t('common.tips.name')}}</label>
                         <div v-if="errors.name" class="invalid-feedback d-block">{{ errors.name }}</div>
                       </div>
-
-                      <div class="col-xl-12">
-                        <label for="recipient-address" class="form-label">{{t('common.fields.address')}}</label>
-                        <input type="text" class="form-control" id="recipient-address" :placeholder="t('common.placeholders.address')"
-                          v-model="itemData.address">
-                      </div>
                       <div class="col-xl-6">
-                        <label for="recipient-zip_code" class="form-label">{{t('common.fields.zip')}}</label>
-                        <input type="text" class="form-control" id="recipient-zip_code" :placeholder="t('common.placeholders.zip')"
-                          v-model="itemData.zip_code">
+                        <label for="recipient-contact" class="form-label">{{t('common.fields.contact')}}</label>
+                        <input type="text" class="form-control" id="recipient-contact" :placeholder="t('common.placeholders.contact')"
+                          v-model="itemData.contact">
                       </div>
                       <div class="col-xl-6">
                         <label for="recipient-phone" class="form-label">{{t('common.fields.phone')}}</label>
@@ -162,20 +166,12 @@ onMounted(async() => {
                           v-model="itemData.email">
                           <div v-if="errors.email" class="invalid-feedback d-block">{{ errors.email }}</div>
                       </div>
-                      <div class="col-xl-6">
-                        <label for="recipient-contact" class="form-label">{{t('common.fields.contact')}}</label>
-                        <input type="text" class="form-control" id="recipient-contact" :placeholder="t('common.placeholders.contact')"
-                          v-model="itemData.contact">
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="recipient-country" class="form-label">{{t('common.fields.country')}} <abbr title="required" aria-hidden="true"
-                            class="text-danger">*</abbr></label>
-                        <input type="text" class="form-control" id="recipient-country" :placeholder="t('common.placeholders.country')"
-                          v-model="itemData.country">
-                          <label for="recipient-name" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{t('common.tips.country')}}</label>
-                          <div v-if="errors.country" class="invalid-feedback d-block">{{ errors.country }}</div>
-                      </div>
                     </div>
+
+                    <!-- 结构化地址（国家、按国家排顺序的地址、拉丁转写；旧的单行地址跟着生成） -->
+                    <h6 class="fw-semibold mb-3 mt-4"><i class="ri-map-pin-line me-1"></i>{{ t('address.title') }}</h6>
+                    <StructuredAddressFields v-model="itemData" id-prefix="recipient" country-required :country-error="errors.country"
+                      with-organization with-dependent-locality class="mb-3" />
 
                   </div>
                 </div>

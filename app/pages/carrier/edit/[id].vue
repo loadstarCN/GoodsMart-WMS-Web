@@ -83,7 +83,7 @@ const saveCarrier = async () => {
  * 重读这几项（画面上其余未保存的输入不动）
  */
 const METHOD_FIELDS = ['waybill_method', 'pickup_method', 'pickup_schedule', 'pickup_contact', 'tracking_method',
-  'tracking_url_template', 'auto_sign_days', 'available_methods', 'integration']
+  'tracking_url_template', 'auto_sign_days', 'available_methods', 'integration', 'file_preset', 'file_template', 'file_account']
 const refreshMethods = async () => {
   await httpRequest<any>(`/api/warehouse/carrier/${itemId}`, {
     method: 'GET',
@@ -201,7 +201,7 @@ onMounted(async() => {
     <div class="col-xl-12">
       <CarrierIntegrationCard :carrier-id="itemId" :editable="staffStore.hasPermission('carrier_edit')" @saved="refreshMethods" />
     </div>
-    <!-- 对接方式（运单 / 揽收 / 跟踪 / 自动签收）：随承运商资料一起保存（api 方式要先在上面设好在线对接） -->
+    <!-- 对接方式（运单 / 揽收 / 跟踪 / 自动签收；文件方式的预设与账号项）：随承运商资料一起保存（api 方式要先在上面设好在线对接） -->
     <div class="col-xl-12">
       <CarrierMethodsCard ref="methodsRef" v-model="itemData" :editable="staffStore.hasPermission('carrier_edit')"
         :server-errors="methodErrors" />
