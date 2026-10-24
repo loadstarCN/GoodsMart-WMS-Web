@@ -1001,6 +1001,64 @@
       "sorting-operation-message": "{operator}が仕分操作で{sortedQuantity}点商品を仕分け、{damagedQuantity}点不良あり(予定{expectedQuantity}点)。",
       "cancel-confirm-title": "ASNを取り消しますか？",
       "cancel-confirm": "ASN-{id} を取り消します。受領済みの数量は受領在庫から差し戻され、仕分タスクは無効になり、ASN はクローズされます。仕分が始まっている ASN は取り消せません。元に戻せません。"
+    },
+    "flow": {
+      "title": "入荷フロー",
+      "stage-column": "入荷段階",
+      "steps": {
+        "created": "作成",
+        "in_transit": "輸送中",
+        "received": "受領",
+        "sorting": "仕分け",
+        "putaway": "棚入れ",
+        "completed": "完了"
+      },
+      "stage": {
+        "expected": "入荷予定",
+        "in_transit": "輸送中",
+        "receiving": "受領待ち",
+        "sorting": "仕分け中",
+        "putaway": "棚入れ待ち",
+        "completed": "完了",
+        "closed": "クローズ",
+        "exception": "異常"
+      },
+      "actions": {
+        "receive": "受領"
+      },
+      "summary": {
+        "order-number": "注文番号 {number}",
+        "lines": "{lines} 品目・計 {quantity} 点",
+        "no-tracking": "送り状番号なし",
+        "not-tracked-yet": "まだ追跡していません",
+        "tracking-link": "運送会社の追跡ページで確認",
+        "carrier-delivered": "{carrier} によると配達済み",
+        "carrier-delivered-at": "{carrier} によると {time} に配達済み",
+        "received": "受領済み（予定 {quantity} 点）",
+        "received-actual": "実入荷 {actual} 点（予定 {quantity} 点）",
+        "expected": "{date} 入荷予定",
+        "sorting": "良品 {sorted} 点・破損 {damaged} 点（予定 {quantity} 点）",
+        "putaway-pending": "約 {pending} 点が棚入れ待ち（計 {quantity} 点）",
+        "putaway-done": "棚入れ済み（計 {quantity} 点）",
+        "putaway-nothing": "棚入れするものはありません",
+        "completed": "実入荷 {actual} 点・予定 {quantity} 点（差異 {difference}）"
+      },
+      "transit": {
+        "waiting": "{carrier} の追跡情報はまだありません。「追跡を更新」で照会できます（表示のみで、自動では受領しません）。"
+      },
+      "putaway": {
+        "quantity": "実入荷",
+        "pending": "棚入れ待ち（推定）",
+        "estimated": "棚入れ記録には入荷予定が記録されないため、倉庫の棚入れ待ち在庫から推定しています（新しい入荷予定を優先）。棚入れは商品の詳細画面から行えます。",
+        "last": "最終棚入れ：{time}"
+      },
+      "problems": {
+        "TRACKING_EXCEPTION": "{carrier} の追跡で異常：{message}",
+        "TRACKING_ERROR": "直近の追跡照会に失敗しました：{message}",
+        "ARRIVAL_OVERDUE": "入荷予定日 {date} を過ぎていますが、まだ受領していません",
+        "NO_DETAILS": "明細がないため受領できません",
+        "SORTING_TASK_MISSING": "受領済みですが、有効な仕分けタスクがありません"
+      }
     }
   },
   "sorting": {
@@ -2203,7 +2261,8 @@
     "code-16138-account": "出力する前に、運送会社の設定でファイル方式のアカウント項目（{field}）を入力してください",
     "code-16138-request": "リクエストの内容が正しくありません（{field}）。ページを再読み込みしてからやり直してください",
     "code-16075-discard": "この出荷指示には取り込み待ちの出力記録がありません（送り状番号が取り込み済みか、取り消し済みです）。画面を更新しました",
-    "code-16076-ship-to-locked": "送り状は現在の住所で作成・出力済みのため、お届け先を変更できません。変更するには「送り状」ステップで送り状を取り消して（ファイル方式は出力を取り消して）ください"
+    "code-16076-ship-to-locked": "送り状は現在の住所で作成・出力済みのため、お届け先を変更できません。変更するには「送り状」ステップで送り状を取り消して（ファイル方式は出力を取り消して）ください",
+    "code-16140": "この入荷予定には運送会社の API で追跡できる送り状番号がありません"
   },
   "shipping": {
     "title": "出荷フロー",
@@ -2414,7 +2473,9 @@
       "SHIPMENT_EXISTS": "運送状は作成済みです",
       "CARRIER_NOT_SET": "運送会社が未選択です",
       "FILE_NOT_CONFIGURED": "運送会社のファイル形式が未設定です",
-      "WAYBILL_EXISTS": "別の送り状があります（オンライン作成・手入力・取り込み済みの番号）"
+      "WAYBILL_EXISTS": "別の送り状があります（オンライン作成・手入力・取り込み済みの番号）",
+      "ASN_NOT_PENDING": "受領済みのため追跡は不要です",
+      "NO_DETAILS": "明細がありません"
     },
     "file": {
       "intro": "この出荷指示をファイルに出力して {carrier} のソフトに取り込み、送り状を印刷してから、送り状番号の入ったファイルを取り込みます。",

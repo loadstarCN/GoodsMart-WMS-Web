@@ -1,4 +1,9 @@
 <script lang="ts" setup>
+/**
+ * 入库单列表：页签是入库的工作队列（按 inbound_stage：预计到货 / 在途 / 待收货 / 分拣 / 待上架 / 异常 / 已完成 / 已关闭），
+ * 入库单状态（status）在右边的下拉里另选，两个条件可以一起用。每行显示入库阶段、承运商与运单号。
+ */
+import { INBOUND_STAGE_TABS } from '~/composables/asn/inboundFlow'
 
 // 定义页面元数据
 definePageMeta({
@@ -141,19 +146,15 @@ const receiveItem = async (item_id:Number) => {
 }
 
 
-// 处理标签切换
-const setActiveFilter = (status: string | null) => {
+// 状态下拉（入库单状态 status）：空 = 全部
+const setStatusFilter = (status: string | null) => {
   const query: Record<string, any> = { ...route.query }
 
   // 处理状态参数
-  if (status === null) {
+  if (!status || status === 'all') {
     delete query.status
   } else {
-    if (status === 'all') {
-      delete query.status
-    } else {
-      query.status = status
-    }
+    query.status = status
   }
 
   // 切换过滤条件时重置页码
@@ -162,20 +163,28 @@ const setActiveFilter = (status: string | null) => {
   router.push({ query })
 }
 
-// 修改：计算当前激活状态
-const activeTab = computed(() => {
-  const statusParam = route.query.status
-  if (statusParam === 'pending') {
-    return 'pending'
-  } else if (statusParam === 'received') {
-    return 'received'
-  } else if (statusParam === 'completed') {
-    return 'completed'
-  } else if (statusParam === 'closed') {
-    return 'closed'
+// 页签：入库阶段（inbound_stage）；切换时重置页码
+const setStageFilter = (stage: string | null) => {
+  const query: Record<string, any> = { ...route.query }
+  if (!stage || stage === 'all') {
+    delete query.inbound_stage
   } else {
-    return 'all' // 默认值
+    query.inbound_stage = stage
   }
+  query.page = '1'
+  router.push({ query })
+}
+
+const activeStage = computed(() => {
+  const stage = String(route.query.inbound_stage || '')
+  return (INBOUND_STAGE_TABS as string[]).includes(stage) ? stage : 'all'
+})
+
+// 入库单状态（下拉，与阶段页签可以一起用）
+const ASN_STATUSES = ['pending', 'received', 'completed', 'closed']
+const activeStatus = computed(() => {
+  const status = String(route.query.status || '')
+  return ASN_STATUSES.includes(status) ? status : ''
 })
 
 // 6个月的统计数据
@@ -267,30 +276,24 @@ onMounted(async() => {
                     </div>
                 </div>
                 <div class="card-body">
-                    <div>
-                        <ul class="nav nav-pills nav-style-3 mb-3" role="tablist">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                        <ul class="nav nav-pills nav-style-3" role="tablist">
                             <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'all' }" href="javascript:void(0);"
-                                    @click="setActiveFilter('all')">{{t('common.status.all')}}</a>
+                                <a class="nav-link" :class="{ active: activeStage === 'all' }" href="javascript:void(0);"
+                                    @click="setStageFilter('all')">{{t('common.status.all')}}</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'pending' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('pending')">{{t('common.status.pending')}}</a>
+                            <li class="nav-item" v-for="stage in INBOUND_STAGE_TABS" :key="stage">
+                                <a class="nav-link" :class="{ active: activeStage === stage }" href="javascript:void(0);"
+                                    @click="setStageFilter(stage)">{{ t(`asn.flow.stage.${stage}`) }}</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'received' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('received')">{{t('common.status.received')}}</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'completed' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('completed')">{{t('common.status.completed')}}</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'closed' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('closed')">{{t('common.status.closed')}}</a>
-                            </li>
-
                         </ul>
+                        <select class="form-select form-select-sm w-auto" :aria-label="t('shipping.dn.status-filter')"
+                            :value="activeStatus" @change="setStatusFilter(($event.target as HTMLSelectElement).value)">
+                            <option value="">{{ t('shipping.dn.status-filter') }}: {{ t('common.status.all') }}</option>
+                            <option v-for="status in ASN_STATUSES" :key="status" :value="status">
+                                {{ t('shipping.dn.status-filter') }}: {{ t('common.status.' + status) }}
+                            </option>
+                        </select>
                     </div>
 
                     <div class="table-responsive">
@@ -299,10 +302,13 @@ onMounted(async() => {
                                 <tr>
                                     <th scope="col" class="">{{ t('common.fields.id') }}</th>
                                     <th scope="col">{{ t('common.entities.warehouse') }}</th>
-                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.entities.supplier') }}</th>
-                                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.type') }}</th>
-                                    <th scope="col" class="d-none d-md-table-cell">{{t('common.fields.quantity')}}</th>
+                                    <!-- 表头与单元格的显示断点一致（否则中等宽度时列错位） -->
+                                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.entities.supplier') }}</th>
+                                    <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.type') }}</th>
+                                    <th scope="col" class="d-none d-xl-table-cell">{{t('common.fields.quantity')}}</th>
                                     <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.status') }}</th>
+                                    <th scope="col">{{ t('asn.flow.stage-column') }}</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('shipping.dn.carrier-tracking') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.creator') }}</th>
                                     <th scope="col">{{ t('common.fields.action') }}</th>
@@ -324,6 +330,12 @@ onMounted(async() => {
                                     <td class="d-none d-xl-table-cell">{{ $n(asn?.detail_count) }} SKUs<br>{{
                                         $n(asn?.total_quantity) }} PCS</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+asn?.status.replace('_',"-")) }}</td>
+                                    <td><InboundStageBadge :stage="asn?.inbound_stage" /></td>
+                                    <td class="d-none d-lg-table-cell">
+                                        <div v-if="asn?.carrier?.name">{{ asn.carrier.name }}</div>
+                                        <div class="font-monospace fs-12 text-muted" v-if="asn?.tracking_number">{{ asn.tracking_number }}</div>
+                                        <span class="text-muted" v-if="!asn?.carrier?.name && !asn?.tracking_number">—</span>
+                                    </td>
 
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(asn?.updated_at) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ asn?.creator?.user_name }}</td>

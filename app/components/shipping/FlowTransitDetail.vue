@@ -1,21 +1,30 @@
 <script lang="ts" setup>
 /**
- * 发货流程 ·「运输中」一步的内容：承运商跟踪的状态、预计送达、扫描记录（新的在前），
- * 立即刷新跟踪（refresh_tracking：揽收 / 送达了会当场自动完成发货 / 签收）、打开承运商的公开查询页（open_tracking）。
- * 跟踪方式为 link（只有查询页）时只给查询页链接。做了操作 emit changed。
+ * 流程 ·「运输中 / 在途」一步的内容：承运商跟踪的状态、预计送达、扫描记录（新的在前），
+ * 立即刷新跟踪（refresh_tracking）、打开承运商的公开查询页（open_tracking）。跟踪方式为 link（只有查询页）时只给查询页链接。
+ * 发货流程：刷新 POST /dn/<id>/carrier-shipment/track（揽收 / 送达了会当场自动完成发货 / 签收）；
+ * 入库流程传 refreshUrl（POST /asn/<id>/track，只存跟踪结果）。做了操作 emit changed。
  */
 import { carrierShipmentUrl, type CarrierTracking, type CarrierTrackingEvent } from '~/composables/customs/carrierShipment'
-import { flowActionEnabled, type FlowStep } from '~/composables/shipping/shippingFlow'
+import { flowActionEnabled, type FlowStepBase } from '~/composables/shipping/shippingFlow'
 
 const props = withDefaults(defineProps<{
-  dnId: number | string
-  step: FlowStep
+  /** 发货流程的出库单（refreshUrl 没给时按它拼刷新接口） */
+  dnId?: number | string | null
+  step: FlowStepBase
   carrierName?: string | null
   /** 承运商的公开查询页（流程的 carrier.tracking_url），这一步没给时用它 */
   trackingUrl?: string | null
+  /** 刷新跟踪的接口（入库流程用）；默认出库单运单的 /track */
+  refreshUrl?: string | null
+  /** 经 API 跟踪、还没查到第一条时的说明；默认发货流程的（定时查询） */
+  waitingText?: string | null
 }>(), {
+  dnId: null,
   carrierName: null,
   trackingUrl: null,
+  refreshUrl: null,
+  waitingText: null,
 })
 
 const emit = defineEmits<{
@@ -57,11 +66,20 @@ const refreshing = ref(false)
 const refresh = async () => {
   if (refreshing.value) return
   refreshing.value = true
-  await httpRequest<any>(`${carrierShipmentUrl(props.dnId)}/track`, {
+  const endpoint = props.refreshUrl || (props.dnId !== null && props.dnId !== undefined
+    ? `${carrierShipmentUrl(props.dnId)}/track` : '')
+  if (!endpoint) {
+    refreshing.value = false
+    return
+  }
+  await httpRequest<any>(endpoint, {
     method: 'POST',
     onSuccess: (data) => {
       const sync = data?.tracking_sync || {}
-      if (sync.shipped || sync.signed) {
+      if (sync.error) {
+        // 入库流程：这次没查到（保留上次结果），原因在跟踪的 error 里
+        showToast(t('customs.carrier.tracking.error', { reason: String(sync.error) }), 'warning')
+      } else if (sync.shipped || sync.signed) {
         showToast(t(sync.signed ? 'customs.carrier.tracking.auto-signed' : 'customs.carrier.tracking.auto-shipped',
           { carrier: carrier.value }), 'success')
       } else {
@@ -135,7 +153,7 @@ defineExpose({ run })
       <p class="fs-12 text-muted mb-0 mt-1" v-else>{{ t('shipping.transit.no-events') }}</p>
     </template>
     <!-- 经 API 跟踪、还没查到第一条 -->
-    <p class="text-muted mb-0" v-else-if="step.summary?.tracked_by_api">{{ t('shipping.transit.waiting', { carrier }) }}</p>
+    <p class="text-muted mb-0" v-else-if="step.summary?.tracked_by_api">{{ waitingText || t('shipping.transit.waiting', { carrier }) }}</p>
     <p class="text-muted mb-0" v-else-if="url">{{ t('shipping.transit.link-only', { carrier }) }}</p>
     <p class="text-muted mb-0" v-else>{{ t('shipping.transit.none') }}</p>
 

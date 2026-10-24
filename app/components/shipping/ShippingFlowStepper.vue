@@ -1,24 +1,35 @@
 <script lang="ts" setup>
 /**
- * 发货流程的横向进度条：下单 / 拣货 / 打包 / 发货准备 / 交承运商 / 运输中 / 签收。
+ * 流程的横向进度条。默认是发货流程：下单 / 拣货 / 打包 / 发货准备 / 交承运商 / 运输中 / 签收，
  * 「发货准备」合并单证、运单、揽收三步（groupState），其余一阶段一步。窄屏时横向滚动。
+ * 入库流程等传自己的 groups（阶段与所含步骤）、labelPrefix（阶段名的文案前缀）与 ariaLabel。
  */
 import {
   FLOW_STAGE_GROUPS,
   groupState,
-  type FlowStep,
+  type FlowStageGroup,
+  type FlowStepBase,
   type FlowStepState,
 } from '~/composables/shipping/shippingFlow'
 
-const props = defineProps<{
-  steps: FlowStep[]
-}>()
+const props = withDefaults(defineProps<{
+  steps: FlowStepBase[]
+  /** 阶段与所含步骤；默认发货流程的 */
+  groups?: FlowStageGroup[] | null
+  /** 阶段名的文案前缀（`${labelPrefix}.${group.key}`） */
+  labelPrefix?: string
+  ariaLabel?: string | null
+}>(), {
+  groups: null,
+  labelPrefix: 'shipping.stages-bar',
+  ariaLabel: null,
+})
 
 const { t } = useI18n()
 
-const stages = computed(() => FLOW_STAGE_GROUPS.map((group) => {
+const stages = computed(() => (props.groups || FLOW_STAGE_GROUPS).map((group: FlowStageGroup) => {
   const states = group.steps
-    .map((key) => props.steps.find((s: FlowStep) => s.key === key)?.state)
+    .map((key: string) => props.steps.find((s: FlowStepBase) => s.key === key)?.state)
     .filter((s): s is FlowStepState => !!s)
   return { key: group.key, state: states.length ? groupState(states) : 'skipped' as FlowStepState }
 }))
@@ -34,13 +45,13 @@ const ICONS: Record<FlowStepState, string> = {
 </script>
 
 <template>
-  <ol class="flow-stepper" :aria-label="t('shipping.title')">
+  <ol class="flow-stepper" :aria-label="ariaLabel || t('shipping.title')">
     <li v-for="(stage, index) in stages" :key="stage.key" class="flow-stepper-item" :class="`is-${stage.state}`">
       <span class="flow-stepper-marker" :title="t(`shipping.states.${stage.state}`)">
         <i :class="ICONS[stage.state]" v-if="ICONS[stage.state]"></i>
         <template v-else>{{ index + 1 }}</template>
       </span>
-      <span class="flow-stepper-label">{{ t(`shipping.stages-bar.${stage.key}`) }}</span>
+      <span class="flow-stepper-label">{{ t(`${labelPrefix}.${stage.key}`) }}</span>
     </li>
   </ol>
 </template>

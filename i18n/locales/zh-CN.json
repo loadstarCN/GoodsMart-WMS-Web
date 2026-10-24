@@ -1001,6 +1001,64 @@
       "sorting-operation-message": "{operator} 在分拣操作中分拣了 {sortedQuantity} 件物品，以及{damagedQuantity}件损毁，共计{allQuantity}件物品，（预期 {expectedQuantity} 件）。",
       "cancel-confirm-title": "取消收货通知？",
       "cancel-confirm": "将取消 ASN-{id}：已签收的数量会从签收库存中扣回，对应的分拣任务停用，单据关闭。分拣已经开始的不能取消。此操作不能撤销。"
+    },
+    "flow": {
+      "title": "入库流程",
+      "stage-column": "入库阶段",
+      "steps": {
+        "created": "创建",
+        "in_transit": "在途",
+        "received": "接收",
+        "sorting": "分拣",
+        "putaway": "上架",
+        "completed": "完成"
+      },
+      "stage": {
+        "expected": "预计到货",
+        "in_transit": "在途",
+        "receiving": "待接收",
+        "sorting": "分拣中",
+        "putaway": "待上架",
+        "completed": "已完成",
+        "closed": "已关闭",
+        "exception": "异常"
+      },
+      "actions": {
+        "receive": "接收"
+      },
+      "summary": {
+        "order-number": "订单号 {number}",
+        "lines": "{lines} 种商品，共 {quantity} 件",
+        "no-tracking": "没有运单号",
+        "not-tracked-yet": "还没查过跟踪",
+        "tracking-link": "到承运商查询页查看",
+        "carrier-delivered": "{carrier} 说已送达",
+        "carrier-delivered-at": "{carrier} 说已于 {time} 送达",
+        "received": "已接收（计划 {quantity} 件）",
+        "received-actual": "实收 {actual} 件（计划 {quantity} 件）",
+        "expected": "预计 {date} 到货",
+        "sorting": "合格 {sorted} 件，损坏 {damaged} 件（计划 {quantity} 件）",
+        "putaway-pending": "约 {pending} 件待上架（共 {quantity} 件）",
+        "putaway-done": "已上架（共 {quantity} 件）",
+        "putaway-nothing": "没有要上架的货",
+        "completed": "实收 {actual} 件，计划 {quantity} 件（差异 {difference}）"
+      },
+      "transit": {
+        "waiting": "还没查过 {carrier} 的跟踪，点「刷新跟踪」查询（只用来显示，不会自动接收）。"
+      },
+      "putaway": {
+        "quantity": "本单实收",
+        "pending": "待上架（估算）",
+        "estimated": "上架记录不记入库单，这里按本单商品在仓库的待上架库存估算（新完成的入库单先占）。可以在商品详情里上架。",
+        "last": "最近一次上架：{time}"
+      },
+      "problems": {
+        "TRACKING_EXCEPTION": "{carrier} 跟踪异常：{message}",
+        "TRACKING_ERROR": "最近一次查询跟踪失败：{message}",
+        "ARRIVAL_OVERDUE": "预计到货日 {date} 已过，还没接收",
+        "NO_DETAILS": "入库单没有明细，不能接收",
+        "SORTING_TASK_MISSING": "已接收，但没有有效的分拣任务"
+      }
     }
   },
   "sorting": {
@@ -2203,7 +2261,8 @@
     "code-16138-account": "请先在承运商设置里填好文件方式的账号项（{field}），再导出",
     "code-16138-request": "请求的内容不对（{field}），请刷新页面后重试",
     "code-16075-discard": "这张出库单没有待导回的导出记录（可能已导回运单号或已作废），页面已刷新",
-    "code-16076-ship-to-locked": "运单已按现在的地址建好或已导出，收件地址不能再改；要改请先在「运单」一步取消运单（文件方式为作废导出）"
+    "code-16076-ship-to-locked": "运单已按现在的地址建好或已导出，收件地址不能再改；要改请先在「运单」一步取消运单（文件方式为作废导出）",
+    "code-16140": "这张入库单没有能经承运商接口查询的运单号（承运商的跟踪方式不是 API，或对接不能查）"
   },
   "shipping": {
     "title": "发货流程",
@@ -2414,7 +2473,9 @@
       "SHIPMENT_EXISTS": "运单已经建好了",
       "CARRIER_NOT_SET": "还没选承运商",
       "FILE_NOT_CONFIGURED": "承运商的文件格式还没设好",
-      "WAYBILL_EXISTS": "已有别的运单（在线建的、手填的或已导回的运单号）"
+      "WAYBILL_EXISTS": "已有别的运单（在线建的、手填的或已导回的运单号）",
+      "ASN_NOT_PENDING": "入库单已接收，不用再查跟踪",
+      "NO_DETAILS": "入库单没有明细"
     },
     "file": {
       "intro": "导出这张出库单的文件，导入 {carrier} 的软件打印面单，再把带运单号的文件导回。",

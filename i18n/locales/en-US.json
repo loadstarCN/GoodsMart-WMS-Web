@@ -1001,6 +1001,64 @@
       "sorting-operation-message": "{operator} sorted {sortedQuantity} items with {damagedQuantity} damaged (expected {expectedQuantity}).",
       "cancel-confirm-title": "Cancel ASN?",
       "cancel-confirm": "ASN-{id} will be cancelled: the received quantities are taken back out of received stock, its sorting task is deactivated and the ASN is closed. An ASN whose sorting has started cannot be cancelled. This cannot be undone."
+    },
+    "flow": {
+      "title": "Inbound flow",
+      "stage-column": "Inbound stage",
+      "steps": {
+        "created": "Created",
+        "in_transit": "In transit",
+        "received": "Received",
+        "sorting": "Sorting",
+        "putaway": "Put-away",
+        "completed": "Completed"
+      },
+      "stage": {
+        "expected": "Expected",
+        "in_transit": "In transit",
+        "receiving": "To receive",
+        "sorting": "Sorting",
+        "putaway": "To put away",
+        "completed": "Completed",
+        "closed": "Closed",
+        "exception": "Exception"
+      },
+      "actions": {
+        "receive": "Receive"
+      },
+      "summary": {
+        "order-number": "Order {number}",
+        "lines": "{lines} lines, {quantity} pcs",
+        "no-tracking": "No tracking number",
+        "not-tracked-yet": "Not tracked yet",
+        "tracking-link": "See the carrier's tracking page",
+        "carrier-delivered": "{carrier} reports it delivered",
+        "carrier-delivered-at": "{carrier} reports it delivered at {time}",
+        "received": "Received (planned {quantity} pcs)",
+        "received-actual": "Received {actual} pcs (planned {quantity})",
+        "expected": "Expected on {date}",
+        "sorting": "{sorted} good, {damaged} damaged (planned {quantity})",
+        "putaway-pending": "About {pending} of {quantity} pcs waiting for put-away",
+        "putaway-done": "Put away ({quantity} pcs)",
+        "putaway-nothing": "Nothing to put away",
+        "completed": "Received {actual} of {quantity} planned (difference {difference})"
+      },
+      "transit": {
+        "waiting": "No tracking from {carrier} yet. Click “Refresh tracking” to look it up (display only: the ASN is not received automatically)."
+      },
+      "putaway": {
+        "quantity": "Received",
+        "pending": "To put away (est.)",
+        "estimated": "Put-away records do not carry the ASN, so this is estimated from the stock waiting for put-away (newer ASNs first). Put goods away from the goods page.",
+        "last": "Last put-away: {time}"
+      },
+      "problems": {
+        "TRACKING_EXCEPTION": "{carrier} reports an exception: {message}",
+        "TRACKING_ERROR": "The last tracking lookup failed: {message}",
+        "ARRIVAL_OVERDUE": "The expected arrival date {date} has passed and the ASN has not been received",
+        "NO_DETAILS": "The ASN has no lines, so it cannot be received",
+        "SORTING_TASK_MISSING": "Received, but there is no active sorting task"
+      }
     }
   },
   "sorting": {
@@ -2203,7 +2261,8 @@
     "code-16138-account": "Fill in the carrier's file-mode account fields ({field}) in the carrier settings before exporting",
     "code-16138-request": "The request is invalid ({field}). Reload the page and try again",
     "code-16075-discard": "This DN has no export waiting for its tracking number (it may have been imported or discarded already); the page has been refreshed",
-    "code-16076-ship-to-locked": "The waybill has been created or exported with the current address, so the ship-to address can't be changed. Cancel the waybill (or discard the export) in the Waybill step first"
+    "code-16076-ship-to-locked": "The waybill has been created or exported with the current address, so the ship-to address can't be changed. Cancel the waybill (or discard the export) in the Waybill step first",
+    "code-16140": "This ASN has no tracking number that can be tracked through the carrier's integration"
   },
   "shipping": {
     "title": "Shipping flow",
@@ -2414,7 +2473,9 @@
       "SHIPMENT_EXISTS": "The waybill has already been created",
       "CARRIER_NOT_SET": "No carrier selected",
       "FILE_NOT_CONFIGURED": "The carrier's file format isn't set up",
-      "WAYBILL_EXISTS": "There is already another waybill (created online, entered by hand or imported)"
+      "WAYBILL_EXISTS": "There is already another waybill (created online, entered by hand or imported)",
+      "ASN_NOT_PENDING": "The ASN has been received; tracking is no longer needed",
+      "NO_DETAILS": "The ASN has no lines"
     },
     "file": {
       "intro": "Export this DN as a file, import it into {carrier}'s software and print the label there, then import the file with the tracking number back.",

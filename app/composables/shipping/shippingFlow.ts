@@ -44,8 +44,9 @@ export interface FlowAction {
   [extra: string]: unknown
 }
 
-export interface FlowStep {
-  key: FlowStepKey
+/** 流程的一步（出库 / 入库流程共用的结构；key 由各自的流程定） */
+export interface FlowStepBase<K extends string = string> {
+  key: K
   state: FlowStepState
   /** 这一步实际发生的时刻（带时区偏移的 ISO 8601）；没发生为 null */
   at: string | null
@@ -54,12 +55,23 @@ export interface FlowStep {
   actions: FlowAction[]
 }
 
+/** 出库流程的一步 */
+export type FlowStep = FlowStepBase<FlowStepKey>
+
+/** 横向进度条的一个阶段：合并哪几步（key 为文案键名） */
+export interface FlowStageGroup {
+  key: string
+  steps: string[]
+}
+
 export interface FlowProblem {
   code: string
   level: 'error' | 'warning'
   message?: string | null
   /** 问题出在哪一步 */
   step?: FlowStepKey | string | null
+  /** 问题带的其它字段（goods_code、field、date……） */
+  [extra: string]: unknown
 }
 
 export interface FlowRoute {
@@ -112,7 +124,7 @@ export const FLOW_STEP_KEYS: FlowStepKey[] = [
 ]
 
 /** 横向进度条的阶段：「发货准备」合并单证、运单、揽收三步 */
-export const FLOW_STAGE_GROUPS: { key: string; steps: FlowStepKey[] }[] = [
+export const FLOW_STAGE_GROUPS: FlowStageGroup[] = [
   { key: 'ordered', steps: ['ordered'] },
   { key: 'picking', steps: ['picking'] },
   { key: 'packing', steps: ['packing'] },
@@ -161,7 +173,7 @@ const toStringOrNull = (v: unknown): string | null => (v === null || v === undef
 const toIdList = (v: unknown): number[] =>
   (Array.isArray(v) ? v : []).map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0)
 
-const normalizeActions = (v: unknown): FlowAction[] =>
+export const normalizeFlowActions = (v: unknown): FlowAction[] =>
   (Array.isArray(v) ? v : [])
     .filter((a: any) => a && typeof a === 'object' && a.key)
     .map((a: any) => ({
@@ -172,19 +184,35 @@ const normalizeActions = (v: unknown): FlowAction[] =>
       reason_code: toStringOrNull(a.reason_code),
     }))
 
-/** 接口返回 → 流程（缺的数组补空，状态不认识的按 todo），不是对象时返回 null */
-export const normalizeShippingFlow = (data: any): ShippingFlow | null => {
-  if (!data || typeof data !== 'object') return null
-  const steps: FlowStep[] = (Array.isArray(data.steps) ? data.steps : [])
+/** 接口返回的 steps → 流程的步骤（状态不认识的按 todo；出库 / 入库流程共用） */
+export const normalizeFlowSteps = <K extends string = string>(v: unknown): FlowStepBase<K>[] =>
+  (Array.isArray(v) ? v : [])
     .filter((s: any) => s && typeof s === 'object' && s.key)
     .map((s: any) => ({
-      key: String(s.key) as FlowStepKey,
+      key: String(s.key) as K,
       state: toState(s.state),
       at: toStringOrNull(s.at),
       source: (toStringOrNull(s.source) as FlowSource | null),
       summary: s.summary && typeof s.summary === 'object' ? s.summary : {},
-      actions: normalizeActions(s.actions),
+      actions: normalizeFlowActions(s.actions),
     }))
+
+/** 接口返回的 problems → 流程的问题（出库 / 入库流程共用） */
+export const normalizeFlowProblems = (v: unknown): FlowProblem[] =>
+  (Array.isArray(v) ? v : [])
+    .filter((p: any) => p && typeof p === 'object' && p.code)
+    .map((p: any) => ({
+      ...p,
+      code: String(p.code),
+      level: p.level === 'error' ? 'error' : 'warning',
+      message: toStringOrNull(p.message),
+      step: toStringOrNull(p.step),
+    }))
+
+/** 接口返回 → 流程（缺的数组补空，状态不认识的按 todo），不是对象时返回 null */
+export const normalizeShippingFlow = (data: any): ShippingFlow | null => {
+  if (!data || typeof data !== 'object') return null
+  const steps: FlowStep[] = normalizeFlowSteps<FlowStepKey>(data.steps)
   const route = data.route && typeof data.route === 'object' ? data.route : {}
   const tasks = data.tasks && typeof data.tasks === 'object' ? data.tasks : {}
   const carrier = data.carrier && typeof data.carrier === 'object' ? data.carrier : null
@@ -217,14 +245,7 @@ export const normalizeShippingFlow = (data: any): ShippingFlow | null => {
       : null,
     stage: String(data.stage || 'preparing') as ShippingStage,
     steps,
-    problems: (Array.isArray(data.problems) ? data.problems : [])
-      .filter((p: any) => p && typeof p === 'object' && p.code)
-      .map((p: any) => ({
-        code: String(p.code),
-        level: p.level === 'error' ? 'error' : 'warning',
-        message: toStringOrNull(p.message),
-        step: toStringOrNull(p.step),
-      })),
+    problems: normalizeFlowProblems(data.problems),
     tasks: {
       picking: toIdList(tasks.picking),
       packing: toIdList(tasks.packing),
@@ -235,7 +256,7 @@ export const normalizeShippingFlow = (data: any): ShippingFlow | null => {
 }
 
 /** 某一步的某个操作（没有为 null） */
-export const flowActionOf = (step: FlowStep | null | undefined, key: string): FlowAction | null =>
+export const flowActionOf = (step: FlowStepBase | null | undefined, key: string): FlowAction | null =>
   step?.actions.find((a: FlowAction) => a.key === key) || null
 
 /**
@@ -248,7 +269,7 @@ export const flowActionReasonKeys = (code: string | null | undefined): string[] 
   : [])
 
 /** 某个操作能不能做：后端给了这个操作按 enabled；没给时用 fallback（旧后端 / 没列出的） */
-export const flowActionEnabled = (step: FlowStep | null | undefined, key: string, fallback = false): boolean => {
+export const flowActionEnabled = (step: FlowStepBase | null | undefined, key: string, fallback = false): boolean => {
   const action = flowActionOf(step, key)
   return action ? action.enabled : fallback
 }
@@ -269,11 +290,11 @@ export const groupState = (states: FlowStepState[]): FlowStepState => {
 }
 
 /** 默认展开的一步：第一个要人处理 / 现在该做的；都没有时最后一个已完成的 */
-export const activeStepKey = (steps: FlowStep[]): FlowStepKey | null => {
-  const pending = steps.find((s: FlowStep) => s.state === 'warning' || s.state === 'current')
+export const activeStepKey = <S extends FlowStepBase>(steps: S[]): S['key'] | null => {
+  const pending = steps.find((s: S) => s.state === 'warning' || s.state === 'current')
   if (pending) return pending.key
-  const done = steps.filter((s: FlowStep) => s.state === 'done')
-  return done.length ? (done[done.length - 1] as FlowStep).key : null
+  const done = steps.filter((s: S) => s.state === 'done')
+  return done.length ? (done[done.length - 1] as S).key : null
 }
 
 /** 运单来源（api / file / manual） */

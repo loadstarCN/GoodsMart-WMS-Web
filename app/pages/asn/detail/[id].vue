@@ -1,5 +1,10 @@
 <script lang="ts" setup>
-import { latestTaskTimelineTime, taskTimelineTime } from '~/utils/date'
+/**
+ * 入库单详情：上面是入库流程（AsnInboundFlow：创建 / 在途 / 收货 / 分拣 / 上架 / 完成，每一步的状态、实际时刻、来源和操作，
+ * 在途一步可刷新承运商跟踪、打开查询页），下面是商品明细与入库单自己的操作（打印 / 编辑 / 收货 / 分拣 / 关闭 / 取消），
+ * 右边是入库单资料。流程里做了操作（收货、刷新跟踪）页面重读入库单；页面做了操作流程重读。
+ */
+import type { InboundFlow } from '~/composables/asn/inboundFlow'
 
 // 定义页面元数据
 definePageMeta({
@@ -7,10 +12,9 @@ definePageMeta({
 
 let loading = ref(true);
 const route = useRoute();
-const asnId = route.params.id;
+const asnId = String(route.params.id);
 
 const itemData = ref<any>(null);
-const itemSortingData = ref<any>(null);
 const { t } = useI18n();
 // 按权限显示操作按钮（鉴权仍以后端为准）
 const staffStore = useStaffStore();
@@ -39,32 +43,17 @@ const fetchData = async () => {
     return data;   
 };
 
-const fetchSortingData = async () => {
-    loading.value = true;
-    const data = await httpRequest(`/api/warehouse/sorting/`, {
-        method: 'GET',
-        params: {
-            asn_id: asnId
-        },
-        onSuccess: (data) => {
-          itemSortingData.value = data;
-          // 将tags字符串转换为数组
-          // itemData.value.tags = convert_tags_to_array(data.tags)
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        },
-        onFinally: () => {
-            loading.value = false;
-        }
-    })
-    return data;   
-};
-
 onMounted(() => {
     fetchData();
-    fetchSortingData();
 });
+
+// ------------------ 入库流程（页头的阶段取流程接口的） ----------------------
+const flowRef = ref<{ reload: () => Promise<void> } | null>(null);
+const flowInfo = ref<InboundFlow | null>(null);
+/** 流程里做了操作（收货、刷新跟踪）：入库单的状态、数量随之变化 */
+const onFlowChanged = () => {
+    fetchData();
+};
 
 const receivedASN = async () => {
     const data = await httpRequest(`/api/warehouse/asn/${asnId}/receive/`, {
@@ -74,9 +63,10 @@ const receivedASN = async () => {
             showToast(t('action-results.success'), 'success')
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            showToast(bizErrorMessage(error), 'error')
         }
     })
+    flowRef.value?.reload();
     return data;   
 };
 const closeASN = async () => {
@@ -87,9 +77,10 @@ const closeASN = async () => {
             showToast(t('action-results.success'), 'success')
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            showToast(bizErrorMessage(error), 'error')
         }
     })
+    flowRef.value?.reload();
     return data;   
 };
 // 取消ASN（已签收、分拣尚未开始）：后端回滚签收库存、停用分拣任务并关闭单据；待处理的 ASN 用「关闭」
@@ -118,29 +109,31 @@ const cancelASN = async () => {
         }
     })
     if (done) showToast(t('action-results.success'), 'success')
-    // 成功或状态已变（409）：重新读取单据与分拣任务
+    // 成功或状态已变（409）：重新读取单据与流程
     if (done || conflict) {
-        await Promise.all([fetchData(), fetchSortingData()]);
+        await Promise.all([fetchData(), flowRef.value?.reload()]);
     }
     canceling.value = false;
 };
-// 时间线「已分拣」的时间：取任务列表项里有的 completed_at / updated_at（列表项没有 sorting_time）
-const sortingTimelineTime = computed(() => latestTaskTimelineTime(itemSortingData.value?.items));
 </script>
 <template>
     <PageHeader :propData="dataToPass" />
     <!-- Start::row-1 -->
     <div class="row">
-        <div class="col-xl-6">
+        <div class="col-xxl-8 col-xl-7">
+            <!-- 入库流程（主区域） -->
+            <AsnInboundFlow ref="flowRef" :asn-id="asnId" @loaded="flowInfo = $event" @changed="onFlowChanged" />
             <div class="row">
                 <div class="col-xl-12">
                     <div class="card custom-card">
                         <div class="card-header d-flex justify-content-between">
-                            <div class="card-title">
+                            <div class="card-title d-flex flex-wrap align-items-center gap-2">
                                 <span class="text-primary">#ASN-{{ itemData?.id }}</span>
+                                <span class="fs-13 text-muted fw-normal" v-if="itemData?.order_number">{{ itemData.order_number }}</span>
+                                <InboundStageBadge :stage="flowInfo?.stage" />
                             </div>
                             <div>
-                                    
+
                                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
                                     {{t('common.dates.expected-arrival')}}:{{ itemData?.expected_arrival_date }}
                                 </span>
@@ -268,7 +261,7 @@ const sortingTimelineTime = computed(() => latestTaskTimelineTime(itemSortingDat
                             <div class="btn-list float-end">
                                 <NuxtLink class="btn btn-primary btn-wave btn-sm" :to="`/asn/print/${asnId}`"><i
                                         class="ri-printer-line me-1 align-middle"></i>{{t('button.print')}}</NuxtLink>
-                                <NuxtLink :to="`/asn/edit/${itemData.id}`" class="btn btn-secondary btn-wave btn-sm"
+                                <NuxtLink :to="`/asn/edit/${itemData?.id}`" class="btn btn-secondary btn-wave btn-sm"
                                     v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"><i
                                         class="ri-edit-line me-1 align-middle"></i>{{t('button.edit')}}</NuxtLink>
                                 <button class="btn btn-warning btn-wave btn-sm" v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"
@@ -290,7 +283,7 @@ const sortingTimelineTime = computed(() => latestTaskTimelineTime(itemSortingDat
                 </div>
             </div>
         </div>
-        <div class="col-xl-3">
+        <div class="col-xxl-4 col-xl-5">
             <div class="row">
                 <div class="col-xl-12">
                     <div class="card custom-card">
@@ -310,11 +303,11 @@ const sortingTimelineTime = computed(() => latestTaskTimelineTime(itemSortingDat
                                 </div>
                                 <p class="mb-2 text-muted">
                                     <span class="fw-semibold text-default">{{t('asn.fields.type')}} :</span>
-                                    {{ t('asn.type.'+itemData?.asn_type) }}
+                                    {{ itemData?.asn_type ? t('asn.type.'+itemData.asn_type) : '' }}
                                 </p>
                                 <p class="mb-2 text-muted">
                                     <span class="fw-semibold text-default">{{t('common.fields.status')}} :</span>
-                                    {{ t('common.status.'+itemData?.status.replace('_',"-")) }}
+                                    {{ itemData?.status ? t('common.status.'+itemData.status.replace('_',"-")) : '' }}
                                 </p>
                                 <p class="mb-2 text-muted">
                                     <span class="fw-semibold text-default">{{t('common.users.creator')}} :</span>
@@ -370,151 +363,6 @@ const sortingTimelineTime = computed(() => latestTaskTimelineTime(itemSortingDat
             </div>
         </div>
 
-        <div class="col-xl-3">
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="card-title">{{t('asn.fields.tracking-info')}}</div>
-                </div>
-                <div class="card-body">
-                    <div class="order-track">
-                        <div class="accordion" id="basicAccordion" v-if="itemData?.created_at">
-                            <div class="accordion-item border-0 bg-transparent">
-                                <div class="accordion-header" id="headingTwo"><a class="px-0 pt-0"
-                                        href="javascript:void(0)" role="button" data-bs-toggle="collapse"
-                                        data-bs-target="#basicOne" aria-expanded="true" aria-controls="basicOne">
-                                        <div class="d-flex mb-0">
-                                            <div class="me-2"><span
-                                                    class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i class="ri-archive-line fs-12"></i></span></div>
-                                            <div class="flex-fill">
-                                                <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.created')}}</p><span class="mb-1 d-block fs-11 text-success">{{ $dayjs(itemData?.created_at) }}</span>
-                                            </div>
-                                        </div>
-                                    </a></div>
-                                <div id="basicOne" class="accordion-collapse show collapse border-top-0"
-                                    aria-labelledby="headingTwo" data-bs-parent="#basicAccordion">
-                                    <div class="accordion-body pt-0 ps-5">
-                                        <div class="fs-11">
-                                            <div class="fs-11">
-                                                <p class="mb-0">{{ $t('asn.tips.created-successfully', { creator: itemData?.creator?.user_name }) }}</p>
-                                                <span class="text-muted op-5">{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion" id="basicAccordion1" v-if="itemData?.received_at">
-                            <div class="accordion-item border-0 bg-transparent">
-                                <div class="accordion-header" id="headingTwo"><a class="px-0 pt-0"
-                                        href="javascript:void(0)" role="button" data-bs-toggle="collapse"
-                                        data-bs-target="#basicTwo" aria-expanded="true" aria-controls="basicTwo">
-                                        <div class="d-flex mb-0">
-                                            <div class="me-2"><span
-                                                    class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i
-                                                        class="ri-archive-line fs-12"></i></span></div>
-                                            <div class="flex-fill">
-                                                <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.received')}}</p><span
-                                                    class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(itemData?.received_at) }}</span>
-                                            </div>
-                                        </div>
-                                    </a></div>
-                                <div id="basicTwo" class="accordion-collapse show collapse border-top-0"
-                                    aria-labelledby="headingTwo" data-bs-parent="#basicAccordion1">
-                                    <div class="accordion-body pt-0 ps-5">
-                                        <div class="fs-11">
-                                            <div class="fs-11">
-                                                <p class="mb-0">{{ $t('asn.tips.received-successfully') }}</p>
-
-                                                <span class="text-muted op-5">{{ $dayjs(itemData?.received_at,'YYYY-MM-DD HH:mm:ss') }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion" id="basicAccordion2" v-if="itemSortingData?.items.length > 0">
-                            <div class="accordion-item border-0 bg-transparent">
-                                <div class="accordion-header" id="headingTwo"><a class="px-0 pt-0"
-                                        href="javascript:void(0)" role="button" data-bs-toggle="collapse"
-                                        data-bs-target="#basicThree" aria-expanded="true" aria-controls="basicThree">
-                                        <div class="d-flex mb-0">
-                                            <div class="me-2"><span
-                                                    class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i
-                                                        class="ri-archive-line fs-12"></i></span></div>
-                                            <div class="flex-fill">
-                                                <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.sorted')}}</p><span
-                                                    class="mb-1 d-block fs-12 text-undefined">{{ sortingTimelineTime ? $dayjs(sortingTimelineTime, 'YYYY-MM-DD HH:mm:ss') : '' }}</span>
-                                            </div>
-                                        </div>
-                                    </a></div>
-                                <div id="basicThree" class="accordion-collapse show collapse border-top-0"
-                                    aria-labelledby="headingTwo" data-bs-parent="#basicAccordion2">
-                                    <div class="accordion-body pt-0 ps-5">
-                                        <div class="fs-11">
-                                            <div class="fs-11 mb-3"  v-for="(item, index) in itemSortingData?.items" :key="index">
-                                                
-                                                <p class="mb-0">{{ $t('asn.tips.sorting-operation-message',{sortedQuantity:item.total_sorted_quantity,damagedQuantity:item.total_damage_quantity,allQuantity:item.total_sorted_quantity+item.total_damage_quantity,expectedQuantity:item.expected_quantity,operator:item?.creator?.user_name || itemData?.creator?.user_name || '—'}) }}</p>
-                                                <!-- 列表项没有逐批的操作员与 sorting_time：按任务的建立人与完成 / 更新时间显示 -->
-                                                <span class="text-muted op-5" v-if="taskTimelineTime(item)">{{ $dayjs(taskTimelineTime(item),'YYYY-MM-DD HH:mm:ss') }}</span>
-                                            </div>
-                                            
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="accordion" id="basicAccordion4" v-if="itemData?.status == 'completed' && itemData?.completed_at">
-                            <div class="accordion-item border-0 bg-transparent">
-                                <div class="accordion-header" id="headingTwo"><a class="px-0 pt-0"
-                                        href="javascript:void(0)" role="button" data-bs-toggle="collapse"
-                                        data-bs-target="#basicFive" aria-expanded="true" aria-controls="basicFive">
-                                        <div class="d-flex mb-0">
-                                            <div class="me-2"><span
-                                                    class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i
-                                                        class="ri-archive-line fs-12"></i></span></div>
-                                            <div class="flex-fill">
-                                                <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">{{t('common.status.completed')}}</p><span
-                                                    class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}</span>
-                                            </div>
-                                        </div>
-                                    </a></div>
-                                <div id="basicFive" class="accordion-collapse show collapse border-top-0"
-                                    aria-labelledby="headingTwo" data-bs-parent="#basicAccordion4">
-                                    <div class="accordion-body pt-0 ps-5">
-                                        <div class="fs-11"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="accordion" id="basicAccordion5" v-if="itemData?.status == 'closed' && itemData?.closed_at">
-                            <div class="accordion-item border-0 bg-transparent">
-                                <div class="accordion-header" id="headingTwo"><a class="px-0 pt-0"
-                                        href="javascript:void(0)" role="button" data-bs-toggle="collapse"
-                                        data-bs-target="#basicFive" aria-expanded="true" aria-controls="basicFive">
-                                        <div class="d-flex mb-0">
-                                            <div class="me-2"><span
-                                                    class="avatar avatar-md avatar-rounded bg-primary-transparent text-primary border"><i
-                                                        class="ri-archive-line fs-12"></i></span></div>
-                                            <div class="flex-fill">
-                                                <p class="fw-semibold mb-0 fs-14 pb-1 text-dark">Closed</p><span
-                                                    class="mb-1 d-block fs-12 text-undefined">{{ $dayjs(itemData?.closed_at,'YYYY-MM-DD HH:mm:ss') }}</span>
-                                            </div>
-                                        </div>
-                                    </a></div>
-                                <div id="basicFive" class="accordion-collapse show collapse border-top-0"
-                                    aria-labelledby="headingTwo" data-bs-parent="#basicAccordion4">
-                                    <div class="accordion-body pt-0 ps-5">
-                                        <div class="fs-11"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div><!--v-if-->
-            </div>
-        </div>
     </div>
     <!--End::row-1 -->
 

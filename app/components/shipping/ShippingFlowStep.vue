@@ -1,14 +1,16 @@
 <script lang="ts" setup>
 /**
- * 发货流程的一步（竖排）：左边是状态圆点，右边标题 + 实际时刻 + 来源 + 一行概要 + 操作；
+ * 流程的一步（竖排，发货 / 入库流程共用）：左边是状态圆点，右边标题 + 实际时刻 + 来源 + 一行概要 + 操作；
  * 点标题行展开 / 收起这一步的详细内容（默认插槽）。步与步之间用竖线连起来。
  * 状态：done 已完成 / current 现在该做 / todo 还没到 / warning 要人处理 / blocked 前一步没完成 / skipped 不适用
  */
-import type { FlowProblem, FlowStep } from '~/composables/shipping/shippingFlow'
+import type { FlowProblem, FlowStepBase } from '~/composables/shipping/shippingFlow'
 
 const props = withDefaults(defineProps<{
-  step: FlowStep
+  step: FlowStepBase
   index: number
+  /** 这一步元素 id 的前缀（`${idPrefix}-${step.key}`，页面滚动定位用；同一页有两条流程时要不同） */
+  idPrefix?: string
   title: string
   summary?: string | null
   /** 有详细内容可展开 */
@@ -26,6 +28,7 @@ const props = withDefaults(defineProps<{
   problems: () => [],
   problemText: (p: FlowProblem) => p.message || p.code,
   last: false,
+  idPrefix: 'shipping-step',
 })
 
 const emit = defineEmits<{
@@ -59,7 +62,7 @@ const toggle = () => {
 
 <template>
   <section class="flow-step" :class="[`is-${step.state}`, { 'is-last': last, 'is-expanded': expanded }]"
-    :id="`shipping-step-${step.key}`">
+    :id="`${idPrefix}-${step.key}`">
     <div class="flow-step-rail" aria-hidden="true">
       <span class="flow-step-marker">
         <i class="ri-check-line" v-if="step.state === 'done'"></i>
