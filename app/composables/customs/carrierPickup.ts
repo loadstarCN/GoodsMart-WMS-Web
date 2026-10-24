@@ -1,14 +1,19 @@
 /**
- * 上门揽收预约（承运商在线对接支持预约揽收时，如 FedEx：没有定期集荷，自动建好的运单要另约快递员上门）
+ * 上门揽收：承运商的揽收方式（carriers.pickup_method）为
+ * - api：在线预约（插件 supports_pickup，如 FedEx：没有定期集荷，建好的运单要另约快递员上门）
+ * - manual：电话 / 网站约好后在 WMS 记一笔（POST carrier-pickups/manual，直接是已约上，取消只改本地）
+ * - scheduled（定期集荷）/ dropoff（自送网点）/ none：不用逐票约
  *
  * 揽收按「当前仓库 + 承运商 + 日期」约，一次带多张该承运商的运单，件数 / 总重量按所带运单的箱子合计。
  * 接口都按页头的当前仓库（X-WAREHOUSE-ID）；承运商用 carrier_id（不带 = 本公司第一个能约揽收的承运商）：
- * GET  /warehouse/dn/carrier-pickups?carrier_id=               能约揽收的承运商（carriers）、待揽收运单（shipments）、
- *                                                              最近的预约（pickups）、前置条件（blockers）、揽收地点
- * GET  /warehouse/dn/carrier-pickups/availability?carrier_id=  承运商开放的揽收日与可选时间（只查询，不预约）
+ * GET  /warehouse/dn/carrier-pickups?carrier_id=               能约揽收的承运商（carriers，含 pickup_method）、待揽收运单（shipments）、
+ *                                                              最近的预约（pickups，source = api / manual）、前置条件（blockers）、揽收地点
+ * GET  /warehouse/dn/carrier-pickups/availability?carrier_id=  承运商开放的揽收日与可选时间（只查询，不预约；api 方式）
  * POST /warehouse/dn/carrier-pickups                 body {carrier_id, shipment_ids, pickup_date, ready_time, close_time, remarks?,
  *                                                    notification_email?} → 201 {pickup, alerts, message}
- * POST /warehouse/dn/carrier-pickups/<id>/cancel     取消（已约上、揽收日没过）
+ * POST /warehouse/dn/carrier-pickups/manual          body {warehouse_id, carrier_id, shipment_ids, pickup_date, ready_time, close_time,
+ *                                                    confirmation_code?, remarks?} → 201 {pickup}（手工记录，不调承运商）
+ * POST /warehouse/dn/carrier-pickups/<id>/cancel     取消（已约上、揽收日没过；手工记录只改本地）
  * POST /warehouse/dn/carrier-pickups/<id>/dismiss    body {confirm: true}：结果不明的预约，向承运商核对后作废，运单可重新预约
  * 失败：409 16130（blockers）/ 400 16131（参数，field）/ 409 16132（所选运单不能约，details.shipments）/
  *       409 16133（当前状态不能取消 / 作废）/ 502 16073 / 504 16074（承运商报错 / 超时，details.pickup：
@@ -24,9 +29,13 @@ export interface PickupBlocker {
   field?: string | null
 }
 
+/** 揽收记录的来源：api = 在线预约；manual = 手工记录（旧后端没有该字段，按 api） */
+export type PickupSource = 'api' | 'manual'
+
 /** 运单上的揽收概要 */
 export interface PickupSummary {
   id: number
+  source?: PickupSource | null
   /** pending / scheduled / cancelled / failed / unknown / dismissed */
   status: string
   reason: string | null
@@ -64,6 +73,7 @@ export interface PickupLocation {
 
 export interface CarrierPickup {
   id: number
+  source?: PickupSource | null
   /** 对接插件代码（fedex） */
   carrier?: string
   carrier_id?: number | null
@@ -102,6 +112,10 @@ export interface PickupCarrier {
   adapter: string | null
   /** 对接已启用 */
   enabled: boolean
+  /** 揽收方式（api / manual …）；旧后端没有该字段，按 api */
+  pickup_method?: string | null
+  /** 约揽收的电话 / 网址 / 说明（manual 时显示） */
+  pickup_contact?: string | null
 }
 
 export interface PickupOverview {
@@ -114,7 +128,11 @@ export interface PickupOverview {
   warehouse_id: number
   today: string
   timezone: string
+  /** 当前承运商的揽收方式：api = 经插件预约（can_create）；manual = 约好后手工记一笔（can_record）；旧后端没有 */
+  method?: string | null
   can_create: boolean
+  /** 能手工记录揽收（api 的承运商也可以）；旧后端没有 */
+  can_record?: boolean
   blockers: PickupBlocker[]
   pickup_location: PickupLocation | null
   max_remarks: number
@@ -150,9 +168,21 @@ export const PICKUP_BIZ_CODES = {
 } as const
 
 export const PICKUPS_URL = '/api/warehouse/dn/carrier-pickups'
+/** 手工记录揽收（揽收方式 manual） */
+export const MANUAL_PICKUP_URL = `${PICKUPS_URL}/manual`
 export const pickupUrl = (id: number, action: 'cancel' | 'dismiss') => `${PICKUPS_URL}/${id}/${action}`
 
-/** 没有 FedEx 可选时间时的默认值（与 FedEx 网站一致） */
+/** 记录手工揽收时可以带的运单（发货流程只有本单的一张；揽收页是表格里选好的） */
+export interface ManualPickupShipment {
+  shipment_id: number
+  tracking_number: string | null
+  dn_id?: number | null
+  order_number?: string | null
+  package_count?: number | null
+  weight_kg?: number | null
+}
+
+/** 没有承运商给的可选时间时的默认值 */
 export const DEFAULT_READY_TIME = '12:00'
 export const DEFAULT_CLOSE_TIME = '18:00'
 

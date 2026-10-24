@@ -1,6 +1,10 @@
 <script lang="ts" setup>
+/**
+ * 配送任务详情：任务资料（运费、承运商、运输方式、备注）在本页填；运单号、揽收、完成发货、跟踪、签收都在下面的发货流程（compact）里办，
+ * 完成发货时把本页的运费 / 承运商 / 运输方式 / 备注一起提交（completeExtras）。
+ * 承运商选了就保存到任务（PUT tracking 只带 carrier_id）：流程的「运单」一步按任务上的承运商决定怎么建运单。
+ */
 import { dnTransportationModesOptions } from '~/data/selectOptions'
-import type { CarrierShipmentStatus } from '~/composables/customs/carrierShipment'
 
 // 定义页面元数据
 definePageMeta({
@@ -13,6 +17,7 @@ const taskId = String(route.params.id);
 const itemData = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+const { bizErrorMessage } = useBizError();
 // 计算属性转换
 const dataToPass = computed(() => ({
   current: t('nav.delivery'),
@@ -28,11 +33,13 @@ const selectOptions = reactive({
 
 
 const errors = ref<Record<string, any>>({
-  tracking_number: null,
   carrier: null,
   transportation_mode: null,
-  signed_at: null,
 });
+/** 发货流程（compact） */
+const flowRef = ref<{ reload: () => Promise<void> } | null>(null);
+/** 任务上已保存的承运商：选择框改了才保存 */
+const savedCarrierId = ref<number | null>(null);
 
 const fetchData = async () => {
     loading.value = true;
@@ -65,6 +72,7 @@ const processTask = async () => {
             itemData.value = data;
             showToast(t('action-results.task-start-process'), 'success')
             await fetchData();
+            flowRef.value?.reload();
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -80,101 +88,30 @@ const toShippingCost = (value: unknown): number | null => {
   return text === '' ? null : Number(text);
 };
 
-const completeTask = async () => {
-  errors.value = {
-    carrier: itemData.value?.carrier_id ? null : 'Carrier cannot be empty',
-    transportation_mode: itemData.value?.transportation_mode ? null : 'Transportation mode cannot be empty',
-    tracking_number: itemData.value?.tracking_number ? null : 'Tracking number cannot be empty',
-  };
+/** 任务还没发货（pending / in_progress）：能改承运商、运费、运输方式、备注（完成发货时一起提交） */
+const taskEditable = computed(() => ['pending', 'in_progress'].includes(String(itemData.value?.status || '')));
 
+/**
+ * 发货流程「完成发货」时一起提交的本页字段；承运商、运输方式没填 → 标出来并返回 null（不提交）。
+ * 运单号不在这里：在流程的「运单」一步保存（完成发货时后端沿用已存的运单号）
+ */
+const completeExtras = (): Record<string, any> | null => {
+  errors.value = {
+    carrier: itemData.value?.carrier_id ? null : t('delivery.validation.carrier-required'),
+    transportation_mode: itemData.value?.transportation_mode ? null : t('delivery.validation.transportation-required'),
+  };
   if (Object.values(errors.value).some(v => v)) {
-    if (isExport.value && errors.value.tracking_number) showToast(t('delivery.tips.tracking-missing-export'), 'warning');
-    return
+    showToast(t('delivery.tips.complete-fields-missing'), 'warning');
+    return null;
   }
-
-  // 检查是否存在未保存的有效分拣数据
-    const data = await httpRequest(`/api/warehouse/delivery/${taskId}/complete/`, {
-        method: 'PUT',
-        body: {
-          // 输入框是文本框：空 = 不改已存运费（null），其余按数字提交（后端只收数字 / 数字字符串）
-          shipping_cost: toShippingCost(itemData.value.shipping_cost),
-          carrier_id: itemData.value.carrier_id,
-          transportation_mode: itemData.value.transportation_mode,
-          tracking_number: itemData.value.tracking_number,
-          remark: itemData.value.remark,
-        },
-        onSuccess: (data) => {
-            itemData.value = data;
-            customsBlockedReason.value = null;
-            showToast(t('action-results.task-complete'), 'success')
-        },
-        onError: (error) => {
-            // 16069：海外单没有当前有效的 CI 和 PL（details.missing_documents）或单证已过期（details.outdated），
-            // 后端拒绝完成发货；文案按缺失 / 过期区分（见 useBizError）
-            if (error.code === 16069) {
-                customsBlockedReason.value = bizErrorMessage(error);
-                shippingRef.value?.reload();
-                showAlert(t('customs.tips.delivery-blocked-title'), customsBlockedReason.value, 'error');
-                return;
-            }
-            // 16078（自动运单锁定运单号 / 承运商）、16079（有结果不明的自动运单）：
-            // 需要按文案处理，用弹窗而不是一闪而过的提示
-            if (SHIPPING_BLOCK_CODES.includes(Number(error.code))) {
-                // 16079 按 details.unresolved.status 区分：建单中 / 取消中或取消结果不明 / 建单结果不明（见 useBizError）；
-                // 同时刷新海外发货区，显示运单的最新状态
-                if (Number(error.code) === 16079 && isExport.value) shippingRef.value?.reload();
-                showAlert(t('customs.tips.delivery-blocked-title'), bizErrorMessage(error), 'error');
-                return;
-            }
-            showToast(bizErrorMessage(error), 'error')
-        }
-    })
-    return data;   
-};
-
-const signTask = async () => {
-  errors.value = {
-    signed_at: itemData.value?.signed_at ? null : '签收时间不能为空',
+  return {
+    // 输入框是文本框：空 = 不改已存运费（null），其余按数字提交（后端只收数字 / 数字字符串）
+    shipping_cost: toShippingCost(itemData.value.shipping_cost),
+    carrier_id: itemData.value.carrier_id,
+    transportation_mode: itemData.value.transportation_mode,
+    remark: itemData.value.remark,
   };
-  if (Object.values(errors.value).some(v => v)) return
-
-  if (itemData.value.signed_at) {
-    itemData.value.signed_at = formatDateTimeWithoutTimezone(itemData.value.signed_at);
-  }
-
-  // 检查是否存在未保存的有效分拣数据
-    const data = await httpRequest(`/api/warehouse/delivery/${taskId}/sign/`, {
-        method: 'PUT',
-        body: {
-          signed_at: itemData.value.signed_at,
-        },
-        onSuccess: (data) => {
-            itemData.value = data;
-            showToast(t('delivery.tips.signed'), 'success')
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        }
-    })
-    return data;   
 };
-
-function completeFn() {
-
-  // 使用封装的确认对话框
-  showConfirm(
-    t('action-results.complete-confirm-title'),
-    t('action-results.complete-confirm', { entity: t('delivery.entity') }),
-    t('button.confirm'),
-    t('button.cancel'),
-  ).then((confirmed) => {
-    if (confirmed) {
-      // 执行完成任务
-      completeTask()
-    }
-  });
-}
-
 
 
 // 处理承运商选择
@@ -206,12 +143,12 @@ const fetchCarrierData = async (name:string) => {
 
 
 watch(
-  () => selectedCarrier.value,  // 监听选中的供应商对象
+  () => selectedCarrier.value,  // 监听选中的承运商对象
   (newVal:any) => {
     if (newVal) {
       itemData.value.carrier_id = newVal.id;  // 将对象 ID 同步到表单
-      // 海外单：承运商决定了运单怎么建（在线对接 / 手工），选了就保存，「海外发货」随之刷新
-      if (isExport.value && trackingEditable.value && newVal.id !== savedCarrierId.value) saveCarrier(newVal);
+      // 承运商决定了运单怎么建（在线对接 / 手工）、揽收和跟踪方式：选了就保存，发货流程随之刷新
+      if (taskEditable.value && newVal.id !== savedCarrierId.value) saveCarrier(newVal);
     } else {
       if (itemData.value?.carrier_id) {
         itemData.value.carrier_id = null;       // 清空选择时重置
@@ -225,19 +162,13 @@ onMounted(async() => {
   await fetchData();
 });
 
-// ------------------ 海外出荷：本页办完单证、运单、面单（ExportShippingPanel） ----------------------
-const { bizErrorMessage } = useBizError();
-const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.value?.dn?.customs));
-const customsBlockedReason = ref<string | null>(null);
-const shippingRef = ref<{ reload: () => Promise<void> } | null>(null);
-/** 海外发货区读到的承运商运单状态 */
-const carrierStatus = ref<CarrierShipmentStatus | null>(null);
-/** 任务上已保存的承运商：选择框改了才保存 */
-const savedCarrierId = ref<number | null>(null);
+// ------------------ 发货流程（compact） ----------------------
+/** 保存承运商 / 运单号时要弹窗说明的业务码：自动运单锁定（16078）/ 结果不明（16079）/ 与 CI 不一致（16080 / 16092）/ 不是当前任务（16091） */
+const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092];
 
 /**
- * 海外单选了承运商就保存（PUT tracking 只带 carrier_id）：「海外发货」按任务上的承运商判断怎么建运单。
- * 有效自动运单期间不能换（16078）等：弹窗说明，选择框改回原来的承运商
+ * 选了承运商就保存（PUT tracking 只带 carrier_id）：发货流程按任务上的承运商判断怎么建运单。
+ * 有效在线运单期间不能换（16078）等：弹窗说明，选择框改回原来的承运商
  */
 const savingCarrier = ref(false);
 const saveCarrier = async (carrier: any) => {
@@ -250,7 +181,8 @@ const saveCarrier = async (carrier: any) => {
     onSuccess: (data) => {
       savedCarrierId.value = data?.carrier_id ?? carrier.id;
       itemData.value.carrier = data?.carrier ?? carrier;
-      shippingRef.value?.reload();
+      errors.value.carrier = null;
+      flowRef.value?.reload();
     },
     onError: (error) => {
       if (SHIPPING_BLOCK_CODES.includes(Number(error.code))) {
@@ -267,15 +199,14 @@ const saveCarrier = async (carrier: any) => {
 };
 
 /**
- * 在本页 FedEx 建单 / 取消、生成单证后：后端已把运单号（和承运商）写到配送任务上，只同步这两项，
- * 画面上其余输入（运费、运输方式、备注等）保持不动
+ * 发货流程里做了操作（存运单号、建 / 取消运单、完成发货、签收……）：任务状态变了就整页重读；
+ * 否则只同步运单号与承运商，画面上其余输入（运费、运输方式、备注等）保持不动
  */
-const syncTrackingFromTask = async () => {
+const syncFromTask = async () => {
   await httpRequest<any>(`/api/warehouse/delivery/${taskId}`, {
     method: 'GET',
     onSuccess: (data) => {
       if (!itemData.value) return;
-      // 任务状态变了（如刷新跟踪时承运商已揽收，自动完成了发货）：整页重读
       if (data?.status && data.status !== itemData.value.status) {
         fetchData();
         return;
@@ -287,51 +218,6 @@ const syncTrackingFromTask = async () => {
         savedCarrierId.value = data.carrier_id;
         selectedCarrier.value = data.carrier;
       }
-    },
-  });
-};
-
-/** 完成发货 / 保存运单号时要弹窗说明的业务码：自动运单锁定（16078）/ 结果不明（16079）/ 与 CI 上的运单号不一致（16080） */
-const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092];
-
-// ------------------ 保存运单号（完成发货前） ----------------------
-// 任务 pending / in_progress 可存；已发货 409 16065。
-// 海外单：运单号（AWB）计入单证数据，已出的单证不会自动作废，需重新生成才能印上 AWB。
-const TRACKING_MAX_LENGTH = 100;
-const trackingEditable = computed(() => ['pending', 'in_progress'].includes(String(itemData.value?.status || '')));
-const savingTracking = ref(false);
-const saveTracking = async () => {
-  const tracking = String(itemData.value?.tracking_number ?? '').trim();
-  if (tracking.length > TRACKING_MAX_LENGTH) {
-    errors.value.tracking_number = t('delivery.validation.tracking-too-long', { max: TRACKING_MAX_LENGTH });
-    return;
-  }
-  errors.value.tracking_number = null;
-  savingTracking.value = true;
-  const body: Record<string, any> = { tracking_number: tracking };
-  if (itemData.value?.carrier_id) body.carrier_id = itemData.value.carrier_id;
-  await httpRequest<any>(`/api/warehouse/delivery/${taskId}/tracking`, {
-    method: 'PUT',
-    body,
-    onSuccess: (data) => {
-      // 只同步运单号与承运商，其余表单内容（运费、备注等）保持画面上的输入
-      itemData.value.tracking_number = data?.tracking_number ?? (tracking || null);
-      if (data?.carrier_id) {
-        itemData.value.carrier_id = data.carrier_id;
-        if (data.carrier) itemData.value.carrier = data.carrier;
-      }
-      showToast(t('action-results.success'), 'success');
-      if (isExport.value) shippingRef.value?.reload();
-    },
-    onError: (error) => {
-      if (SHIPPING_BLOCK_CODES.includes(Number(error.code))) {
-        showAlert(t('delivery.tips.tracking-blocked-title'), bizErrorMessage(error), 'error');
-        return;
-      }
-      showToast(bizErrorMessage(error), 'error');
-    },
-    onFinally: () => {
-      savingTracking.value = false;
     },
   });
 };
@@ -447,7 +333,7 @@ const saveTracking = async () => {
                       <label for="product-price" class="form-label">{{t('common.fields.shipping-cost')}} ({{ itemData?.currency }})</label>
                       <input v-maska:[] type="text" class="form-control number-format" id="product-shipping_cost"
                         data-maska="0.99" data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('delivery.form.placeholders.shipping-cost')"
-                        v-model="itemData.shipping_cost" :disabled="itemData?.status != 'in_progress'" />
+                        v-model="itemData.shipping_cost" :disabled="!taskEditable" />
                     </div>
                     <div class="col-xl-6">
                       <label class="form-label">{{t('common.entities.carrier')}} <abbr :title="t('common.tips.required')" aria-hidden="true"
@@ -456,7 +342,7 @@ const saveTracking = async () => {
                         <VueMultiselect :searchable="true" :show-labels="false" v-model="selectedCarrier"
                           :options="carrierSelectedOptions" :placeholder="t('common.search-placeholder')" :loading="isLoading"
                           :internal-search="false" label="name" track-by="id" :options-limit="100"
-                          @search-change="fetchCarrierData"  :disabled="!trackingEditable" />
+                          @search-change="fetchCarrierData"  :disabled="!taskEditable || savingCarrier" />
                       </div>
                       <div v-if="errors.carrier" class="invalid-feedback d-block">{{ errors.carrier }}</div>
                     </div>
@@ -468,34 +354,26 @@ const saveTracking = async () => {
                         <div class="flex-nowrap input-group-custom">
                           <VueMultiselect id="dn_transportation_mode" :show-labels="false"
                             :options="selectOptions.transportation_modes" :multiple="false"
-                            v-model="itemData.transportation_mode" :disabled="itemData?.status != 'in_progress'">
+                            v-model="itemData.transportation_mode" :disabled="!taskEditable">
                           </VueMultiselect>
                         </div>
                         <div v-if="errors.transportation_mode" class="invalid-feedback d-block">{{
                           errors.transportation_mode }}</div>
                       </div>
                     </div>
-                    <div class="col-xl-6" v-if="!isExport">
+                    <div class="col-xl-6">
                       <div class="form-group mb-3">
-                        <label class="form-label">{{t('common.fields.tracking-number')}} <abbr :title="t('common.tips.required')" aria-hidden="true"
-                            class="text-danger">*</abbr></label>
-                        <div class="input-group">
-                          <input type="text" class="form-control" id="service-charges" :placeholder="t('common.placeholders.tracking-number')"
-                            v-model="itemData.tracking_number" :disabled="!trackingEditable" :maxlength="TRACKING_MAX_LENGTH">
-                          <button type="button" class="btn btn-info" v-if="trackingEditable" :disabled="savingTracking"
-                            :title="t('delivery.operations.save-tracking')" @click="saveTracking">
-                            <span v-if="savingTracking" class="spinner-border spinner-border-sm me-1"></span>
-                            <i v-else class="ri-save-line me-1"></i>{{ t('delivery.operations.save-tracking') }}
-                          </button>
+                        <label class="form-label">{{t('common.fields.tracking-number')}}</label>
+                        <div class="form-control-plaintext py-1">
+                          <span class="font-monospace fw-semibold" v-if="itemData?.tracking_number">{{ itemData.tracking_number }}</span>
+                          <span class="text-muted" v-else>—</span>
                         </div>
-                        <div class="form-text" v-if="trackingEditable">{{ t('delivery.tips.save-tracking') }}</div>
-                        <div v-if="errors.tracking_number" class="invalid-feedback d-block">{{ errors.tracking_number }}
-                        </div>
+                        <div class="form-text">{{ t('delivery.tips.tracking-in-flow') }}</div>
                       </div>
                     </div>
                     <div class="col-xl-12">
                       <label class="form-label">{{t('common.fields.remark')}}</label>
-                      <textarea class="form-control" id="text-area" rows="5" v-model="itemData.remark" :disabled="itemData?.status != 'in_progress'"></textarea>
+                      <textarea class="form-control" id="text-area" rows="5" v-model="itemData.remark" :disabled="!taskEditable"></textarea>
                     </div>
 
                   </div>
@@ -503,23 +381,13 @@ const saveTracking = async () => {
                 </div>
                 <div class="col-xl-6" v-if="itemData?.status == 'completed' || itemData?.status == 'signed'">
                   <div class="row gy-3">
-                    <div class="col-xl-12" v-if="itemData?.status == 'completed'">
-                      <label class="form-label">{{t('common.dates.signed')}} <abbr :title="t('common.tips.required')" aria-hidden="true"
-                          class="text-danger">*</abbr></label>
-                      <div class="input-group flex-nowrap input-group-custom">
-                        <div class="input-group-text text-muted"> <i class="ri-calendar-line"></i> </div>
-                        <Datepicker id="expected-signed_at" :placeholder="t('delivery.form.placeholders.signed-time')" class="form-control"
-                          autoApply  v-model="itemData.signed_at" />
-                      </div>
-                      <div v-if="errors.signed_at" class="invalid-feedback d-block">{{
-                        errors.signed_at }}</div>
+                    <div class="col-xl-12" v-if="itemData?.completed_at">
+                      <label class="form-label">{{t('common.dates.completed')}}</label>
+                      <div>{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}</div>
                     </div>
                     <div class="col-xl-12" v-if="itemData?.status == 'signed'">
                       <label class="form-label">{{t('common.dates.signed')}}</label>
-                      <div class="input-group flex-nowrap input-group-custom">
-                        {{ $dayjs(itemData?.signed_at,'YYYY-MM-DD HH:mm:ss')  }}
-                      </div>
-                      
+                      <div>{{ $dayjs(itemData?.signed_at,'YYYY-MM-DD HH:mm:ss') }}</div>
                     </div>
                   </div>
                 </div>
@@ -527,19 +395,15 @@ const saveTracking = async () => {
 
               </div>
             </div>
-            <div class="card-footer border-top-0">
-              <div class="btn-list float-end">
+            <div class="card-footer border-top-0 d-flex flex-wrap align-items-center justify-content-end gap-2">
+              <span class="fs-12 text-muted" v-if="taskEditable">{{ t('delivery.tips.complete-in-flow') }}</span>
+              <div class="btn-list">
                 <!-- <NuxtLink class="btn btn-primary btn-wave btn-sm" :to="`/delivery/print/${taskId}`"><i
                     class="ri-printer-line me-1 align-middle"></i>{{t('button.print')}}</NuxtLink> -->
 
                 <NuxtLink class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status==='pending'"
                   :title="t('button.process')" @click="processTask()"><i class="ri-checkbox-line me-1 align-middle"></i>{{t('button.process')}}
                 </NuxtLink>
-
-                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.complete')"
-                  @click="completeFn()" ><i class="ri-save-line me-1 align-middle"></i>{{t('button.complete')}}</button>
-                  <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='completed'" :title="t('dn.operations.sign')"
-                  @click="signTask()" ><i class="ri-save-line me-1 align-middle"></i>{{t('dn.operations.sign')}}</button>
 
               </div>
             </div>
@@ -550,29 +414,12 @@ const saveTracking = async () => {
   </div>
   <!--End::row-1 -->
 
-  <!-- 海外发货：箱子、运单（在线对接建单或手工填运单号）、CI / PL 在本页办完；没有当前有效的 CI 和 PL 时后端拒绝完成发货（16069） -->
-  <div class="row" v-if="itemData && isExport">
+  <!-- 发货流程（compact）：运单号、揽收、完成发货、跟踪、签收都在这里办；完成发货时带上本页的运费 / 承运商 / 运输方式 / 备注 -->
+  <!-- 用 itemData 而非 loading 判断：刷新任务数据时不卸载 -->
+  <div class="row" v-if="itemData && itemData.dn_id">
     <div class="col-xl-12">
-      <ExportShippingPanel ref="shippingRef" :dn-id="itemData.dn_id" :dn-status="itemData?.dn?.status"
-        :warehouse-id="itemData?.dn?.warehouse_id" :task-id="taskId" :tracking-editable="trackingEditable"
-        @carrier-status="carrierStatus = $event" @changed="syncTrackingFromTask">
-        <div class="alert alert-danger-transparent d-flex align-items-start gap-2" v-if="customsBlockedReason">
-          <i class="ri-error-warning-line fs-16"></i>
-          <div>
-            <div class="fw-semibold">{{ t('customs.tips.delivery-blocked-title') }}</div>
-            <div>{{ customsBlockedReason }}</div>
-          </div>
-        </div>
-        <template #ship-actions="{ ready }">
-          <button type="button" class="btn btn-sm" :class="ready ? 'btn-primary' : 'btn-light'"
-            v-if="itemData?.status === 'in_progress'" @click="completeFn()">
-            <i class="ri-check-double-line me-1"></i>{{ t('delivery.operations.complete') }}
-          </button>
-          <button type="button" class="btn btn-sm btn-light" v-else-if="itemData?.status === 'pending'" @click="processTask()">
-            {{ t('button.process') }}
-          </button>
-        </template>
-      </ExportShippingPanel>
+      <DnShippingFlow ref="flowRef" :dn-id="itemData.dn_id" mode="compact" :warehouse-id="itemData?.dn?.warehouse_id ?? null"
+        :complete-extras="completeExtras" @changed="syncFromTask" />
     </div>
   </div>
 

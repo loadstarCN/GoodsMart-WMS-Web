@@ -684,7 +684,81 @@
       "remove": "連携を解除",
       "remove-confirm-title": "オンライン連携を解除しますか？",
       "remove-confirm": "解除すると、この運送会社は運送状番号の手入力に戻ります。{name} のアカウントとキーは WMS から削除されます。",
-      "open-settings": "設定"
+      "open-settings": "設定",
+      "capabilities": {
+        "title": "対応機能：",
+        "scope-domestic": "国内",
+        "scope-international": "国際",
+        "waybill": "運送状作成",
+        "customs": "通関データ",
+        "pickup": "集荷依頼",
+        "tracking": "追跡",
+        "tracks-any-number": "手入力の番号も追跡"
+      }
+    },
+    "methods": {
+      "title": "対応方法",
+      "intro": "運送状・集荷・追跡ごとに対応方法を選びます。API 契約がなくても出荷の流れはすべて進められます。オンライン（API）は上のオンライン連携を有効にし、プラグインが対応している場合に選べます。",
+      "waybill": "運送状",
+      "pickup": "集荷",
+      "tracking": "追跡",
+      "options": {
+        "waybill": {
+          "api": "オンラインで作成（API）",
+          "file": "ファイル出力・取込",
+          "manual": "運送状番号を手入力"
+        },
+        "pickup": {
+          "api": "オンラインで依頼（API）",
+          "manual": "電話・Web で依頼し WMS に記録",
+          "scheduled": "定期集荷",
+          "dropoff": "営業所へ持ち込み",
+          "none": "管理しない"
+        },
+        "tracking": {
+          "api": "オンラインで追跡（API）",
+          "link": "追跡ページのリンクのみ",
+          "none": "追跡しない"
+        }
+      },
+      "help": {
+        "waybill": {
+          "api": "WMS がオンライン連携で運送状を作成し、ラベルと番号を取得します。運送会社のシステム障害時は番号の手入力もできます。",
+          "file": "運送会社のソフト用にファイルを出力し、番号を取り込みます（今後対応）。",
+          "manual": "運送会社の Web サイトやソフトでラベルを印刷し、WMS で番号を入力またはスキャンします。"
+        },
+        "pickup": {
+          "api": "出荷フローまたは集荷依頼画面からオンラインで集荷を依頼します。",
+          "manual": "電話や運送会社の Web サイトで依頼し、日付・時間帯・受付番号を WMS に記録します。",
+          "scheduled": "決まった曜日に集荷に来るため、出荷ごとの依頼は不要です。",
+          "dropoff": "荷物を運送会社の営業所へ持ち込みます。",
+          "none": "この運送会社の集荷は WMS で管理しません。"
+        },
+        "tracking": {
+          "api": "WMS が定期的に追跡を確認し、集荷で出荷完了、配達で受領済みにします。",
+          "link": "運送会社の追跡ページへのリンクだけを表示します。受領は手動（または自動受領ルール）で確認します。",
+          "none": "追跡しません。受領は手動（または自動受領ルール）で確認します。"
+        }
+      },
+      "api-unavailable": "オンライン（API）はオンライン連携を有効にし、プラグインが対応している場合に選べます。",
+      "schedule-days": "集荷曜日",
+      "pickup-contact": "集荷の依頼先（電話・URL・メモ）",
+      "pickup-contact-placeholder": "例：0120-00-0000、https://…",
+      "tracking-url": "追跡ページ",
+      "tracking-url-hint": "番号の位置に {placeholder} を入れてください。空欄の場合はオンライン連携プラグインの追跡ページを使います。",
+      "tracking-url-plugin": "プラグインの既定：",
+      "auto-sign": "自動で受領済みにする",
+      "auto-sign-off": "使用しない",
+      "days": "日後",
+      "auto-sign-help": "日数を設定すると、API で追跡していない出荷は引き渡しの N 日後に自動で受領済みになります（記録元「ルール」）。いつでも手動で受領を確認できます。空欄で無効。",
+      "validation": {
+        "weekdays": "集荷曜日を 1 つ以上選んでください",
+        "times": "集荷の時間帯（HH:MM）を入力してください",
+        "close-before-ready": "終了時刻は開始時刻より後にしてください",
+        "tracking-url": "{placeholder} を含む http(s) の URL を入力してください",
+        "auto-sign-days": "1〜90 の整数を入力するか、空欄にしてください",
+        "contact": "255 文字以内で入力してください"
+      }
     }
   },
   "recipient": {
@@ -935,8 +1009,7 @@
       "packing-info": "梱包情報",
       "special-handling": "特別対応",
       "transportation": "輸送方法",
-      "order-no": "注文番号",
-      "tracking-info": "追跡情報"
+      "order-no": "注文番号"
     },
     "form": {
       "placeholders": {
@@ -976,13 +1049,9 @@
       "drone": "ドローン配送"
     },
     "tips": {
-      "created-successfully": "{creator}によるDN作成完了。",
-      "started-successfully": "DN処理開始。",
-      "picking-operation-message": "{creator}がピッキング操作で{pickedQuantity}点商品をピッキング(予定{expectedQuantity}点)。",
-      "packing-operation-message": "{operator}が梱包操作で{packedQuantity}点商品を梱包。",
       "cancel-confirm-title": "DNを取り消しますか？",
       "cancel-confirm": "DN-{id} を取り消します。この DN が引き当てている在庫を解放し、ピッキングタスクは無効になり、DN はクローズされます。ピッキングが始まっている DN は取り消せません。元に戻せません。",
-      "cancel-confirm-picked": "DN-{id} を取り消します。ピッキング済み・梱包済みの商品は棚入れ待ちの在庫に戻り、再度棚入れが必要です。引当を解放し、関連タスクを無効にして DN をクローズします。終了していない運送状がある場合は、先に梱包タスクまたは配送タスクの「海外出荷」欄で運送状を取り消してください。元に戻せません。"
+      "cancel-confirm-picked": "DN-{id} を取り消します。ピッキング済み・梱包済みの商品は棚入れ待ちの在庫に戻り、再度棚入れが必要です。引当を解放し、関連タスクを無効にして DN をクローズします。終了していない運送状がある場合は、先に出荷フローの「運送状」で運送状を取り消してください。元に戻せません。"
     }
   },
   "picking": {
@@ -1050,7 +1119,6 @@
       "placeholders": {
         "number": "配送番号入力",
         "search": "配送番号/DN/商品コード",
-        "signed-time": "受領時刻選択",
         "shipping-cost": "送料を入力"
       }
     },
@@ -1058,18 +1126,19 @@
       "add": "配送追加",
       "edit": "配送編集",
       "delete": "配送削除",
-      "back-to-list": "一覧に戻る",
-      "save-tracking": "運送状番号を保存",
-      "complete": "出荷を完了"
+      "back-to-list": "一覧に戻る"
     },
     "tips": {
-      "save-tracking": "出荷完了の前に運送状番号だけを保存できます",
       "tracking-blocked-title": "運送状番号を保存できません",
       "signed": "受領を登録しました",
-      "tracking-missing-export": "運送状番号がまだありません。下の「海外出荷」で運送状を作成するか、運送状番号を入力してください。"
+      "tracking-in-flow": "運送状番号は下の出荷フローの「運送状」で入力します。",
+      "complete-in-flow": "出荷完了・受領確認は下の出荷フローで行います。",
+      "complete-fields-missing": "先に配送情報で運送会社と輸送手段を入力してください。"
     },
     "validation": {
-      "tracking-too-long": "運送状番号は {max} 文字以内で入力してください"
+      "tracking-too-long": "運送状番号は {max} 文字以内で入力してください",
+      "carrier-required": "運送会社を選んでください",
+      "transportation-required": "輸送手段を選んでください"
     },
     "pickup": {
       "title": "集荷依頼",
@@ -1079,7 +1148,7 @@
       "carrier": "運送会社",
       "disabled": "{carrier} のオンライン連携がまだ使えないため、集荷を依頼できません。",
       "setup-link": "連携設定へ",
-      "no-carrier": "オンラインで集荷を依頼できる運送会社がまだありません。運送会社にオンライン連携（FedEx など）を設定すると、ここで依頼できます。",
+      "no-carrier": "WMS で集荷を扱う運送会社がまだありません。運送会社の集荷方法をオンライン依頼（オンライン連携が必要）または手動記録にすると、ここで使えます。",
       "carrier-list": "運送会社一覧へ",
       "location": {
         "address": "集荷先住所",
@@ -1585,18 +1654,12 @@
     "clear": "クリア"
   },
   "customs": {
-    "title": "海外出荷単証",
-    "shipping-title": "海外出荷",
-    "export-badge": "海外",
     "errors": "エラー",
     "warnings": "警告",
     "sections": {
       "summary": "通関概要",
       "exporter": "輸出者",
-      "lines": "明細",
-      "packages": "箱情報",
-      "problems": "確認事項",
-      "documents": "単証"
+      "lines": "明細"
     },
     "fields": {
       "invoice-number": "インボイス番号",
@@ -1669,12 +1732,7 @@
       "PERSONAL_EFFECTS": "個人用品"
     },
     "status": {
-      "ready": "発行可能",
-      "not-ready": "未完了の項目あり",
-      "issued": "CI・PL 発行済み",
-      "not-issued": "未発行",
-      "locked": "出荷済み（変更不可）",
-      "outdated": "単証が最新ではありません"
+      "locked": "出荷済み（変更不可）"
     },
     "operations": {
       "issue": "単証を発行",
@@ -1683,7 +1741,6 @@
       "view": "表示",
       "download": "ダウンロード",
       "history": "履歴",
-      "refresh": "再読み込み",
       "edit-exporter": "会社の輸出者情報を編集",
       "reissue": "再発行",
       "edit-warehouse": "倉庫の出荷元情報を編集",
@@ -1691,10 +1748,7 @@
       "fix": "補完",
       "edit-carrier": "運送会社を編集",
       "edit-weight": "重量を登録",
-      "issue-again": "もう一度発行",
-      "collapse": "閉じる",
-      "edit-packages": "編集",
-      "show": "表示"
+      "issue-again": "もう一度発行"
     },
     "tips": {
       "not-on-invoice": "梱包数 0 のためインボイスに載りません",
@@ -1703,7 +1757,6 @@
       "data-need-dn-edit": "通関データの補完には出荷指示の編集権限が必要です。権限のある人に依頼してください。",
       "issue-need-packed": "梱包完了後に発行できます",
       "issue-not-ready": "下に表示されている問題を先に対応してください",
-      "packages-on-task": "箱情報は梱包タスクまたは配送タスクの「海外出荷」欄で登録します",
       "issued-new": "第 {version} 版を発行しました",
       "issued-same": "内容に変更がないため、第 {version} 版をそのまま使います",
       "documents-voided": "箱情報が変わったため既存の単証 {count} 件を無効にしました。再発行してください",
@@ -1711,7 +1764,6 @@
       "no-problems": "問題はありません",
       "no-snapshot": "この出荷指示には通関データがありません",
       "pdf-checksum-mismatch": "PDF のチェックサムが一致しません。再読み込みしてからもう一度お試しください",
-      "delivery-blocked-title": "出荷を完了できません",
       "documents-outdated": "単証が最新のデータと一致しません。再発行してください",
       "exporter-source": "電話番号と国コードは倉庫の設定を優先し、なければ会社の設定を使います。",
       "jp-export-code": "日本の輸出統計品目番号（9 桁）。確認用で、CI には印字しません",
@@ -1747,7 +1799,6 @@
         "dimension": "寸法は 0.1〜300 cm で入力してください",
         "dimension-decimals": "寸法の小数は {max} 桁まで（mm 単位）です"
       },
-      "title-domestic": "箱情報（任意）",
       "domestic-tip": "国内出荷では任意入力です。箱数・重量・寸法の記録に使えます。"
     },
     "editor": {
@@ -1761,7 +1812,7 @@
         "source": "通関データは出荷指示とともに発注側のシステムから届きます。ここでの補完・修正は WMS のデータだけに反映され、発注側から通関データが再送されると上書きされます。発行済みの単証は内容が変わると無効になり、再発行が必要です。",
         "invoice-fallback": "空欄のときは出荷指示の注文番号を使用",
         "consignee-fallback": "荷受人が個別に入力されていないため、単証には出荷指示の受取人を使用します（グレーの表示）。荷受人が異なるときだけ入力してください。",
-        "origin-on-goods": "原産国は商品マスタの項目です。明細または海外出荷欄の「原産国の登録」で入力してください。"
+        "origin-on-goods": "原産国は商品マスタの項目です。商品、または出荷フローの「通関書類」の問題一覧で入力してください。"
       },
       "saved": "通関データを保存しました",
       "saved-voided": "通関データを保存しました。既存の単証 {count} 件が無効になったため、再発行してください",
@@ -1795,16 +1846,6 @@
       "title": "運送状",
       "carrier-fallback": "運送会社",
       "portal-fallback": "{carrier} のサイト",
-      "status": {
-        "none": "未作成",
-        "manual-pending": "運送状番号の入力待ち",
-        "no-carrier": "運送会社が未選択",
-        "blocked": "まだ作成できません",
-        "creating": "作成中…",
-        "cancelling": "取消中…",
-        "unresolved": "状態が不明",
-        "cancel-unresolved": "取消結果が不明"
-      },
       "fields": {
         "tracking-number": "運送状番号",
         "transaction-id": "取引 ID",
@@ -1838,7 +1879,7 @@
         "no-carrier": "先に配送情報で運送会社を選んでください。",
         "no-carrier-elsewhere": "配送タスクで運送会社がまだ選ばれていません。",
         "manual": "{carrier} はオンライン連携していません。運送会社のサイトで運送状を作成し、運送状番号をここに入力してください。",
-        "manual-elsewhere": "{carrier} はオンライン連携していません。運送状番号は配送タスクで入力します。",
+        "manual-elsewhere": "{carrier} はオンライン連携していません。配送タスクができたらここで運送状番号を入力します。",
         "tracking-placeholder": "例：7946 0000 0001",
         "tracking-saved": "運送状番号を保存しました",
         "tracking-cleared": "運送状番号を消去しました",
@@ -1880,7 +1921,9 @@
         "timeout": "{carrier} から応答がありませんでした。運送状が作成済みの可能性があります。{portal} で確認してから再試行してください。",
         "permission-denied": "{carrier} がリクエストを拒否しました。運送会社設定のキーと、アカウントで必要な API が有効か確認してください。",
         "target-changed": "運送状の状態が変わったため再読み込みしました。確認してから操作してください。",
-        "cancel-unknown": "取り消せたか分かりません。しばらくして「取消を再試行」するか、{portal} で確認してからロックを解除してください。"
+        "cancel-unknown": "取り消せたか分かりません。しばらくして「取消を再試行」するか、{portal} で確認してからロックを解除してください。",
+        "manual-method": "{carrier} の運送状は手入力です。運送会社の Web サイトやソフトで作成し、運送状番号をここに入力してください。",
+        "manual-method-elsewhere": "{carrier} の運送状は手入力です。配送タスクができたらここで運送状番号を入力します。"
       },
       "warnings": {
         "DECLARED_VALUE_CAPPED": "運送申告価額 {original} が梱包済みの商品金額を超えるため、{amount} で送信します"
@@ -1898,7 +1941,6 @@
         "CARRIER_INTEGRATION_UNAVAILABLE": "サーバーに {carrier} の連携プラグインがありません",
         "CARRIER_NOT_CONFIGURED": "{carrier} のアカウントまたはキーが未入力です",
         "CARRIER_CONFIG_INVALID": "{carrier} の連携設定に誤りがあります",
-        "NOT_EXPORT": "海外出荷ではありません",
         "DELIVERY_TASK_MISSING": "配送タスクがまだありません",
         "DELIVERY_TASK_COMPLETED": "配送タスクは完了しています",
         "TRACKING_NUMBER_EXISTS": "運送状番号 {tracking} が入力済みです。自動作成するには先に消去してください",
@@ -1908,7 +1950,13 @@
         "RECIPIENT_ADDRESS_INVALID": "届け先住所が不完全か、長すぎて {carrier} の形式に収まりません",
         "RECIPIENT_NAME_MISSING": "受取人の氏名または会社名がありません",
         "RECIPIENT_PHONE_MISSING": "受取人の電話番号がありません",
-        "INCOTERM_DUTIES_MISMATCH": "取引条件が DDP（関税は送り主負担）ですが、連携設定では関税が受取人払いになっています"
+        "INCOTERM_DUTIES_MISMATCH": "取引条件が DDP（関税は送り主負担）ですが、連携設定では関税が受取人払いになっています",
+        "SCOPE_NOT_SUPPORTED": "{carrier} のオンライン連携はこの種類の出荷（国内 / 国際）に対応していません",
+        "CUSTOMS_DATA_MISSING": "この出荷は通関が必要ですが、DN に通関データがありません",
+        "CUSTOMS_NOT_SUPPORTED": "この出荷は通関が必要ですが、{carrier} のオンライン連携は通関データを送れません",
+        "WAYBILL_NOT_SUPPORTED": "{carrier} のオンライン連携は運送状を作成できません（集荷依頼・追跡のみ）。運送状番号を手入力してください",
+        "SHIPPER_ADDRESS_MISSING": "倉庫にも会社にも住所がありません",
+        "RECIPIENT_ADDRESS_MISSING": "出荷指示に配送先住所がありません"
       },
       "actions": {
         "create": "作成",
@@ -1982,26 +2030,6 @@
         "auto-shipped": "{carrier} が集荷したため、自動で出荷完了にしました",
         "auto-signed": "{carrier} が配達したため、自動で受領にしました"
       }
-    },
-    "steps": {
-      "packages": "箱",
-      "shipment": "運送状",
-      "documents": "単証",
-      "ship": "出荷",
-      "packages-empty": "未入力",
-      "packages-unsaved": "未保存の変更あり",
-      "packages-summary": "{count} 箱・{weight} kg",
-      "after-packed": "梱包完了後",
-      "documents-none": "未発行",
-      "documents-issued": "第 {version} 版",
-      "documents-outdated": "内容が変わったため再発行が必要",
-      "documents-blocked": "下の {count} 件を先に対応",
-      "ready-to-ship": "出荷できます",
-      "shipped": "出荷済み",
-      "problems-title": "先に対応が必要（{count} 件）",
-      "warnings-title": "確認してください（{count} 件）",
-      "pickup": "集荷依頼",
-      "pickup-after-shipment": "送り状の作成後"
     }
   },
   "biz-errors": {
@@ -2013,8 +2041,6 @@
     "code-16066": "箱情報が正しくありません",
     "code-16067": "現在の状態では箱情報を変更できません（ピッキング完了・梱包完了のときのみ）",
     "code-16068": "単証の発行条件がそろっていません",
-    "code-16069": "出荷前に有効なコマーシャルインボイス（CI）とパッキングリスト（PL）を発行してください",
-    "code-16069-outdated": "コマーシャルインボイス（CI）／パッキングリスト（PL）が古くなっています（発行後に通関データや箱情報が変わりました）。「海外出荷」で再発行してから出荷してください",
     "code-16070": "海外出荷ではありません",
     "code-16071": "単証が見つかりません",
     "code-14019": "輸出者情報の文字数が上限を超えています",
@@ -2023,19 +2049,19 @@
     "code-16073": "運送会社からエラーが返されました",
     "code-16074": "運送会社から時間内に応答がありませんでした",
     "code-16075": "有効な運送状がありません（または解除が必要な結果不明の運送状がありません）",
-    "code-16076": "運送状を作成済みのため、箱情報や通関データは変更できません。先に「海外出荷」で運送状を取り消してください",
-    "code-16076-unresolved": "状態が不明な運送状があるため、箱情報や通関データは今は変更できません。先に「海外出荷」で対応してください",
+    "code-16076": "運送状を作成済みのため、箱情報や通関データは変更できません。先に出荷フローの「運送状」で運送状を取り消してください",
+    "code-16076-unresolved": "状態が不明な運送状があるため、箱情報や通関データは今は変更できません。先に出荷フローの「運送状」で対応してください",
     "code-16076-in-progress": "運送状を作成中のため、終わるまで箱情報や通関データは変更できません",
     "code-16076-cancelling": "運送状を取消中、または取消結果が不明のため、箱情報や通関データは今は変更できません",
     "code-16076-document-changed": "運送状とともに送信した申告データが現在のデータと異なります。先に運送状を取り消してから単証を再発行してください",
     "code-16077": "ラベルの印刷方法が正しくありません（A4 または THERMAL。運送会社が対応している必要があります）",
     "code-16161": "追加書類のPDFが無効、容量超過、またはFedExの要件と一致しません",
-    "code-16078": "運送状 {tracking_number} を作成済みのため、運送状番号・運送会社の変更や、配送タスクの追加・削除はできません。先に「海外出荷」で運送状を取り消してください",
-    "code-16078-no-tracking": "運送状を作成済みのため、運送状番号・運送会社の変更や、配送タスクの追加・削除はできません。先に「海外出荷」で運送状を取り消してください",
-    "code-16078-unresolved": "状態が不明な運送状があるため、運送状番号・運送会社は今は変更できません。先に「海外出荷」で対応してください",
+    "code-16078": "運送状 {tracking_number} を作成済みのため、運送状番号・運送会社の変更や、配送タスクの追加・削除はできません。先に出荷フローの「運送状」で運送状を取り消してください",
+    "code-16078-no-tracking": "運送状を作成済みのため、運送状番号・運送会社の変更や、配送タスクの追加・削除はできません。先に出荷フローの「運送状」で運送状を取り消してください",
+    "code-16078-unresolved": "状態が不明な運送状があるため、運送状番号・運送会社は今は変更できません。先に出荷フローの「運送状」で対応してください",
     "code-16078-in-progress": "運送状を作成中のため、終わるまで運送状番号・運送会社は変更できません",
     "code-16078-cancelling": "運送状を取消中、または取消結果が不明のため、運送状番号・運送会社は今は変更できません",
-    "code-16079": "状態が不明な運送状があります（運送会社側で作成済みの可能性があります）。先に「海外出荷」で対応してください。それまでは運送状の作成、運送状番号の変更、出荷はできません",
+    "code-16079": "状態が不明な運送状があります（運送会社側で作成済みの可能性があります）。先に出荷フローの「運送状」で対応してください。それまでは運送状の作成、運送状番号の変更、出荷はできません",
     "code-16079-in-progress": "運送状を作成中のため、終わるまで運送状番号の保存や出荷はできません",
     "code-16079-cancelling": "運送状を取消中、または取消結果が不明のため、今は運送状番号の保存や出荷はできません",
     "code-16080": "コマーシャルインボイス（CI）に印字された運送状番号 {document_tracking_number} と、今回入力した {tracking_number} が一致しません。CI の運送状番号で出荷してください。運送状番号が本当に変わった場合は、新しい番号を保存して CI／PL を再発行してください",
@@ -2059,9 +2085,9 @@
     "code-16089": "1 点もピッキングされていないため、ピッキングタスクを完了できません。ピッキングできない場合は出荷指示を取り消してください",
     "code-16093": "運送状が変わりました：操作対象は {expected} ですが、現在は {actual} です。最新の状態を読み込みました。確認してから操作し直してください",
     "code-16094": "運送会社から運送状 {tracking_number} の取消が確認できなかったため、ロックを解除できません。運送会社のサイトで取り消してください（または時間をおいて再試行）",
-    "code-16095": "運送会社で運送状 {tracking_number} が作成されましたが、保存に失敗し、自動取消もできませんでした。「海外出荷」で取消を再試行するか、運送会社のサイトで確認してからロックを解除してください",
+    "code-16095": "運送会社で運送状 {tracking_number} が作成されましたが、保存に失敗し、自動取消もできませんでした。出荷フローの「運送状」で取消を再試行するか、運送会社のサイトで確認してからロックを解除してください",
     "code-16095-cancelled": "運送会社で運送状 {tracking_number} が作成されましたが、保存に失敗したため自動で取り消しました。問題を直してから作り直してください",
-    "code-16110": "終了していない運送状があるため、この出荷指示は取り消せません。先に「海外出荷」で運送状を取り消してください",
+    "code-16110": "終了していない運送状があるため、この DN は取り消せません。先に出荷フローの「運送状」で運送状を取り消してください",
     "code-10012": "数値が正しくありません（価格は 0 以上、割引価格は価格以下にしてください）",
     "code-10013": "パスワードを入力してください",
     "code-12007": "自分が持っていないロールや権限は付与できません。また、自分より権限の高いスタッフは管理できません",
@@ -2105,6 +2131,215 @@
     "code-16133": "この集荷依頼は現在、取消・無効化できません（取消済み、集荷日経過、または結果確定済みの可能性）。ページを更新してください",
     "code-16134": "追跡できる自動作成の運送状がありません（運送状が取り消されたか、運送会社の連携設定が未完了の可能性）。ページを更新してください",
     "code-16124": "連携設定が正しくありません。表示された項目を確認してください",
-    "code-16125": "この運送会社にはまだ終わっていない運送状があります（取消にこの設定を使います）。それらを片付けてから連携を解除・変更してください"
+    "code-16125": "この運送会社にはまだ終わっていない運送状があります（取消にこの設定を使います）。それらを片付けてから連携を解除・変更してください",
+    "code-16135": "対応方法の設定が正しくありません（{field}）。確認してから保存してください",
+    "code-16135-method": "対応方法の設定が正しくありません（{field}）。オンライン（API）はオンライン連携を有効にし、プラグインが対応している必要があります。",
+    "code-16136": "引き渡し日時は現在より後にできません"
+  },
+  "shipping": {
+    "title": "出荷フロー",
+    "refresh": "再読み込み",
+    "view-on-dn": "DN で全体の流れを見る",
+    "now": "現在",
+    "list-separator": "、",
+    "action-disabled": "{action}：{reason}",
+    "route": {
+      "domestic": "国内",
+      "international": "国際 · {country}",
+      "customs": "通関書類あり"
+    },
+    "stages-bar": {
+      "ordered": "受注",
+      "picking": "ピッキング",
+      "packing": "梱包",
+      "preparing": "出荷準備",
+      "handover": "引き渡し",
+      "transit": "輸送中",
+      "delivered": "受領"
+    },
+    "steps": {
+      "ordered": "受注",
+      "picking": "ピッキング",
+      "packing": "梱包",
+      "documents": "通関書類",
+      "waybill": "運送状",
+      "pickup": "集荷",
+      "handover": "運送会社へ引き渡し",
+      "transit": "輸送中",
+      "delivered": "受領"
+    },
+    "states": {
+      "done": "完了",
+      "current": "対応中",
+      "todo": "未着手",
+      "warning": "要対応",
+      "blocked": "前の手順待ち",
+      "skipped": "対象外"
+    },
+    "sources": {
+      "warehouse": "倉庫",
+      "carrier": "運送会社",
+      "rule": "ルール",
+      "api": "連携元システム",
+      "system": "システム",
+      "carrier-api": "運送会社 API"
+    },
+    "stage": {
+      "preparing": "作業中",
+      "awaiting_waybill": "運送状待ち",
+      "awaiting_number": "番号取込待ち",
+      "awaiting_pickup": "集荷待ち",
+      "awaiting_handover": "引き渡し待ち",
+      "in_transit": "輸送中",
+      "exception": "異常",
+      "delivered": "受領済み",
+      "closed": "クローズ"
+    },
+    "waybill-sources": {
+      "api": "API",
+      "file": "ファイル",
+      "manual": "手入力"
+    },
+    "actions": {
+      "create_waybill": "運送状を作成",
+      "enter_tracking": "運送状番号を入力",
+      "cancel_waybill": "運送状を取消",
+      "dismiss_waybill": "ロック解除",
+      "print_label": "ラベルを印刷",
+      "export_file": "ファイル出力",
+      "import_numbers": "番号を取り込む",
+      "book_pickup": "集荷を依頼",
+      "record_pickup": "集荷を記録",
+      "cancel_pickup": "集荷を取消",
+      "complete_shipping": "出荷完了",
+      "refresh_tracking": "追跡を更新",
+      "open_tracking": "運送会社の追跡ページ",
+      "sign": "受領を確認",
+      "issue_documents": "書類を発行",
+      "edit_packages": "梱包を入力"
+    },
+    "summary": {
+      "order-number": "注文番号 {number}",
+      "picking": "{picked} / {planned} ピッキング済み",
+      "packing": "{count} 箱・{weight} kg",
+      "packing-empty": "梱包未入力",
+      "documents-skipped": "不要（通関なし）",
+      "documents-outdated": "内容が変わったため再発行が必要",
+      "documents-missing": "未発行：{docs}",
+      "documents-version": "第 {version} 版",
+      "documents-none": "未発行",
+      "no-carrier": "運送会社が未選択",
+      "waybill-api": "未作成。{carrier} にオンラインで作成できます",
+      "waybill-manual": "運送状番号の入力待ち",
+      "pickup-none": "集荷は WMS で管理しません",
+      "handover-ready": "運送会社へ引き渡せます",
+      "transit-none": "追跡なし",
+      "transit-link": "運送会社の追跡ページで確認",
+      "waybill-unresolved": "運送状の作成結果が不明です。確認して処理してください",
+      "waybill-pending": "{carrier} に運送状を作成中",
+      "waybill-cancelling": "運送状を取消中",
+      "transit-waiting": "運送会社の追跡情報を待っています"
+    },
+    "documents": {
+      "problems-title": "先に対応が必要（{count} 件）",
+      "warnings-title": "確認してください（{count} 件）",
+      "customs-data": "通関データ明細"
+    },
+    "pickup": {
+      "schedule": "定期集荷：{days} {window}",
+      "schedule-unset": "定期集荷（曜日・時間が未設定）",
+      "schedule-hint": "{carrier} がこの日時に集荷に来るため、出荷ごとの依頼は不要です。",
+      "dropoff": "{carrier} の営業所へ持ち込み",
+      "manual-badge": "手動記録",
+      "api-badge": "オンライン依頼",
+      "source": "依頼方法",
+      "contact": "集荷の依頼先：",
+      "after-waybill": "運送状ができてから依頼できます",
+      "record-title": "集荷を記録",
+      "record-intro": "電話や Web サイトで {carrier} に集荷を依頼してから、日付・時間帯・受付番号をここに記録してください。WMS から運送会社へは連絡しません。",
+      "confirmation-code": "受付番号",
+      "confirmation-code-hint": "任意：運送会社から伝えられた番号",
+      "record-submit": "記録する",
+      "recorded-toast": "集荷を記録しました",
+      "page-intro-manual": "{carrier} の集荷は電話や Web サイトで依頼します。ドライバーに渡す運送状を選び、約束した日時を記録してください。",
+      "remarks": "備考"
+    },
+    "handover": {
+      "shipped-at": "引き渡し日時",
+      "time-hint": "既定は現在時刻です。もっと前に引き渡した場合は実際の日時に変更してください。",
+      "time-invalid": "正しい日時を入力してください",
+      "time-future": "現在より後の日時は指定できません",
+      "confirm-title": "出荷完了にしますか？",
+      "confirm": "{time} に運送会社へ引き渡したものとして記録します。元に戻せません。",
+      "blocked-title": "出荷完了にできません",
+      "auto-hint": "{carrier} の追跡を自動で確認し、集荷されると自動で出荷完了になります。ここから手動で完了することもできます。",
+      "by-carrier": "集荷時に自動で出荷完了"
+    },
+    "transit": {
+      "time": "日時",
+      "event": "状況",
+      "location": "場所",
+      "no-events": "まだスキャン記録がありません",
+      "link-only": "{carrier} の追跡は WMS では確認しません。追跡ページで確認してください。",
+      "none": "この運送会社は追跡しません",
+      "refreshed": "追跡を更新しました",
+      "waiting": "{carrier} の追跡情報はまだありません。WMS が定期的に確認します。「追跡を更新」ですぐに確認することもできます。"
+    },
+    "delivered": {
+      "signed-at": "受領日時",
+      "manual-hint": "いつでも実際の日時で手動で受領を確認できます。",
+      "auto-sign-at": "それまでに受領を確認しない場合、{time} に自動で受領済みにします",
+      "auto-by-tracking": "配達されると自動で受領済みにします",
+      "by-rule": "ルールにより自動で受領済み（引き渡しの {days} 日後）",
+      "by-carrier": "配達時に自動で受領済み",
+      "time-before-handover": "受領日時は引き渡し日時（{time}）より前にできません"
+    },
+    "tips": {
+      "state-changed": "タスクの状態が変わったため再読み込みしました"
+    },
+    "dn": {
+      "stage": "出荷段階",
+      "carrier-tracking": "運送会社 / 運送状番号",
+      "status-filter": "DN ステータス",
+      "totals": "合計"
+    },
+    "weekdays": {
+      "1": "月",
+      "2": "火",
+      "3": "水",
+      "4": "木",
+      "5": "金",
+      "6": "土",
+      "7": "日"
+    },
+    "problems": {
+      "WAYBILL_UNRESOLVED": "運送状の作成・取消の結果が不明です。運送会社のサイトで確認してから、取消または破棄してください",
+      "PICKUP_UNRESOLVED": "集荷依頼の結果が不明です。運送会社に確認してから破棄してください",
+      "PICKUP_DATE_PASSED": "集荷日を過ぎましたが、まだ引き渡していません。集荷を依頼し直すか、出荷完了にしてください",
+      "AUTO_SHIP_BLOCKED": "集荷されましたが、自動で出荷完了にできませんでした：{message}",
+      "AUTO_SIGN_BLOCKED": "配達されましたが、自動で受領済みにできませんでした：{message}",
+      "TRACKING_EXCEPTION": "運送会社から異常の報告があります：{message}",
+      "TRACKING_ERROR": "追跡の確認でエラーが発生しました：{message}"
+    },
+    "action-reasons": {
+      "DN_SHIPPED": "出荷済みのためロックされています",
+      "NOT_PICKED": "ピッキング完了後にできます",
+      "NOT_PACKED": "梱包完了後にできます",
+      "WAYBILL_SUBMITTED": "梱包情報は運送状とともに送信済みです。変更するには先に運送状を取り消してください",
+      "WAYBILL_UNRESOLVED": "運送状の結果が不明です。先に取消または破棄してください",
+      "NO_OPEN_TASK": "進行中の配送タスクがありません",
+      "API_WAYBILL_OPEN": "オンラインで作成した運送状があります。別の番号を入力するには先に取り消してください",
+      "CANNOT_CANCEL": "現在は取り消せません（出荷済みまたは取消中）",
+      "REQUEST_IN_PROGRESS": "処理中です",
+      "WAYBILL_CANCELLED": "運送状は取り消されています",
+      "NO_WAYBILL": "先に運送状を作成（または番号を入力）してください",
+      "PICKUP_EXISTS": "この出荷はすでに集荷を依頼済みです",
+      "PICKUP_DATE_PASSED": "集荷日を過ぎています",
+      "WAYBILL_NOT_ACTIVE": "運送状が有効ではありません",
+      "NOT_HANDED_OVER": "まだ運送会社へ引き渡していません",
+      "NOT_AVAILABLE": "現在はできません",
+      "SHIPMENT_EXISTS": "運送状は作成済みです",
+      "CARRIER_NOT_SET": "運送会社が未選択です"
+    }
   }
 }

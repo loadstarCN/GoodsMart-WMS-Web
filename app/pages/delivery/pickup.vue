@@ -1,13 +1,19 @@
 <script lang="ts" setup>
 /**
- * 上门揽收预约（当前仓库）
+ * 上门揽收（当前仓库）
  *
- * 承运商的在线对接支持预约揽收时（如 FedEx，没有定期集荷），运单建好后要在这里约快递员上门。揽收按「仓库 + 承运商 + 日期」约，
+ * 承运商的揽收方式（pickup_method）：
+ * - api：在线对接支持预约揽收（如 FedEx，没有定期集荷），运单建好后在这里约快递员上门
+ * - manual：电话 / 网站约好后在这里记一笔（ManualPickupModal，直接是已约上；取消只改本地），页面显示约揽收的联系方式
+ *   （api 的承运商也可以手工记一笔：承运商系统故障或电话约的，后端 can_record）
+ * 揽收按「仓库 + 承运商 + 日期」约，
  * 一次带多张该承运商的运单，件数 / 总重量按所选运单的箱子合计。有多个能约揽收的承运商时在页头切换（?carrier_id=）。
  * 仓库用页头的当前仓库；页头选的是「全部仓库」时用地址栏 ?warehouse_id=（从配送任务点过来时带着）。
  * - 待揽收运单：该承运商的自动运单（有效、出库单未发货）。已被预约占着的（预约中 / 已约上且揽收日没过 / 结果不明）不能勾选；
  *   揽收日过了还没发货的可以重新预约（快递员没来 / 忘了完成发货）
- * - 预约：先向承运商查可约日期与可选时间（下拉），默认承运商给的默认时间；约好后不能改，只能取消重约
+ * - 预约（api）：先向承运商查可约日期与可选时间（下拉），默认承运商给的默认时间；约好后不能改，只能取消重约
+ * - 记录（manual）：填约好的日期、时间段、受理号、备注
+ * - 预约记录列出在线预约与手工记录（来源徽章）
  * - 预约结果不明（承运商超时等）：运单仍被占着，向承运商核对后「确认作废」才能重新预约
  * - 取消：已约上、揽收日没过；取消结果不明时可重试
  */
@@ -64,6 +70,15 @@ const carrierQuery = () => (carrierId.value ? `?carrier_id=${carrierId.value}` :
 /** 文案里的承运商名：对接插件名（FedEx），没有用承运商名 */
 const carrierName = computed(() => overview.value?.integration?.name || overview.value?.carrier?.name || t('delivery.pickup.carrier'))
 const carrierOptions = computed(() => overview.value?.carriers || [])
+/** 当前承运商的揽收方式：manual = 手工记录；旧后端没有该字段时按在线预约 */
+const pickupMethod = computed(() => String(overview.value?.method || overview.value?.carrier?.pickup_method || 'api'))
+const manualMode = computed(() => pickupMethod.value === 'manual')
+const pickupContact = computed(() => String(overview.value?.carrier?.pickup_contact || '').trim())
+const contactIsUrl = computed(() => /^https?:\/\//i.test(pickupContact.value))
+const carrierOptionText = (c: { name: string; pickup_method?: string | null }) => {
+  const key = `carrier.methods.options.pickup.${c.pickup_method}`
+  return c.pickup_method && te(key) ? `${c.name}（${t(key)}）` : c.name
+}
 
 /** 列表上的操作（取消 / 作废）失败时的详情 */
 const listFailure = ref<PickupFailure | null>(null)
@@ -127,6 +142,9 @@ const selectedRows = computed(() => shipments.value.filter((r: PickupShipmentRow
 const selectedPackages = computed(() => selectedRows.value.reduce((sum: number, r: PickupShipmentRow) => sum + (Number(r.package_count) || 0), 0))
 const selectedWeight = computed(() => formatWeight(selectedRows.value.reduce((sum: number, r: PickupShipmentRow) => sum + (Number(r.weight_kg) || 0), 0)))
 const canSchedule = computed(() => !!overview.value?.enabled && !overview.value.blockers.length && selected.value.length > 0)
+/** 手工记录：选了运单就能记（api 的承运商也可以，后端 can_record 说了算；旧后端没有该字段时只有 manual 能记） */
+const canRecord = computed(() => !!overview.value?.carrier && selected.value.length > 0
+  && (overview.value.can_record ?? manualMode.value))
 
 const formatWeight = formatPickupWeight
 const timeWindow = pickupTimeWindow
@@ -156,6 +174,11 @@ const describeFailure = (error: HttpRequestError): PickupFailure =>
 const showModal = ref(false)
 const openModal = () => {
   if (canSchedule.value) showModal.value = true
+}
+/** 手工记录的弹窗 */
+const showManualModal = ref(false)
+const openManualModal = () => {
+  if (canRecord.value) showManualModal.value = true
 }
 
 // ------------------ 预约记录：取消 / 确认作废 ----------------------
@@ -252,7 +275,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
             <select class="form-select form-select-sm" style="width: auto" :aria-label="t('delivery.pickup.carrier')"
               :value="carrierId ?? ''" :disabled="loading" v-if="carrierOptions.length > 1"
               @change="switchCarrier(Number(($event.target as HTMLSelectElement).value))">
-              <option v-for="c in carrierOptions" :key="c.id" :value="c.id">{{ c.name }}</option>
+              <option v-for="c in carrierOptions" :key="c.id" :value="c.id">{{ carrierOptionText(c) }}</option>
             </select>
             <button type="button" class="btn btn-sm btn-light" :disabled="loading" @click="fetchOverview">
               <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
@@ -261,17 +284,23 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
           </div>
         </div>
         <div class="card-body">
-          <p class="fs-13 text-muted mb-3">{{ t('delivery.pickup.intro') }}</p>
+          <p class="fs-13 text-muted mb-3">{{ manualMode ? t('shipping.pickup.page-intro-manual', { carrier: carrierName }) : t('delivery.pickup.intro') }}</p>
+          <div class="alert alert-secondary-transparent fs-13 mb-3" v-if="manualMode && pickupContact">
+            <i class="ri-phone-line me-1"></i>{{ t('shipping.pickup.contact') }}
+            <a :href="pickupContact" target="_blank" rel="noopener" v-if="contactIsUrl">{{ pickupContact }}</a>
+            <span class="text-break" v-else>{{ pickupContact }}</span>
+          </div>
           <!-- 没有能约揽收的承运商：去承运商里设在线对接 -->
           <div class="alert alert-secondary-transparent fs-13 mb-3" v-if="!overview.carrier">
             {{ t('delivery.pickup.no-carrier') }}
             <NuxtLink to="/carrier" class="ms-1">{{ t('delivery.pickup.carrier-list') }}</NuxtLink>
           </div>
-          <div class="alert alert-secondary-transparent fs-13 mb-3" v-else-if="!overview.enabled">
+          <div class="alert alert-secondary-transparent fs-13 mb-3" v-else-if="!overview.enabled && !manualMode">
             {{ t('delivery.pickup.disabled', { carrier: carrierName }) }}
             <NuxtLink :to="`/carrier/edit/${overview.carrier.id}`" class="ms-1">{{ t('delivery.pickup.setup-link') }}</NuxtLink>
           </div>
-          <div class="row gy-2 fs-13" v-if="overview.carrier">
+          <!-- 揽收地点：在线预约时提交给承运商的；手工记录不用 -->
+          <div class="row gy-2 fs-13" v-if="overview.carrier && !manualMode">
             <div class="col-md-6">
               <div class="text-muted fs-12">{{ t('delivery.pickup.location.address') }}</div>
               <div>{{ formatPickupAddress(overview.pickup_location) || '—' }}</div>
@@ -290,8 +319,8 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
               <div class="font-monospace">{{ overview.pickup_location?.contact?.phoneNumber || '—' }}</div>
             </div>
           </div>
-          <div class="fs-12 text-muted mt-2" v-if="overview.carrier">{{ t('delivery.pickup.location.hint') }}</div>
-          <div class="alert alert-warning-transparent fs-13 mt-3 mb-0" v-if="overview.carrier && overview.blockers.length">
+          <div class="fs-12 text-muted mt-2" v-if="overview.carrier && !manualMode">{{ t('delivery.pickup.location.hint') }}</div>
+          <div class="alert alert-warning-transparent fs-13 mt-3 mb-0" v-if="overview.carrier && overview.blockers.length && !manualMode">
             <div class="fw-semibold mb-1">{{ t('delivery.pickup.blockers.title') }}</div>
             <ul class="mb-0 ps-3">
               <li v-for="(b, i) in overview.blockers" :key="`b-${i}`">{{ blockerText(b) }}</li>
@@ -311,7 +340,12 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
             <span class="fs-12 text-muted" v-if="selected.length">
               {{ t('delivery.pickup.shipments.selected', { count: selected.length, packages: selectedPackages, weight: selectedWeight }) }}
             </span>
-            <button type="button" class="btn btn-sm btn-primary" :disabled="!canSchedule" @click="openModal">
+            <!-- api 的承运商：手工记录是次要的退路 -->
+            <button type="button" class="btn btn-sm" :class="manualMode ? 'btn-primary' : 'btn-light'" :disabled="!canRecord"
+              @click="openManualModal" v-if="manualMode || overview.can_record !== undefined">
+              <i class="ri-edit-box-line me-1"></i>{{ t('shipping.actions.record_pickup') }}
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" :disabled="!canSchedule" @click="openModal" v-if="!manualMode">
               <i class="ri-truck-line me-1"></i>{{ t('delivery.pickup.operations.schedule') }}
             </button>
           </div>
@@ -389,6 +423,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
                   <th scope="col">{{ t('delivery.pickup.fields.pickup-date') }}</th>
                   <th scope="col">{{ t('delivery.pickup.fields.time-window') }}</th>
                   <th scope="col">{{ t('delivery.pickup.fields.status') }}</th>
+                  <th scope="col">{{ t('shipping.pickup.source') }}</th>
                   <th scope="col">{{ t('delivery.pickup.fields.confirmation-code') }}</th>
                   <th scope="col">{{ t('delivery.pickup.fields.packages') }}</th>
                   <th scope="col" class="d-none d-lg-table-cell">{{ t('delivery.pickup.fields.shipments') }}</th>
@@ -407,6 +442,11 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
                     <div class="fs-12 text-warning mt-1" v-if="pickupReasonText(p)">{{ pickupReasonText(p) }}</div>
                     <div class="fs-12 text-muted mt-1 text-break" v-if="p.error_message && p.status !== 'scheduled'"
                       style="max-width: 320px">{{ p.error_message }}</div>
+                  </td>
+                  <td>
+                    <span class="badge" :class="p.source === 'manual' ? 'bg-light text-default' : 'bg-primary-transparent'">
+                      {{ p.source === 'manual' ? t('shipping.pickup.manual-badge') : t('shipping.pickup.api-badge') }}
+                    </span>
                   </td>
                   <td class="font-monospace">
                     {{ p.confirmation_code || '—' }}
@@ -451,6 +491,10 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
   <CarrierPickupModal v-model:open="showModal" :carrier-id="carrierId" :carrier-name="carrierName" :warehouse-id="warehouseId"
     :shipments="selectedRows" :location="overview?.pickup_location" :max-remarks="overview?.max_remarks"
     :today="overview?.today" @booked="selected = []" @submitted="fetchOverview" />
+  <!-- 手工记录（揽收方式 manual）：电话 / 网站约好后记一笔 -->
+  <ManualPickupModal v-model:open="showManualModal" :carrier-id="carrierId" :carrier-name="carrierName" :warehouse-id="warehouseId"
+    :shipments="selectedRows" :contact="pickupContact || null" :today="overview?.today" @recorded="selected = []"
+    @submitted="fetchOverview" />
 </template>
 
 <style scoped></style>

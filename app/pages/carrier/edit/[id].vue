@@ -36,8 +36,11 @@ const errors = ref<Record<string, any>>({
 })
 
 
-// ------------------ 提交保存 ----------------------
+// ------------------ 提交保存（承运商资料 + 对接方式一起存；在线对接单独保存） ----------------------
 const { bizErrorMessage } = useBizError()
+const methodsRef = ref<{ validate: () => boolean; payload: () => Record<string, any> } | null>(null)
+/** 对接方式不合法（400 16135）：field 指明哪一项 */
+const methodErrors = ref<Record<string, string>>({})
 // 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
 const submitting = ref(false)
 const saveCarrier = async () => {
@@ -54,21 +57,41 @@ const saveCarrier = async () => {
     })()    
   }
 
-  if (Object.values(errors.value).some(v => v)) return
+  const methodsValid = methodsRef.value ? methodsRef.value.validate() : true
+  if (Object.values(errors.value).some(v => v) || !methodsValid) return
 
   submitting.value = true
+  methodErrors.value = {}
   await httpRequest(`/api/warehouse/carrier/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: itemData.value,
+    body: { ...itemData.value, ...(methodsRef.value?.payload() || {}) },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
       await router.push('/carrier/')          
     },
     onError: (error) => {
       submitting.value = false
+      if (error.code === 16135 && error.field) methodErrors.value = { [error.field]: bizErrorMessage(error) }
       showToast(bizErrorMessage(error), 'error')
     }
+  })
+}
+
+/**
+ * 在线对接保存 / 移除后：能选的对接方式变了，后端也可能把还是默认值的方式自动改成 api（或删掉对接时退回默认），
+ * 重读这几项（画面上其余未保存的输入不动）
+ */
+const METHOD_FIELDS = ['waybill_method', 'pickup_method', 'pickup_schedule', 'pickup_contact', 'tracking_method',
+  'tracking_url_template', 'auto_sign_days', 'available_methods', 'integration']
+const refreshMethods = async () => {
+  await httpRequest<any>(`/api/warehouse/carrier/${itemId}`, {
+    method: 'GET',
+    onSuccess: (data) => {
+      for (const key of METHOD_FIELDS) {
+        if (data && key in data) itemData.value[key] = data[key]
+      }
+    },
   })
 }
 
@@ -176,7 +199,16 @@ onMounted(async() => {
     </div>
     <!-- 在线对接（自动建运单）：单独保存，不随上面的承运商资料一起提交 -->
     <div class="col-xl-12">
-      <CarrierIntegrationCard :carrier-id="itemId" :editable="staffStore.hasPermission('carrier_edit')" />
+      <CarrierIntegrationCard :carrier-id="itemId" :editable="staffStore.hasPermission('carrier_edit')" @saved="refreshMethods" />
+    </div>
+    <!-- 对接方式（运单 / 揽收 / 跟踪 / 自动签收）：随承运商资料一起保存（api 方式要先在上面设好在线对接） -->
+    <div class="col-xl-12">
+      <CarrierMethodsCard ref="methodsRef" v-model="itemData" :editable="staffStore.hasPermission('carrier_edit')"
+        :server-errors="methodErrors" />
+      <div class="d-flex justify-content-end mb-4 mt-n2" v-if="staffStore.hasPermission('carrier_edit')">
+        <button class="btn btn-primary-light" :disabled="submitting" @click="saveCarrier">{{t('carrier.operations.edit')}}<i
+            class="ri-save-line ms-2"></i></button>
+      </div>
     </div>
   </div>
   <!--End::row-1 -->

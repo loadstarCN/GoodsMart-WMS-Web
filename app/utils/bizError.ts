@@ -9,9 +9,9 @@ const detailsOf = (error: BizErrorLike): Record<string, any> => {
 
 /**
  * 自动运单记录的状态 → 文案后缀：
- * - unknown（建单结果不明）→ unresolved：先到承运商后台核对，再在打包 / 配送任务的海外发货区取消或确认作废
+ * - unknown（建单结果不明）→ unresolved：先到承运商后台核对，再在发货流程的「运单」一步取消或确认作废
  * - pending（建单中）→ in-progress：等它结束
- * - cancelling（取消中 / 取消结果不明）→ cancelling：等取消结束，或在打包 / 配送任务的海外发货区重试取消 / 核对后确认作废
+ * - cancelling（取消中 / 取消结果不明）→ cancelling：等取消结束，或在发货流程的「运单」一步重试取消 / 核对后确认作废
  * - active（有效）→ ''：用基础文案（先取消运单）
  */
 const carrierRecordVariant = (status: unknown): string => {
@@ -32,7 +32,6 @@ const messageParams = (error: BizErrorLike): Record<string, any> => {
 
 /**
  * 同一业务码按 details 细分的文案（key 后缀）；没有对应文案时回落到基础 key。
- * - 16069：单证过期（details.outdated = true）→ code-16069-outdated；缺失（details.missing_documents）→ code-16069
  * - 16063：单价小数位超出币种允许（details.max_decimal_places）→ code-16063-decimal-places
  * - 16076：签发的单证数据与随运单提交的不同（details.reason = DOCUMENT_DATA_CHANGED）→ code-16076-document-changed；
  *   否则按 details.carrier_shipment.status 区分（见 carrierRecordVariant）→ code-16076-unresolved / -in-progress / -cancelling
@@ -41,11 +40,12 @@ const messageParams = (error: BizErrorLike): Record<string, any> => {
  *   没带运单号（新建 / 删除配送任务被拒）→ code-16078-no-tracking
  * - 16079：按 details.unresolved.status 区分：建单中 → -in-progress；取消中 / 取消结果不明 → -cancelling；建单结果不明 → 基础文案
  * - 16095：承运商已建运单但保存失败，已自动取消（details.compensation.cancelled = true）→ code-16095-cancelled
+ * - 16135：承运商的对接方式不能选（field 为 waybill_method / pickup_method / tracking_method）→ code-16135-method；
+ *   其它（定期集荷、查询页、自动签收天数……）用基础文案
  */
 export const bizErrorVariant = (error: BizErrorLike): string => {
   if (!error) return ''
   const details = detailsOf(error)
-  if (error.code === 16069 && details.outdated === true) return 'outdated'
   if (error.code === 16063 && details.max_decimal_places !== undefined && details.max_decimal_places !== null) return 'decimal-places'
   if (error.code === 16076) {
     if (details.reason === 'DOCUMENT_DATA_CHANGED') return 'document-changed'
@@ -61,6 +61,7 @@ export const bizErrorVariant = (error: BizErrorLike): string => {
     const compensation = details.compensation
     return compensation && typeof compensation === 'object' && compensation.cancelled === true ? 'cancelled' : ''
   }
+  if (error.code === 16135 && /_method$/.test(String(error.field || ''))) return 'method'
   if (error.code === 16078 && details.status === 'cancelled') return 'cancelled'
   if (error.code === 16078) {
     const variant = carrierRecordVariant(details.status)

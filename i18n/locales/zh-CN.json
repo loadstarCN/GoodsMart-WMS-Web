@@ -684,7 +684,81 @@
       "remove": "移除对接",
       "remove-confirm-title": "移除在线对接？",
       "remove-confirm": "移除后这个承运商改为手工填运单号，{name} 的账号和密钥会从 WMS 删除。",
-      "open-settings": "设置"
+      "open-settings": "设置",
+      "capabilities": {
+        "title": "能力：",
+        "scope-domestic": "国内",
+        "scope-international": "国际",
+        "waybill": "建运单",
+        "customs": "报关数据",
+        "pickup": "预约揽收",
+        "tracking": "跟踪",
+        "tracks-any-number": "可查手填的运单号"
+      }
+    },
+    "methods": {
+      "title": "对接方式",
+      "intro": "运单、揽收、跟踪各自选对接方式。没有 API 合同也能完整走流程；在线（API）方式要先启用上面的在线对接，且插件支持。",
+      "waybill": "运单",
+      "pickup": "揽收",
+      "tracking": "跟踪",
+      "options": {
+        "waybill": {
+          "api": "在线建单（API）",
+          "file": "文件导出导入",
+          "manual": "手工填运单号"
+        },
+        "pickup": {
+          "api": "在线预约（API）",
+          "manual": "电话 / 网站预约，在 WMS 记录",
+          "scheduled": "定期集荷",
+          "dropoff": "自送网点",
+          "none": "不管揽收"
+        },
+        "tracking": {
+          "api": "在线跟踪（API）",
+          "link": "只给查询页链接",
+          "none": "不跟踪"
+        }
+      },
+      "help": {
+        "waybill": {
+          "api": "WMS 通过在线对接建运单，拿到面单和运单号；承运商系统故障时也可以改为手工填运单号。",
+          "file": "导出文件给承运商软件打单，再导回运单号（后续版本）。",
+          "manual": "在承运商网站或软件打面单，再在 WMS 填写或扫描运单号。"
+        },
+        "pickup": {
+          "api": "在发货流程或揽收页在线预约快递员上门。",
+          "manual": "通过电话或承运商网站约好后，在 WMS 记下日期、时间段和受理号。",
+          "scheduled": "承运商按固定的日子来收货，不用逐票预约。",
+          "dropoff": "自己把货送到承运商网点。",
+          "none": "WMS 不管这家承运商的揽收。"
+        },
+        "tracking": {
+          "api": "WMS 定时查跟踪：揽收后自动完成发货，送达后自动签收。",
+          "link": "只显示承运商公开查询页的链接；签收要手工确认（或按自动签收规则）。",
+          "none": "不跟踪；签收手工确认（或按自动签收规则）。"
+        }
+      },
+      "api-unavailable": "在线方式（API）要先启用在线对接，且插件支持这项能力。",
+      "schedule-days": "集荷日",
+      "pickup-contact": "约揽收的方式（电话 / 网址 / 说明）",
+      "pickup-contact-placeholder": "例：0120-00-0000 或 https://…",
+      "tracking-url": "公开查询页",
+      "tracking-url-hint": "用 {placeholder} 表示运单号的位置；留空就用在线对接插件内置的查询页。",
+      "tracking-url-plugin": "插件默认：",
+      "auto-sign": "自动视为签收",
+      "auto-sign-off": "不启用",
+      "days": "天",
+      "auto-sign-help": "设了天数后，没有 API 跟踪的运单在交承运商 N 天后自动视为签收（来源记「规则」）。任何时候都可以手工确认签收。留空 = 不启用。",
+      "validation": {
+        "weekdays": "至少选一个集荷日",
+        "times": "请填写集荷的时间段（HH:MM）",
+        "close-before-ready": "结束时间要晚于开始时间",
+        "tracking-url": "请填写含 {placeholder} 的 http(s) 网址",
+        "auto-sign-days": "填 1–90 的整数天数，或留空",
+        "contact": "最多 255 个字符"
+      }
     }
   },
   "recipient": {
@@ -935,8 +1009,7 @@
       "packing-info": "包装信息",
       "special-handling": "特殊处理要求",
       "transportation": "运输方式",
-      "order-no": "订单号",
-      "tracking-info": "订单跟踪信息"
+      "order-no": "订单号"
     },
     "form": {
       "placeholders": {
@@ -976,13 +1049,9 @@
       "drone": "无人机配送"
     },
     "tips": {
-      "created-successfully": "发货单由{creator}创建成功。",
-      "started-successfully": "发货单开始处理。",
-      "picking-operation-message": "{creator} 在拣货操作中拣选了 {pickedQuantity} 件物品（预期 {expectedQuantity} 件）。",
-      "packing-operation-message": "{operator} 在打包操作中打包了 {packedQuantity} 件物品。",
       "cancel-confirm-title": "取消发货单？",
       "cancel-confirm": "将取消 DN-{id}：释放该单预占的库存，停用拣货任务，单据关闭。拣货已经开始的不能取消。此操作不能撤销。",
-      "cancel-confirm-picked": "将取消 DN-{id}：已拣货 / 已打包的商品会退回待上架库存，需要重新上架；同时释放预占，相关作业任务一并停用，单据关闭。有未结束的运单时需先在打包或配送任务的「海外发货」区取消运单。此操作不能撤销。"
+      "cancel-confirm-picked": "将取消 DN-{id}：已拣货 / 已打包的商品会退回待上架库存，需要重新上架；同时释放预占，相关作业任务一并停用，单据关闭。有未结束的运单时需先在发货流程的「运单」一步取消运单。此操作不能撤销。"
     }
   },
   "picking": {
@@ -1050,7 +1119,6 @@
       "placeholders": {
         "number": "请输入配送单号",
         "search": "配送单号/DN/商品编码",
-        "signed-time": "请选择签收时间",
         "shipping-cost": "请输入运费"
       }
     },
@@ -1058,18 +1126,19 @@
       "add": "添加配送任务",
       "edit": "编辑配送任务",
       "delete": "删除配送任务",
-      "back-to-list": "返回配送任务列表",
-      "save-tracking": "保存运单号",
-      "complete": "完成发货"
+      "back-to-list": "返回配送任务列表"
     },
     "tips": {
-      "save-tracking": "可在完成发货前单独保存运单号",
       "tracking-blocked-title": "不能保存运单号",
       "signed": "已登记签收",
-      "tracking-missing-export": "还没有运单号：在下方「海外发货」里建运单或填运单号。"
+      "tracking-in-flow": "运单号在下面发货流程的「运单」一步填写。",
+      "complete-in-flow": "完成发货、签收在下面的发货流程里操作。",
+      "complete-fields-missing": "先在配送信息里填好承运商和运输方式。"
     },
     "validation": {
-      "tracking-too-long": "运单号不能超过 {max} 个字符"
+      "tracking-too-long": "运单号不能超过 {max} 个字符",
+      "carrier-required": "请选择承运商",
+      "transportation-required": "请选择运输方式"
     },
     "pickup": {
       "title": "上门揽收",
@@ -1079,7 +1148,7 @@
       "carrier": "承运商",
       "disabled": "{carrier} 的在线对接还没设好，暂时不能约揽收。",
       "setup-link": "去设置在线对接",
-      "no-carrier": "还没有能在线约揽收的承运商。在承运商里设好在线对接（如 FedEx）后，就能在这里预约。",
+      "no-carrier": "还没有在 WMS 里安排揽收的承运商。把承运商的揽收方式设为在线预约（需要在线对接）或手工记录后，就能在这里使用。",
       "carrier-list": "去承运商列表",
       "location": {
         "address": "揽收地址",
@@ -1585,18 +1654,12 @@
     "clear": "清空"
   },
   "customs": {
-    "title": "海外发货单证",
-    "shipping-title": "海外发货",
-    "export-badge": "海外",
     "errors": "错误",
     "warnings": "警告",
     "sections": {
       "summary": "报关概要",
       "exporter": "出口方",
-      "lines": "明细",
-      "packages": "箱子",
-      "problems": "问题清单",
-      "documents": "单证"
+      "lines": "明细"
     },
     "fields": {
       "invoice-number": "发票号",
@@ -1669,12 +1732,7 @@
       "PERSONAL_EFFECTS": "个人物品"
     },
     "status": {
-      "ready": "可出单证",
-      "not-ready": "有未完成项",
-      "issued": "CI、PL 已生成",
-      "not-issued": "未生成",
-      "locked": "已发货（只读）",
-      "outdated": "单证不是最新"
+      "locked": "已发货（只读）"
     },
     "operations": {
       "issue": "生成单证",
@@ -1683,7 +1741,6 @@
       "view": "查看",
       "download": "下载",
       "history": "历史版本",
-      "refresh": "刷新",
       "edit-exporter": "编辑公司出口资料",
       "reissue": "重新生成",
       "edit-warehouse": "编辑仓库出口资料",
@@ -1691,10 +1748,7 @@
       "fix": "补录",
       "edit-carrier": "编辑承运商",
       "edit-weight": "补录重量",
-      "issue-again": "再生成一次",
-      "collapse": "收起",
-      "edit-packages": "修改",
-      "show": "查看"
+      "issue-again": "再生成一次"
     },
     "tips": {
       "not-on-invoice": "已打包数量为 0，不上发票",
@@ -1703,7 +1757,6 @@
       "data-need-dn-edit": "补录报关数据需要出库单编辑权限，请联系有权限的同事。",
       "issue-need-packed": "打包完成后才能生成",
       "issue-not-ready": "先处理下面列出的问题",
-      "packages-on-task": "箱子在打包或配送任务的「海外发货」区录入",
       "issued-new": "已生成第 {version} 版",
       "issued-same": "数据未变，沿用第 {version} 版",
       "documents-voided": "箱子已变更，{count} 份现有单证已作废，请重新生成",
@@ -1711,7 +1764,6 @@
       "no-problems": "没有问题",
       "no-snapshot": "该出库单没有报关数据",
       "pdf-checksum-mismatch": "PDF 校验值不一致，请刷新后重试",
-      "delivery-blocked-title": "不能完成发货",
       "documents-outdated": "单证与最新数据不一致，请重新生成",
       "exporter-source": "电话与国家代码优先取仓库设置，其次取公司设置。",
       "jp-export-code": "日本出口统计品目编号（9 位），仅供核对，不印在 CI 上",
@@ -1747,7 +1799,6 @@
         "dimension": "尺寸须在 0.1–300 cm 之间",
         "dimension-decimals": "尺寸最多 {max} 位小数（精确到 mm），请修改"
       },
-      "title-domestic": "箱子（可选）",
       "domestic-tip": "国内单可选录入，用于记录箱数、重量和尺寸。"
     },
     "editor": {
@@ -1761,7 +1812,7 @@
         "source": "报关数据随出库单从下单系统传来，这里补录或修改只改 WMS 里的数据；下单系统如果再次发送报关数据，会覆盖这里的修改。已生成的单证内容有变时会作废，需要重新生成。",
         "invoice-fallback": "留空时用出库单的订单号",
         "consignee-fallback": "没有单独填写收货人，单证使用出库单的收货人（灰色提示）。收货人不同时再填写。",
-        "origin-on-goods": "原产国是商品主数据，在明细或海外发货区的「补录原产国」里填写。"
+        "origin-on-goods": "原产国是商品主数据，在商品里或发货流程「报关单证」一步的问题清单里填写。"
       },
       "saved": "报关数据已保存",
       "saved-voided": "报关数据已保存，{count} 份现有单证已作废，请重新生成",
@@ -1795,16 +1846,6 @@
       "title": "运单",
       "carrier-fallback": "承运商",
       "portal-fallback": "{carrier} 的网站",
-      "status": {
-        "none": "还没建",
-        "manual-pending": "待填运单号",
-        "no-carrier": "还没选承运商",
-        "blocked": "还不能建",
-        "creating": "正在建…",
-        "cancelling": "正在取消…",
-        "unresolved": "状态不确定",
-        "cancel-unresolved": "取消结果不确定"
-      },
       "fields": {
         "tracking-number": "运单号",
         "transaction-id": "交易号",
@@ -1838,7 +1879,7 @@
         "no-carrier": "先在配送信息里选承运商。",
         "no-carrier-elsewhere": "配送任务还没选承运商。",
         "manual": "{carrier} 没有在线对接：在承运商网站建好运单后，把运单号填在这里。",
-        "manual-elsewhere": "{carrier} 没有在线对接，运单号在配送任务里填写。",
+        "manual-elsewhere": "{carrier} 没有在线对接，有配送任务后在这里填运单号。",
         "tracking-placeholder": "例如 7946 0000 0001",
         "tracking-saved": "运单号已保存",
         "tracking-cleared": "运单号已清空",
@@ -1880,7 +1921,9 @@
         "timeout": "{carrier} 没有及时回应，运单可能已经建好。先到 {portal} 查一下，再决定是否重试。",
         "permission-denied": "{carrier} 拒绝了请求：检查承运商设置里的密钥，以及账号是否开通了相应接口。",
         "target-changed": "运单状态刚刚变了，已刷新，请确认后再操作。",
-        "cancel-unknown": "不确定是否已取消。稍后点「重试取消」，或到 {portal} 查看后解除锁定。"
+        "cancel-unknown": "不确定是否已取消。稍后点「重试取消」，或到 {portal} 查看后解除锁定。",
+        "manual-method": "{carrier} 的运单设为手工：在承运商网站或软件建好运单后，把运单号填在这里。",
+        "manual-method-elsewhere": "{carrier} 的运单设为手工，有配送任务后在这里填运单号。"
       },
       "warnings": {
         "DECLARED_VALUE_CAPPED": "申告价额 {original} 超过已打包货值，会按 {amount} 提交"
@@ -1898,7 +1941,6 @@
         "CARRIER_INTEGRATION_UNAVAILABLE": "服务器上没有 {carrier} 的对接插件",
         "CARRIER_NOT_CONFIGURED": "{carrier} 的账号或密钥没填全",
         "CARRIER_CONFIG_INVALID": "{carrier} 的对接设置有误",
-        "NOT_EXPORT": "不是海外单",
         "DELIVERY_TASK_MISSING": "还没有配送任务",
         "DELIVERY_TASK_COMPLETED": "配送任务已完成",
         "TRACKING_NUMBER_EXISTS": "已经填了运单号 {tracking}，要自动建运单请先清空",
@@ -1908,7 +1950,13 @@
         "RECIPIENT_ADDRESS_INVALID": "收货地址不完整，或太长放不进 {carrier} 的格式",
         "RECIPIENT_NAME_MISSING": "缺收货人姓名或公司名",
         "RECIPIENT_PHONE_MISSING": "缺收货人电话",
-        "INCOTERM_DUTIES_MISMATCH": "贸易条款是 DDP（发件人付关税），但对接设置里关税由收件人付"
+        "INCOTERM_DUTIES_MISMATCH": "贸易条款是 DDP（发件人付关税），但对接设置里关税由收件人付",
+        "SCOPE_NOT_SUPPORTED": "{carrier} 的在线对接不承运这类货（国内 / 跨境）",
+        "CUSTOMS_DATA_MISSING": "这票货要报关，但发货单没有报关数据",
+        "CUSTOMS_NOT_SUPPORTED": "这票货要报关，但 {carrier} 的在线对接不能带报关数据",
+        "WAYBILL_NOT_SUPPORTED": "{carrier} 的在线对接不能建运单（只用来约揽收 / 查跟踪），请手工填运单号",
+        "SHIPPER_ADDRESS_MISSING": "仓库和公司都没填地址",
+        "RECIPIENT_ADDRESS_MISSING": "发货单没有收货地址"
       },
       "actions": {
         "create": "建单",
@@ -1982,26 +2030,6 @@
         "auto-shipped": "{carrier} 已揽收，已自动完成发货",
         "auto-signed": "{carrier} 已送达，已自动签收"
       }
-    },
-    "steps": {
-      "packages": "箱子",
-      "shipment": "运单",
-      "documents": "单证",
-      "ship": "发货",
-      "packages-empty": "还没录",
-      "packages-unsaved": "有修改还没保存",
-      "packages-summary": "{count} 箱 · {weight} kg",
-      "after-packed": "打包完成后",
-      "documents-none": "还没生成",
-      "documents-issued": "第 {version} 版",
-      "documents-outdated": "内容有变，需要重新生成",
-      "documents-blocked": "下面有 {count} 项要先处理",
-      "ready-to-ship": "可以发货了",
-      "shipped": "已发货",
-      "problems-title": "先处理这 {count} 项",
-      "warnings-title": "请留意（{count}）",
-      "pickup": "预约揽收",
-      "pickup-after-shipment": "建好运单后"
     }
   },
   "biz-errors": {
@@ -2013,8 +2041,6 @@
     "code-16066": "箱子数据不合法",
     "code-16067": "当前状态不能修改箱子（仅已拣货、已打包时可改）",
     "code-16068": "单证条件不全",
-    "code-16069": "发货前必须先生成有效的商业发票（CI）和装箱单（PL）",
-    "code-16069-outdated": "商业发票（CI）/ 装箱单（PL）已过期（签发后报关数据或箱子有变动），请在「海外发货」里重新生成后再发货",
     "code-16070": "不是海外单",
     "code-16071": "单证不存在",
     "code-14019": "出口资料文本超长",
@@ -2023,19 +2049,19 @@
     "code-16073": "承运商返回了错误",
     "code-16074": "承运商没有及时回应",
     "code-16075": "没有可以取消的运单（或没有需要解除锁定的记录）",
-    "code-16076": "这票货已经建了运单，箱子和报关数据不能再改；要改请先在「海外发货」里取消运单",
-    "code-16076-unresolved": "这票货有一张状态不确定的运单，箱子和报关数据暂时不能改。请先在「海外发货」里按提示处理",
+    "code-16076": "这票货已经建了运单，箱子和报关数据不能再改；要改请先在发货流程的「运单」一步取消运单",
+    "code-16076-unresolved": "这票货有一张状态不确定的运单，箱子和报关数据暂时不能改。请先在发货流程的「运单」一步按提示处理",
     "code-16076-in-progress": "运单正在建，结束前箱子和报关数据不能改",
     "code-16076-cancelling": "运单正在取消或取消结果不确定，箱子和报关数据暂时不能改",
     "code-16076-document-changed": "运单已提交的申报数据与现在不同，请先取消运单再重新生成单证",
     "code-16077": "面单打印方式不对（只能是 A4 或热敏标签，且承运商要支持）",
     "code-16161": "补充单证的 PDF 无效、文件过大或类型与 FedEx 要求不符",
-    "code-16078": "这票货已建运单 {tracking_number}，运单号和承运商不能改，也不能新建或删除配送任务。要改请先在「海外发货」里取消运单",
-    "code-16078-no-tracking": "这票货已建运单，运单号和承运商不能改，也不能新建或删除配送任务。要改请先在「海外发货」里取消运单",
-    "code-16078-unresolved": "这票货有一张状态不确定的运单，运单号和承运商暂时不能改。请先在「海外发货」里按提示处理",
+    "code-16078": "这票货已建运单 {tracking_number}，运单号和承运商不能改，也不能新建或删除配送任务。要改请先在发货流程的「运单」一步取消运单",
+    "code-16078-no-tracking": "这票货已建运单，运单号和承运商不能改，也不能新建或删除配送任务。要改请先在发货流程的「运单」一步取消运单",
+    "code-16078-unresolved": "这票货有一张状态不确定的运单，运单号和承运商暂时不能改。请先在发货流程的「运单」一步按提示处理",
     "code-16078-in-progress": "运单正在建，结束前运单号和承运商不能改",
     "code-16078-cancelling": "运单正在取消或取消结果不确定，运单号和承运商暂时不能改",
-    "code-16079": "这票货有一张状态不确定的运单（承运商那边可能已经建好）。请先在「海外发货」里按提示处理，之前不能建运单、改运单号或发货",
+    "code-16079": "这票货有一张状态不确定的运单（承运商那边可能已经建好）。请先在发货流程的「运单」一步按提示处理，之前不能建运单、改运单号或发货",
     "code-16079-in-progress": "运单正在建，结束前不能保存运单号或发货",
     "code-16079-cancelling": "运单正在取消或取消结果不确定，暂时不能保存运单号或发货",
     "code-16080": "商业发票（CI）上印的运单号是 {document_tracking_number}，与本次填写的 {tracking_number} 不一致。请用 CI 上的运单号发货；如果运单号确实变了，请先保存新运单号并重新生成 CI / PL",
@@ -2059,9 +2085,9 @@
     "code-16089": "一件都没拣，不能完成拣货任务；确实拣不到货请取消出库单",
     "code-16093": "运单已变更：你操作的是 {expected}，当前是 {actual}。已重新读取最新状态，请核对后再操作",
     "code-16094": "承运商没有确认运单 {tracking_number} 已取消，不能解除锁定。请先在承运商网站取消（或稍后再试）",
-    "code-16095": "承运商已建好运单 {tracking_number}，但保存失败，自动取消也没成功。请在「海外发货」里重试取消，或到承运商网站核对后解除锁定",
+    "code-16095": "承运商已建好运单 {tracking_number}，但保存失败，自动取消也没成功。请在发货流程的「运单」一步重试取消，或到承运商网站核对后解除锁定",
     "code-16095-cancelled": "承运商已建好运单 {tracking_number}，但保存失败，已自动取消。处理好问题后重新建运单",
-    "code-16110": "这票货还有没结束的运单，不能取消出库单。请先在「海外发货」里取消运单",
+    "code-16110": "这票货还有没结束的运单，不能取消发货单。请先在发货流程的「运单」一步取消运单",
     "code-10012": "数值格式不合法（价格不能为负数，折扣价不能高于价格）",
     "code-10013": "密码不能为空",
     "code-12007": "不能授予自己没有的角色或权限，也不能管理权限比自己高的员工",
@@ -2105,6 +2131,215 @@
     "code-16133": "这条预约现在不能取消或作废（可能已取消、揽收日已过或已有结果），请刷新",
     "code-16134": "这票没有可跟踪的自动运单（运单可能刚被取消，或承运商的在线对接设置不完整），请刷新",
     "code-16124": "在线对接的设置不对，请检查标出的项",
-    "code-16125": "这个承运商还有没结束的运单（取消要用这套设置），先处理完再移除或更换对接"
+    "code-16125": "这个承运商还有没结束的运单（取消要用这套设置），先处理完再移除或更换对接",
+    "code-16135": "对接方式的设置不对（{field}），请检查后再保存",
+    "code-16135-method": "对接方式的设置不对（{field}）：在线（API）方式要先启用在线对接，且插件支持。",
+    "code-16136": "实际交承运商的时间不能晚于现在"
+  },
+  "shipping": {
+    "title": "发货流程",
+    "refresh": "刷新",
+    "view-on-dn": "在发货单查看完整流程",
+    "now": "现在",
+    "list-separator": "、",
+    "action-disabled": "{action}：{reason}",
+    "route": {
+      "domestic": "国内",
+      "international": "跨境 · {country}",
+      "customs": "需报关"
+    },
+    "stages-bar": {
+      "ordered": "下单",
+      "picking": "拣货",
+      "packing": "打包",
+      "preparing": "发货准备",
+      "handover": "交承运商",
+      "transit": "运输中",
+      "delivered": "签收"
+    },
+    "steps": {
+      "ordered": "下单",
+      "picking": "拣货",
+      "packing": "打包",
+      "documents": "报关单证",
+      "waybill": "运单",
+      "pickup": "揽收",
+      "handover": "交承运商",
+      "transit": "运输中",
+      "delivered": "签收"
+    },
+    "states": {
+      "done": "已完成",
+      "current": "进行中",
+      "todo": "未开始",
+      "warning": "要处理",
+      "blocked": "等前一步完成",
+      "skipped": "不适用"
+    },
+    "sources": {
+      "warehouse": "仓库",
+      "carrier": "承运商",
+      "rule": "规则",
+      "api": "来源系统",
+      "system": "系统",
+      "carrier-api": "承运商 API"
+    },
+    "stage": {
+      "preparing": "作业中",
+      "awaiting_waybill": "待建运单",
+      "awaiting_number": "待导回运单号",
+      "awaiting_pickup": "待揽收",
+      "awaiting_handover": "待交承运商",
+      "in_transit": "运输中",
+      "exception": "异常",
+      "delivered": "已签收",
+      "closed": "已关闭"
+    },
+    "waybill-sources": {
+      "api": "API",
+      "file": "文件",
+      "manual": "手工"
+    },
+    "actions": {
+      "create_waybill": "建运单",
+      "enter_tracking": "填运单号",
+      "cancel_waybill": "取消运单",
+      "dismiss_waybill": "解除锁定",
+      "print_label": "打印面单",
+      "export_file": "导出文件",
+      "import_numbers": "导入运单号",
+      "book_pickup": "预约揽收",
+      "record_pickup": "记录揽收",
+      "cancel_pickup": "取消揽收",
+      "complete_shipping": "完成发货",
+      "refresh_tracking": "刷新跟踪",
+      "open_tracking": "承运商查询页",
+      "sign": "确认签收",
+      "issue_documents": "签发单证",
+      "edit_packages": "录箱子"
+    },
+    "summary": {
+      "order-number": "订单号 {number}",
+      "picking": "已拣 {picked} / {planned}",
+      "packing": "{count} 箱 · {weight} kg",
+      "packing-empty": "还没录箱子",
+      "documents-skipped": "不需要（无需报关）",
+      "documents-outdated": "内容有变，需要重新签发",
+      "documents-missing": "缺：{docs}",
+      "documents-version": "第 {version} 版",
+      "documents-none": "还没签发",
+      "no-carrier": "还没选承运商",
+      "waybill-api": "还没建，可在线向 {carrier} 建运单",
+      "waybill-manual": "待填运单号",
+      "pickup-none": "不在 WMS 里安排揽收",
+      "handover-ready": "可以交给承运商了",
+      "transit-none": "不跟踪",
+      "transit-link": "在承运商查询页查看",
+      "waybill-unresolved": "建单结果不明，请核对后处理",
+      "waybill-pending": "正在向 {carrier} 建运单",
+      "waybill-cancelling": "正在取消运单",
+      "transit-waiting": "等承运商的跟踪信息"
+    },
+    "documents": {
+      "problems-title": "先处理这 {count} 项",
+      "warnings-title": "请留意（{count}）",
+      "customs-data": "报关数据明细"
+    },
+    "pickup": {
+      "schedule": "定期集荷：{days} {window}",
+      "schedule-unset": "定期集荷（没设星期和时间）",
+      "schedule-hint": "{carrier} 按这个时间来收货，不用逐票预约。",
+      "dropoff": "自送到 {carrier} 网点",
+      "manual-badge": "手工记录",
+      "api-badge": "在线预约",
+      "source": "来源",
+      "contact": "约揽收：",
+      "after-waybill": "有运单后才能约",
+      "record-title": "记录揽收",
+      "record-intro": "先通过电话或网站向 {carrier} 约好揽收，再把日期、时间段和受理号记在这里。WMS 不会联系承运商。",
+      "confirmation-code": "受理号",
+      "confirmation-code-hint": "选填：承运商给的受理号 / 预约号",
+      "record-submit": "记录",
+      "recorded-toast": "已记录揽收",
+      "page-intro-manual": "{carrier} 的揽收要通过电话或网站预约。勾选要交给快递员的运单，再记录约好的日期和时间。",
+      "remarks": "备注"
+    },
+    "handover": {
+      "shipped-at": "实际交承运商时间",
+      "time-hint": "默认现在；如果更早交出，请改成实际时间。",
+      "time-invalid": "请填写正确的日期时间",
+      "time-future": "时间不能晚于现在",
+      "confirm-title": "完成发货？",
+      "confirm": "记为 {time} 已交给承运商，完成后不能撤回。",
+      "blocked-title": "不能完成发货",
+      "auto-hint": "会自动查 {carrier} 的跟踪：揽收后自动完成发货。也可以在这里手工完成。",
+      "by-carrier": "承运商揽收后自动完成"
+    },
+    "transit": {
+      "time": "时间",
+      "event": "动态",
+      "location": "地点",
+      "no-events": "还没有扫描记录",
+      "link-only": "WMS 不查 {carrier} 的跟踪，请到承运商查询页查看。",
+      "none": "这家承运商不跟踪",
+      "refreshed": "已刷新跟踪",
+      "waiting": "还没有 {carrier} 的跟踪信息。WMS 会定时查询，也可以点「刷新跟踪」马上查。"
+    },
+    "delivered": {
+      "signed-at": "签收时间",
+      "manual-hint": "任何时候都可以按实际时间手工确认签收。",
+      "auto-sign-at": "在此之前没签收的话，将于 {time} 自动视为签收",
+      "auto-by-tracking": "承运商送达后会自动签收",
+      "by-rule": "按规则自动视为签收（交承运商后 {days} 天）",
+      "by-carrier": "承运商送达后自动签收",
+      "time-before-handover": "签收时间不能早于交承运商的时间（{time}）"
+    },
+    "tips": {
+      "state-changed": "任务状态刚变了，已刷新"
+    },
+    "dn": {
+      "stage": "发货阶段",
+      "carrier-tracking": "承运商 / 运单号",
+      "status-filter": "单据状态",
+      "totals": "合计"
+    },
+    "weekdays": {
+      "1": "周一",
+      "2": "周二",
+      "3": "周三",
+      "4": "周四",
+      "5": "周五",
+      "6": "周六",
+      "7": "周日"
+    },
+    "problems": {
+      "WAYBILL_UNRESOLVED": "向承运商建 / 取消运单的结果不明：请到承运商网站核对后取消或确认作废",
+      "PICKUP_UNRESOLVED": "揽收预约的结果不明：请向承运商核对后确认作废",
+      "PICKUP_DATE_PASSED": "约好的揽收日已过，但还没交承运商：请重新约揽收或完成发货",
+      "AUTO_SHIP_BLOCKED": "承运商已揽收，但没能自动完成发货：{message}",
+      "AUTO_SIGN_BLOCKED": "承运商已送达，但没能自动签收：{message}",
+      "TRACKING_EXCEPTION": "承运商报告异常：{message}",
+      "TRACKING_ERROR": "查跟踪出错：{message}"
+    },
+    "action-reasons": {
+      "DN_SHIPPED": "发货单已发货，已锁定",
+      "NOT_PICKED": "拣货完成后才能做",
+      "NOT_PACKED": "打包完成后才能做",
+      "WAYBILL_SUBMITTED": "箱子已随运单提交给承运商，要改请先取消运单",
+      "WAYBILL_UNRESOLVED": "运单结果不明，请先取消或确认作废",
+      "NO_OPEN_TASK": "没有进行中的配送任务",
+      "API_WAYBILL_OPEN": "已有在线建的运单，要填别的运单号请先取消它",
+      "CANNOT_CANCEL": "现在不能取消（已发货或正在取消）",
+      "REQUEST_IN_PROGRESS": "请求还在进行中",
+      "WAYBILL_CANCELLED": "运单已取消",
+      "NO_WAYBILL": "先建运单（或填运单号）",
+      "PICKUP_EXISTS": "这票已经约了揽收",
+      "PICKUP_DATE_PASSED": "揽收日已过",
+      "WAYBILL_NOT_ACTIVE": "运单不是有效状态",
+      "NOT_HANDED_OVER": "还没交承运商",
+      "NOT_AVAILABLE": "现在不能做",
+      "SHIPMENT_EXISTS": "运单已经建好了",
+      "CARRIER_NOT_SET": "还没选承运商"
+    }
   }
 }

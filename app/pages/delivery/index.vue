@@ -225,6 +225,7 @@ onMounted(async() => {
                                     <th scope="col" class="d-none d-xl-table-cell">{{t('common.entities.recipient')}}</th>
                                     <th scope="col" class="d-none d-xl-table-cell">{{t('common.entities.carrier')}}</th>
                                     <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.status') }}</th>
+                                    <th scope="col">{{ t('shipping.dn.stage') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.creator') }}</th>
                                 </tr>
@@ -237,10 +238,14 @@ onMounted(async() => {
                                     </td>
                                     <td class=""><NuxtLink :to="`/dn/detail/${item?.dn_id}`" class="text-default">DN-{{ item?.dn_id }}</NuxtLink>
                                     </td>
-                                    <td class="d-none d-xl-table-cell">{{ item?.expected_shipping_date }}</td>
+                                    <td class="d-none d-md-table-cell">{{ item?.expected_shipping_date }}</td>
                                     <td class="d-none d-xl-table-cell">{{ item?.recipient_name }}</td>
-                                    <td class="d-none d-xl-table-cell">{{ item.carrier_name }}</td>
+                                    <td class="d-none d-xl-table-cell">
+                                        {{ item.carrier_name }}
+                                        <div class="font-monospace fs-12 text-muted" v-if="item?.tracking_number">{{ item.tracking_number }}</div>
+                                    </td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+item?.status.replace('_',"-")) }}</td>
+                                    <td><ShippingStageBadge :stage="item?.shipping_stage" /></td>
 
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ item?.creator?.user_name }}</td>

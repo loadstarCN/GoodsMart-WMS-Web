@@ -131,3 +131,35 @@ export function latestTaskTimelineTime(tasks: any[] | null | undefined): string 
   }
   return latest;
 }
+
+/**
+ * 流程等处的时刻（带时区偏移的 ISO 8601，或旧数据的本地时间）→ 按界面语言显示「日期 + 时分」（浏览器所在时区）。
+ * - 只有日期（YYYY-MM-DD，如预计送达日）原样显示，不按时区挪日期
+ * - 解析不了的原样返回；空 → ''
+ * - 浏览器不认识该语言时退回 yyyy-MM-dd HH:mm
+ */
+export function formatLocaleDateTime(value: string | Date | null | undefined, locale?: string | null): string {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return value.trim();
+  const date = value instanceof Date ? value : parseISO(String(value).trim());
+  if (!isValid(date)) return String(value);
+  try {
+    return new Intl.DateTimeFormat(locale || undefined, {
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    }).format(date);
+  } catch {
+    return format(date, 'yyyy-MM-dd HH:mm');
+  }
+}
+
+/** Date → <input type="datetime-local"> 的值（本地时间 yyyy-MM-ddTHH:mm）；不传 = 现在 */
+export function toDateTimeLocalValue(date: Date = new Date()): string {
+  return format(date, "yyyy-MM-dd'T'HH:mm");
+}
+
+/** <input type="datetime-local"> 的值（本地时间）→ Date；空 / 不合法 → null */
+export function fromDateTimeLocalValue(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = parseISO(String(value).trim());
+  return isValid(date) ? date : null;
+}

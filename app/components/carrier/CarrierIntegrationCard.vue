@@ -2,7 +2,8 @@
 /**
  * 承运商的在线对接（自动建运单）：选对接插件 → 按插件声明的设置项生成表单 → 测试连接 / 保存。
  *
- * GET  /warehouse/carrier/integrations              可选的插件与各自的设置项（label / help 按语言给）
+ * GET  /warehouse/carrier/integrations              可选的插件与各自的设置项（label / help 按语言给）、能力声明
+ *                                                   （scopes、supports_waybill / customs / pickup / tracking、tracks_any_number）
  * GET  /warehouse/carrier/<id>/integration          当前设置：{adapter, name, enabled, settings, secrets: {key: 已设置}, ready, problems}
  * PUT  /warehouse/carrier/<id>/integration          保存（adapter 为空 = 移除）；设置不合法 400 16124（field settings.<key>）
  * POST /warehouse/carrier/<id>/integration/test     用表单里的值连一次（不保存）→ {ok, message, errors?}
@@ -39,6 +40,15 @@ interface IntegrationPlugin {
   portal_name: string | null
   portal_url: string | null
   fields: IntegrationField[]
+  /** 能承运的范围：domestic / international */
+  scopes?: string[]
+  supports_waybill?: boolean
+  supports_customs?: boolean
+  supports_pickup?: boolean
+  supports_tracking?: boolean
+  /** 能查不是本插件建的运单号（手填的号码也能跟踪） */
+  tracks_any_number?: boolean
+  tracking_url_template?: string | null
 }
 interface IntegrationState {
   adapter: string
@@ -75,6 +85,23 @@ const localized = (text: Record<string, string> | null | undefined): string => {
 }
 
 const plugin = computed(() => plugins.value.find((p: IntegrationPlugin) => p.code === form.adapter) || null)
+/** 插件能做的事（徽章）；旧后端没有这些声明时不显示 */
+const capabilities = computed(() => {
+  const p = plugin.value
+  if (!p) return []
+  const caps: string[] = []
+  for (const scope of p.scopes || []) {
+    caps.push(te(`carrier.integration.capabilities.scope-${scope}`) ? t(`carrier.integration.capabilities.scope-${scope}`) : scope)
+  }
+  const flags: [keyof IntegrationPlugin, string][] = [
+    ['supports_waybill', 'waybill'], ['supports_customs', 'customs'], ['supports_pickup', 'pickup'],
+    ['supports_tracking', 'tracking'], ['tracks_any_number', 'tracks-any-number'],
+  ]
+  for (const [flag, key] of flags) {
+    if (p[flag]) caps.push(t(`carrier.integration.capabilities.${key}`))
+  }
+  return caps
+})
 const GROUP_ORDER = ['account', 'shipping', 'label']
 const groups = computed(() => {
   const fields = plugin.value?.fields || []
@@ -267,6 +294,12 @@ const dirty = computed(() => {
               <option value="">{{ t('carrier.integration.none') }}</option>
               <option v-for="p in plugins" :key="p.code" :value="p.code">{{ p.name }}</option>
             </select>
+            <div class="d-flex flex-wrap align-items-center gap-1 mt-2" v-if="capabilities.length">
+              <span class="fs-12 text-muted me-1">{{ t('carrier.integration.capabilities.title') }}</span>
+              <span class="badge bg-success-transparent" v-for="cap in capabilities" :key="cap">
+                <i class="ri-check-line me-1"></i>{{ cap }}
+              </span>
+            </div>
           </div>
           <div class="col-xl-6 d-flex align-items-end" v-if="form.adapter">
             <div class="form-check form-switch mb-2">

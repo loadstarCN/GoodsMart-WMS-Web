@@ -1,4 +1,9 @@
 <script lang="ts" setup>
+/**
+ * 出库单列表：页签是发货的工作队列（按 shipping_stage：作业中 / 待建运单 / 待揽收 / 待交承运商 / 运输中 / 异常 / 已签收 / 已关闭），
+ * 出库单状态（status）在右边的下拉里另选，两个条件可以一起用。每行显示发货阶段、承运商与运单号。
+ */
+import { SHIPPING_STAGE_TABS } from '~/composables/shipping/shippingFlow'
 
 // 定义页面元数据
 definePageMeta({
@@ -134,48 +139,39 @@ const cancelItem = async (item_id: number, status?: string) => {
     cancelingId.value = null;
 }
 
-// 处理标签切换
-const setActiveFilter = (status: string | null) => {
+// 页签：发货阶段（shipping_stage）；切换时重置页码
+const setStageFilter = (stage: string | null) => {
   const query: Record<string, any> = { ...route.query }
-
-  // 处理状态参数
-  if (status === null) {
-    delete query.status
+  if (!stage || stage === 'all') {
+    delete query.shipping_stage
   } else {
-    if (status === 'all') {
-      delete query.status
-    } else {
-      query.status = status
-    }
+    query.shipping_stage = stage
   }
-
-  // 切换过滤条件时重置页码
   query.page = '1'
-  
   router.push({ query })
 }
 
-// 修改：计算当前激活状态
-const activeTab = computed(() => {
-  const statusParam = route.query.status
-  if (statusParam === 'pending') {
-    return 'pending'
-  } else if (statusParam === 'in_progress') {
-    return 'in_progress'
-  } else if (statusParam === 'picked') {
-  return 'picked'
-  } else if (statusParam === 'packed') {
-  return 'packed'
-  } else if (statusParam === 'delivered') {
-  return 'delivered'
-  } else if (statusParam === 'completed') {
-    return 'completed'
-  } else if (statusParam === 'closed') {
-    return 'closed'
-  } else {
-    return 'all' // 默认值
-  }
+const activeStage = computed(() => {
+  const stage = String(route.query.shipping_stage || '')
+  return (SHIPPING_STAGE_TABS as string[]).includes(stage) || stage === 'awaiting_number' ? stage : 'all'
 })
+
+// 出库单状态（status）筛选：下拉
+const DN_STATUSES = ['pending', 'in_progress', 'picked', 'packed', 'delivered', 'completed', 'closed']
+const activeStatus = computed(() => {
+  const status = String(route.query.status || '')
+  return DN_STATUSES.includes(status) ? status : ''
+})
+const setStatusFilter = (status: string) => {
+  const query: Record<string, any> = { ...route.query }
+  if (!status) {
+    delete query.status
+  } else {
+    query.status = status
+  }
+  query.page = '1'
+  router.push({ query })
+}
 
 // 6个月的统计数据
 import { useChartMonthOptions } from '@/composables/chart/useChartMonthOptions';
@@ -266,43 +262,24 @@ onMounted(async() => {
                     </div>
                 </div>
                 <div class="card-body">
-                    <div>
-                        <ul class="nav nav-pills nav-style-3 mb-3" role="tablist">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                        <ul class="nav nav-pills nav-style-3" role="tablist">
                             <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'all' }" href="javascript:void(0);"
-                                    @click="setActiveFilter('all')">{{t('common.status.all')}}</a>
+                                <a class="nav-link" :class="{ active: activeStage === 'all' }" href="javascript:void(0);"
+                                    @click="setStageFilter('all')">{{t('common.status.all')}}</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'pending' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('pending')">{{t('common.status.pending')}}</a>
+                            <li class="nav-item" v-for="stage in SHIPPING_STAGE_TABS" :key="stage">
+                                <a class="nav-link" :class="{ active: activeStage === stage }" href="javascript:void(0);"
+                                    @click="setStageFilter(stage)">{{ t(`shipping.stage.${stage}`) }}</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'in_progress' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('in_progress')">{{t('common.status.in-progress')}}</a>
-                            </li>
-                            
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'picked' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('picked')">{{t('common.status.picked')}}</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'packed' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('packed')">{{t('common.status.packed')}}</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'delivered' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('delivered')">{{t('common.status.delivered')}}</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'completed' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('completed')">{{t('common.status.completed')}}</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'closed' }"
-                                    href="javascript:void(0);" @click="setActiveFilter('closed')">{{t('common.status.closed')}}</a>
-                            </li>
-
                         </ul>
+                        <select class="form-select form-select-sm w-auto" :aria-label="t('shipping.dn.status-filter')"
+                            :value="activeStatus" @change="setStatusFilter(($event.target as HTMLSelectElement).value)">
+                            <option value="">{{ t('shipping.dn.status-filter') }}: {{ t('common.status.all') }}</option>
+                            <option v-for="status in DN_STATUSES" :key="status" :value="status">
+                                {{ t('shipping.dn.status-filter') }}: {{ t('common.status.' + status.replace('_', '-')) }}
+                            </option>
+                        </select>
                     </div>
 
                     <div class="table-responsive">
@@ -312,9 +289,11 @@ onMounted(async() => {
                                     <th scope="col" class="">{{ t('common.fields.id') }}</th>
                                     <th scope="col">{{ t('common.entities.warehouse') }}</th>
                                     <th scope="col" class="d-none d-lg-table-cell">{{ t('common.entities.recipient') }}</th>
-                                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.type') }}</th>
-                                    <th scope="col" class="d-none d-md-table-cell">{{t('common.fields.quantity')}}</th>
+                                    <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.type') }}</th>
+                                    <th scope="col" class="d-none d-xl-table-cell">{{t('common.fields.quantity')}}</th>
                                     <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.status') }}</th>
+                                    <th scope="col">{{ t('shipping.dn.stage') }}</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('shipping.dn.carrier-tracking') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.creator') }}</th>
                                     <th scope="col">{{ t('common.fields.action') }}</th>
@@ -331,11 +310,17 @@ onMounted(async() => {
                                             dn?.warehouse?.name }}
                                         </NuxtLink>
                                     </td>
-                                    <td class="d-none d-md-table-cell">{{ dn?.recipient?.name }}</td>
+                                    <td class="d-none d-lg-table-cell">{{ dn?.recipient?.name }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('dn.type.'+dn?.dn_type) }}</td>
                                     <td class="d-none d-xl-table-cell">{{ $n(dn?.detail_count) }} SKUs<br>{{
                                         $n(dn?.total_quantity) }} PCS</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+dn?.status.replace('_',"-")) }}</td>
+                                    <td><ShippingStageBadge :stage="dn?.shipping_stage" /></td>
+                                    <td class="d-none d-lg-table-cell">
+                                        <div v-if="dn?.shipping?.carrier_name || dn?.carrier?.name">{{ dn?.shipping?.carrier_name || dn?.carrier?.name }}</div>
+                                        <div class="font-monospace fs-12 text-muted" v-if="dn?.shipping?.tracking_number">{{ dn.shipping.tracking_number }}</div>
+                                        <span class="text-muted" v-if="!dn?.shipping?.carrier_name && !dn?.carrier?.name && !dn?.shipping?.tracking_number">—</span>
+                                    </td>
 
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(dn?.updated_at) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ dn?.creator?.user_name }}</td>

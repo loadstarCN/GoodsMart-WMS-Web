@@ -684,7 +684,81 @@
       "remove": "Remove integration",
       "remove-confirm-title": "Remove the online integration?",
       "remove-confirm": "This carrier goes back to tracking numbers entered by hand. The {name} account and keys are deleted from WMS.",
-      "open-settings": "Settings"
+      "open-settings": "Settings",
+      "capabilities": {
+        "title": "Supports:",
+        "scope-domestic": "Domestic",
+        "scope-international": "International",
+        "waybill": "Waybills",
+        "customs": "Customs data",
+        "pickup": "Pickup booking",
+        "tracking": "Tracking",
+        "tracks-any-number": "Tracks any number"
+      }
+    },
+    "methods": {
+      "title": "Handling methods",
+      "intro": "Choose how waybills, pickups and tracking are handled for this carrier. The whole flow works without an API contract; the online (API) options need the online integration above to be on and to support them.",
+      "waybill": "Waybill",
+      "pickup": "Pickup",
+      "tracking": "Tracking",
+      "options": {
+        "waybill": {
+          "api": "Create online (API)",
+          "file": "File export / import",
+          "manual": "Enter tracking number"
+        },
+        "pickup": {
+          "api": "Book online (API)",
+          "manual": "Book by phone / website, record in WMS",
+          "scheduled": "Regular pickup",
+          "dropoff": "Drop off",
+          "none": "Not managed"
+        },
+        "tracking": {
+          "api": "Track online (API)",
+          "link": "Tracking page link only",
+          "none": "No tracking"
+        }
+      },
+      "help": {
+        "waybill": {
+          "api": "WMS creates the waybill through the integration and gets the label and tracking number. If the carrier's system is down you can still enter a number by hand.",
+          "file": "Export a file for the carrier's software, then import the tracking numbers (coming later).",
+          "manual": "Print the label on the carrier's website or software, then enter or scan the tracking number in WMS."
+        },
+        "pickup": {
+          "api": "Book the courier online from the shipping flow or the Pickups page.",
+          "manual": "Book by phone or on the carrier's website, then record the date, time and confirmation number in WMS.",
+          "scheduled": "The carrier comes on fixed days; no booking is needed for each shipment.",
+          "dropoff": "You take the parcels to the carrier's location.",
+          "none": "WMS doesn't arrange pickups for this carrier."
+        },
+        "tracking": {
+          "api": "WMS checks tracking regularly: shipping is completed when the carrier picks up and signed when delivered.",
+          "link": "Only a link to the carrier's public tracking page is shown; delivery is confirmed by hand (or by the auto-sign rule).",
+          "none": "No tracking. Delivery is confirmed by hand (or by the auto-sign rule)."
+        }
+      },
+      "api-unavailable": "Online (API) needs the online integration to be on and to support it.",
+      "schedule-days": "Pickup days",
+      "pickup-contact": "How to book (phone / URL / note)",
+      "pickup-contact-placeholder": "e.g. 0120-00-0000 or https://…",
+      "tracking-url": "Public tracking page",
+      "tracking-url-hint": "Put {placeholder} where the tracking number goes. Leave blank to use the integration's built-in page.",
+      "tracking-url-plugin": "Integration default:",
+      "auto-sign": "Auto-sign after",
+      "auto-sign-off": "Off",
+      "days": "days",
+      "auto-sign-help": "When set, a shipment that isn't tracked through the API is signed automatically N days after handover (source: Rule). Delivery can always be confirmed by hand. Leave blank to turn it off.",
+      "validation": {
+        "weekdays": "Choose at least one pickup day",
+        "times": "Enter the pickup time window (HH:MM)",
+        "close-before-ready": "The end time must be later than the start time",
+        "tracking-url": "Enter an http(s) URL that contains {placeholder}",
+        "auto-sign-days": "Enter a whole number of days from 1 to 90, or leave it blank",
+        "contact": "At most 255 characters"
+      }
     }
   },
   "recipient": {
@@ -935,8 +1009,7 @@
       "packing-info": "Packing Info",
       "special-handling": "Special Handling",
       "transportation": "Transportation",
-      "order-no": "Order No.",
-      "tracking-info": "Tracking Info"
+      "order-no": "Order No."
     },
     "form": {
       "placeholders": {
@@ -976,13 +1049,9 @@
       "drone": "Drone Delivery"
     },
     "tips": {
-      "created-successfully": "DN created by {creator} successfully.",
-      "started-successfully": "DN processing started.",
-      "picking-operation-message": "{creator} picked {pickedQuantity} items (expected {expectedQuantity}).",
-      "packing-operation-message": "{operator} packed {packedQuantity} items.",
       "cancel-confirm-title": "Cancel DN?",
       "cancel-confirm": "DN-{id} will be cancelled: the stock it reserves is released, its picking task is deactivated and the DN is closed. A DN whose picking has started cannot be cancelled. This cannot be undone.",
-      "cancel-confirm-picked": "DN-{id} will be cancelled: picked / packed goods are returned to stock awaiting putaway and must be put away again; reservations are released, related tasks are deactivated and the DN is closed. If the DN has an unfinished carrier shipment, cancel it in the Export shipment section of the packing or delivery task first. This cannot be undone."
+      "cancel-confirm-picked": "DN-{id} will be cancelled: picked / packed goods are returned to stock awaiting putaway and must be put away again; reservations are released, related tasks are deactivated and the DN is closed. If the DN has an unfinished carrier shipment, cancel it in the Waybill step of the shipping flow first. This cannot be undone."
     }
   },
   "picking": {
@@ -1050,7 +1119,6 @@
       "placeholders": {
         "number": "Enter delivery number",
         "search": "Delivery No./DN/Product Code",
-        "signed-time": "Select signature time",
         "shipping-cost": "Enter the shipping cost"
       }
     },
@@ -1058,18 +1126,19 @@
       "add": "Add Delivery Task",
       "edit": "Edit Delivery Task",
       "delete": "Delete Delivery Task",
-      "back-to-list": "Back to Delivery List",
-      "save-tracking": "Save Tracking No.",
-      "complete": "Complete delivery"
+      "back-to-list": "Back to Delivery List"
     },
     "tips": {
-      "save-tracking": "You can save the tracking number before completing the shipment",
       "tracking-blocked-title": "Cannot save the tracking number",
       "signed": "Delivery signed",
-      "tracking-missing-export": "No tracking number yet: create the shipment or enter the tracking number in Export shipping below."
+      "tracking-in-flow": "Enter the tracking number in the Waybill step of the shipping flow below.",
+      "complete-in-flow": "Complete shipping and confirm delivery in the shipping flow below.",
+      "complete-fields-missing": "Fill in the carrier and transportation mode in the delivery details first."
     },
     "validation": {
-      "tracking-too-long": "Tracking number must be at most {max} characters"
+      "tracking-too-long": "Tracking number must be at most {max} characters",
+      "carrier-required": "Choose the carrier",
+      "transportation-required": "Choose the transportation mode"
     },
     "pickup": {
       "title": "Courier pickups",
@@ -1079,7 +1148,7 @@
       "carrier": "Carrier",
       "disabled": "The {carrier} integration isn't ready, so pickups can't be booked yet.",
       "setup-link": "Integration settings",
-      "no-carrier": "No carrier can book pickups online yet. Set up an online integration (e.g. FedEx) for a carrier to book pickups here.",
+      "no-carrier": "No carrier arranges pickups in WMS yet. Set a carrier's pickup method to online booking (needs an online integration) or manual record to use this page.",
       "carrier-list": "Carriers",
       "location": {
         "address": "Pickup address",
@@ -1585,18 +1654,12 @@
     "clear": "Clear"
   },
   "customs": {
-    "title": "Export Documents",
-    "shipping-title": "Export shipping",
-    "export-badge": "Export",
     "errors": "Errors",
     "warnings": "Warnings",
     "sections": {
       "summary": "Customs Summary",
       "exporter": "Exporter",
-      "lines": "Lines",
-      "packages": "Packages",
-      "problems": "Issues",
-      "documents": "Documents"
+      "lines": "Lines"
     },
     "fields": {
       "invoice-number": "Invoice No.",
@@ -1669,12 +1732,7 @@
       "PERSONAL_EFFECTS": "Personal effects"
     },
     "status": {
-      "ready": "Ready",
-      "not-ready": "Not ready",
-      "issued": "CI & PL issued",
-      "not-issued": "Not issued",
-      "locked": "Shipped (read-only)",
-      "outdated": "Documents outdated"
+      "locked": "Shipped (read-only)"
     },
     "operations": {
       "issue": "Issue Documents",
@@ -1683,7 +1741,6 @@
       "view": "View",
       "download": "Download",
       "history": "History",
-      "refresh": "Refresh",
       "edit-exporter": "Edit exporter profile",
       "reissue": "Re-issue",
       "edit-warehouse": "Edit warehouse export info",
@@ -1691,10 +1748,7 @@
       "fix": "Fix",
       "edit-carrier": "Edit carrier",
       "edit-weight": "Set weight",
-      "issue-again": "Issue again",
-      "collapse": "Hide",
-      "edit-packages": "Edit",
-      "show": "Show"
+      "issue-again": "Issue again"
     },
     "tips": {
       "not-on-invoice": "Not on the invoice (packed quantity is 0)",
@@ -1703,7 +1757,6 @@
       "data-need-dn-edit": "Completing customs data needs DN edit permission. Ask someone who has it.",
       "issue-need-packed": "Available after packing",
       "issue-not-ready": "Fix the problems listed below first",
-      "packages-on-task": "Packages are recorded in the Export shipment section of the packing or delivery task",
       "issued-new": "Version {version} issued",
       "issued-same": "No changes; version {version} kept",
       "documents-voided": "{count} existing document(s) voided because packages changed. Please issue again.",
@@ -1711,7 +1764,6 @@
       "no-problems": "No issues",
       "no-snapshot": "This DN has no customs data",
       "pdf-checksum-mismatch": "PDF checksum mismatch. Please reload and try again.",
-      "delivery-blocked-title": "Cannot complete shipment",
       "documents-outdated": "The documents do not match the latest data. Please issue them again.",
       "exporter-source": "Phone and country code are taken from the warehouse first, then from the company.",
       "jp-export-code": "Japanese export statistical code (9 digits). For reference only; not printed on the CI.",
@@ -1747,7 +1799,6 @@
         "dimension": "Dimensions must be 0.1–300 cm",
         "dimension-decimals": "Dimensions can have at most {max} decimal place (to the millimetre)"
       },
-      "title-domestic": "Packages (optional)",
       "domestic-tip": "Optional for domestic shipments; use it to record box count, weight and dimensions."
     },
     "editor": {
@@ -1761,7 +1812,7 @@
         "source": "Customs data comes with the DN from the ordering system. Changes made here only update WMS; if the ordering system sends the customs data again, it overwrites them. Issued documents whose content changes are voided and must be re-issued.",
         "invoice-fallback": "Leave blank to use the DN's order number",
         "consignee-fallback": "No separate consignee is entered, so the documents use the DN's recipient (shown in grey). Fill this in only if the consignee is different.",
-        "origin-on-goods": "Country of origin is goods master data; set it in the lines or under “Set country of origin” in the Export shipment section."
+        "origin-on-goods": "Country of origin is goods master data; set it on the goods, or in the issues list of the Customs documents step of the shipping flow."
       },
       "saved": "Customs data saved",
       "saved-voided": "Customs data saved; {count} issued document(s) were voided, please re-issue them",
@@ -1795,16 +1846,6 @@
       "title": "Shipment",
       "carrier-fallback": "the carrier",
       "portal-fallback": "the {carrier} website",
-      "status": {
-        "none": "Not created",
-        "manual-pending": "Waiting for tracking number",
-        "no-carrier": "No carrier selected",
-        "blocked": "Can't create yet",
-        "creating": "Creating…",
-        "cancelling": "Cancelling…",
-        "unresolved": "Status unclear",
-        "cancel-unresolved": "Cancellation unclear"
-      },
       "fields": {
         "tracking-number": "Tracking no.",
         "transaction-id": "Transaction ID",
@@ -1838,7 +1879,7 @@
         "no-carrier": "Choose the carrier in the delivery details first.",
         "no-carrier-elsewhere": "The delivery task has no carrier yet.",
         "manual": "{carrier} isn't connected online: create the shipment on the carrier's website, then enter the tracking number here.",
-        "manual-elsewhere": "{carrier} isn't connected online; the tracking number is entered on the delivery task.",
+        "manual-elsewhere": "{carrier} isn't connected online; enter the tracking number here once the delivery task exists.",
         "tracking-placeholder": "e.g. 7946 0000 0001",
         "tracking-saved": "Tracking number saved",
         "tracking-cleared": "Tracking number cleared",
@@ -1880,7 +1921,9 @@
         "timeout": "{carrier} didn't answer in time, so the shipment may already exist. Check {portal} before trying again.",
         "permission-denied": "{carrier} refused the request. Check the keys in the carrier settings and that the account has the required API enabled.",
         "target-changed": "The shipment just changed and has been reloaded. Check it before continuing.",
-        "cancel-unknown": "We can't tell whether it was cancelled. Retry the cancellation later, or check {portal} and then unlock."
+        "cancel-unknown": "We can't tell whether it was cancelled. Retry the cancellation later, or check {portal} and then unlock.",
+        "manual-method": "Waybills for {carrier} are entered by hand: create the waybill on the carrier's website or software, then enter the tracking number here.",
+        "manual-method-elsewhere": "Waybills for {carrier} are entered by hand; enter the tracking number here once the delivery task exists."
       },
       "warnings": {
         "DECLARED_VALUE_CAPPED": "Declared value {original} is more than the packed goods; {amount} will be sent"
@@ -1898,7 +1941,6 @@
         "CARRIER_INTEGRATION_UNAVAILABLE": "The {carrier} plugin isn't installed on the server",
         "CARRIER_NOT_CONFIGURED": "The {carrier} account or keys are missing",
         "CARRIER_CONFIG_INVALID": "The {carrier} integration settings are wrong",
-        "NOT_EXPORT": "Not an export shipment",
         "DELIVERY_TASK_MISSING": "No delivery task yet",
         "DELIVERY_TASK_COMPLETED": "The delivery task is completed",
         "TRACKING_NUMBER_EXISTS": "Tracking number {tracking} is already entered; clear it to create the shipment automatically",
@@ -1908,7 +1950,13 @@
         "RECIPIENT_ADDRESS_INVALID": "The consignee address is incomplete or too long for {carrier}",
         "RECIPIENT_NAME_MISSING": "Consignee name or company is missing",
         "RECIPIENT_PHONE_MISSING": "Consignee phone is missing",
-        "INCOTERM_DUTIES_MISMATCH": "The incoterm is DDP (shipper pays duties), but the integration bills duties to the recipient"
+        "INCOTERM_DUTIES_MISMATCH": "The incoterm is DDP (shipper pays duties), but the integration bills duties to the recipient",
+        "SCOPE_NOT_SUPPORTED": "The {carrier} integration doesn't handle this kind of shipment (domestic / international)",
+        "CUSTOMS_DATA_MISSING": "This shipment needs customs, but the DN has no customs data",
+        "CUSTOMS_NOT_SUPPORTED": "This shipment needs customs, but the {carrier} integration can't send customs data",
+        "WAYBILL_NOT_SUPPORTED": "The {carrier} integration can't create shipments (pickups / tracking only); enter the tracking number by hand",
+        "SHIPPER_ADDRESS_MISSING": "Neither the warehouse nor the company has an address",
+        "RECIPIENT_ADDRESS_MISSING": "The DN has no shipping address"
       },
       "actions": {
         "create": "create",
@@ -1982,26 +2030,6 @@
         "auto-shipped": "{carrier} picked up the parcel; shipping was completed automatically",
         "auto-signed": "{carrier} delivered the parcel; it was signed automatically"
       }
-    },
-    "steps": {
-      "packages": "Packages",
-      "shipment": "Shipment",
-      "documents": "Documents",
-      "ship": "Ship",
-      "packages-empty": "None yet",
-      "packages-unsaved": "Unsaved changes",
-      "packages-summary": "{count} pkg · {weight} kg",
-      "after-packed": "After packing",
-      "documents-none": "Not issued",
-      "documents-issued": "Version {version}",
-      "documents-outdated": "Out of date, issue again",
-      "documents-blocked": "Fix the {count} items below first",
-      "ready-to-ship": "Ready to ship",
-      "shipped": "Shipped",
-      "problems-title": "Fix these first ({count})",
-      "warnings-title": "Please check ({count})",
-      "pickup": "Courier pickup",
-      "pickup-after-shipment": "After the shipment is created"
     }
   },
   "biz-errors": {
@@ -2013,8 +2041,6 @@
     "code-16066": "Invalid package data",
     "code-16067": "Packages cannot be changed in the current status (only when picked or packed)",
     "code-16068": "Document requirements are not met",
-    "code-16069": "Issue a valid Commercial Invoice (CI) and Packing List (PL) before shipping",
-    "code-16069-outdated": "The Commercial Invoice (CI) / Packing List (PL) is outdated (customs data or packages changed after it was issued). Issue it again in Export shipping before shipping.",
     "code-16070": "Not an export shipment",
     "code-16071": "Document not found",
     "code-14019": "Exporter profile text is too long",
@@ -2023,19 +2049,19 @@
     "code-16073": "The carrier returned an error",
     "code-16074": "The carrier didn't answer in time",
     "code-16075": "There's no shipment to cancel (or nothing to unlock)",
-    "code-16076": "A shipment has been created, so packages and customs data can't change. Cancel the shipment in Export shipping first.",
-    "code-16076-unresolved": "This order has a shipment whose status is unclear, so packages and customs data can't change for now. Resolve it in Export shipping first.",
+    "code-16076": "A waybill has been created, so packages and customs data can't change. Cancel it in the Waybill step of the shipping flow first.",
+    "code-16076-unresolved": "This order has a waybill whose status is unclear, so packages and customs data can't change for now. Resolve it in the Waybill step of the shipping flow first.",
     "code-16076-in-progress": "The shipment is being created; packages and customs data can't change until it finishes.",
     "code-16076-cancelling": "The shipment is being cancelled or its cancellation is unclear; packages and customs data can't change for now.",
     "code-16076-document-changed": "The declared data submitted with the shipment differs from the current data. Cancel the shipment first, then issue the documents again.",
     "code-16077": "Unsupported label option (A4 or THERMAL only, and the carrier must support it)",
     "code-16161": "The supplemental PDF is invalid, too large, or does not match FedEx's requirement",
-    "code-16078": "Shipment {tracking_number} has been created, so the tracking number and carrier can't change, and delivery tasks can't be added or deleted. Cancel the shipment in Export shipping first.",
-    "code-16078-no-tracking": "A shipment has been created, so the tracking number and carrier can't change, and delivery tasks can't be added or deleted. Cancel the shipment in Export shipping first.",
-    "code-16078-unresolved": "This order has a shipment whose status is unclear, so the tracking number and carrier can't change for now. Resolve it in Export shipping first.",
+    "code-16078": "Waybill {tracking_number} has been created, so the tracking number and carrier can't change, and delivery tasks can't be added or deleted. Cancel it in the Waybill step of the shipping flow first.",
+    "code-16078-no-tracking": "A waybill has been created, so the tracking number and carrier can't change, and delivery tasks can't be added or deleted. Cancel it in the Waybill step of the shipping flow first.",
+    "code-16078-unresolved": "This order has a waybill whose status is unclear, so the tracking number and carrier can't change for now. Resolve it in the Waybill step of the shipping flow first.",
     "code-16078-in-progress": "The shipment is being created; the tracking number and carrier can't change until it finishes.",
     "code-16078-cancelling": "The shipment is being cancelled or its cancellation is unclear; the tracking number and carrier can't change for now.",
-    "code-16079": "This order has a shipment whose status is unclear (it may exist at the carrier). Resolve it in Export shipping first; until then you can't create a shipment, change the tracking number or ship.",
+    "code-16079": "This order has a waybill whose status is unclear (it may exist at the carrier). Resolve it in the Waybill step of the shipping flow first; until then you can't create a waybill, change the tracking number or ship.",
     "code-16079-in-progress": "The shipment is being created; you can't save a tracking number or ship until it finishes.",
     "code-16079-cancelling": "The shipment is being cancelled or its cancellation is unclear; you can't save a tracking number or ship for now.",
     "code-16080": "The tracking number printed on the Commercial Invoice (CI) is {document_tracking_number}, which differs from the entered {tracking_number}. Ship with the tracking number on the CI; if the tracking number really changed, save the new one and re-issue the CI / PL first.",
@@ -2059,9 +2085,9 @@
     "code-16089": "Nothing has been picked; the picking task cannot be completed. If the goods cannot be picked, cancel the DN instead",
     "code-16093": "The shipment has changed: you acted on {expected}, but it is now {actual}. The latest status has been loaded; please check it and try again.",
     "code-16094": "The carrier didn't confirm that shipment {tracking_number} is cancelled, so it can't be unlocked. Cancel it on the carrier's website (or try again later).",
-    "code-16095": "The carrier created shipment {tracking_number}, but saving it failed and the automatic cancel failed too. Retry the cancellation in Export shipping, or check the carrier's website and unlock.",
+    "code-16095": "The carrier created waybill {tracking_number}, but saving it failed and the automatic cancel failed too. Retry the cancellation in the Waybill step of the shipping flow, or check the carrier's website and unlock.",
     "code-16095-cancelled": "The carrier created shipment {tracking_number}, but saving it failed, so it was cancelled. Fix the problem and create it again.",
-    "code-16110": "This order still has an unfinished shipment, so it can't be cancelled. Cancel the shipment in Export shipping first.",
+    "code-16110": "This order still has an unfinished waybill, so it can't be cancelled. Cancel it in the Waybill step of the shipping flow first.",
     "code-10012": "Invalid number (the price must not be negative, and the discount price must not exceed the price)",
     "code-10013": "Password is required",
     "code-12007": "You cannot assign roles or permissions you do not have, or manage staff with higher privileges",
@@ -2105,6 +2131,215 @@
     "code-16133": "This pickup can't be cancelled or dismissed now (it may be cancelled, past its date or already settled); refresh the page",
     "code-16134": "This DN has no automatic shipment that can be tracked (it may have just been cancelled, or the carrier integration is incomplete); refresh the page",
     "code-16124": "The integration settings aren't valid; check the highlighted field",
-    "code-16125": "This carrier still has unfinished shipments (they're cancelled with these settings). Finish them before removing or changing the integration."
+    "code-16125": "This carrier still has unfinished shipments (they're cancelled with these settings). Finish them before removing or changing the integration.",
+    "code-16135": "Invalid handling-method setting ({field}); check it and save again",
+    "code-16135-method": "Invalid handling-method setting ({field}). Online (API) methods need the online integration to be on and to support them.",
+    "code-16136": "The handover time can't be later than now"
+  },
+  "shipping": {
+    "title": "Shipping flow",
+    "refresh": "Refresh",
+    "view-on-dn": "Full flow on the DN",
+    "now": "Now",
+    "list-separator": ", ",
+    "action-disabled": "{action}: {reason}",
+    "route": {
+      "domestic": "Domestic",
+      "international": "International · {country}",
+      "customs": "Customs documents"
+    },
+    "stages-bar": {
+      "ordered": "Ordered",
+      "picking": "Picking",
+      "packing": "Packing",
+      "preparing": "Shipping prep",
+      "handover": "Handed over",
+      "transit": "In transit",
+      "delivered": "Delivered"
+    },
+    "steps": {
+      "ordered": "Order received",
+      "picking": "Picking",
+      "packing": "Packing",
+      "documents": "Customs documents",
+      "waybill": "Waybill",
+      "pickup": "Pickup",
+      "handover": "Hand over to carrier",
+      "transit": "In transit",
+      "delivered": "Delivered"
+    },
+    "states": {
+      "done": "Done",
+      "current": "To do now",
+      "todo": "Not yet",
+      "warning": "Needs attention",
+      "blocked": "Waiting on an earlier step",
+      "skipped": "Not applicable"
+    },
+    "sources": {
+      "warehouse": "Warehouse",
+      "carrier": "Carrier",
+      "rule": "Rule",
+      "api": "Source system",
+      "system": "System",
+      "carrier-api": "Carrier API"
+    },
+    "stage": {
+      "preparing": "In progress",
+      "awaiting_waybill": "Awaiting waybill",
+      "awaiting_number": "Awaiting tracking no.",
+      "awaiting_pickup": "Awaiting pickup",
+      "awaiting_handover": "Ready to hand over",
+      "in_transit": "In transit",
+      "exception": "Exception",
+      "delivered": "Delivered",
+      "closed": "Closed"
+    },
+    "waybill-sources": {
+      "api": "API",
+      "file": "File",
+      "manual": "Manual"
+    },
+    "actions": {
+      "create_waybill": "Create waybill",
+      "enter_tracking": "Enter tracking no.",
+      "cancel_waybill": "Cancel waybill",
+      "dismiss_waybill": "Unlock",
+      "print_label": "Print label",
+      "export_file": "Export file",
+      "import_numbers": "Import tracking numbers",
+      "book_pickup": "Book pickup",
+      "record_pickup": "Record pickup",
+      "cancel_pickup": "Cancel pickup",
+      "complete_shipping": "Complete shipping",
+      "refresh_tracking": "Refresh tracking",
+      "open_tracking": "Carrier tracking page",
+      "sign": "Confirm delivery",
+      "issue_documents": "Issue documents",
+      "edit_packages": "Edit packages"
+    },
+    "summary": {
+      "order-number": "Order {number}",
+      "picking": "{picked} / {planned} picked",
+      "packing": "{count} pkg · {weight} kg",
+      "packing-empty": "No packages recorded",
+      "documents-skipped": "Not needed (no customs)",
+      "documents-outdated": "Out of date, issue again",
+      "documents-missing": "Missing: {docs}",
+      "documents-version": "Version {version}",
+      "documents-none": "Not issued",
+      "no-carrier": "No carrier selected",
+      "waybill-api": "Not created yet; create it online with {carrier}",
+      "waybill-manual": "Waiting for the tracking number",
+      "pickup-none": "Pickups are not arranged in WMS",
+      "handover-ready": "Ready to hand over to the carrier",
+      "transit-none": "Not tracked",
+      "transit-link": "Check on the carrier's tracking page",
+      "waybill-unresolved": "Shipment result unclear; check and resolve it",
+      "waybill-pending": "Creating the shipment with {carrier}",
+      "waybill-cancelling": "Cancelling the shipment",
+      "transit-waiting": "Waiting for carrier tracking"
+    },
+    "documents": {
+      "problems-title": "Fix these first ({count})",
+      "warnings-title": "Please check ({count})",
+      "customs-data": "Customs data"
+    },
+    "pickup": {
+      "schedule": "Regular pickup: {days} {window}",
+      "schedule-unset": "Regular pickup (days and times not set)",
+      "schedule-hint": "{carrier} collects on these days; no booking is needed for each shipment.",
+      "dropoff": "Drop off at a {carrier} location",
+      "manual-badge": "Manual",
+      "api-badge": "Online",
+      "source": "Booked via",
+      "contact": "How to book:",
+      "after-waybill": "Available once the waybill is ready",
+      "record-title": "Record a pickup",
+      "record-intro": "Book the pickup with {carrier} by phone or on its website, then record the date, time and confirmation number here. WMS does not contact the carrier.",
+      "confirmation-code": "Confirmation no.",
+      "confirmation-code-hint": "Optional: the number the carrier gave you",
+      "record-submit": "Record",
+      "recorded-toast": "Pickup recorded",
+      "page-intro-manual": "Pickups with {carrier} are booked by phone or on its website. Tick the shipments the courier will take, then record the agreed date and time.",
+      "remarks": "Remarks"
+    },
+    "handover": {
+      "shipped-at": "Handed over at",
+      "time-hint": "Defaults to now; change it to the actual time if it was earlier.",
+      "time-invalid": "Enter a valid date and time",
+      "time-future": "The time can't be later than now",
+      "confirm-title": "Complete shipping?",
+      "confirm": "The goods are recorded as handed over to the carrier at {time}. This can't be undone.",
+      "blocked-title": "Can't complete shipping",
+      "auto-hint": "{carrier} tracking is checked automatically: shipping is completed when the carrier picks up. You can also complete it here.",
+      "by-carrier": "Completed automatically when the carrier picked up"
+    },
+    "transit": {
+      "time": "Time",
+      "event": "Event",
+      "location": "Location",
+      "no-events": "No scan events yet",
+      "link-only": "{carrier} isn't tracked in WMS; check its tracking page.",
+      "none": "No tracking for this carrier",
+      "refreshed": "Tracking refreshed",
+      "waiting": "No tracking from {carrier} yet. WMS checks it regularly; use \"Refresh tracking\" to check now."
+    },
+    "delivered": {
+      "signed-at": "Delivered at",
+      "manual-hint": "You can always confirm delivery by hand with the actual time.",
+      "auto-sign-at": "Signed automatically at {time} unless confirmed before",
+      "auto-by-tracking": "Signed automatically when the carrier reports delivery",
+      "by-rule": "Signed automatically by rule ({days} days after handover)",
+      "by-carrier": "Signed when the carrier reported delivery",
+      "time-before-handover": "The delivery time can't be earlier than the handover ({time})"
+    },
+    "tips": {
+      "state-changed": "The task has just changed; reloaded"
+    },
+    "dn": {
+      "stage": "Shipping",
+      "carrier-tracking": "Carrier / tracking no.",
+      "status-filter": "DN status",
+      "totals": "Total"
+    },
+    "weekdays": {
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat",
+      "7": "Sun"
+    },
+    "problems": {
+      "WAYBILL_UNRESOLVED": "The carrier shipment request has an unclear result; check the carrier's website, then cancel or dismiss it",
+      "PICKUP_UNRESOLVED": "The pickup request has an unclear result; check with the carrier, then dismiss it",
+      "PICKUP_DATE_PASSED": "The pickup date has passed but the goods have not been handed over; book again or complete shipping",
+      "AUTO_SHIP_BLOCKED": "The carrier picked up, but shipping could not be completed automatically: {message}",
+      "AUTO_SIGN_BLOCKED": "The carrier delivered, but delivery could not be confirmed automatically: {message}",
+      "TRACKING_EXCEPTION": "The carrier reports an exception: {message}",
+      "TRACKING_ERROR": "Tracking failed: {message}"
+    },
+    "action-reasons": {
+      "DN_SHIPPED": "The DN has been shipped and is locked",
+      "NOT_PICKED": "Available once picking is done",
+      "NOT_PACKED": "Available once the DN is packed",
+      "WAYBILL_SUBMITTED": "The packages were sent with the carrier shipment; cancel the shipment first to change them",
+      "WAYBILL_UNRESOLVED": "The carrier shipment result is unclear; cancel or dismiss it first",
+      "NO_OPEN_TASK": "No open delivery task",
+      "API_WAYBILL_OPEN": "A shipment was created online; cancel it first to enter another tracking number",
+      "CANNOT_CANCEL": "Can't be cancelled now (shipped, or a cancellation is in progress)",
+      "REQUEST_IN_PROGRESS": "The request is still in progress",
+      "WAYBILL_CANCELLED": "The shipment has been cancelled",
+      "NO_WAYBILL": "Create the waybill (or enter the tracking number) first",
+      "PICKUP_EXISTS": "This shipment is already in a pickup",
+      "PICKUP_DATE_PASSED": "The pickup date has passed",
+      "WAYBILL_NOT_ACTIVE": "The shipment is not active",
+      "NOT_HANDED_OVER": "Not handed over to the carrier yet",
+      "NOT_AVAILABLE": "Not available now",
+      "SHIPMENT_EXISTS": "The waybill has already been created",
+      "CARRIER_NOT_SET": "No carrier selected"
+    }
   }
 }

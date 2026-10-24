@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 /**
- * 海外发货 · 运单（海外发货区「运单」这一步的内容；出库单详情的单证卡片里只读 locked）
+ * 发货流程 · 运单（「运单」这一步的内容，国内 / 跨境共用；DN 已发货时只读 locked）
  *
  * 按 DN 当前的承运商（发货任务的，没有用 DN 的）走两条路：
- * - 承运商设了在线对接（status.integration）：「创建运单」+ 面单打印方式（本机记住上次的选择 → 对接设置的默认 → A4），
- *   不能建时列出原因（报关数据类的问题由外层的问题清单列，这里不重复：hiddenBlockerCodes）；
+ * - 承运商设了在线对接（status.integration）且运单方式是 api：「创建运单」+ 面单打印方式（本机记住上次的选择 → 对接设置的默认 → A4），
+ *   不能建时列出原因（报关数据类的问题由「报关单证」一步列，这里不重复：hiddenBlockerCodes）；
  *   对接临时不可用时也可以改成手工填运单号
- * - 没有对接：在承运商网站建好运单后手工填运单号（配送任务页可以直接填；打包页给配送任务的入口）
+ * - 没有对接，或运单方式是手工（manualOnly）：在承运商网站 / 软件建好运单后手工填运单号（有发货任务时直接填）
  * 已建运单：运单号、服务、运费；打印 / 下载面单（PDF 新标签页打开；ZPL / EPL 下载指令文件）；取消运单（二次确认）
  * 结果不明（unresolved：超时 / 补偿失败 / 响应异常）：一句话说明 + 可展开的处理步骤（到承运商后台核对），
  *   给「重试取消」（can_cancel）/「已处理，解除锁定」（can_dismiss，二次确认）；pending / cancelling（别人正在建 / 取消）
@@ -76,8 +76,12 @@ const props = withDefaults(defineProps<{
   canEditCustoms?: boolean
   /** 运单卡片里显示揽收一行（配送页的步骤清单有单独的「预约揽收」一步，那里不重复） */
   showPickup?: boolean
-  /** 给「刷新跟踪」：刷新可能当场完成发货 / 签收，只在配送页给（出库单详情的只读卡片不给） */
+  /** 给「刷新跟踪」：刷新可能当场完成发货 / 签收 */
   trackingRefresh?: boolean
+  /** 运单卡片里显示跟踪一行（发货流程有单独的「运输中」一步，那里不重复） */
+  showTracking?: boolean
+  /** 承运商的运单方式不是 api（手工 / 文件）：不给「创建运单」，直接填运单号（已有的在线运单照常显示、可取消） */
+  manualOnly?: boolean
 }>(), {
   locked: false,
   packageCount: null,
@@ -90,6 +94,8 @@ const props = withDefaults(defineProps<{
   canEditCustoms: false,
   showPickup: true,
   trackingRefresh: true,
+  showTracking: true,
+  manualOnly: false,
 })
 
 const emit = defineEmits<{
@@ -274,7 +280,8 @@ const pickupText = computed(() => {
 })
 // ------------------ 跟踪（插件能跟踪时：揽收后自动完成发货、送达后自动签收） ----------------------
 const tracking = computed(() => activeShipment.value?.tracking || null)
-const trackingVisible = computed(() => !!activeShipment.value && (!!integration.value?.tracks_shipments || !!tracking.value))
+const trackingVisible = computed(() =>
+  props.showTracking && !!activeShipment.value && (!!integration.value?.tracks_shipments || !!tracking.value))
 const trackingText = computed(() => {
   const tr = tracking.value
   if (!tr || !tr.status) return t('customs.carrier.tracking.none')
@@ -368,7 +375,7 @@ const cancelTargetTracking = computed(() =>
 /** 结果不明区里给「重试取消」：没有有效运单、不在进行中、后端允许取消 */
 const canRetryCancel = computed(() => canCancel.value && !activeShipment.value && !!unresolved.value && !unresolvedInProgress.value)
 const canCreate = computed(() =>
-  !!integration.value && !props.locked && !!status.value?.can_create && !activeShipment.value && !cancellingShipment.value
+  !!integration.value && !props.manualOnly && !props.locked && !!status.value?.can_create && !activeShipment.value && !cancellingShipment.value
   && !unresolved.value && !tradeLoading.value && !tradeError.value
   && (!status.value?.regulatory_check_enabled || (!!tradeRequirements.value && allTradeFilesSelected.value)))
 const busy = computed(() =>
@@ -611,9 +618,11 @@ const saveTracking = async () => {
   }
   savingTracking.value = true
   let saved = false
+  // 带上任务的承运商：手填的运单号记成该承运商的手工运单
+  const carrierId = status.value?.carrier?.id
   await httpRequest<any>(`/api/warehouse/delivery/${props.taskId}/tracking`, {
     method: 'PUT',
-    body: { tracking_number: tracking },
+    body: carrierId ? { tracking_number: tracking, carrier_id: carrierId } : { tracking_number: tracking },
     onSuccess: () => {
       saved = true
       showToast(t(tracking ? 'customs.carrier.tips.tracking-saved' : 'customs.carrier.tips.tracking-cleared'), 'success')
@@ -1115,8 +1124,8 @@ defineExpose({ reload: async () => { await load() } })
           {{ t(taskId ? 'customs.carrier.tips.no-carrier' : 'customs.carrier.tips.no-carrier-elsewhere') }}
         </p>
 
-        <!-- 有在线对接：创建运单 -->
-        <template v-else-if="integration">
+        <!-- 有在线对接（运单方式 api）：创建运单 -->
+        <template v-else-if="integration && !manualOnly">
           <div class="alert alert-warning fs-12 mt-2 mb-2" v-if="!locked && status.etd_enabled">
             {{ t('customs.carrier.tips.trade-signature-warning') }}
           </div>
@@ -1200,16 +1209,18 @@ defineExpose({ reload: async () => { await load() } })
           </div>
         </template>
 
-        <!-- 没有在线对接：在承运商网站建运单 -->
+        <!-- 没有在线对接 / 运单方式是手工：在承运商网站或软件建运单 -->
         <p class="fs-13 mb-2" v-else-if="!locked">
-          {{ t(canEnterTracking ? 'customs.carrier.tips.manual' : 'customs.carrier.tips.manual-elsewhere', { carrier: carrierName }) }}
+          {{ t(integration
+            ? (canEnterTracking ? 'customs.carrier.tips.manual-method' : 'customs.carrier.tips.manual-method-elsewhere')
+            : (canEnterTracking ? 'customs.carrier.tips.manual' : 'customs.carrier.tips.manual-elsewhere'), { carrier: carrierName }) }}
           <NuxtLink :to="`/delivery/detail/${status.delivery_task_id}`" class="ms-1"
             v-if="!canEnterTracking && !locked && status.delivery_task_id">{{ t('customs.carrier.operations.open-delivery') }}</NuxtLink>
         </p>
 
         <!-- 手工运单号：没有对接时一直显示；有对接时点开或已经填过才显示 -->
         <form class="d-flex flex-wrap align-items-center gap-2" @submit.prevent="saveTracking"
-          v-if="status.carrier && canEnterTracking && (!integration || manualOpen || savedTracking)">
+          v-if="status.carrier && canEnterTracking && (!integration || manualOnly || manualOpen || savedTracking)">
           <div class="input-group input-group-sm carrier-tracking-input">
             <span class="input-group-text">{{ t('customs.carrier.fields.tracking-number') }}</span>
             <input type="text" class="form-control font-monospace" v-model="manualTracking" :maxlength="TRACKING_MAX_LENGTH"

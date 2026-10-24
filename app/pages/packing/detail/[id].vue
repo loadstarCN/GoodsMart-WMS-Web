@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { DN_LOCKED_STATUSES, DN_PACKAGE_EDITABLE_STATUSES } from '~/composables/customs/customsDocuments'
 
 // 定义页面元数据
 definePageMeta({
@@ -159,6 +158,7 @@ const saveTask = async () => {
         await fetchData();
         resetTask();
         showToast(t('action-results.success'), 'success')
+        flowRef.value?.reload();
     }
     // 16121：这次提交此前已按不同的内容处理过，换新的幂等键，重新读取并清空录入，让用户核对后再录
     if (replayMismatch) {
@@ -179,7 +179,7 @@ const processTask = async () => {
             itemData.value = data;
             showToast(t('action-results.task-start-process'), 'success')
             await fetchData();
-
+            flowRef.value?.reload();
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -197,6 +197,8 @@ const completeTask = async () => {
         onSuccess: (data) => {
             itemData.value = data;
             showToast(t('action-results.task-complete'), 'success')
+            // 打包完成：DN 到 packed，流程轮到单证 / 运单
+            flowRef.value?.reload();
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -243,7 +245,8 @@ const deleteDetailItem = async (item_id:Number) => {
             method: 'DELETE',
             onSuccess: async() => {
                 showToast(t('action-results.success'), 'success')
-                await fetchData();                
+                await fetchData();
+                flowRef.value?.reload();
             },
             onError: (error) => {
                 showToast(error.message, 'error')
@@ -255,13 +258,8 @@ onMounted(async() => {
   await fetchData();
 });
 
-// ------------------ 海外出荷：本页录箱子、打包完成后出单证（ExportShippingPanel，运单在配送任务办）；国内单只录箱子 ----------------------
-const isExport = computed(() => !!(itemData.value?.dn?.is_export || itemData.value?.dn?.customs));
-const dnStatus = computed(() => String(itemData.value?.dn?.status || ''));
-const packagesEditable = computed(() => DN_PACKAGE_EDITABLE_STATUSES.includes(dnStatus.value));
-const packagesReadonlyReason = computed(() =>
-  DN_LOCKED_STATUSES.includes(dnStatus.value) ? t('customs.status.locked') : t('customs.packages.readonly-status')
-);
+// ------------------ 发货流程（compact）：录箱子、单证、运单……都在流程里，本页只展开当前这一步 ----------------------
+const flowRef = ref<{ reload: () => Promise<void> } | null>(null);
 
 </script>
 <template>
@@ -464,24 +462,11 @@ const packagesReadonlyReason = computed(() =>
   </div>
   <!--End::row-1 -->
 
-  <!-- 海外单：箱子、CI / PL 在本页办完（运单在配送任务）；国内单：箱子可选录入 -->
+  <!-- 发货流程（compact）：箱子、单证、运单等按流程办（国内 / 跨境同一套）。 -->
   <!-- 用 itemData 而非 loading 判断：刷新任务数据时不卸载，避免丢失未保存的箱子 -->
   <div class="row" v-if="itemData && itemData.dn_id">
     <div class="col-xl-12">
-      <ExportShippingPanel :dn-id="itemData.dn_id" :dn-status="dnStatus" :warehouse-id="itemData?.dn?.warehouse_id"
-        stage="packing" v-if="isExport" />
-      <div class="card custom-card" v-else>
-        <div class="card-header">
-          <div class="card-title">
-            <i class="ri-inbox-archive-line me-1 align-middle"></i>{{ t('customs.packages.title-domestic') }}
-          </div>
-        </div>
-        <div class="card-body">
-          <p class="fs-12 text-muted mb-2">{{ t('customs.packages.domestic-tip') }}</p>
-          <DnPackagesEditor :dn-id="itemData.dn_id" :editable="packagesEditable"
-            :readonly-reason="packagesReadonlyReason" />
-        </div>
-      </div>
+      <DnShippingFlow ref="flowRef" :dn-id="itemData.dn_id" mode="compact" :warehouse-id="itemData?.dn?.warehouse_id ?? null" />
     </div>
   </div>
 
