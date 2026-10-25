@@ -2953,5 +2953,324 @@
     "show-damaged-locations": "破損品ロケーションのみ表示",
     "target-location": "棚入れ先ロケーション",
     "max": "最大 {max} 個まで棚入れできます"
+  },
+  "w": {
+    "input": {
+      "clear": "クリア"
+    },
+    "field": {
+      "optional": "任意"
+    },
+    "help": {
+      "label": "説明：{text}"
+    },
+    "alert": {
+      "close": "閉じる"
+    },
+    "modal": {
+      "close": "閉じる"
+    },
+    "tabs": {
+      "attention": "（要対応）",
+      "error": "（異常）"
+    },
+    "table": {
+      "select-all": "このページの行をすべて選択",
+      "select-row": "この行を選択",
+      "empty": "データがありません"
+    },
+    "pagination": {
+      "label": "ページ送り",
+      "previous": "前のページ",
+      "next": "次のページ",
+      "page": "{page} ページ",
+      "total": "全 {total} 件"
+    },
+    "steps": {
+      "done": "完了",
+      "current": "現在のステップ",
+      "warn": "要対応",
+      "todo": "未着手",
+      "sr-state": "（{state}）"
+    }
+  },
+  "shell": {
+    "skip-to-content": "メインコンテンツへ移動",
+    "nav-label": "メインナビゲーション",
+    "admin-nav-label": "プラットフォーム管理ナビゲーション",
+    "home-link": "{name} ホーム",
+    "collapse-menu": "メニューを折りたたむ",
+    "expand-menu": "メニューを展開",
+    "open-menu": "メニューを開く",
+    "close-menu": "メニューを閉じる",
+    "search": {
+      "placeholder": "伝票番号・注文番号・追跡番号・商品を検索",
+      "label": "検索（{shortcut}）"
+    },
+    "warehouse": {
+      "label": "倉庫を切り替え（現在：{name}）",
+      "menu": "倉庫を切り替え",
+      "all-sub": "会社の全 {count} 倉庫"
+    },
+    "language": {
+      "label": "表示言語：{lang}",
+      "menu": "表示言語"
+    },
+    "theme": {
+      "dark": "ダークモード"
+    },
+    "account": {
+      "label": "アカウントメニュー：{name}",
+      "menu": "アカウントメニュー",
+      "change-password": "パスワード変更",
+      "fullscreen": "全画面表示",
+      "exit-fullscreen": "全画面表示を終了",
+      "density": "表示密度",
+      "density-comfortable": "標準",
+      "density-compact": "コンパクト",
+      "logout": "ログアウト",
+      "platform": "プラットフォーム管理"
+    },
+    "putaway-badge": "{label}、棚入れ待ち {count} 点",
+    "nav": {
+      "groups": {
+        "inventory": "在庫管理",
+        "inbound": "入荷管理",
+        "outbound": "出荷管理",
+        "reports": "レポート",
+        "warehouse": "倉庫管理",
+        "system": "システム"
+      },
+      "putaway": "棚入れ",
+      "roles": "ロールと権限",
+      "report-inbound": "入荷分析",
+      "report-inventory": "在庫分析",
+      "report-outbound": "出荷分析",
+      "report-operator": "作業効率",
+      "report-stock-summary": "入出庫在庫集計",
+      "freight": "運賃照合"
+    },
+    "admin-nav": {
+      "overview": "概要",
+      "tenant-group": "テナント管理",
+      "system-group": "システム管理",
+      "tenants": "テナント",
+      "users": "ユーザー",
+      "roles": "ロール",
+      "permissions": "権限",
+      "logs": "操作ログ",
+      "settings": "システム設定"
+    }
+  },
+  "dev-ui": {
+    "title": "コンポーネント一覧",
+    "theme": "プレビューの配色",
+    "theme-light": "ライト",
+    "theme-dark": "ダーク",
+    "inline": "行内",
+    "sections": {
+      "buttons": "ボタン · ページ 36 / 行内 28",
+      "inputs": "入力 · セレクト",
+      "choices": "チェック · スイッチ · ラジオカード · セグメント",
+      "status": "ステータス · タグ · ピル",
+      "tabs": "タブ",
+      "cards": "カード · 主要指標",
+      "alerts": "アラート",
+      "table": "テーブル · 空欄ルール · 固定ヘッダー · 行選択",
+      "table-empty": "データのないテーブル",
+      "compact-table": "コンパクトなテーブル",
+      "empty": "空の状態",
+      "overlays": "ダイアログ · ドロワー · 説明",
+      "steps": "進捗ステップ",
+      "form": "フォームレイアウト",
+      "tokens": "デザイントークン"
+    },
+    "buttons": {
+      "complete-shipping": "出荷完了",
+      "print-label": "送り状を印刷",
+      "clear-selection": "選択を解除",
+      "cancel-waybill": "送り状を取り消す",
+      "confirm-cancel": "取り消しを確定",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "disabled": "操作できません",
+      "new": "DN を作成",
+      "more": "その他の操作",
+      "view": "表示",
+      "putaway": "棚入れ",
+      "delete": "削除",
+      "export": "エクスポート"
+    },
+    "inputs": {
+      "threshold": "補充しきい値",
+      "threshold-help": "販売可能数がこの数量を下回ると「補充しきい値未満」に数えます",
+      "tracking": "追跡番号",
+      "signed-at": "配達日時",
+      "signed-at-error": "現在（東京時間 10/25 10:20）より後にはできません",
+      "weight": "総重量",
+      "weight-hint": "梱包材を含む",
+      "carrier": "運送業者",
+      "currency": "通貨",
+      "scan": "商品コード",
+      "scan-hint": "スキャンまたは入力して Enter",
+      "scanned": "{code} を入力しました",
+      "readonly": "倉庫",
+      "disabled": "運送業者（変更不可）",
+      "filter": "絞り込み"
+    },
+    "choices": {
+      "by-lot": "ロット指定で出荷",
+      "keep-carton": "外箱を開けない",
+      "partial": "一部選択",
+      "locked": "ロック中",
+      "use-map": "フロアマップを使う",
+      "lot-required": "先にロット番号の入力が必要",
+      "method-api": "オンラインで作成",
+      "method-api-desc": "運送業者のシステムで直接作成・送り状を取得",
+      "method-file": "ファイルで出力・取込",
+      "method-file-desc": "CSV 出力 · 追跡番号を取込",
+      "method-manual": "手入力",
+      "method-manual-desc": "運送業者で手配後に追跡番号を入力"
+    },
+    "seg": {
+      "label": "表示単位",
+      "by-goods": "商品別",
+      "by-location": "ロケーション別"
+    },
+    "tabs": {
+      "label": "在庫の範囲",
+      "stages": "出荷段階",
+      "current": "現在のタブ：{tab}",
+      "in-stock": "在庫あり",
+      "pending": "棚入れ待ち",
+      "slow": "滞留",
+      "exception": "異常",
+      "disabled": "停止中"
+    },
+    "stages": {
+      "working": "作業中",
+      "waybill": "送り状未作成",
+      "import": "追跡番号の取込待ち",
+      "pickup": "集荷待ち",
+      "handover": "引き渡し待ち",
+      "transit": "輸送中",
+      "exception": "異常",
+      "signed": "配達完了"
+    },
+    "table": {
+      "goods": "商品",
+      "available": "販売可能",
+      "available-help": "在庫数から引当済み・破損を除いた数",
+      "onhand": "在庫",
+      "damaged": "破損",
+      "freight": "運賃",
+      "lot": "ロット",
+      "expiry": "使用期限",
+      "expiry-unknown": "期限不明",
+      "note": "備考",
+      "status": "ステータス",
+      "no-split": "外箱を開けない",
+      "loading": "読み込み中"
+    },
+    "status": {
+      "ok": "配達完了",
+      "warn": "集荷待ち",
+      "info": "輸送中",
+      "bad": "追跡異常",
+      "none": "未着手",
+      "overdue": "集荷日を過ぎています",
+      "count": "{count} 種"
+    },
+    "tags": {
+      "lot-expiry": "ロット + 期限",
+      "near-expiry": "期限間近",
+      "past-ship-limit": "出荷許容期限超過",
+      "checked": "検品済み",
+      "export": "通関あり"
+    },
+    "cards": {
+      "subtitle": "10/25 10:20"
+    },
+    "kpi": {
+      "onhand": "在庫",
+      "onhand-caption": "点 · 10/25 10:20",
+      "below": "補充しきい値未満",
+      "below-caption": "しきい値設定済み 86 / 1,663 種",
+      "kinds": "種",
+      "pending": "棚入れ待ち",
+      "pieces": "点",
+      "exception": "追跡異常",
+      "parcels": "件"
+    },
+    "alerts": {
+      "invoice": "FedEx 9 月分の請求書を取込済み · 4 件が照合待ち",
+      "go-check": "照合する",
+      "needs-action": "要対応",
+      "tracking": "追跡の取得に失敗、09:30 の結果を表示中",
+      "refresh": "追跡を更新",
+      "saved": "追跡番号 3601-2345-6789 を保存しました",
+      "blocked": "FedEx がこの出荷を受け付けませんでした",
+      "blocked-next": "届け先住所に州・県がありません。受取先を修正して再試行してください。",
+      "edit-recipient": "受取先を修正",
+      "retry": "再試行"
+    },
+    "empty": {
+      "title": "棚卸タスクはありません",
+      "action": "棚卸を作成"
+    },
+    "overlays": {
+      "open-drawer": "追跡番号を入力",
+      "drawer-title": "追跡番号を入力 · DN-163",
+      "note": "備考",
+      "help-inline": "ラベル横の説明"
+    },
+    "modal": {
+      "title": "FedEx の送り状を取り消しますか？",
+      "body": "送り状 7946 0000 0001 は FedEx で無効になり、ラベルは使えなくなります。後で作り直せます。",
+      "keep": "取り消さない"
+    },
+    "steps": {
+      "label": "出荷の進捗",
+      "ordered": "受注",
+      "picking": "ピッキング",
+      "packing": "梱包",
+      "waybill": "送り状",
+      "pickup": "集荷",
+      "handover": "引き渡し",
+      "transit": "輸送中",
+      "delivered": "配達",
+      "eta": "予定 10/30"
+    },
+    "form": {
+      "basic": "基本情報",
+      "name": "名称",
+      "code": "商品コード",
+      "code-help": "会社内で一意。スキャン時はこのコードで照合します",
+      "category": "カテゴリ",
+      "category-food": "食玩",
+      "category-goods": "グッズ",
+      "brand": "ブランド",
+      "price": "価格",
+      "spec": "単位・重量・サイズ",
+      "spec-help": "送り状・通関書類はこの重量とサイズで計算します",
+      "unit": "単位",
+      "unit-box": "箱（box）",
+      "unit-pcs": "個（pcs）",
+      "weight": "重量",
+      "length": "長さ",
+      "width": "幅",
+      "height": "高さ"
+    },
+    "tokens": {
+      "neutral": "ニュートラル 10 段階",
+      "brand": "ブランドパープル",
+      "semantic": "意味色（点 / 文字 / 枠 / 背景）",
+      "chart": "グラフ分類色 8 色",
+      "type": "文字サイズ 7 段階",
+      "type-section": "セクション見出し · 要対応",
+      "type-body": "本文 · FedEx が集荷、配送先へ輸送中",
+      "type-table": "テーブル · 予約済み 10/23 13:00–17:00",
+      "type-caption": "補助 · 現在 · 全 9 ステップ中 8"
+    }
   }
 }

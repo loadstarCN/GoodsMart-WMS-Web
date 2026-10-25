@@ -2953,5 +2953,324 @@
     "show-damaged-locations": "只看破损库位",
     "target-location": "上架库位",
     "max": "最多可上架 {max} 件"
+  },
+  "w": {
+    "input": {
+      "clear": "清空"
+    },
+    "field": {
+      "optional": "选填"
+    },
+    "help": {
+      "label": "说明：{text}"
+    },
+    "alert": {
+      "close": "关闭提示"
+    },
+    "modal": {
+      "close": "关闭"
+    },
+    "tabs": {
+      "attention": "（需处理）",
+      "error": "（异常）"
+    },
+    "table": {
+      "select-all": "选择本页全部行",
+      "select-row": "选择这一行",
+      "empty": "暂无数据"
+    },
+    "pagination": {
+      "label": "分页",
+      "previous": "上一页",
+      "next": "下一页",
+      "page": "第 {page} 页",
+      "total": "共 {total} 条"
+    },
+    "steps": {
+      "done": "已完成",
+      "current": "当前步骤",
+      "warn": "需处理",
+      "todo": "未开始",
+      "sr-state": "（{state}）"
+    }
+  },
+  "shell": {
+    "skip-to-content": "跳到主要内容",
+    "nav-label": "主导航",
+    "admin-nav-label": "平台管理导航",
+    "home-link": "{name} 首页",
+    "collapse-menu": "收起菜单",
+    "expand-menu": "展开菜单",
+    "open-menu": "打开菜单",
+    "close-menu": "关闭菜单",
+    "search": {
+      "placeholder": "搜索单号、订单号、运单号、商品",
+      "label": "搜索（{shortcut}）"
+    },
+    "warehouse": {
+      "label": "切换仓库，当前 {name}",
+      "menu": "切换仓库",
+      "all-sub": "公司的 {count} 个仓库"
+    },
+    "language": {
+      "label": "界面语言：{lang}",
+      "menu": "界面语言"
+    },
+    "theme": {
+      "dark": "深色模式"
+    },
+    "account": {
+      "label": "账户菜单：{name}",
+      "menu": "账户菜单",
+      "change-password": "修改密码",
+      "fullscreen": "全屏",
+      "exit-fullscreen": "退出全屏",
+      "density": "显示密度",
+      "density-comfortable": "舒适",
+      "density-compact": "紧凑",
+      "logout": "退出登录",
+      "platform": "平台管理"
+    },
+    "putaway-badge": "{label}，待上架 {count} 件",
+    "nav": {
+      "groups": {
+        "inventory": "库存管理",
+        "inbound": "收货通知管理",
+        "outbound": "发货单管理",
+        "reports": "报表",
+        "warehouse": "仓库管理",
+        "system": "系统"
+      },
+      "putaway": "上架",
+      "roles": "角色与权限",
+      "report-inbound": "收货分析",
+      "report-inventory": "库存分析",
+      "report-outbound": "发货分析",
+      "report-operator": "作业效率",
+      "report-stock-summary": "收发存汇总",
+      "freight": "运费对账"
+    },
+    "admin-nav": {
+      "overview": "概览",
+      "tenant-group": "租户管理",
+      "system-group": "系统管理",
+      "tenants": "租户",
+      "users": "用户",
+      "roles": "角色",
+      "permissions": "权限",
+      "logs": "操作日志",
+      "settings": "系统设置"
+    }
+  },
+  "dev-ui": {
+    "title": "组件展示",
+    "theme": "预览配色",
+    "theme-light": "浅色",
+    "theme-dark": "深色",
+    "inline": "行内",
+    "sections": {
+      "buttons": "按钮 · 页面 36 / 行内 28",
+      "inputs": "输入框 · 下拉",
+      "choices": "勾选 · 开关 · 单选卡片 · 分段",
+      "status": "状态 · 标签 · 胶囊",
+      "tabs": "页签",
+      "cards": "卡片 · 关键指标",
+      "alerts": "警示条",
+      "table": "表格 · 空值规则 · 粘性表头 · 选中行",
+      "table-empty": "没有数据的表格",
+      "compact-table": "紧凑表格",
+      "empty": "空状态",
+      "overlays": "弹窗 · 抽屉 · 说明",
+      "steps": "流程进度",
+      "form": "表单布局",
+      "tokens": "设计令牌"
+    },
+    "buttons": {
+      "complete-shipping": "完成发货",
+      "print-label": "打印面单",
+      "clear-selection": "取消选择",
+      "cancel-waybill": "取消运单",
+      "confirm-cancel": "确认取消",
+      "save": "保存",
+      "cancel": "取消",
+      "disabled": "不能操作",
+      "new": "新建发货单",
+      "more": "更多操作",
+      "view": "查看",
+      "putaway": "上架",
+      "delete": "删除",
+      "export": "导出"
+    },
+    "inputs": {
+      "threshold": "补货阈值",
+      "threshold-help": "可售低于这个数量时计入「低于补货阈值」",
+      "tracking": "运单号",
+      "signed-at": "签收时间",
+      "signed-at-error": "不能晚于现在（东京时间 10/25 10:20）",
+      "weight": "毛重",
+      "weight-hint": "含包装",
+      "carrier": "承运商",
+      "currency": "币种",
+      "scan": "商品编码",
+      "scan-hint": "扫码或输入后按回车",
+      "scanned": "已录入 {code}",
+      "readonly": "仓库",
+      "disabled": "承运商（不可改）",
+      "filter": "筛选"
+    },
+    "choices": {
+      "by-lot": "按批号出库",
+      "keep-carton": "外箱不拆",
+      "partial": "部分选中",
+      "locked": "已锁定",
+      "use-map": "使用平面图",
+      "lot-required": "须先补录批号",
+      "method-api": "在线建单",
+      "method-api-desc": "直接在承运商系统建单、取面单",
+      "method-file": "文件导出导入",
+      "method-file-desc": "CSV 导出 · 导回运单号",
+      "method-manual": "手工录入",
+      "method-manual-desc": "在承运商处建单后填运单号"
+    },
+    "seg": {
+      "label": "视角",
+      "by-goods": "按商品",
+      "by-location": "按库位"
+    },
+    "tabs": {
+      "label": "库存范围",
+      "stages": "发货阶段",
+      "current": "当前页签：{tab}",
+      "in-stock": "有库存",
+      "pending": "待上架",
+      "slow": "呆滞",
+      "exception": "异常",
+      "disabled": "已停用"
+    },
+    "stages": {
+      "working": "作业中",
+      "waybill": "待建运单",
+      "import": "待导回运单号",
+      "pickup": "待揽收",
+      "handover": "待交承运商",
+      "transit": "运输中",
+      "exception": "异常",
+      "signed": "已签收"
+    },
+    "table": {
+      "goods": "商品",
+      "available": "可售",
+      "available-help": "在库减去已分配、破损",
+      "onhand": "在库",
+      "damaged": "破损",
+      "freight": "运费",
+      "lot": "批号",
+      "expiry": "效期",
+      "expiry-unknown": "效期未知",
+      "note": "备注",
+      "status": "状态",
+      "no-split": "外箱不拆",
+      "loading": "加载中"
+    },
+    "status": {
+      "ok": "已签收",
+      "warn": "待揽收",
+      "info": "运输中",
+      "bad": "跟踪异常",
+      "none": "未开始",
+      "overdue": "揽收日已过",
+      "count": "{count} 种"
+    },
+    "tags": {
+      "lot-expiry": "批次 + 效期",
+      "near-expiry": "临期",
+      "past-ship-limit": "超允发期",
+      "checked": "已复核",
+      "export": "需报关"
+    },
+    "cards": {
+      "subtitle": "10/25 10:20"
+    },
+    "kpi": {
+      "onhand": "在库",
+      "onhand-caption": "件 · 10/25 10:20",
+      "below": "低于补货阈值",
+      "below-caption": "已设阈值 86 / 1,663 种",
+      "kinds": "种",
+      "pending": "待上架",
+      "pieces": "件",
+      "exception": "跟踪异常",
+      "parcels": "票"
+    },
+    "alerts": {
+      "invoice": "FedEx 9 月账单已导入 · 4 票待核对",
+      "go-check": "去核对",
+      "needs-action": "要处理",
+      "tracking": "查跟踪出错，保留 09:30 的结果",
+      "refresh": "刷新跟踪",
+      "saved": "已保存运单号 3601-2345-6789",
+      "blocked": "FedEx 没有接受这次建单",
+      "blocked-next": "收件人地址缺少州 / 省。改好收货方后重试。",
+      "edit-recipient": "修改收货方",
+      "retry": "重试"
+    },
+    "empty": {
+      "title": "暂无盘点任务",
+      "action": "新建盘点"
+    },
+    "overlays": {
+      "open-drawer": "录入运单号",
+      "drawer-title": "录入运单号 · DN-163",
+      "note": "备注",
+      "help-inline": "标签旁的说明"
+    },
+    "modal": {
+      "title": "取消 FedEx 运单？",
+      "body": "运单 7946 0000 0001 会在 FedEx 作废，面单不能再用。之后可以重新建单。",
+      "keep": "先不取消"
+    },
+    "steps": {
+      "label": "发货进度",
+      "ordered": "下单",
+      "picking": "拣货",
+      "packing": "打包",
+      "waybill": "运单",
+      "pickup": "揽收",
+      "handover": "交承运商",
+      "transit": "运输中",
+      "delivered": "签收",
+      "eta": "预计 10/30"
+    },
+    "form": {
+      "basic": "基本信息",
+      "name": "名称",
+      "code": "商品编码",
+      "code-help": "同一公司内唯一，扫码时按它匹配",
+      "category": "分类",
+      "category-food": "食玩",
+      "category-goods": "周边",
+      "brand": "品牌",
+      "price": "价格",
+      "spec": "规格与重量尺寸",
+      "spec-help": "运单、报关按这里的重量尺寸计算",
+      "unit": "计量单位",
+      "unit-box": "盒（box）",
+      "unit-pcs": "个（pcs）",
+      "weight": "重量",
+      "length": "长",
+      "width": "宽",
+      "height": "高"
+    },
+    "tokens": {
+      "neutral": "中性色 10 级",
+      "brand": "品牌紫",
+      "semantic": "语义色（点 / 字 / 描边 / 浅底）",
+      "chart": "图表分类色 8 色",
+      "type": "字号 7 级",
+      "type-section": "区块标题 · 待处理",
+      "type-body": "正文 · FedEx 已揽收，包裹正在运往目的地",
+      "type-table": "表格 · 已预约 10/23 13:00–17:00",
+      "type-caption": "辅助 · 现在 · 第 8 步，共 9 步"
+    }
   }
 }

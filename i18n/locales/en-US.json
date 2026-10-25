@@ -2953,5 +2953,324 @@
     "show-damaged-locations": "Show damaged goods locations",
     "target-location": "Putaway Location",
     "max": "Up to {max} can be put away"
+  },
+  "w": {
+    "input": {
+      "clear": "Clear"
+    },
+    "field": {
+      "optional": "Optional"
+    },
+    "help": {
+      "label": "Help: {text}"
+    },
+    "alert": {
+      "close": "Dismiss"
+    },
+    "modal": {
+      "close": "Close"
+    },
+    "tabs": {
+      "attention": " (needs action)",
+      "error": " (exception)"
+    },
+    "table": {
+      "select-all": "Select all rows on this page",
+      "select-row": "Select row",
+      "empty": "No data"
+    },
+    "pagination": {
+      "label": "Pagination",
+      "previous": "Previous page",
+      "next": "Next page",
+      "page": "Page {page}",
+      "total": "{total} items"
+    },
+    "steps": {
+      "done": "done",
+      "current": "current step",
+      "warn": "needs action",
+      "todo": "not started",
+      "sr-state": " ({state})"
+    }
+  },
+  "shell": {
+    "skip-to-content": "Skip to main content",
+    "nav-label": "Main navigation",
+    "admin-nav-label": "Platform admin navigation",
+    "home-link": "{name} home",
+    "collapse-menu": "Collapse menu",
+    "expand-menu": "Expand menu",
+    "open-menu": "Open menu",
+    "close-menu": "Close menu",
+    "search": {
+      "placeholder": "Search document no., order no., tracking no., goods",
+      "label": "Search ({shortcut})"
+    },
+    "warehouse": {
+      "label": "Switch warehouse, current: {name}",
+      "menu": "Switch warehouse",
+      "all-sub": "All {count} company warehouses"
+    },
+    "language": {
+      "label": "Language: {lang}",
+      "menu": "Language"
+    },
+    "theme": {
+      "dark": "Dark mode"
+    },
+    "account": {
+      "label": "Account menu: {name}",
+      "menu": "Account menu",
+      "change-password": "Change password",
+      "fullscreen": "Full screen",
+      "exit-fullscreen": "Exit full screen",
+      "density": "Density",
+      "density-comfortable": "Comfortable",
+      "density-compact": "Compact",
+      "logout": "Log out",
+      "platform": "Platform admin"
+    },
+    "putaway-badge": "{label}, {count} items awaiting putaway",
+    "nav": {
+      "groups": {
+        "inventory": "Inventory",
+        "inbound": "Inbound",
+        "outbound": "Outbound",
+        "reports": "Reports",
+        "warehouse": "Warehouse",
+        "system": "System"
+      },
+      "putaway": "Putaway",
+      "roles": "Roles & Permissions",
+      "report-inbound": "Inbound Analysis",
+      "report-inventory": "Inventory Analysis",
+      "report-outbound": "Outbound Analysis",
+      "report-operator": "Productivity",
+      "report-stock-summary": "Stock Movement Summary",
+      "freight": "Freight Reconciliation"
+    },
+    "admin-nav": {
+      "overview": "Overview",
+      "tenant-group": "Tenant Management",
+      "system-group": "System Management",
+      "tenants": "Tenants",
+      "users": "Users",
+      "roles": "Roles",
+      "permissions": "Permissions",
+      "logs": "Operation Logs",
+      "settings": "System Settings"
+    }
+  },
+  "dev-ui": {
+    "title": "Component Gallery",
+    "theme": "Preview theme",
+    "theme-light": "Light",
+    "theme-dark": "Dark",
+    "inline": "Inline",
+    "sections": {
+      "buttons": "Buttons · page 36 / inline 28",
+      "inputs": "Inputs · selects",
+      "choices": "Checkboxes · switches · radio cards · segmented",
+      "status": "Status · tags · pills",
+      "tabs": "Tabs",
+      "cards": "Cards · KPIs",
+      "alerts": "Alerts",
+      "table": "Table · empty values · sticky header · selection",
+      "table-empty": "Empty table",
+      "compact-table": "Compact table",
+      "empty": "Empty state",
+      "overlays": "Modal · drawer · help",
+      "steps": "Progress steps",
+      "form": "Form layout",
+      "tokens": "Design tokens"
+    },
+    "buttons": {
+      "complete-shipping": "Complete shipping",
+      "print-label": "Print label",
+      "clear-selection": "Clear selection",
+      "cancel-waybill": "Cancel waybill",
+      "confirm-cancel": "Confirm cancel",
+      "save": "Save",
+      "cancel": "Cancel",
+      "disabled": "Unavailable",
+      "new": "New DN",
+      "more": "More actions",
+      "view": "View",
+      "putaway": "Put away",
+      "delete": "Delete",
+      "export": "Export"
+    },
+    "inputs": {
+      "threshold": "Reorder point",
+      "threshold-help": "Counted as below reorder point when available stock falls under this quantity",
+      "tracking": "Tracking number",
+      "signed-at": "Delivered at",
+      "signed-at-error": "Can't be later than now (Tokyo time 10/25 10:20)",
+      "weight": "Gross weight",
+      "weight-hint": "Including packaging",
+      "carrier": "Carrier",
+      "currency": "Currency",
+      "scan": "Goods code",
+      "scan-hint": "Scan or type, then press Enter",
+      "scanned": "Entered {code}",
+      "readonly": "Warehouse",
+      "disabled": "Carrier (locked)",
+      "filter": "Filter"
+    },
+    "choices": {
+      "by-lot": "Ship by lot",
+      "keep-carton": "Keep outer carton",
+      "partial": "Partly selected",
+      "locked": "Locked",
+      "use-map": "Use floor plan",
+      "lot-required": "Lot number required first",
+      "method-api": "Create online",
+      "method-api-desc": "Create the shipment and label in the carrier's system",
+      "method-file": "Export / import file",
+      "method-file-desc": "Export CSV · import tracking numbers",
+      "method-manual": "Enter manually",
+      "method-manual-desc": "Fill in the tracking number after booking with the carrier"
+    },
+    "seg": {
+      "label": "View",
+      "by-goods": "By goods",
+      "by-location": "By location"
+    },
+    "tabs": {
+      "label": "Stock scope",
+      "stages": "Shipping stages",
+      "current": "Current tab: {tab}",
+      "in-stock": "In stock",
+      "pending": "Awaiting putaway",
+      "slow": "Slow-moving",
+      "exception": "Exceptions",
+      "disabled": "Inactive"
+    },
+    "stages": {
+      "working": "In progress",
+      "waybill": "Waybill needed",
+      "import": "Tracking no. to import",
+      "pickup": "Awaiting pickup",
+      "handover": "Awaiting handover",
+      "transit": "In transit",
+      "exception": "Exceptions",
+      "signed": "Delivered"
+    },
+    "table": {
+      "goods": "Goods",
+      "available": "Available",
+      "available-help": "On hand minus allocated and damaged",
+      "onhand": "On hand",
+      "damaged": "Damaged",
+      "freight": "Freight",
+      "lot": "Lot",
+      "expiry": "Expiry",
+      "expiry-unknown": "Expiry unknown",
+      "note": "Note",
+      "status": "Status",
+      "no-split": "Keep outer carton",
+      "loading": "Loading"
+    },
+    "status": {
+      "ok": "Delivered",
+      "warn": "Awaiting pickup",
+      "info": "In transit",
+      "bad": "Tracking exception",
+      "none": "Not started",
+      "overdue": "Pickup date passed",
+      "count": "{count} kinds"
+    },
+    "tags": {
+      "lot-expiry": "Lot + expiry",
+      "near-expiry": "Near expiry",
+      "past-ship-limit": "Past ship-by date",
+      "checked": "Verified",
+      "export": "Customs required"
+    },
+    "cards": {
+      "subtitle": "10/25 10:20"
+    },
+    "kpi": {
+      "onhand": "On hand",
+      "onhand-caption": "items · 10/25 10:20",
+      "below": "Below reorder point",
+      "below-caption": "Set for 86 / 1,663 kinds",
+      "kinds": "kinds",
+      "pending": "Awaiting putaway",
+      "pieces": "items",
+      "exception": "Tracking exceptions",
+      "parcels": "shipments"
+    },
+    "alerts": {
+      "invoice": "FedEx September invoice imported · 4 shipments to check",
+      "go-check": "Check",
+      "needs-action": "Action needed",
+      "tracking": "Tracking lookup failed; showing the 09:30 result",
+      "refresh": "Refresh tracking",
+      "saved": "Tracking number 3601-2345-6789 saved",
+      "blocked": "FedEx did not accept this shipment",
+      "blocked-next": "The recipient address has no state / province. Fix the recipient, then try again.",
+      "edit-recipient": "Edit recipient",
+      "retry": "Retry"
+    },
+    "empty": {
+      "title": "No cycle counts yet",
+      "action": "New cycle count"
+    },
+    "overlays": {
+      "open-drawer": "Enter tracking number",
+      "drawer-title": "Enter tracking number · DN-163",
+      "note": "Note",
+      "help-inline": "Help next to a label"
+    },
+    "modal": {
+      "title": "Cancel the FedEx waybill?",
+      "body": "Waybill 7946 0000 0001 will be voided at FedEx and the label can no longer be used. You can create a new one later.",
+      "keep": "Keep it"
+    },
+    "steps": {
+      "label": "Shipping progress",
+      "ordered": "Ordered",
+      "picking": "Picking",
+      "packing": "Packing",
+      "waybill": "Waybill",
+      "pickup": "Pickup",
+      "handover": "Handover",
+      "transit": "In transit",
+      "delivered": "Delivered",
+      "eta": "ETA 10/30"
+    },
+    "form": {
+      "basic": "Basic information",
+      "name": "Name",
+      "code": "Goods code",
+      "code-help": "Unique within the company; scans match on it",
+      "category": "Category",
+      "category-food": "Candy toys",
+      "category-goods": "Merchandise",
+      "brand": "Brand",
+      "price": "Price",
+      "spec": "Unit, weight and size",
+      "spec-help": "Waybills and customs documents use this weight and size",
+      "unit": "Unit",
+      "unit-box": "Box",
+      "unit-pcs": "Piece",
+      "weight": "Weight",
+      "length": "Length",
+      "width": "Width",
+      "height": "Height"
+    },
+    "tokens": {
+      "neutral": "Neutral · 10 steps",
+      "brand": "Brand purple",
+      "semantic": "Semantic (dot / text / border / background)",
+      "chart": "Chart categorical · 8 colors",
+      "type": "Type scale · 7 sizes",
+      "type-section": "Section title · To do",
+      "type-body": "Body · Picked up by FedEx, on the way",
+      "type-table": "Table · Booked 10/23 13:00–17:00",
+      "type-caption": "Caption · Now · step 8 of 9"
+    }
   }
 }

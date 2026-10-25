@@ -6,9 +6,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const token = useCookie('token');
   const path = to?.path || '';
 
+  // 组件展示页 /dev/ui：开发环境下不登录也能看；正式环境只给平台管理员（页面自己再校验一次）
+  const isDevUiPage = path.replace(/\/+$/, '') === '/dev/ui';
+
   // 公开页面（无需登录即可访问）
   const publicPaths = ['/auth/login', '/auth/forgot-password'];
-  const isPublicPage = publicPaths.includes(path);
+  const isPublicPage = publicPaths.includes(path) || (import.meta.dev && isDevUiPage);
 
   // 有 token 但本地用户信息缺失/解密失败：会话不完整，清掉 token 回登录页，避免反复跳转
   if (token.value && !authStore.userInfo) {
@@ -36,7 +39,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // 修改密码页对平台管理员同样开放
   const adminAllowedPaths = ['/authentication/reset-password'];
   if (token.value && authStore.userInfo?.type === 'user') {
-    if (!path.startsWith('/admin') && path !== '/auth/login' && !adminAllowedPaths.includes(path)) {
+    if (!path.startsWith('/admin') && path !== '/auth/login' && !adminAllowedPaths.includes(path) && !isDevUiPage) {
       return navigateTo('/admin/');
     }
   }
