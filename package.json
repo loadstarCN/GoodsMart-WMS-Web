@@ -10,8 +10,6 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview --dotenv .env.prod",
     "postinstall": "nuxt prepare",
-    "sass": "sass ./assets/scss:./assets/css/",
-    "sass-min": "sass ./assets/scss:./assets/css/ --style compressed",
     "typecheck": "nuxi typecheck"
   },
   "devDependencies": {

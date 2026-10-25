@@ -1,8 +1,5 @@
 import { resolve } from "node:path"
-// https://nuxt.com/docs/api/configuration/nuxt-confi
-/*
- Make sure to rename the " /nuxt/preview/ynex " to the subdirectory where you are gonana upload the project. If you are uploading it in root then chang the /nuxt/preview/ynex to '/' or remove.
-*/
+// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   
   future: {
@@ -28,10 +25,9 @@ export default defineNuxtConfig({
    '@nuxtjs/i18n',
  ],
 
- // Used to add the base path of url Example : https://www.spruko.com/ynex-nuxt
+ // 部署在子路径下时改 baseURL（如 '/wms/'）
  app: {
-   baseURL: '', // Replace with your desired base path
-  //  baseURL: '/nuxt', // Replace with your desired base path
+   baseURL: '',
    head: {
      link: [{ rel: 'icon', type: 'image/x-icon', href: "/favicon.ico" }]
  },
@@ -81,7 +77,6 @@ export default defineNuxtConfig({
      exclude: []
    },
    define: {
-     // 'import.meta.env.BASE_URL': JSON.stringify('/nuxt/ynex/preview/'),
    },
    build: {
      rollupOptions: {

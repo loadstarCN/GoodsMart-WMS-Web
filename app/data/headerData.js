@@ -1,12 +1,6 @@
-export let header = [
-        { id: 1, icon: "user", name: "search.people" },
-        { id: 2, icon: "file-text", name: "search.pages" },
-        { id: 3, icon: "align-left", name: "search.articles" },
-        { id: 4, icon: "server", name: "search.tags" },
-    ]
+// 登录 / 忘记密码页右上角的语言名（模板原来还有一份页头搜索的演示数据，已删）
 export const languages = {
     en: "English",
     zh: "中文",
     ja: "日本語"
     }
-      

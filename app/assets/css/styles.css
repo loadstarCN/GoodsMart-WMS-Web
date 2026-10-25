@@ -715,19 +715,14 @@ jsVector
   --menu-bg: #011626;
 }
 [data-menu-styles=dark][data-theme-mode=light][data-bg-img=bgimg1] {
-  --menu-bg: url(/images/menu-bg-images/bg-img1.jpg);
 }
 [data-menu-styles=dark][data-theme-mode=light][data-bg-img=bgimg2] {
-  --menu-bg: url(/images/menu-bg-images/bg-img2.jpg);
 }
 [data-menu-styles=dark][data-theme-mode=light][data-bg-img=bgimg3] {
-  --menu-bg: url(/images/menu-bg-images/bg-img3.jpg);
 }
 [data-menu-styles=dark][data-theme-mode=light][data-bg-img=bgimg4] {
-  --menu-bg: url(/images/menu-bg-images/bg-img4.jpg);
 }
 [data-menu-styles=dark][data-theme-mode=light][data-bg-img=bgimg5] {
-  --menu-bg: url(/images/menu-bg-images/bg-img5.jpg);
 }
 @media (min-width: 992px) {
   [data-menu-styles=dark][data-nav-layout=horizontal] .main-menu-container .slide-left, [data-menu-styles=dark][data-nav-layout=horizontal] .main-menu-container .slide-right {
@@ -1473,38 +1468,28 @@ jsVector
 }
 
 [data-bg-img=bgimg1] {
-  --menu-bg: url(/images/menu-bg-images/bg-img1.jpg);
 }
 [data-bg-img=bgimg1][data-menu-styles=transparent][data-theme-mode=dark] {
-  --menu-bg: url(/images/menu-bg-images/bg-img1.jpg);
 }
 
 [data-bg-img=bgimg2] {
-  --menu-bg: url(/images/menu-bg-images/bg-img2.jpg);
 }
 [data-bg-img=bgimg2][data-menu-styles=transparent][data-theme-mode=dark] {
-  --menu-bg: url(/images/menu-bg-images/bg-img2.jpg);
 }
 
 [data-bg-img=bgimg3] {
-  --menu-bg: url(/images/menu-bg-images/bg-img3.jpg);
 }
 [data-bg-img=bgimg3][data-menu-styles=transparent][data-theme-mode=dark] {
-  --menu-bg: url(/images/menu-bg-images/bg-img3.jpg);
 }
 
 [data-bg-img=bgimg4] {
-  --menu-bg: url(/images/menu-bg-images/bg-img4.jpg);
 }
 [data-bg-img=bgimg4][data-menu-styles=transparent][data-theme-mode=dark] {
-  --menu-bg: url(/images/menu-bg-images/bg-img4.jpg);
 }
 
 [data-bg-img=bgimg5] {
-  --menu-bg: url(/images/menu-bg-images/bg-img5.jpg);
 }
 [data-bg-img=bgimg5][data-menu-styles=transparent][data-theme-mode=dark] {
-  --menu-bg: url(/images/menu-bg-images/bg-img5.jpg);
 }
 
 [data-vertical-style=icontext][data-bg-img=bgimg1] .app-sidebar.sticky.sticky-pin .main-sidebar-header, [data-vertical-style=icontext][data-bg-img=bgimg2] .app-sidebar.sticky.sticky-pin .main-sidebar-header, [data-vertical-style=icontext][data-bg-img=bgimg3] .app-sidebar.sticky.sticky-pin .main-sidebar-header, [data-vertical-style=icontext][data-bg-img=bgimg4] .app-sidebar.sticky.sticky-pin .main-sidebar-header, [data-vertical-style=icontext][data-bg-img=bgimg5] .app-sidebar.sticky.sticky-pin .main-sidebar-header {
@@ -9042,7 +9027,6 @@ caption {
   z-index: 1;
 }
 .authentication.coming-soon .authentication-cover, .authentication.under-maintenance .authentication-cover {
-  background-image: url(/images/media/media-19.jpg);
 }
 .authentication.coming-soon .authentication-cover .aunthentication-cover-content, .authentication.under-maintenance .authentication-cover .aunthentication-cover-content {
   width: 100%;
@@ -9660,7 +9644,6 @@ caption {
 .custom-card.upgrade-card:before {
   content: "";
   position: absolute;
-  background-image: url("/images/media/media-85.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -9975,7 +9958,6 @@ caption {
   content: "";
   height: 100%;
   width: 100%;
-  background-image: url(/images/media/media-65.png);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -15336,7 +15318,6 @@ html[data-toggled=open] #responsive-overlay {
   width: 100%;
   height: 100%;
   inset-block-start: 0;
-  background-image: url("/images/media/landing/2.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -15460,7 +15441,6 @@ html[data-toggled=open] #responsive-overlay {
   position: relative;
   width: 100%;
   inset-block-start: 0;
-  background-image: url("/images/media/landing/banner.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -15753,7 +15733,6 @@ html[data-toggled=open] #responsive-overlay {
   height: 100%;
   width: 100%;
   inset-block-start: 0;
-  background-image: url(/images/media/backgrounds/7.jpg);
   background-repeat: no-repeat;
   background-position: bottom;
   background-size: cover;
@@ -15773,7 +15752,6 @@ html[data-toggled=open] #responsive-overlay {
 .bg-banner-2 {
   position: relative;
   inset-block-start: 0;
-  background-image: url(/images/media/backgrounds/4.png);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -16215,7 +16193,6 @@ html[data-toggled=open] #responsive-overlay {
   bottom: 0;
   background-color: var(--custom-white);
   border-radius: 0.5rem;
-  background-image: url(/images/media/media-83.svg);
   background-size: cover;
   background-position: center;
   height: 12.5rem;
@@ -20493,7 +20470,6 @@ button {
   box-shadow: 0 0 0 0.25rem var(--black-1);
 }
 .menu-image .bgimage-input.bg-img1 {
-  background-image: url(/images/menu-bg-images/bg-img1.jpg) !important;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -20502,7 +20478,6 @@ button {
   background-color: none;
 }
 .menu-image .bgimage-input.bg-img2 {
-  background-image: url(/images/menu-bg-images/bg-img2.jpg) !important;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -20511,7 +20486,6 @@ button {
   background-color: none;
 }
 .menu-image .bgimage-input.bg-img3 {
-  background-image: url(/images/menu-bg-images/bg-img3.jpg) !important;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -20520,7 +20494,6 @@ button {
   background-color: none;
 }
 .menu-image .bgimage-input.bg-img4 {
-  background-image: url(/images/menu-bg-images/bg-img4.jpg) !important;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -20529,7 +20502,6 @@ button {
   background-color: none;
 }
 .menu-image .bgimage-input.bg-img5 {
-  background-image: url(/images/menu-bg-images/bg-img5.jpg) !important;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -20592,7 +20564,6 @@ button {
   background-image: linear-gradient(to right top, var(--primary-color), #6e72a8) !important;
 }
 .theme-colors .switch-select .color-input.color-transparent {
-  background-image: url(/images/menu-bg-images/transparent.png) !important;
 }
 .theme-colors .switch-select .color-input.color-bg-1 {
   background-color: rgb(20, 30, 96);
@@ -20866,7 +20837,6 @@ button {
 }
 
 .pricing-basic:before {
-  background-image: url(/images/media/backgrounds/1.png);
   width: 2.5rem;
   height: 2.5rem;
   inset-block-start: 0.375rem;
@@ -20875,7 +20845,6 @@ button {
 }
 
 .pricing-pro:before {
-  background-image: url(/images/media/backgrounds/2.png);
   width: 2.5rem;
   height: 2.5rem;
   inset-block-start: 0.375rem;
@@ -20884,7 +20853,6 @@ button {
 }
 
 .pricing-premium:before {
-  background-image: url(/images/media/backgrounds/3.png);
   width: 2.5rem;
   height: 2.5rem;
   inset-block-start: 0.375rem;
@@ -21165,7 +21133,6 @@ button {
   position: relative;
   width: 100%;
   height: 25rem;
-  background-image: url("/images/media/media-68.jpg");
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
@@ -21439,7 +21406,6 @@ button {
 /* End:: Create Blog */
 /* Start:: Profile */
 .main-profile-cover {
-  background-image: url("/images/media/team-covers/4.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -21535,7 +21501,6 @@ button {
 
 .aboutus-banner {
   width: 100%;
-  background-image: url(/images/media/media-79.jpg);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -22228,7 +22193,6 @@ button {
   content: "";
   height: 100%;
   width: 100%;
-  background-image: url(/images/media/media-1.jpg);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -22837,4 +22801,3 @@ a {
   height: 36px !important;
 }
 
-/*# sourceMappingURL=styles.css.map */
