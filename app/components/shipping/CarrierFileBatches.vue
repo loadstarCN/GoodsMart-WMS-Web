@@ -78,7 +78,9 @@ const onDocumentClick = (event: MouseEvent) => {
 onMounted(() => document.addEventListener('click', onDocumentClick))
 onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 
-const timeText = (value: string | null) => formatLocaleDateTime(value, locale.value)
+/** 批次时刻按批次的仓库（有 warehouse_id 时）→ 列表的仓库 → 页头 / 浏览器的时区显示 */
+const timeText = (value: string | null, batch?: CarrierFileBatch) =>
+  formatLocaleDateTime(value, locale.value, resolveTimeZone(batch as Record<string, any> | undefined, props.warehouseId))
 const userText = (u: any) => formatUserRef(u, t)
 /** 导入批次的结果汇总（matched 3 · not_found 1 …）；导出批次没有 */
 const summaryParts = (b: CarrierFileBatch) => (b.kind === 'import' && b.summary
@@ -112,7 +114,7 @@ const summaryParts = (b: CarrierFileBatch) => (b.kind === 'import' && b.summary
               <i class="me-1" :class="b.kind === 'import' ? 'ri-file-upload-line' : 'ri-file-download-line'"></i>{{ t(`shipping.file.batch-kinds.${b.kind}`) }}
             </span>
             <span class="text-muted">#{{ b.id }}</span>
-            <span class="text-muted ms-auto">{{ timeText(b.created_at) }}</span>
+            <span class="text-muted ms-auto">{{ timeText(b.created_at, b) }}</span>
           </div>
           <div class="font-monospace text-break mt-1" v-if="b.file_name">{{ b.file_name }}</div>
           <div class="text-muted mt-1 d-flex flex-wrap gap-1 align-items-center">

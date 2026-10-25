@@ -53,6 +53,8 @@ const queryWarehouseId = (): number | null => {
   return Number.isInteger(n) && n > 0 ? n : null
 }
 const warehouseId = computed(() => warehouseStore.currentWarehouse?.id ?? queryWarehouseId())
+/** 揽收日、时间段、创建时刻都按揽收仓库的时区（弹窗也用它）；与浏览器不同时在表头标出 */
+const pickupTimeZone = provideTimeZone(() => warehouseId.value)
 const hasWarehouse = computed(() => !!warehouseId.value)
 const headers = () => ({ 'Content-Type': 'application/json', ...warehouseHeaders(warehouseId.value) })
 const loading = ref(true)
@@ -168,7 +170,7 @@ const blockerText = (b: { code: string; message?: string | null }) =>
 
 // ------------------ 失败详情 ----------------------
 const describeFailure = (error: HttpRequestError): PickupFailure =>
-  describePickupFailure(error, carrierName.value, t, bizErrorMessage)
+  describePickupFailure(error, carrierName.value, t, bizErrorMessage, te)
 
 // ------------------ 预约弹窗（CarrierPickupModal） ----------------------
 const showModal = ref(false)
@@ -421,7 +423,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
               <thead>
                 <tr>
                   <th scope="col">{{ t('delivery.pickup.fields.pickup-date') }}</th>
-                  <th scope="col">{{ t('delivery.pickup.fields.time-window') }}</th>
+                  <th scope="col">{{ t('delivery.pickup.fields.time-window') }} <TimeZoneBadge :zone="pickupTimeZone" /></th>
                   <th scope="col">{{ t('delivery.pickup.fields.status') }}</th>
                   <th scope="col">{{ t('shipping.pickup.source') }}</th>
                   <th scope="col">{{ t('delivery.pickup.fields.confirmation-code') }}</th>
@@ -457,7 +459,7 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
                     {{ (p.shipments || []).map((s: CarrierPickup['shipments'][number]) => s.tracking_number).filter(Boolean).join(', ') || '—' }}
                   </td>
                   <td class="d-none d-xl-table-cell">
-                    {{ $dayjs(p.created_at, 'YYYY-MM-DD HH:mm') || '—' }}
+                    {{ $dayjs(p.created_at, 'YYYY-MM-DD HH:mm', pickupTimeZone) || '—' }}
                     <span class="text-muted ms-1" v-if="p.created_by_user">{{ p.created_by_user.user_name }}</span>
                   </td>
                   <td>

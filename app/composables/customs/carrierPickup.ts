@@ -255,6 +255,37 @@ export interface PickupFailure {
 type Translate = (key: string, params?: Record<string, unknown>) => string
 
 /**
+ * 揽收接口 409 的逐项原因 → 按界面语言的文字（没有对应文案时用后端英文原文）：
+ * - 16130 details.blockers[{code, message}]（delivery.pickup.blockers.<code>，如 PICKUP_METHOD_NOT_API）
+ * - 16132 details.shipments[{shipment_id, tracking_number, reason}]：NOT_FOUND / OTHER_CARRIER / NOT_ACTIVE / DN_SHIPPED /
+ *   ALREADY_SCHEDULED（delivery.pickup.shipment-problems.<reason>）
+ */
+export const pickupProblemLines = (
+  error: HttpRequestError,
+  carrier: string,
+  t: Translate,
+  te: (key: string) => boolean,
+): string[] => {
+  const lines: string[] = []
+  const blockers = error.code === PICKUP_BIZ_CODES.BLOCKED && Array.isArray(error.details?.blockers) ? error.details.blockers : []
+  for (const b of blockers) {
+    if (!b || typeof b !== 'object') continue
+    const key = b.code ? `delivery.pickup.blockers.${b.code}` : ''
+    const text = key && te(key) ? t(key, { carrier }) : String(b.message || b.code || '')
+    if (text && !lines.includes(text)) lines.push(text)
+  }
+  const shipments = error.code === PICKUP_BIZ_CODES.SHIPMENTS_INVALID && Array.isArray(error.details?.shipments)
+    ? error.details.shipments : []
+  for (const s of shipments) {
+    if (!s || typeof s !== 'object') continue
+    const tracking = s.tracking_number || (s.shipment_id ? `#${s.shipment_id}` : '—')
+    const key = s.reason ? `delivery.pickup.shipment-problems.${s.reason}` : ''
+    lines.push(key && te(key) ? t(key, { tracking }) : `${tracking}: ${s.reason || ''}`)
+  }
+  return lines
+}
+
+/**
  * 揽收接口失败 → 显示用的摘要（结果不明 / 没约上 / 取消结果不明各补一句该怎么办）+ 承运商错误原文 + 交易 ID。
  * carrier：文案里的承运商名
  */
@@ -263,9 +294,13 @@ export const describePickupFailure = (
   carrier: string,
   t: Translate,
   bizErrorMessage: (error: HttpRequestError) => string,
+  te?: (key: string) => boolean,
 ): PickupFailure => {
   const { errors, transactionId, permissionDenied } = extractCarrierErrors(error.details)
   let summary = bizErrorMessage(error)
+  // 被挡的原因 / 不能约的运单逐项说明（按界面语言）
+  const lines = te ? pickupProblemLines(error, carrier, t, te) : []
+  if (lines.length) summary = t('delivery.pickup.tips.problem-lines', { summary, items: lines.join(t('shipping.list-separator')) })
   const pickup = error.details?.pickup
   if (permissionDenied) summary = t('delivery.pickup.tips.permission-denied', { carrier })
   else if (pickup && typeof pickup === 'object') {

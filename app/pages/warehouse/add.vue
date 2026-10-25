@@ -29,7 +29,7 @@ const itemData = ref<Record<string, any>>({
   manager: null,
   company_id: staffStore.staffInfo?.company_id,
   default_currency: staffStore.staffInfo?.company?.default_currency || 'JPY',
-  // 出口资料：仓库作为发货地（Ship From）印在海外出荷単証上
+  // 出口资料：仓库作为发货地（Ship From）印在海外出货单证上
   address_en: null,
   country_code: 'JP',  // 后端输出不再默认 JP，新建时前端默认选日本
   contact_name_en: null,
@@ -39,14 +39,19 @@ const itemData = ref<Record<string, any>>({
   address_line1: null,
   address_line2: null,
   latin: null,
+  // 时区（IANA 名；null = 服务器默认，后端 doc/timezone-utc.md §2）
+  timezone: null,
 })
 
 /** 仓库的拉丁转写只有地址（联系人英文名另有 contact_name_en） */
 const WAREHOUSE_LATIN_KEYS = ['address_line1', 'address_line2', 'locality', 'admin_area'] as const
 
 const errors = ref<Record<string, any>>({
-  name: null
+  name: null,
+  timezone: null,
 })
+/** 新建时不知道服务器默认的时区是哪个，下拉只写「服务器默认」 */
+const defaultZone = null
 
 // 配置化选项集合
 const selectOptions = reactive({
@@ -121,6 +126,12 @@ const addWarehouse = async () => {
     },
     onError: (error) => {
       submitting.value = false
+      // 时区不是合法的 IANA 名（400，field = timezone）
+      if (error.field === 'timezone') {
+        errors.value.timezone = t('timezone.invalid')
+        showToast(t('timezone.invalid'), 'error')
+        return
+      }
       // 结构化地址的字段不对（14019，field 为 admin_area / latin.xxx 等）：指明是哪一项
       if (error.code === 14019 && ADDRESS_ERROR_FIELD.test(String(error.field || ''))) {
         showToast(t('address.errors.invalid-field', {
@@ -173,6 +184,13 @@ const ADDRESS_ERROR_FIELD = /^(postal_code|zip_code|admin_area|locality|address_
                         <VueMultiselect id="product-currency" :show-labels="false" :options="selectOptions.currencies"
                           :multiple="false" v-model="itemData.default_currency">
                         </VueMultiselect>
+                      </div>
+                      <div class="col-xl-6">
+                        <label for="warehouse-timezone" class="form-label">{{ t('warehouse.fields.timezone') }}</label>
+                        <TimeZoneSelect id="warehouse-timezone" v-model="itemData.timezone" :default-zone="defaultZone"
+                          :invalid="!!errors.timezone" @update:model-value="errors.timezone = null" />
+                        <div v-if="errors.timezone" class="invalid-feedback d-block">{{ errors.timezone }}</div>
+                        <div class="form-text">{{ t('warehouse.tips.timezone') }}</div>
                       </div>
 
                       <!-- 结构化地址（国家、按国家排顺序的地址；拉丁转写 = 出口单证 / 国际面单的英文地址，address_en 跟着生成） -->

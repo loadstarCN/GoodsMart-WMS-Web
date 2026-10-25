@@ -8,6 +8,7 @@
  * 记录直接是「已约上」（scheduled），不调承运商；取消只改本地（POST /carrier-pickups/<id>/cancel）。
  * selectable：列出 shipments 让人勾选这次带哪些（initialSelected 默认勾上）；不传时 shipments 全部带上。
  * 提交后不论成败都 emit submitted，父组件据此刷新。
+ * 揽收日、时间段都是仓库当地的（时区：warehouseId 的仓库 → 上层 provideTimeZone → 页头 / 浏览器），与浏览器不同时标出。
  */
 import { warehouseHeaders } from '~/utils/http'
 import {
@@ -15,6 +16,7 @@ import {
   DEFAULT_READY_TIME,
   MANUAL_PICKUP_URL,
   formatPickupWeight,
+  pickupProblemLines,
   pickupTimeProblem,
   type CarrierPickup,
   type ManualPickupShipment,
@@ -52,8 +54,9 @@ const emit = defineEmits<{
   (e: 'submitted'): void
 }>()
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
+const { differs: zoneDiffers, description: zoneDescription, today: warehouseToday } = useTimeZone(() => props.warehouseId)
 
 const chosen = ref<number[]>([])
 const submitting = ref(false)
@@ -66,11 +69,10 @@ const form = reactive({
   remarks: '',
 })
 
-/** 今天（YYYY-MM-DD）：揽收日默认今天；有仓库当地的今天（后端按它校验）时用它 */
+/** 今天（YYYY-MM-DD）：揽收日默认仓库当地的今天；接口给了仓库当地的今天（后端按它校验）且更晚时用它 */
 const localToday = () => {
-  const d = new Date()
-  const browser = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  return props.today && props.today > browser ? props.today : browser
+  const local = warehouseToday()
+  return props.today && props.today > local ? props.today : local
 }
 
 const timeProblem = computed(() => pickupTimeProblem(null, form.ready_time, form.close_time))
@@ -115,7 +117,11 @@ const submit = async () => {
       emit('update:open', false)
     },
     onError: (error) => {
-      failure.value = bizErrorMessage(error)
+      // 不能记的运单（16132）逐张按界面语言说明
+      const lines = pickupProblemLines(error, props.carrierName, t, te)
+      failure.value = lines.length
+        ? t('delivery.pickup.tips.problem-lines', { summary: bizErrorMessage(error), items: lines.join(t('shipping.list-separator')) })
+        : bizErrorMessage(error)
     },
     onFinally: () => {
       submitting.value = false
@@ -168,14 +174,17 @@ const submit = async () => {
                 <input type="date" class="form-control" id="manual-pickup-date" :min="today || undefined" v-model="form.pickup_date">
               </div>
               <div class="col-md-4">
-                <label class="form-label" for="manual-pickup-ready">{{ t('delivery.pickup.modal.ready-time') }} <abbr title="required" class="text-danger">*</abbr></label>
+                <label class="form-label" for="manual-pickup-ready">{{ t('delivery.pickup.modal.ready-time') }} <abbr title="required" class="text-danger">*</abbr>
+                  <TimeZoneBadge class="ms-1" :zone="warehouseId" /></label>
                 <input type="time" class="form-control" id="manual-pickup-ready" v-model="form.ready_time">
               </div>
               <div class="col-md-4">
-                <label class="form-label" for="manual-pickup-close">{{ t('delivery.pickup.modal.close-time') }} <abbr title="required" class="text-danger">*</abbr></label>
+                <label class="form-label" for="manual-pickup-close">{{ t('delivery.pickup.modal.close-time') }} <abbr title="required" class="text-danger">*</abbr>
+                  <TimeZoneBadge class="ms-1" :zone="warehouseId" /></label>
                 <input type="time" class="form-control" id="manual-pickup-close" v-model="form.close_time">
               </div>
             </div>
+            <div class="form-text" v-if="zoneDiffers">{{ t('timezone.input-hint', { zone: zoneDescription }) }}</div>
             <div class="invalid-feedback d-block" v-if="timeProblemText">{{ timeProblemText }}</div>
 
             <div class="row g-3 mt-1">

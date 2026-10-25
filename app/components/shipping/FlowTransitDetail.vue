@@ -31,8 +31,10 @@ const emit = defineEmits<{
   (e: 'changed'): void
 }>()
 
-const { t, localeProperties } = useI18n()
+const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
+/** 扫描时刻按流程提供的时区（DN / ASN 所属仓库）显示 */
+const { formatLocale } = useTimeZone()
 
 const carrier = computed(() => props.carrierName || t('customs.carrier.carrier-fallback'))
 const tracking = computed<CarrierTracking | null>(() => {
@@ -41,8 +43,7 @@ const tracking = computed<CarrierTracking | null>(() => {
 })
 const events = computed<CarrierTrackingEvent[]>(() => (Array.isArray(tracking.value?.events) ? tracking.value!.events : []))
 const url = computed(() => String(props.step.summary?.tracking_url || props.trackingUrl || '').trim())
-const locale = computed(() => String(localeProperties.value?.iso || '') || undefined)
-const time = (value: string | null | undefined) => formatLocaleDateTime(value, locale.value)
+const time = (value: string | null | undefined) => formatLocale(value)
 
 const statusText = computed(() => {
   const tr = tracking.value

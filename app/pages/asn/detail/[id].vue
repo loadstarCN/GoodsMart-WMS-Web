@@ -138,13 +138,13 @@ const cancelASN = async () => {
                                     {{t('common.dates.expected-arrival')}}:{{ itemData?.expected_arrival_date }}
                                 </span>
                                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'received'">
-                                    {{t('common.dates.actual-arrival')}}:{{ $dayjs(itemData?.received_at,'YYYY-MM-DD HH:mm:ss') }}
+                                    {{t('common.dates.actual-arrival')}}:{{ $dayjs(itemData?.received_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                                 </span>
                                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
-                                    {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}
+                                    {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                                 </span>
                                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'closed'">
-                                    {{t('common.dates.closed')}}:{{ $dayjs(itemData?.closed_at,'YYYY-MM-DD HH:mm:ss') }}
+                                    {{t('common.dates.closed')}}:{{ $dayjs(itemData?.closed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                                 </span>
 
                             </div>
@@ -315,11 +315,11 @@ const cancelASN = async () => {
                                 </p>
                                 <p class="mb-2 text-muted">
                                     <span class="fw-semibold text-default">{{t('common.dates.created')}} :</span>
-                                    {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                                    {{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                                 </p>
                                 <p class="mb-2 text-muted">
                                     <span class="fw-semibold text-default">{{t('common.dates.updated')}} :</span>
-                                    {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
+                                    {{ $dayjs(itemData?.updated_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                                 </p>
                             </div>
 

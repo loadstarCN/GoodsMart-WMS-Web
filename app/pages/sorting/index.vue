@@ -214,7 +214,7 @@ onMounted(async() => {
                                     <td class="d-none d-xl-table-cell">{{ $n(item?.expected_quantity) }} PCS</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+item?.status.replace('_',"-")) }}</td>
 
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at) }}</td>
+                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at, undefined, item) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ item?.creator?.user_name }}</td>
                                 </tr>
                             </tbody>

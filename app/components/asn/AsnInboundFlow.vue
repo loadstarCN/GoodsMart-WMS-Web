@@ -11,6 +11,7 @@
  * - 分拣：分拣任务的入口（summary.task_ids → /sorting/detail/<id>）
  * - 上架：逐商品的待上架（按待上架库存估算，上架记录不带入库单），商品详情里可以上架
  * 状态不在界面推算，按后端给的。做了操作整体重读，并 emit changed 让页面刷新自己的数据。
+ * 时刻按 ASN 所属仓库的时区显示（接口顶层的 timezone → 仓库下拉里该仓库的 → 页头 / 浏览器），与浏览器不同时标题旁标出。
  */
 import {
   INBOUND_STAGE_GROUPS,
@@ -43,6 +44,8 @@ const flow = ref<InboundFlow | null>(null)
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 const locale = computed(() => String(localeProperties.value?.iso || '') || undefined)
+/** ASN 所属仓库的时区（共用的步骤组件、在途详情都用它） */
+const flowTimeZone = provideTimeZone(() => flow.value?.timezone, () => flow.value?.warehouse_id)
 const carrierName = computed(() => flow.value?.carrier?.name || t('customs.carrier.carrier-fallback'))
 const canEdit = computed(() => staffStore.hasPermission('asn_edit'))
 
@@ -131,7 +134,7 @@ const actionText = (key: string) => {
   return key
 }
 const num = (v: unknown): number | null => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v))
-const time = (value: unknown) => formatLocaleDateTime(value ? String(value) : null, locale.value)
+const time = (value: unknown) => formatLocaleDateTime(value ? String(value) : null, locale.value, flowTimeZone.value)
 
 const problemText = (p: FlowProblem): string => {
   const params = { carrier: carrierName.value, date: String(p.date ?? ''), message: p.message || '' }
@@ -294,6 +297,7 @@ defineExpose({ reload })
         <span class="badge bg-light text-default fw-normal" v-if="flow?.carrier">
           <i class="ri-truck-line me-1"></i>{{ flow.carrier.name }}
         </span>
+        <TimeZoneBadge v-if="flow" :zone="flowTimeZone" />
       </div>
       <button type="button" class="btn btn-sm btn-icon btn-light" :disabled="loading" :title="t('shipping.refresh')"
         :aria-label="t('shipping.refresh')" @click="refresh">

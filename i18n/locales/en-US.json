@@ -524,7 +524,8 @@
       "description": "Warehouse Description",
       "address-en": "Address (English)",
       "country-code": "Country",
-      "contact-name-en": "Contact Name (English)"
+      "contact-name-en": "Contact Name (English)",
+      "timezone": "Time Zone"
     },
     "form": {
       "placeholders": {
@@ -544,7 +545,8 @@
     },
     "tips": {
       "export": "Printed on documents as Ship From when it differs from the company address.",
-      "export-latin": "The English address is under \"Latin (for international labels)\" above."
+      "export-latin": "The English address is under \"Latin (for international labels)\" above.",
+      "timezone": "Times on this warehouse's orders and tasks are shown and entered in this time zone; business dates (ship date, document date, pickup date) and \"today\" follow it too. Server default = the time zone the server is configured with."
     }
   },
   "location": {
@@ -736,7 +738,7 @@
           "none": "WMS doesn't arrange pickups for this carrier."
         },
         "tracking": {
-          "api": "WMS checks tracking regularly: shipping is completed when the carrier picks up and signed when delivered.",
+          "api": "WMS checks tracking regularly: shipping is completed when the carrier picks up, and delivery is confirmed when the carrier delivers.",
           "link": "Only a link to the carrier's public tracking page is shown; delivery is confirmed by hand (or by the auto-sign rule).",
           "none": "No tracking. Delivery is confirmed by hand (or by the auto-sign rule)."
         }
@@ -1284,7 +1286,8 @@
         "CARRIER_CONFIG_INVALID": "The integration settings are invalid",
         "PICKUP_ADDRESS_MISSING": "Neither the warehouse nor the company has an English address; add one in the warehouse settings",
         "PICKUP_ADDRESS_INVALID": "The English address can't be converted to the carrier's format: separate street and city with commas, e.g. \"9-4 Izumoji Tawaracho, Kita-ku, Kyoto 603-8135\"",
-        "PICKUP_PHONE_INVALID": "The contact phone doesn't have the number of digits the carrier needs; fix it in the warehouse (or company) settings"
+        "PICKUP_PHONE_INVALID": "The contact phone doesn't have the number of digits the carrier needs; fix it in the warehouse (or company) settings",
+        "PICKUP_METHOD_NOT_API": "Pickups with {carrier} are not booked online; book by phone or website and record the pickup in WMS"
       },
       "shipments": {
         "title": "Waiting for pickup",
@@ -1383,7 +1386,15 @@
         "failed": "Not booked. Change the time and try again.",
         "cancel-unclear": "{carrier} may have cancelled it; cancel again.",
         "permission-denied": "{carrier} refused the request: check the integration keys and that the {carrier} account has the pickup API enabled.",
-        "transaction-id": "{carrier} transaction ID"
+        "transaction-id": "{carrier} transaction ID",
+        "problem-lines": "{summary}: {items}"
+      },
+      "shipment-problems": {
+        "NOT_FOUND": "Waybill {tracking} was not found (or belongs to another warehouse)",
+        "OTHER_CARRIER": "Waybill {tracking} belongs to another carrier",
+        "NOT_ACTIVE": "Waybill {tracking} is cancelled or not active",
+        "DN_SHIPPED": "The DN of waybill {tracking} has been shipped",
+        "ALREADY_SCHEDULED": "Waybill {tracking} is already in a pickup"
       }
     }
   },
@@ -1957,7 +1968,8 @@
       "JP_EXPORT_CODE_MISMATCH": "Export statistical code is invalid or its first 6 digits differ from the HS code",
       "JP_EXPORT_CODE_MISSING": "Goods value (FOB) exceeds JPY 200,000; the Japanese export declaration requires the 9-digit statistical code",
       "CARRIER_NON_LATIN_TEXT": "The carrier name printed on the CI contains non-Latin characters; rename the carrier in English",
-      "JP_EXPORT_VALUE_UNVERIFIED": "The goods value is not in JPY, so whether it exceeds 200,000 JPY cannot be checked automatically; if it does, the 9-digit Japanese export statistics code is required. Please check manually"
+      "JP_EXPORT_VALUE_UNVERIFIED": "The goods value is not in JPY, so whether it exceeds 200,000 JPY cannot be checked automatically; if it does, the 9-digit Japanese export statistics code is required. Please check manually",
+      "EXPORT_SIGNATURE_UNAVAILABLE": "The exporter signature image is not configured correctly or can't be read; ask an administrator to check the server's signature settings"
     },
     "carrier": {
       "title": "Shipment",
@@ -1997,7 +2009,7 @@
         "no-carrier-elsewhere": "The delivery task has no carrier yet.",
         "manual": "{carrier} isn't connected online: create the shipment on the carrier's website, then enter the tracking number here.",
         "manual-elsewhere": "{carrier} isn't connected online; enter the tracking number here once the delivery task exists.",
-        "tracking-placeholder": "e.g. 7946 0000 0001",
+        "tracking-placeholder": "Number on the label",
         "tracking-saved": "Tracking number saved",
         "tracking-cleared": "Tracking number cleared",
         "creating": "Creating the shipment with {carrier}. This can take a while, please keep this page open.",
@@ -2040,7 +2052,13 @@
         "target-changed": "The shipment just changed and has been reloaded. Check it before continuing.",
         "cancel-unknown": "We can't tell whether it was cancelled. Retry the cancellation later, or check {portal} and then unlock.",
         "manual-method": "Waybills for {carrier} are entered by hand: create the waybill on the carrier's website or software, then enter the tracking number here.",
-        "manual-method-elsewhere": "Waybills for {carrier} are entered by hand; enter the tracking number here once the delivery task exists."
+        "manual-method-elsewhere": "Waybills for {carrier} are entered by hand; enter the tracking number here once the delivery task exists.",
+        "tracking-placeholders": {
+          "yamato": "12 digits, e.g. 1234-5678-9012",
+          "sagawa": "12 digits, e.g. 1234-5678-9012",
+          "japanpost": "11–13 characters, e.g. 1234-5678-9012 or EN123456789JP",
+          "fedex": "12 digits, e.g. 7946 0000 0001"
+        }
       },
       "warnings": {
         "DECLARED_VALUE_CAPPED": "Declared value {original} is more than the packed goods; {amount} will be sent"
@@ -2262,7 +2280,9 @@
     "code-16138-request": "The request is invalid ({field}). Reload the page and try again",
     "code-16075-discard": "This DN has no export waiting for its tracking number (it may have been imported or discarded already); the page has been refreshed",
     "code-16076-ship-to-locked": "The waybill has been created or exported with the current address, so the ship-to address can't be changed. Cancel the waybill (or discard the export) in the Waybill step first",
-    "code-16140": "This ASN has no tracking number that can be tracked through the carrier's integration"
+    "code-16140": "This ASN has no tracking number that can be tracked through the carrier's integration",
+    "code-14022": "Invalid time zone: choose an IANA time zone (e.g. Asia/Tokyo) or the server default",
+    "code-16117": "The documents can't be laid out: a consignee / recipient field is too long to fit on one page. Shorten the name, company, address, city, state, postal code or phone and issue again"
   },
   "shipping": {
     "title": "Shipping flow",
@@ -2370,7 +2390,8 @@
       "transit-waiting": "Waiting for carrier tracking",
       "waybill-exported": "Exported {time}; waiting for the tracking number",
       "waybill-exported-no-time": "Exported; waiting for the tracking number",
-      "waybill-file": "Export a file for {carrier}'s software"
+      "waybill-file": "Export a file for {carrier}'s software",
+      "packed": "{packed} / {planned} packed"
     },
     "documents": {
       "problems-title": "Fix these first ({count})",
@@ -2561,7 +2582,24 @@
       "batch-hint-export": "Select DNs of one carrier that uses file mode, then export. After printing, import the tracking numbers on the awaiting tracking no. tab.",
       "batch-hint-import": "Import the tracking-number file from the carrier software, or select DNs to export them again.",
       "select-all": "Select all on this page",
-      "label-elsewhere": "The label is printed in {carrier}'s software"
+      "label-elsewhere": "The label is printed in {carrier}'s software",
+      "import-reasons": {
+        "DN_NOT_FOUND": "No such DN in this warehouse",
+        "NOT_WMS_REFERENCE": "Reference {reference} is not a WMS DN reference (DN + number)",
+        "NO_REFERENCE": "No reference",
+        "NO_TRACKING_NUMBER": "No tracking number",
+        "DN_CLOSED": "The DN is closed (cancelled)",
+        "OTHER_CARRIER": "The DN's carrier is {carrier}, not this one",
+        "NUMBER_OWNED_BY_OTHER_DN": "Tracking number {number} already belongs to DN-{dn}",
+        "API_SHIPMENT_UNRESOLVED": "The waybill requested through the integration is unresolved ({status}); resolve it on the DN first",
+        "EXPORTED_FOR_OTHER_CARRIER": "The DN was exported for {carrier}",
+        "SHIPPED_WITHOUT_FILE_WAYBILL": "The DN has been shipped without an exported file waybill",
+        "NO_OPEN_TASK": "The DN has no open delivery task (it is not packed yet)",
+        "ALREADY_IMPORTED": "Already imported ({number})",
+        "ALREADY_SAVED": "Already saved on the delivery task ({number})",
+        "HAS_OTHER_NUMBER": "The DN already has tracking number {number}",
+        "another-carrier": "another carrier"
+      }
     },
     "options": {
       "title": "Service options",
@@ -2665,5 +2703,17 @@
     "errors": {
       "invalid-field": "Invalid address field {field} ({message})"
     }
+  },
+  "timezone": {
+    "label": "Time zone",
+    "default": "Server default",
+    "default-with": "Server default: {zone}",
+    "effective-default": "{zone} (server default)",
+    "search": "Search time zones, e.g. Tokyo or UTC+09:00",
+    "no-result": "No matching time zone",
+    "shown-in": "Times in {zone}",
+    "input-hint": "In the warehouse's time zone: {zone}",
+    "invalid": "Not a valid time zone",
+    "warehouse-local-hint": "Times are each warehouse's local time."
   }
 }

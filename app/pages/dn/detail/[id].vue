@@ -272,11 +272,11 @@ const cancelDN = async () => {
                         </p>
                         <p class="mb-2 text-muted">
                             <span class="fw-semibold text-default">{{t('common.dates.created')}} :</span>
-                            {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                            {{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                         </p>
                         <p class="mb-0 text-muted">
                             <span class="fw-semibold text-default">{{t('common.dates.updated')}} :</span>
-                            {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
+                            {{ $dayjs(itemData?.updated_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                         </p>
                     </div>
 

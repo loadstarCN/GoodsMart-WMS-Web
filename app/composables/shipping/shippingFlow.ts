@@ -115,6 +115,8 @@ export interface ShippingFlow {
   tasks: { picking: number[]; packing: number[]; delivery: number | null }
   /** DN 所属仓库（揽收按仓库约）；接口没给时由页面传入 */
   warehouse_id?: number | null
+  /** DN 所属仓库的时区（IANA 名，后端 doc/timezone-utc.md）：各步时刻按它显示、实际时刻按它填；旧后端没有 */
+  timezone?: string | null
 }
 
 export const shippingFlowUrl = (dnId: number | string) => `/api/warehouse/dn/${dnId}/shipping-flow`
@@ -252,6 +254,7 @@ export const normalizeShippingFlow = (data: any): ShippingFlow | null => {
       delivery: tasks.delivery === null || tasks.delivery === undefined || tasks.delivery === '' ? null : Number(tasks.delivery),
     },
     warehouse_id: data.warehouse_id === null || data.warehouse_id === undefined ? null : Number(data.warehouse_id),
+    timezone: toStringOrNull(data.timezone),
   }
 }
 
@@ -267,6 +270,19 @@ export const flowActionReasonKeys = (code: string | null | undefined): string[] 
   ? [`shipping.action-reasons.${code}`, `customs.carrier.blockers.${code}`, `delivery.pickup.blockers.${code}`,
       `customs.problems.${code}`]
   : [])
+
+type Translate = (key: string, params?: Record<string, unknown>) => string
+
+/**
+ * 操作不能做的原因文字：按 reason_code 翻译（flowActionReasonKeys 的顺序），没有对应文案时用后端的英文原因。
+ * params：文案里的 {carrier} / {tracking} 等
+ */
+export const flowActionReasonText = (action: FlowAction | null | undefined, t: Translate, te: (key: string) => boolean,
+  params: Record<string, unknown> = {}): string => {
+  if (!action) return ''
+  const key = flowActionReasonKeys(action.reason_code).find((k: string) => te(k))
+  return key ? t(key, { limit: '', tracking: '', ...params }) : String(action.reason || '')
+}
 
 /** 某个操作能不能做：后端给了这个操作按 enabled；没给时用 fallback（旧后端 / 没列出的） */
 export const flowActionEnabled = (step: FlowStepBase | null | undefined, key: string, fallback = false): boolean => {

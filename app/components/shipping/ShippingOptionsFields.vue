@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /**
- * 运单服务选项的输入框（DN 新建 / 编辑页；后端 doc/shipping-flow.md §6.4）：只负责按 schema 显示输入，
- * 值的转换与提交见 composables/dn/shippingOptionsForm.ts。发货流程「运单」一步里的保存 / 锁定是 ShippingOptionsEditor。
+ * 运单服务选项的输入框（后端 doc/shipping-flow.md §6.4）：只负责按 schema 显示输入。DN 新建 / 编辑页（值的转换与
+ * 提交见 composables/dn/shippingOptionsForm.ts）和发货流程「运单」一步的 ShippingOptionsEditor（保存 / 锁定）共用。
  * - schema：承运商声明的选项（GET /carrier/<id> 的 service_options）
  * - v-model：{key: 文字}（select 的 value、YYYY-MM-DD、金额的文字）；空 = 不指定（用选项的 default）
  * - errors：{key: 错误文字}（本地校验或后端 16139 的 field = shipping_options.<key>）
@@ -48,8 +48,12 @@ const defaultText = (o: ServiceOption): string => {
   }
   return o.default
 }
-const unsetText = (o: ServiceOption): string =>
-  (defaultText(o) ? t('shipping.options.unset-default', { value: defaultText(o) }) : t('shipping.options.unset'))
+const unsetText = (o: ServiceOption): string => {
+  if (defaultText(o)) return t('shipping.options.unset-default', { value: defaultText(o) })
+  // 预设自带的「不指定」项（值为空串，如「指定なし」）用它的文字
+  const blank = (o.values || []).find((v: ServiceOptionValue) => v.value === '')
+  return (blank ? text(blank.label) : '') || t('shipping.options.unset')
+}
 /** 已存的值不在承运商现在的可选值里（承运商换过 / 预设改过）：照样列出来，不悄悄丢掉 */
 const unknownValue = (o: ServiceOption): string => {
   const value = valueOf(o.key)

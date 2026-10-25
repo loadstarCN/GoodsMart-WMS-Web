@@ -3,7 +3,8 @@
  * 发货流程 ·「签收」一步的内容：
  * - 预计送达日（承运商跟踪给的）、自动视为签收的时刻（承运商设了 auto_sign_days、运单没有 API 跟踪时：交承运商 + N 天）
  * - 确认签收（sign）：签收时刻默认现在，可以改成实际时刻（不能晚于现在、不能早于交承运商的时刻）；
- *   没改时不传 signed_at（后端按现在）
+ *   没改时不传 signed_at（后端按现在）。输入框是 DN 所属仓库时区的墙上时间（流程 provideTimeZone），
+ *   提交带该时区的偏移（以前不带时区、按服务器本地时间存）
  * - 已签收：来源是规则时说明是按规则自动视为签收
  * 做了操作 emit changed。
  */
@@ -31,8 +32,9 @@ const emit = defineEmits<{
   (e: 'changed'): void
 }>()
 
-const { t, localeProperties } = useI18n()
+const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
+const { timeZone, differs: zoneDiffers, description: zoneDescription, formatLocale, toInputValue, fromInputValue, toOffsetIso } = useTimeZone()
 
 const done = computed(() => props.step.state === 'done')
 const estimated = computed(() => String(props.step.summary?.estimated_delivery || ''))
@@ -43,26 +45,30 @@ const canSign = computed(() => !!props.taskId && flowActionEnabled(props.step, '
 
 /** 交承运商的时刻（精确到分，与时间输入框一致）；没有为 null */
 const handoverDate = computed<Date | null>(() => {
-  const date = props.handoverAt ? new Date(props.handoverAt) : null
-  return date && !isNaN(date.getTime()) ? new Date(Math.floor(date.getTime() / 60000) * 60000) : null
+  const date = parseDateTime(props.handoverAt, timeZone.value)
+  return date ? new Date(Math.floor(date.getTime() / 60000) * 60000) : null
 })
-const minValue = computed(() => (handoverDate.value ? toDateTimeLocalValue(handoverDate.value) : undefined))
+const minValue = computed(() => (handoverDate.value ? toInputValue(handoverDate.value) : undefined))
 
-const signedAt = ref(toDateTimeLocalValue())
+const signedAt = ref(toInputValue())
 const touched = ref(false)
-const maxValue = ref(toDateTimeLocalValue())
+const maxValue = ref(toInputValue())
 const resetNow = () => {
-  signedAt.value = toDateTimeLocalValue()
+  signedAt.value = toInputValue()
   maxValue.value = signedAt.value
   touched.value = false
 }
+// 读到流程的时区后（或时区变了）没改过的输入框按新时区重填
+watch(timeZone, () => {
+  if (!touched.value) resetNow()
+})
 
 const busy = ref(false)
 const sign = async () => {
   if (!canSign.value || busy.value || !props.taskId) return
   let at: Date | null = null
   if (touched.value) {
-    at = fromDateTimeLocalValue(signedAt.value)
+    at = fromInputValue(signedAt.value)
     if (!at) {
       showToast(t('shipping.handover.time-invalid'), 'error')
       return
@@ -72,7 +78,7 @@ const sign = async () => {
       return
     }
     if (handoverDate.value && at.getTime() < handoverDate.value.getTime()) {
-      const time = formatLocaleDateTime(handoverDate.value, String(localeProperties.value?.iso || '') || undefined)
+      const time = formatLocale(handoverDate.value)
       showToast(t('shipping.delivered.time-before-handover', { time }), 'error')
       return
     }
@@ -80,8 +86,8 @@ const sign = async () => {
   busy.value = true
   await httpRequest(`/api/warehouse/delivery/${props.taskId}/sign/`, {
     method: 'PUT',
-    // 签收时刻按本地时间（不带时区）提交，与以前的配送任务页一致；不传 = 现在
-    body: at ? { signed_at: formatDateTimeWithoutTimezone(at) } : {},
+    // 签收时刻带仓库时区的偏移提交（后端 doc/timezone-utc.md）；不传 = 现在
+    body: at ? { signed_at: toOffsetIso(at) } : {},
     onSuccess: () => {
       showToast(t('delivery.tips.signed'), 'success')
     },
@@ -119,7 +125,8 @@ defineExpose({ run })
 
       <div class="d-flex flex-wrap align-items-end gap-2 mt-2" v-if="canSign">
         <div>
-          <label class="form-label fs-12 mb-1" for="flow-signed-at">{{ t('shipping.delivered.signed-at') }}</label>
+          <label class="form-label fs-12 mb-1" for="flow-signed-at">{{ t('shipping.delivered.signed-at') }}
+            <TimeZoneBadge class="ms-1" /></label>
           <div class="input-group input-group-sm">
             <input type="datetime-local" class="form-control" id="flow-signed-at" v-model="signedAt" :min="minValue" :max="maxValue"
               :disabled="busy" @input="touched = true">
@@ -131,7 +138,8 @@ defineExpose({ run })
           <i v-else class="ri-checkbox-circle-line me-1"></i>{{ t('shipping.actions.sign') }}
         </button>
       </div>
-      <p class="fs-12 text-muted mb-0 mt-1" v-if="canSign">{{ t('shipping.delivered.manual-hint') }}</p>
+      <p class="fs-12 text-muted mb-0 mt-1" v-if="canSign">{{ t('shipping.delivered.manual-hint') }}
+        <template v-if="zoneDiffers">{{ t('timezone.input-hint', { zone: zoneDescription }) }}</template></p>
     </template>
     <ShippingFlowActionNotes :actions="step.actions" :carrier-name="carrier?.name" />
   </div>

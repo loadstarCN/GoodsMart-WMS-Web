@@ -58,8 +58,10 @@ const emit = defineEmits<{
   (e: 'submitted'): void
 }>()
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
+/** 揽收日、时间段都是仓库当地的：与浏览器时区不同时在时间旁标出（warehouseId 的仓库 → 上层 provideTimeZone → 页头） */
+const { differs: zoneDiffers, description: zoneDescription } = useTimeZone(() => props.warehouseId)
 
 const headers = computed(() => ({ 'Content-Type': 'application/json', ...warehouseHeaders(props.warehouseId) }))
 const carrierQuery = () => (props.carrierId ? `?carrier_id=${props.carrierId}` : '')
@@ -144,7 +146,7 @@ const loadAvailability = async () => {
       }
     },
     onError: (error) => {
-      availabilityError.value = describePickupFailure(error, props.carrierName, t, bizErrorMessage).summary
+      availabilityError.value = describePickupFailure(error, props.carrierName, t, bizErrorMessage, te).summary
     },
     onFinally: () => {
       availabilityLoading.value = false
@@ -208,7 +210,7 @@ const submit = async () => {
       emit('update:open', false)
     },
     onError: (error) => {
-      failure.value = describePickupFailure(error, props.carrierName, t, bizErrorMessage)
+      failure.value = describePickupFailure(error, props.carrierName, t, bizErrorMessage, te)
     },
     onFinally: () => {
       submitting.value = false
@@ -272,20 +274,23 @@ const submit = async () => {
                 <input type="date" class="form-control" v-model="form.pickup_date" :min="today || undefined" v-else>
               </div>
               <div class="col-md-4">
-                <label class="form-label">{{ t('delivery.pickup.modal.ready-time') }} <abbr title="required" class="text-danger">*</abbr></label>
+                <label class="form-label">{{ t('delivery.pickup.modal.ready-time') }} <abbr title="required" class="text-danger">*</abbr>
+                  <TimeZoneBadge class="ms-1" :zone="warehouseId" /></label>
                 <select class="form-select" v-model="form.ready_time" v-if="readyChoices.length">
                   <option v-for="v in readyChoices" :key="v" :value="v">{{ v }}</option>
                 </select>
                 <input type="time" class="form-control" v-model="form.ready_time" v-else>
               </div>
               <div class="col-md-4">
-                <label class="form-label">{{ t('delivery.pickup.modal.close-time') }} <abbr title="required" class="text-danger">*</abbr></label>
+                <label class="form-label">{{ t('delivery.pickup.modal.close-time') }} <abbr title="required" class="text-danger">*</abbr>
+                  <TimeZoneBadge class="ms-1" :zone="warehouseId" /></label>
                 <select class="form-select" v-model="form.close_time" v-if="closeChoices.length">
                   <option v-for="v in closeChoices" :key="v" :value="v">{{ v }}</option>
                 </select>
                 <input type="time" class="form-control" v-model="form.close_time" v-else>
               </div>
             </div>
+            <div class="form-text" v-if="zoneDiffers">{{ t('timezone.input-hint', { zone: zoneDescription }) }}</div>
             <div class="fs-12 text-muted mt-2" v-if="currentOption?.cutoff_time || currentOption?.access_minutes">
               {{ t('delivery.pickup.modal.limits', { cutoff: currentOption?.cutoff_time || '—', minutes: currentOption?.access_minutes ?? '—' }) }}
             </div>

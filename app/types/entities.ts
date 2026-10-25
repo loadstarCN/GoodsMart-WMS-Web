@@ -50,6 +50,10 @@ export interface WarehouseSimple {
     id: number;
     name: string;
     default_currency: string | null; // 允许空值
+    /** 生效时区（IANA 名：仓库设的 → 服务器默认）；旧后端 / 旧缓存没有（后端 doc/timezone-utc.md） */
+    timezone?: string | null;
+    /** 仓库自己设的时区；null = 用服务器默认（只有仓库列表 / 详情给） */
+    timezone_configured?: string | null;
 }
 
 // 添加类型定义

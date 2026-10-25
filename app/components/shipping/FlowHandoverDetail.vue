@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 /**
  * 发货流程 ·「交承运商」一步的内容：完成发货（complete_shipping）。
- * - 实际交给承运商的时刻默认现在，可以改成更早的实际时刻（不能晚于现在）；没改时不传 shipped_at（后端按现在）
+ * - 实际交给承运商的时刻默认现在，可以改成更早的实际时刻（不能晚于现在）；没改时不传 shipped_at（后端按现在）。
+ *   输入框是 DN 所属仓库时区的墙上时间（流程 provideTimeZone），提交带该时区的偏移（2026-10-23T13:03:00+09:00）
  * - 发货任务还没开始（pending）时先开始（PUT process），再完成（PUT complete）
  * - 配送任务页传 completeExtras：把页面上的运费、承运商、运输方式、备注一起提交（返回 null = 页面校验没过，不提交）
  * - 有 API 跟踪的承运商揽收后会自动完成发货（来源记承运商），也可以在这里手工完成
@@ -32,8 +33,9 @@ const emit = defineEmits<{
   (e: 'changed'): void
 }>()
 
-const { t, localeProperties } = useI18n()
+const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
+const { timeZone, differs: zoneDiffers, description: zoneDescription, formatLocale, toInputValue, fromInputValue, toOffsetIso } = useTimeZone()
 
 /** 完成发货时要弹窗说明的业务码：自动运单锁定（16078）/ 结果不明（16079）/ 与 CI 上的运单号或承运商不一致（16080 / 16092）/ 不是当前任务（16091） */
 const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092]
@@ -44,14 +46,18 @@ const canComplete = computed(() => !!props.taskId && flowActionEnabled(props.ste
   !props.locked && (props.step.state === 'current' || props.step.state === 'warning')))
 const autoByTracking = computed(() => props.carrier?.methods.tracking === 'api')
 
-const shippedAt = ref(toDateTimeLocalValue())
+const shippedAt = ref(toInputValue())
 const touched = ref(false)
-const maxValue = ref(toDateTimeLocalValue())
+const maxValue = ref(toInputValue())
 const resetNow = () => {
-  shippedAt.value = toDateTimeLocalValue()
+  shippedAt.value = toInputValue()
   maxValue.value = shippedAt.value
   touched.value = false
 }
+// 读到流程的时区后（或时区变了）没改过的输入框按新时区重填
+watch(timeZone, () => {
+  if (!touched.value) resetNow()
+})
 const onInput = () => {
   touched.value = true
 }
@@ -77,7 +83,7 @@ const complete = async () => {
   if (!canComplete.value || busy.value || !props.taskId) return
   let at: Date | null = null
   if (touched.value) {
-    at = fromDateTimeLocalValue(shippedAt.value)
+    at = fromInputValue(shippedAt.value)
     if (!at) {
       showToast(t('shipping.handover.time-invalid'), 'error')
       return
@@ -92,7 +98,7 @@ const complete = async () => {
   if (extras === null) return
   const confirmed = await showConfirm(
     t('shipping.handover.confirm-title'),
-    t('shipping.handover.confirm', { time: formatLocaleDateTime(at || new Date(), String(localeProperties.value?.iso || '') || undefined) }),
+    t('shipping.handover.confirm', { time: formatLocale(at || new Date()) }),
     t('button.confirm'),
     t('button.cancel'),
   )
@@ -124,7 +130,7 @@ const complete = async () => {
       return
     }
     const body: Record<string, any> = { ...(extras || {}) }
-    if (at) body.shipped_at = safeFormatDateTime(at)
+    if (at) body.shipped_at = toOffsetIso(at)
     await httpRequest(`/api/warehouse/delivery/${props.taskId}/complete/`, {
       method: 'PUT',
       body,
@@ -160,7 +166,8 @@ defineExpose({ run })
       </p>
       <div class="d-flex flex-wrap align-items-end gap-2" v-if="canComplete">
         <div>
-          <label class="form-label fs-12 mb-1" for="flow-shipped-at">{{ t('shipping.handover.shipped-at') }}</label>
+          <label class="form-label fs-12 mb-1" for="flow-shipped-at">{{ t('shipping.handover.shipped-at') }}
+            <TimeZoneBadge class="ms-1" /></label>
           <div class="input-group input-group-sm">
             <input type="datetime-local" class="form-control" id="flow-shipped-at" v-model="shippedAt" :max="maxValue"
               :disabled="busy" @input="onInput">
@@ -172,7 +179,8 @@ defineExpose({ run })
           <i v-else class="ri-check-double-line me-1"></i>{{ t('shipping.actions.complete_shipping') }}
         </button>
       </div>
-      <p class="fs-12 text-muted mb-0 mt-1" v-if="canComplete">{{ t('shipping.handover.time-hint') }}</p>
+      <p class="fs-12 text-muted mb-0 mt-1" v-if="canComplete">{{ t('shipping.handover.time-hint') }}
+        <template v-if="zoneDiffers">{{ t('timezone.input-hint', { zone: zoneDescription }) }}</template></p>
     </template>
     <p class="fs-12 text-muted mb-0" v-else-if="step.source === 'carrier'">{{ t('shipping.handover.by-carrier') }}</p>
     <ShippingFlowActionNotes :actions="step.actions" :carrier-name="carrier?.name" v-if="!locked" />

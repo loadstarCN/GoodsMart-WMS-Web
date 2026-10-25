@@ -618,3 +618,20 @@ export const declaredValueModeOf = (status: CarrierShipmentStatus | null | undef
   if (!status?.integration) return 'manual'
   return isActiveShipment(status.shipment) ? 'submitted' : 'auto'
 }
+
+/** 手填运单号输入框的示例：按承运商（代码 / 在线对接插件）认得的号码格式；认不出的用不带格式的通用说明 */
+const TRACKING_PATTERNS: [RegExp, string][] = [
+  [/yamato|kuroneko/i, 'yamato'],
+  [/sagawa/i, 'sagawa'],
+  [/japan[_\s-]?post|jp[_\s-]?post|yubin|yupack|yu-?pri/i, 'japanpost'],
+  [/fedex/i, 'fedex'],
+]
+
+export const trackingPlaceholderKey = (...codes: (string | null | undefined)[]): string => {
+  for (const code of codes) {
+    if (!code) continue
+    const hit = TRACKING_PATTERNS.find(([pattern]) => pattern.test(code))
+    if (hit) return `customs.carrier.tips.tracking-placeholders.${hit[1]}`
+  }
+  return 'customs.carrier.tips.tracking-placeholder'
+}

@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
 import 'dayjs/locale/ja'
+import type { TimeZoneSource } from '~/composables/useTimeZone'
 
 dayjs.extend(relativeTime)
 
@@ -24,15 +25,20 @@ export default defineNuxtPlugin((nuxtApp) => {
     watch(() => unref(i18n.locale), applyLocale)
   }
 
-  // 注入全局方法（网页7方案）
-  nuxtApp.provide('dayjs', (date?: dayjs.ConfigType, format?: string):string => {
+  /**
+   * 模板里的时刻格式化：$dayjs(value, format?, zone?)
+   * - 带 format（YYYY-MM-DD HH:mm:ss 等）：按时区显示（zone = IANA 名 / 仓库 id / 记录，见 composables/useTimeZone；
+   *   不传 = 页头选中的仓库 → 浏览器），与浏览器时区不同时后面标出时区缩写；只有日期的值（YYYY-MM-DD）原样
+   * - 不带 format：相对时间（3 小时前）。不带时区的旧值按该时区的墙上时间解释
+   */
+  nuxtApp.provide('dayjs', (date?: dayjs.ConfigType, format?: string, zone?: TimeZoneSource): string => {
     if (date === null || date === undefined || date === '') {
       return ''
     }
-    const instance = dayjs.isDayjs(date)
-      ? date
-      : dayjs(date || new Date())
-
-    return format ? instance.format(format) : instance.fromNow()
+    const value = dayjs.isDayjs(date) ? date.toDate() : date
+    const timeZone = resolveTimeZone(zone)
+    if (format) return formatInTimeZone(value, format, timeZone)
+    const parsed = parseDateTime(value, timeZone)
+    return parsed ? dayjs(parsed).fromNow() : String(value)
   })
 })

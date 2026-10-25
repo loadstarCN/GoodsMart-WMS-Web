@@ -416,7 +416,7 @@ onMounted(async() => {
                                   {{ t('common.dates.created') }}
                                 </th>
                                 <td>
-                                  {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                                  {{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                                 </td>
                               </tr>
                               <tr>
@@ -424,7 +424,7 @@ onMounted(async() => {
                                   {{ t('common.dates.updated') }}
                                 </th>
                                 <td>
-                                  {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
+                                  {{ $dayjs(itemData?.updated_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                                 </td>
                               </tr>
 
@@ -577,8 +577,8 @@ onMounted(async() => {
                       {{ item?.quantity }}
                     </td>
                     <td class="d-none d-lg-table-cell">{{t('common.locations.'+item?.location?.location_type)}}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.created_at,'YYYY-MM-DD HH:mm:ss') }}</td>
-                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.updated_at,'YYYY-MM-DD HH:mm:ss') }}</td>
+                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.created_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
+                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.updated_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                     <td>
                       <button class="btn btn-sm btn-warning btn-wave waves-light me-2" data-bs-toggle="modal"
                         data-bs-target="#removalModal" @click="removalFn(item)" title="Removal">
@@ -612,7 +612,7 @@ onMounted(async() => {
                     </td>
                     <td>↑{{ item?.quantity }}</td>
                     <td class="d-none d-lg-table-cell">{{ item?.operator_name }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.putaway_time,'YYYY-MM-DD HH:mm:ss') }}</td>
+                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.putaway_time, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                     <td class="d-none d-xl-table-cell">{{ item?.remark }}</td>
                   </tr>
                   <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'removal'">
@@ -638,7 +638,7 @@ onMounted(async() => {
                     <td>↓{{ item?.quantity }}</td>
                     <td class="d-none d-xl-table-cell">{{ item?.reason }}</td>
                     <td class="d-none d-lg-table-cell">{{ item?.operator_name }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.removal_time,'YYYY-MM-DD HH:mm:ss') }}</td>
+                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.removal_time, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                     <td class="d-none d-xl-table-cell">{{ item?.remark }}</td>
                   </tr>
                   <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'adjustment'">
@@ -668,9 +668,9 @@ onMounted(async() => {
                     <td>{{ item?.system_quantity }}</td>
                     <td>{{ item?.actual_quantity }}</td>
                     <td>{{ item?.adjustment_quantity }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.adjustment?.approved_at,'YYYY-MM-DD HH:mm:ss') }}
+                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.adjustment?.approved_at, 'YYYY-MM-DD HH:mm:ss', item) }}
                     </td>
-                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.adjustment?.completed_at,'YYYY-MM-DD HH:mm:ss')
+                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.adjustment?.completed_at, 'YYYY-MM-DD HH:mm:ss', item)
                       }}</td>
                     <td>{{ item?.approver?.user_name }}</td>
                     <td>{{ item?.operator?.user_name }}</td>
@@ -709,7 +709,7 @@ onMounted(async() => {
                     </td>
                     <td>→{{ item?.quantity }}</td>
                     <td class="d-none d-lg-table-cell">{{ item?.operator_name }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.transfer_time,'YYYY-MM-DD HH:mm:ss') }}</td>
+                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.transfer_time, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                     <td class="d-none d-xl-table-cell">{{ item?.remark }}</td>
                   </tr>
                   <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'cyclecount'">
@@ -738,8 +738,8 @@ onMounted(async() => {
                     <td>{{ item?.actual_quantity }}</td>
                     <td>{{ item?.difference }}</td>
                     <td class="d-none d-lg-table-cell">{{ item?.operator?.user_name }}</td>
-                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.updated_at,'YYYY-MM-DD HH:mm:ss') }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.completed_at,'YYYY-MM-DD HH:mm:ss') }}</td>
+                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.updated_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
+                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.completed_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                   </tr>
                 </tbody>
               </table>

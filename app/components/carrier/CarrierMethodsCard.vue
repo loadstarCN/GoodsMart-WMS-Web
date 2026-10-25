@@ -212,6 +212,7 @@ defineExpose({ validate, payload })
                   :value="schedule.close_time || ''" @input="setScheduleTime('close_time', ($event.target as HTMLInputElement).value)">
               </div>
             </div>
+            <div class="form-text">{{ t('timezone.warehouse-local-hint') }}</div>
             <div class="invalid-feedback d-block" v-if="errorOf('pickup_schedule')">{{ errorOf('pickup_schedule') }}</div>
           </div>
 

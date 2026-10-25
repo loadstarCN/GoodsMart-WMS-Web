@@ -54,6 +54,13 @@ onMounted(async() => {
 const hasAddress = computed(() => !!itemData.value && (hasStructuredAddress(itemData.value)
   || !!String(itemData.value.address ?? '').trim() || !!String(itemData.value.address_en ?? '').trim()));
 
+/** 仓库的生效时区（Asia/Tokyo (UTC+09:00)）；仓库没自己设时标「服务器默认」；旧后端没给时「—」 */
+const zoneText = (w: any): string => {
+  if (!isValidTimeZone(w?.timezone)) return '—'
+  const text = timeZoneDescription(w.timezone)
+  return w.timezone_configured ? text : t('timezone.effective-default', { zone: text })
+}
+
 
 </script>
 
@@ -92,6 +99,10 @@ const hasAddress = computed(() => !!itemData.value && (hasStructuredAddress(item
                       <p class="text-muted mb-0">{{ itemData.phone }}
                       </p>
                     </div>
+                    <div class="mb-4" v-if="itemData?.timezone">
+                      <p class="fs-15 fw-semibold mb-1">{{ t('warehouse.fields.timezone') }} :</p>
+                      <p class="text-muted mb-0">{{ zoneText(itemData) }} <TimeZoneBadge :zone="itemData.timezone" /></p>
+                    </div>
                     <div class="mb-4" v-if="itemData?.default_currency">
                       <p class="fs-15 fw-semibold mb-1">{{t('common.fields.currency')}} :</p>
                       <p class="text-muted mb-0">{{ itemData.default_currency }}
@@ -119,7 +130,7 @@ const hasAddress = computed(() => !!itemData.value && (hasStructuredAddress(item
                               {{t('common.dates.created')}}
                             </th>
                             <td>
-                              {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                              {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss', itemData) }}
                             </td>
                           </tr>
                           <tr>
@@ -127,7 +138,7 @@ const hasAddress = computed(() => !!itemData.value && (hasStructuredAddress(item
                               {{t('common.dates.updated')}}
                             </th>
                             <td>
-                              {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
+                              {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss', itemData) }}
                             </td>
                           </tr>
 

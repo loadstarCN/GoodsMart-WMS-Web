@@ -156,11 +156,11 @@ onMounted(async() => {
                 </p>
                 <p class="mb-2 text-muted">
                   <span class="fw-semibold text-default">{{t('common.dates.created')}} :</span>
-                  {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
                 <p class="mb-2 text-muted">
                   <span class="fw-semibold text-default">{{t('common.dates.updated')}} :</span>
-                  {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{ $dayjs(itemData?.updated_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
 
                 <p class="mb-2 text-muted" v-if="itemData?.approver">
@@ -169,7 +169,7 @@ onMounted(async() => {
                 </p>
                 <p class="mb-2 text-muted" v-if="itemData?.approved_at">
                   <span class="fw-semibold text-default">{{t('common.dates.approved')}} :</span>
-                  {{ $dayjs(itemData?.approved_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{ $dayjs(itemData?.approved_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
 
                 <p class="mb-2 text-muted" v-if="itemData?.operator">
@@ -178,7 +178,7 @@ onMounted(async() => {
                 </p>
                 <p class="mb-2 text-muted" v-if="itemData?.completed_at">
                   <span class="fw-semibold text-default">{{t('common.dates.completed')}} :</span>
-                  {{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
 
               </div>
@@ -201,13 +201,13 @@ onMounted(async() => {
               </div>
               <div>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                  {{t('common.dates.created')}}{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.created')}}{{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'approved'">
-                  {{t('common.dates.started')}}:{{ $dayjs(itemData?.approved_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.started')}}:{{ $dayjs(itemData?.approved_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
-                  {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-secondary ms-1" v-if="cancelled">{{ t('common.status.cancelled') }}</span>
 

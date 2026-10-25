@@ -1,5 +1,5 @@
 /**
- * 海外出荷単証（商业发票 CI / 装箱单 PL）相关的类型与工具
+ * 海外出货单证（商业发票 CI / 装箱单 PL）相关的类型与工具
  *
  * 通用 httpRequest 只解析 JSON，PDF 必须直接用 authFetch 取二进制（blob）。
  * 服务端代理 server/api/[...].ts 会原样透传 Content-Type 与 X-Content-SHA256。

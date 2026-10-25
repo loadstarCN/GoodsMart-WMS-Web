@@ -43,8 +43,9 @@ const fetchData = async () => {
         address: data.address || '',
         zip_code: data.zip_code || '',
         default_currency: data.default_currency || 'JPY',
-        // 后端返回 ISO 时间串，date 输入框只接受 YYYY-MM-DD
-        expired_at: data.expired_at ? String(data.expired_at).slice(0, 10) : null,
+        // 后端返回带偏移的 ISO 时刻（UTC），date 输入框只接受 YYYY-MM-DD：按页头仓库 / 浏览器的时区取日期
+        // （直接截前 10 位是 UTC 的日期，UTC 以东的时区会早一天）
+        expired_at: data.expired_at ? formatInTimeZone(data.expired_at, 'YYYY-MM-DD', resolveTimeZone()) || null : null,
         is_active: data.is_active ?? true,
       };
     },

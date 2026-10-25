@@ -24,7 +24,7 @@ import {
   type CustomsView,
 } from '~/composables/customs/customsDocuments'
 import type { DeclaredValueMode } from '~/composables/customs/carrierShipment'
-import { flowActionEnabled, flowActionOf, type FlowStep } from '~/composables/shipping/shippingFlow'
+import { flowActionEnabled, flowActionOf, flowActionReasonText, type FlowStep } from '~/composables/shipping/shippingFlow'
 
 const props = withDefaults(defineProps<{
   dnId: number | string
@@ -53,6 +53,9 @@ const emit = defineEmits<{
 
 const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
+/** 签发时刻按流程提供的时区（DN 所属仓库）显示；流程卡片标题旁已标出时区 */
+const { format: formatZoned } = useTimeZone()
+const zonedTime = (value: unknown, pattern: string) => formatZoned(value, pattern, { withZone: false })
 const staffStore = useStaffStore()
 const { busyDocId, printDoc, viewDoc, downloadDoc, downloadRawDoc } = useCustomsPdfActions()
 
@@ -82,7 +85,7 @@ const issueAction = computed(() => flowActionOf(props.step, 'issue_documents'))
 const canIssue = computed(() => flowActionEnabled(props.step, 'issue_documents', !locked.value && isPacked.value && ready.value))
 const issueHint = computed(() => {
   if (locked.value) return ''
-  if (issueAction.value && !issueAction.value.enabled) return issueAction.value.reason || ''
+  if (issueAction.value && !issueAction.value.enabled) return flowActionReasonText(issueAction.value, t, te, { carrier: t('customs.carrier.carrier-fallback') })
   if (!isPacked.value) return t('customs.tips.issue-need-packed')
   if (!ready.value) return t('customs.tips.issue-not-ready')
   if (props.packagesDirty) return t('customs.tips.packages-unsaved-before-issue')
@@ -262,7 +265,7 @@ const dataOpen = ref(false)
                 <td>v{{ doc.version }}</td>
                 <td class="font-monospace" :title="doc.sha256 ? `SHA-256 ${doc.sha256}` : ''">{{ doc.document_number }}</td>
                 <td>
-                  {{ $dayjs(doc.issued_at, 'YYYY-MM-DD HH:mm') }}
+                  {{ zonedTime(doc.issued_at, 'YYYY-MM-DD HH:mm') }}
                   <span class="text-muted ms-1" v-if="doc.issued_by">{{ userText(doc.issued_by_user ?? doc.issued_by) }}</span>
                 </td>
                 <td>

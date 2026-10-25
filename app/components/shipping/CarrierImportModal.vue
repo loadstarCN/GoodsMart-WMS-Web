@@ -15,6 +15,7 @@ import {
   IMPORT_RESULTS,
   importCarrierFile,
   importResultColor,
+  importRowMessage,
   type FileCarrierOption,
   type ImportResult,
   type ImportRow,
@@ -43,7 +44,7 @@ const emit = defineEmits<{
   (e: 'imported', result: ImportResult): void
 }>()
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
 
 type Step = 'choose' | 'preview' | 'done'
@@ -132,6 +133,7 @@ const visibleRows = computed<ImportRow[]>(() => (shown.value?.rows || [])
 const isHighlighted = (r: ImportRow) =>
   props.highlightDnId !== null && props.highlightDnId !== undefined && String(r.dn_id) === String(props.highlightDnId)
 const resultText = (r: string) => t(`shipping.file.results.${r}`)
+const rowMessage = (r: ImportRow) => importRowMessage(r, t, te)
 </script>
 
 <template>
@@ -214,7 +216,7 @@ const resultText = (r: string) => t(`shipping.file.results.${r}`)
                       <td>{{ r.order_number || '—' }}</td>
                       <td class="font-monospace text-wrap">{{ r.tracking_numbers.join(', ') || '—' }}</td>
                       <td class="text-nowrap"><span class="badge" :class="`bg-${importResultColor(r.result)}-transparent`">{{ resultText(r.result) }}</span></td>
-                      <td class="text-wrap text-muted">{{ r.message || '' }}</td>
+                      <td class="text-wrap text-muted" :title="r.message || ''">{{ rowMessage(r) }}</td>
                     </tr>
                   </tbody>
                 </table>

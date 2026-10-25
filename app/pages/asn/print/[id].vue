@@ -128,20 +128,20 @@ fetchData();
             </div>
             <div class="col-3" v-if="itemData?.status == 'pending' || itemData?.status == 'received'">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.dates.created')}}</b></p>
-              <p>{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}</p>
+              <p>{{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}</p>
             </div>
            
             <div class="col-3" v-if="itemData?.status == 'completed'">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.dates.completed')}}</b></p>
-              <p>{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}</p>
+              <p>{{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}</p>
             </div>
             <div class="col-3" v-if="itemData?.status == 'closed'">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.dates.closed')}}</b></p>
-              <p>{{ $dayjs(itemData?.closed_at,'YYYY-MM-DD HH:mm:ss') }}</p>
+              <p>{{ $dayjs(itemData?.closed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}</p>
             </div>
             <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.users.creator')}}</b></p>
-              <p>{{itemData?.creator?.user_name}}<br>{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}</p>
+              <p>{{itemData?.creator?.user_name}}<br>{{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}</p>
             </div>
           </div>
           </div>

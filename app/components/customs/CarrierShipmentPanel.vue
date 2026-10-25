@@ -21,7 +21,6 @@
  */
 import type { HttpRequestError } from '~/utils/http'
 import { formatMoney, formatUserRef, useCustomsPdfActions } from '~/composables/customs/customsDocuments'
-import dayjs from 'dayjs'
 import {
   CARRIER_BIZ_CODES,
   carrierShipmentUrl,
@@ -46,6 +45,7 @@ import {
   serviceNameOf,
   shouldReloadAfterCreateFailure,
   toLabelFormat,
+  trackingPlaceholderKey,
   unresolvedFromError,
   type CarrierAlert,
   type CarrierRequestFailure,
@@ -115,6 +115,9 @@ const emit = defineEmits<{
 
 const { t, te, localeProperties } = useI18n()
 const { bizErrorMessage } = useBizError()
+/** 时刻按流程提供的时区（DN 所属仓库）显示；流程卡片标题旁已标出时区，这里不再逐个标 */
+const { timeZone: panelTimeZone, format: formatZoned } = useTimeZone()
+const zonedTime = (value: unknown, pattern: string) => formatZoned(value, pattern, { withZone: false })
 const { busyDocId, viewDoc, downloadDoc, downloadRawDoc, fetchFile } = useCustomsPdfActions()
 const staffStore = useStaffStore()
 
@@ -243,6 +246,9 @@ watch(status, (value: CarrierShipmentStatus | null) => emit('status', value))
 // ------------------ 状态 ----------------------
 const integration = computed(() => status.value?.integration || null)
 const carrierName = computed(() => integration.value?.name || status.value?.carrier?.name || t('customs.carrier.carrier-fallback'))
+/** 手填运单号的示例：按承运商认得的号码格式（认不出时不举具体格式） */
+const trackingPlaceholder = computed(() =>
+  trackingPlaceholderKey(status.value?.carrier?.code, integration.value?.code, status.value?.carrier?.name))
 /** 承运商自己的发货后台（结果不明时去那里核对） */
 const portalName = computed(() => integration.value?.portal_name || t('customs.carrier.portal-fallback', { carrier: carrierName.value }))
 const shipment = computed(() => status.value?.shipment || null)
@@ -303,7 +309,7 @@ const trackingText = computed(() => {
     // 送达时刻：只有日期（没有时分）时不补 00:00；没有就不写，也不再写「预计送达」
     const at = tr.delivered_at || ''
     if (at.length > 10) {
-      parts.push(t('customs.carrier.tracking.delivered-at', { time: dayjs(at).format('YYYY-MM-DD HH:mm') }))
+      parts.push(t('customs.carrier.tracking.delivered-at', { time: zonedTime(at, 'YYYY-MM-DD HH:mm') }))
     } else if (at) {
       parts.push(t('customs.carrier.tracking.delivered-at', { time: at }))
     }
@@ -425,8 +431,8 @@ const inProgressSince = computed<string | null>(() => {
 })
 const parseTimestamp = (value: string | null | undefined): number | null => {
   if (!value) return null
-  const parsed = dayjs(value)
-  return parsed.isValid() ? parsed.valueOf() : null
+  // 不带时区的旧值按仓库时区解释（与 Date.now() 比较）
+  return parseDateTime(value, panelTimeZone.value)?.getTime() ?? null
 }
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollStartedAt = 0
@@ -972,7 +978,7 @@ defineExpose({ reload: async () => { await load() } })
           <span v-if="unresolved.transaction_id">
             {{ t('customs.carrier.fields.transaction-id') }} <span class="font-monospace text-break">{{ unresolved.transaction_id }}</span>
           </span>
-          <span v-if="unresolved.created_at">{{ $dayjs(unresolved.created_at, 'MM-DD HH:mm') }}</span>
+          <span v-if="unresolved.created_at">{{ zonedTime(unresolved.created_at, 'MM-DD HH:mm') }}</span>
           <span v-if="unresolvedReasonText" :title="unresolved.reason || ''">{{ unresolvedReasonText }}</span>
         </div>
         <details class="fs-13 mt-2" v-if="!unresolvedInProgress && !locked">
@@ -1015,7 +1021,7 @@ defineExpose({ reload: async () => { await load() } })
           <span class="font-monospace">{{ packageTrackingNumbers.join(', ') }}</span>
         </div>
         <div class="fs-12 text-muted mt-1">
-          {{ t('customs.carrier.fields.created') }} {{ $dayjs(activeShipment.created_at, 'YYYY-MM-DD HH:mm') || '—' }}
+          {{ t('customs.carrier.fields.created') }} {{ zonedTime(activeShipment.created_at, 'YYYY-MM-DD HH:mm') || '—' }}
           <template v-if="activeShipment.created_by">· {{ userText(activeShipment.created_by_user ?? activeShipment.created_by) }}</template>
           <template v-if="declaredValueText"> · {{ declaredValueText }}</template>
           <template v-if="activeShipment.etd_document_id"> · {{ t('customs.carrier.tips.etd-submitted') }}</template>
@@ -1048,7 +1054,7 @@ defineExpose({ reload: async () => { await load() } })
         <div class="fs-12 mt-1" v-if="trackingVisible">
           <i class="ri-route-line me-1"></i><span :class="trackingClass">{{ trackingText }}</span>
           <span class="text-muted ms-1" v-if="tracking?.synced_at">
-            · {{ t('customs.carrier.tracking.synced', { time: $dayjs(tracking.synced_at, 'MM-DD HH:mm') }) }}
+            · {{ t('customs.carrier.tracking.synced', { time: zonedTime(tracking.synced_at, 'MM-DD HH:mm') }) }}
           </span>
           <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline fs-12" v-if="canRefreshTracking"
             :disabled="busy" @click="refreshTracking">
@@ -1129,7 +1135,7 @@ defineExpose({ reload: async () => { await load() } })
         <p class="fs-12 text-muted mb-2" v-if="lastCancelled">
           {{ t('customs.carrier.tips.last-cancelled', {
             tracking: lastCancelled.tracking_number || '—',
-            time: $dayjs(lastCancelled.cancelled_at, 'MM-DD HH:mm') || '—',
+            time: zonedTime(lastCancelled.cancelled_at, 'MM-DD HH:mm') || '—',
           }) }}
         </p>
 
@@ -1245,7 +1251,7 @@ defineExpose({ reload: async () => { await load() } })
           <div class="input-group input-group-sm carrier-tracking-input">
             <span class="input-group-text">{{ t('customs.carrier.fields.tracking-number') }}</span>
             <input type="text" class="form-control font-monospace" v-model="manualTracking" :maxlength="TRACKING_MAX_LENGTH"
-              :placeholder="t('customs.carrier.tips.tracking-placeholder')" :disabled="busy">
+              :placeholder="t(trackingPlaceholder)" :disabled="busy">
             <button type="submit" class="btn btn-primary" :disabled="busy || !trackingChanged">
               <span v-if="savingTracking" class="spinner-border spinner-border-sm me-1"></span>{{ t('button.save') }}
             </button>

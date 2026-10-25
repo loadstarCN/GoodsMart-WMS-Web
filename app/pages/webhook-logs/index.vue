@@ -153,10 +153,10 @@ const statusBadgeClass = (status: string) => {
 }
 
 // ==================== 格式化 ====================
-const formatDate = (dateStr: string | null) => {
+/** 时刻按记录的仓库（有时）→ 页头选中的仓库 → 浏览器的时区显示；与浏览器不同时带时区缩写 */
+const formatDate = (dateStr: string | null, row?: Record<string, any> | null) => {
   if (!dateStr) return '—'
-  const d = new Date(dateStr)
-  return d.toLocaleString()
+  return formatInTimeZone(dateStr, 'YYYY-MM-DD HH:mm:ss', resolveTimeZone(row)) || '—'
 }
 
 const truncateError = (error: string | null, maxLen = 60) => {
@@ -247,7 +247,7 @@ const truncateError = (error: string | null, maxLen = 60) => {
                     </span>
                     <span v-else class="text-muted fs-12">—</span>
                   </td>
-                  <td>{{ formatDate(item.created_at) }}</td>
+                  <td>{{ formatDate(item.created_at, item) }}</td>
                   <td>
                     <div class="hstack gap-2 fs-15">
                       <!-- 详情 -->
@@ -324,16 +324,16 @@ const truncateError = (error: string | null, maxLen = 60) => {
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label fw-semibold">{{ t('webhook-logs.fields.created-at') }}</label>
-                <p>{{ formatDate(detailItem.created_at) }}</p>
+                <p>{{ formatDate(detailItem.created_at, detailItem) }}</p>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-semibold">{{ t('webhook-logs.fields.sent-at') }}</label>
-                <p>{{ formatDate(detailItem.sent_at) }}</p>
+                <p>{{ formatDate(detailItem.sent_at, detailItem) }}</p>
               </div>
             </div>
             <div class="mb-3" v-if="detailItem.next_retry_at">
               <label class="form-label fw-semibold">{{ t('webhook-logs.fields.next-retry') }}</label>
-              <p>{{ formatDate(detailItem.next_retry_at) }}</p>
+              <p>{{ formatDate(detailItem.next_retry_at, detailItem) }}</p>
             </div>
             <div class="mb-3" v-if="detailItem.last_error">
               <label class="form-label fw-semibold">{{ t('webhook-logs.fields.last-error') }}</label>

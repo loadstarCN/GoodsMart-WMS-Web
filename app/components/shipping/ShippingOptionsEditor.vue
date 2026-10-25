@@ -6,7 +6,7 @@
  * （field = options.<key>，标在该项下面）。已建运单 / 已导出（locked，locked_reason WAYBILL_EXISTS）或 DN 已发货
  * （DN_SHIPPED）时只读并说明原因；别人刚建了运单 / 导出（409 16076 reason SHIPPING_OPTIONS_LOCKED）或刚发货（409 16065）
  * 时提示并重读。空的项不提交（= 不指定，导出 / 建单时用选项的 default）。select 里值为空串的项（如「指定なし」）当作「不指定」。
- * 保存后 emit saved（流程整体重读）。
+ * 保存后 emit saved（流程整体重读）。输入框与 DN 新建 / 编辑页共用 ShippingOptionsFields。
  */
 import type { HttpRequestError } from '~/utils/http'
 import {
@@ -68,30 +68,12 @@ const displayValue = (o: ServiceOption): string => {
   return raw
 }
 const filled = computed(() => props.options.schema.filter((o: ServiceOption) => toFormValue(props.options.values[o.key]) !== ''))
-/** select 的可选值：空串的项（「指定なし」之类）由「不指定」那一项代表，不重复列 */
-const choices = (o: ServiceOption): ServiceOptionValue[] => (o.values || []).filter((v: ServiceOptionValue) => v.value !== '')
 /** 锁定原因（按原因码翻译，没有文案时用后端原文） */
 const lockedText = computed(() => {
   const code = props.options.locked_reason
   const key = code ? `shipping.options.locked-reasons.${code}` : ''
   return key && te(key) ? t(key) : (props.options.locked_message || '')
 })
-/** 没设时用的值的文字（select 显示选项的文字） */
-const defaultText = (o: ServiceOption): string => {
-  if (!o.default) return ''
-  if (o.kind === 'select') {
-    const hit = (o.values || []).find((v: ServiceOptionValue) => v.value === o.default)
-    return hit ? text(hit.label) || o.default : o.default
-  }
-  return o.default
-}
-const unsetText = (o: ServiceOption): string => {
-  if (defaultText(o)) return t('shipping.options.unset-default', { value: defaultText(o) })
-  // 预设自带的「不指定」项（值为空串）用它的文字
-  const blank = (o.values || []).find((v: ServiceOptionValue) => v.value === '')
-  return (blank ? text(blank.label) : '') || t('shipping.options.unset')
-}
-
 const saving = ref(false)
 const save = async () => {
   if (readonly.value || saving.value) return
@@ -172,25 +154,8 @@ const save = async () => {
     <!-- 可编辑 -->
     <form v-else @submit.prevent="save">
       <p class="fs-12 text-muted mb-2">{{ t('shipping.options.hint') }}</p>
-      <div class="row g-2">
-        <div class="col-md-6 col-xxl-4" v-for="o in options.schema" :key="o.key">
-          <label class="form-label fs-12 mb-1" :for="`shipping-option-${dnId}-${o.key}`">{{ text(o.label) || o.key }}</label>
-          <select class="form-select form-select-sm" :id="`shipping-option-${dnId}-${o.key}`" v-if="o.kind === 'select'"
-            v-model="form[o.key]" :disabled="saving">
-            <option value="">{{ unsetText(o) }}</option>
-            <option v-for="v in choices(o)" :key="v.value" :value="v.value">{{ text(v.label) || v.value }}</option>
-          </select>
-          <input type="date" class="form-control form-control-sm" :id="`shipping-option-${dnId}-${o.key}`"
-            v-else-if="o.kind === 'date'" v-model="form[o.key]" :disabled="saving">
-          <input type="number" class="form-control form-control-sm" :id="`shipping-option-${dnId}-${o.key}`" min="0" step="any"
-            v-else-if="o.kind === 'money'" v-model="form[o.key]" :placeholder="o.default || ''" :disabled="saving">
-          <input type="text" class="form-control form-control-sm" :id="`shipping-option-${dnId}-${o.key}`"
-            :maxlength="o.max_length || 200" v-else v-model="form[o.key]" :placeholder="o.default || ''" :disabled="saving">
-          <div class="form-text fs-11" v-if="text(o.help)">{{ text(o.help) }}</div>
-          <div class="form-text fs-11" v-else-if="o.kind === 'date' && o.default">{{ unsetText(o) }}</div>
-          <div class="invalid-feedback d-block" v-if="errors[o.key]">{{ errors[o.key] }}</div>
-        </div>
-      </div>
+      <ShippingOptionsFields v-model="form" :schema="options.schema" :id-prefix="`shipping-option-${dnId}`"
+        :disabled="saving" :errors="errors" col-class="col-md-6 col-xxl-4" />
       <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
         <button type="submit" class="btn btn-sm btn-primary-light" :disabled="saving || !dirty">
           <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>{{ t('button.save') }}

@@ -41,6 +41,8 @@ export interface InboundFlow {
   asn_type: string | null
   order_number: string | null
   warehouse_id: number | null
+  /** ASN 所属仓库的时区（IANA 名，后端 doc/timezone-utc.md）；旧后端没有 */
+  timezone?: string | null
   expected_arrival_date: string | null
   closed_at: string | null
   supplier: { id: number; name: string } | null
@@ -96,6 +98,7 @@ export const normalizeInboundFlow = (data: any): InboundFlow | null => {
     asn_type: toStringOrNull(data.asn_type),
     order_number: toStringOrNull(data.order_number),
     warehouse_id: data.warehouse_id === null || data.warehouse_id === undefined ? null : Number(data.warehouse_id),
+    timezone: toStringOrNull(data.timezone),
     expected_arrival_date: toStringOrNull(data.expected_arrival_date),
     closed_at: toStringOrNull(data.closed_at),
     supplier: supplier ? { id: Number(supplier.id), name: String(supplier.name ?? '') } : null,

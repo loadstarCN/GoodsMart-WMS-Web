@@ -524,7 +524,8 @@
       "description": "仓库描述",
       "address-en": "英文地址",
       "country-code": "所在国",
-      "contact-name-en": "联系人（英文）"
+      "contact-name-en": "联系人（英文）",
+      "timezone": "时区"
     },
     "form": {
       "placeholders": {
@@ -544,7 +545,8 @@
     },
     "tips": {
       "export": "与公司地址不同时，作为发货地（Ship From）印在单证上。",
-      "export-latin": "英文地址在上面地址的「拉丁转写」里。"
+      "export-latin": "英文地址在上面地址的「拉丁转写」里。",
+      "timezone": "该仓库的单据、任务的时间按这个时区显示和填写，发货日、单证日期、揽收日和「今天」也按它算。选「服务器默认」时用服务器配置的时区。"
     }
   },
   "location": {
@@ -712,7 +714,7 @@
         "pickup": {
           "api": "在线预约（API）",
           "manual": "电话 / 网站预约，在 WMS 记录",
-          "scheduled": "定期集荷",
+          "scheduled": "定期揽收",
           "dropoff": "自送网点",
           "none": "不管揽收"
         },
@@ -742,7 +744,7 @@
         }
       },
       "api-unavailable": "在线方式（API）要先启用在线对接，且插件支持这项能力。",
-      "schedule-days": "集荷日",
+      "schedule-days": "揽收日",
       "pickup-contact": "约揽收的方式（电话 / 网址 / 说明）",
       "pickup-contact-placeholder": "例：0120-00-0000 或 https://…",
       "tracking-url": "公开查询页",
@@ -753,8 +755,8 @@
       "days": "天",
       "auto-sign-help": "设了天数后，没有 API 跟踪的运单在交承运商 N 天后自动视为签收（来源记「规则」）。任何时候都可以手工确认签收。留空 = 不启用。",
       "validation": {
-        "weekdays": "至少选一个集荷日",
-        "times": "请填写集荷的时间段（HH:MM）",
+        "weekdays": "至少选一个揽收日",
+        "times": "请填写揽收的时间段（HH:MM）",
         "close-before-ready": "结束时间要晚于开始时间",
         "tracking-url": "请填写含 {placeholder} 的 http(s) 网址",
         "auto-sign-days": "填 1–90 的整数天数，或留空",
@@ -772,7 +774,7 @@
       "verified": "已实测",
       "unverified": "此预设还没在承运商软件里实测导入过：请先导出一张试着导入，确认无误后再批量使用。",
       "account": "账号信息",
-      "account-hint": "写进导出文件的账号项（如客户代码、请求先代码）。",
+      "account-hint": "写进导出文件的账号项（如客户代码、运费付款方代码）。",
       "tracking-url": "预设的公开查询页：",
       "use-tracking-url": "用作查询页",
       "tracking-url-in-use": "已在使用",
@@ -1167,8 +1169,8 @@
     },
     "shipping-options": {
       "title": "运单服务选项",
-      "hint": "配送日、时间带等随运单交给承运商；空着的项用默认值。建运单 / 导出后不能再改。",
-      "no-carrier": "选了承运商后可以设置配送日、时间带等服务选项；也可以稍后在发货流程的「运单」一步设置。"
+      "hint": "配送日、时间段等随运单交给承运商；空着的项用默认值。建运单 / 导出后不能再改。",
+      "no-carrier": "选了承运商后可以设置配送日、时间段等服务选项；也可以稍后在发货流程的「运单」一步设置。"
     }
   },
   "picking": {
@@ -1284,7 +1286,8 @@
         "CARRIER_CONFIG_INVALID": "在线对接的设置有误",
         "PICKUP_ADDRESS_MISSING": "仓库和公司都没有英文地址，请在仓库设置里填写",
         "PICKUP_ADDRESS_INVALID": "英文地址转不成承运商要的格式：街道和城市之间用逗号隔开，例如「9-4 Izumoji Tawaracho, Kita-ku, Kyoto 603-8135」",
-        "PICKUP_PHONE_INVALID": "联系电话的位数不符合承运商要求，请在仓库（或公司）设置里修改"
+        "PICKUP_PHONE_INVALID": "联系电话的位数不符合承运商要求，请在仓库（或公司）设置里修改",
+        "PICKUP_METHOD_NOT_API": "{carrier} 的揽收方式不是在线预约：请通过电话 / 网站约好后在 WMS 里记录"
       },
       "shipments": {
         "title": "待揽收运单",
@@ -1383,7 +1386,15 @@
         "failed": "没约上，换个时间再试。",
         "cancel-unclear": "{carrier} 可能已经取消了，请再点一次取消。",
         "permission-denied": "{carrier} 拒绝了请求：检查在线对接的密钥，以及 {carrier} 账号有没有开通预约揽收的接口。",
-        "transaction-id": "{carrier} 交易 ID"
+        "transaction-id": "{carrier} 交易 ID",
+        "problem-lines": "{summary}：{items}"
+      },
+      "shipment-problems": {
+        "NOT_FOUND": "运单 {tracking} 找不到（或不是本仓库的）",
+        "OTHER_CARRIER": "运单 {tracking} 属于别的承运商",
+        "NOT_ACTIVE": "运单 {tracking} 已取消或不是有效状态",
+        "DN_SHIPPED": "运单 {tracking} 的出库单已发货",
+        "ALREADY_SCHEDULED": "运单 {tracking} 已经约了揽收"
       }
     }
   },
@@ -1957,7 +1968,8 @@
       "JP_EXPORT_CODE_MISMATCH": "出口统计编号格式不对，或前 6 位与 HS 编码不一致",
       "JP_EXPORT_CODE_MISSING": "货值合计超过 20 万日元，日本出口申报需要 9 位出口统计编号",
       "CARRIER_NON_LATIN_TEXT": "印在 CI 上的承运商名称含有非拉丁字符，请在承运商资料里改成英文名",
-      "JP_EXPORT_VALUE_UNVERIFIED": "货值不是日元，无法自动判断是否超过 20 万日元；超过时日本出口申报需要 9 位出口统计编号，请人工确认"
+      "JP_EXPORT_VALUE_UNVERIFIED": "货值不是日元，无法自动判断是否超过 20 万日元；超过时日本出口申报需要 9 位出口统计编号，请人工确认",
+      "EXPORT_SIGNATURE_UNAVAILABLE": "出口署名图片设置不完整或读不了，请联系管理员检查服务器上的署名设置"
     },
     "carrier": {
       "title": "运单",
@@ -1997,7 +2009,7 @@
         "no-carrier-elsewhere": "配送任务还没选承运商。",
         "manual": "{carrier} 没有在线对接：在承运商网站建好运单后，把运单号填在这里。",
         "manual-elsewhere": "{carrier} 没有在线对接，有配送任务后在这里填运单号。",
-        "tracking-placeholder": "例如 7946 0000 0001",
+        "tracking-placeholder": "面单上的运单号",
         "tracking-saved": "运单号已保存",
         "tracking-cleared": "运单号已清空",
         "creating": "正在向 {carrier} 建运单，可能要几十秒，请不要关闭页面。",
@@ -2040,7 +2052,13 @@
         "target-changed": "运单状态刚刚变了，已刷新，请确认后再操作。",
         "cancel-unknown": "不确定是否已取消。稍后点「重试取消」，或到 {portal} 查看后解除锁定。",
         "manual-method": "{carrier} 的运单设为手工：在承运商网站或软件建好运单后，把运单号填在这里。",
-        "manual-method-elsewhere": "{carrier} 的运单设为手工，有配送任务后在这里填运单号。"
+        "manual-method-elsewhere": "{carrier} 的运单设为手工，有配送任务后在这里填运单号。",
+        "tracking-placeholders": {
+          "yamato": "12 位数字，例如 1234-5678-9012",
+          "sagawa": "12 位数字，例如 1234-5678-9012",
+          "japanpost": "11–13 位，例如 1234-5678-9012 或 EN123456789JP",
+          "fedex": "12 位数字，例如 7946 0000 0001"
+        }
       },
       "warnings": {
         "DECLARED_VALUE_CAPPED": "申告价额 {original} 超过已打包货值，会按 {amount} 提交"
@@ -2262,7 +2280,9 @@
     "code-16138-request": "请求的内容不对（{field}），请刷新页面后重试",
     "code-16075-discard": "这张出库单没有待导回的导出记录（可能已导回运单号或已作废），页面已刷新",
     "code-16076-ship-to-locked": "运单已按现在的地址建好或已导出，收件地址不能再改；要改请先在「运单」一步取消运单（文件方式为作废导出）",
-    "code-16140": "这张入库单没有能经承运商接口查询的运单号（承运商的跟踪方式不是 API，或对接不能查）"
+    "code-16140": "这张入库单没有能经承运商接口查询的运单号（承运商的跟踪方式不是 API，或对接不能查）",
+    "code-14022": "时区不合法：请选择 IANA 时区（如 Asia/Tokyo），或用服务器默认",
+    "code-16117": "单证排不下：收货人（或收件人）的某项文字太长，一页放不下。请缩短收货人名称、公司、地址、城市、州 / 省、邮编或电话后再签发"
   },
   "shipping": {
     "title": "发货流程",
@@ -2370,7 +2390,8 @@
       "transit-waiting": "等承运商的跟踪信息",
       "waybill-exported": "已导出（{time}），等导回运单号",
       "waybill-exported-no-time": "已导出，等导回运单号",
-      "waybill-file": "导出文件，在 {carrier} 的软件里打单"
+      "waybill-file": "导出文件，在 {carrier} 的软件里打单",
+      "packed": "已打包 {packed} / {planned}"
     },
     "documents": {
       "problems-title": "先处理这 {count} 项",
@@ -2378,8 +2399,8 @@
       "customs-data": "报关数据明细"
     },
     "pickup": {
-      "schedule": "定期集荷：{days} {window}",
-      "schedule-unset": "定期集荷（没设星期和时间）",
+      "schedule": "定期揽收：{days} {window}",
+      "schedule-unset": "定期揽收（没设星期和时间）",
       "schedule-hint": "{carrier} 按这个时间来收货，不用逐票预约。",
       "dropoff": "自送到 {carrier} 网点",
       "manual-badge": "手工记录",
@@ -2561,13 +2582,30 @@
       "batch-hint-export": "勾选同一家文件方式承运商的出库单后导出；打完单后在「待导回运单号」页签导回运单号。",
       "batch-hint-import": "导回承运商软件给的运单号文件；也可以勾选后重新导出。",
       "select-all": "全选本页",
-      "label-elsewhere": "面单在 {carrier} 的软件里打印"
+      "label-elsewhere": "面单在 {carrier} 的软件里打印",
+      "import-reasons": {
+        "DN_NOT_FOUND": "本仓库没有这张出库单",
+        "NOT_WMS_REFERENCE": "匹配键 {reference} 不是 WMS 的出库单编号（DN + 编号）",
+        "NO_REFERENCE": "没有匹配键",
+        "NO_TRACKING_NUMBER": "没有运单号",
+        "DN_CLOSED": "出库单已关闭（取消）",
+        "OTHER_CARRIER": "这张出库单的承运商是 {carrier}，不是这家",
+        "NUMBER_OWNED_BY_OTHER_DN": "运单号 {number} 已用在出库单 DN-{dn} 上",
+        "API_SHIPMENT_UNRESOLVED": "在线建运单的结果还不确定（{status}），请先在出库单上处理",
+        "EXPORTED_FOR_OTHER_CARRIER": "这张出库单是按 {carrier} 的格式导出的",
+        "SHIPPED_WITHOUT_FILE_WAYBILL": "出库单已发货，且没有导出过的文件运单",
+        "NO_OPEN_TASK": "没有进行中的配送任务（还没打包完）",
+        "ALREADY_IMPORTED": "已导入过（{number}）",
+        "ALREADY_SAVED": "配送任务上已是这个运单号（{number}）",
+        "HAS_OTHER_NUMBER": "出库单已有运单号 {number}",
+        "another-carrier": "别的承运商"
+      }
     },
     "options": {
       "title": "服务选项",
       "locked": "已锁定",
       "none": "没有指定（用默认值）",
-      "hint": "配送日、时间带等随运单提交的选项；建运单 / 导出后不能再改。",
+      "hint": "配送日、时间段等随运单提交的选项；建运单 / 导出后不能再改。",
       "unset": "不指定",
       "unset-default": "不指定（默认：{value}）",
       "invalid-money": "请输入 0 或以上的金额",
@@ -2665,5 +2703,17 @@
     "errors": {
       "invalid-field": "地址的「{field}」不对（{message}）"
     }
+  },
+  "timezone": {
+    "label": "时区",
+    "default": "服务器默认",
+    "default-with": "服务器默认（{zone}）",
+    "effective-default": "{zone}（服务器默认）",
+    "search": "搜索时区，如 Tokyo、UTC+09:00",
+    "no-result": "没有匹配的时区",
+    "shown-in": "时间按 {zone} 显示",
+    "input-hint": "按仓库所在时区（{zone}）填写",
+    "invalid": "时区不合法",
+    "warehouse-local-hint": "时间按各仓库的当地时间。"
   }
 }

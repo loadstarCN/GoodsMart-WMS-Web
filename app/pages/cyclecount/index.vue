@@ -233,10 +233,10 @@ onMounted(async() => {
                                         </NuxtLink>
                                     </td>
                                     <td class="">{{ item?.detail_count }} SKU</td>
-                                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.scheduled_date,'YYYY-MM-DD') }}</td>
+                                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.scheduled_date, 'YYYY-MM-DD', item) }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+item?.status.replace('_',"-")) }}</td>
 
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at) }}</td>
+                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at, undefined, item) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ item?.creator?.user_name }}</td>
                                     <td>
                                         <div class="hstack gap-2 fs-15">

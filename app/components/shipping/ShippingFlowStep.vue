@@ -35,9 +35,11 @@ const emit = defineEmits<{
   (e: 'toggle'): void
 }>()
 
-const { t, te, localeProperties } = useI18n()
+const { t, te } = useI18n()
+/** 时刻按流程提供的时区（DN / ASN 所属仓库）显示 */
+const { formatLocale } = useTimeZone()
 
-const timeText = computed(() => formatLocaleDateTime(props.step.at, String(localeProperties.value?.iso || '') || undefined))
+const timeText = computed(() => formatLocale(props.step.at))
 const sourceText = computed(() => {
   const s = props.step.source
   if (!s) return ''

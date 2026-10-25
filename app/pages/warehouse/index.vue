@@ -14,6 +14,12 @@ const dataToPass = computed(() => ({
   current: t('nav.warehouse'),
   list: [t('nav.warehouse'), t('nav.warehouse')]
 }));
+/** 仓库的生效时区（Asia/Tokyo (UTC+09:00)）；仓库没自己设时标「服务器默认」；旧后端没给时「—」 */
+const zoneText = (w: any): string => {
+  if (!isValidTimeZone(w?.timezone)) return '—'
+  const text = timeZoneDescription(w.timezone)
+  return w.timezone_configured ? text : t('timezone.effective-default', { zone: text })
+}
 const staffStore = useStaffStore()
 const router = useRouter();
 let route = useRoute();
@@ -178,6 +184,7 @@ const activeTab = computed(() => {
                                 <tr>
                                     <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.id') }}</th>
                                     <th scope="col">{{ $t('common.fields.name') }}</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('warehouse.fields.timezone') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.manager') }}</th>
                                     <th scope="col">{{ t('common.fields.action') }}</th>
@@ -190,7 +197,8 @@ const activeTab = computed(() => {
                                     <td>
                                       <NuxtLink :to="`/warehouse/detail/${warehouse?.id}`">{{ warehouse?.name }}</NuxtLink>
                                     </td>
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(warehouse?.updated_at) }}</td>
+                                    <td class="d-none d-lg-table-cell">{{ zoneText(warehouse) }}</td>
+                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(warehouse?.updated_at, undefined, warehouse) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ warehouse?.manager?.user_name }}</td>
                                     <td>
                                         <div class="hstack gap-2 fs-15">                                            

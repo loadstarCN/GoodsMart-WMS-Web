@@ -31,7 +31,7 @@ const itemData = ref<Record<string, any>>({
   manager: null,
   company_id: staffStore.staffInfo?.company_id,
   default_currency: staffStore.staffInfo?.company?.default_currency || 'JPY',
-  // 出口资料：仓库作为发货地（Ship From）印在海外出荷単証上
+  // 出口资料：仓库作为发货地（Ship From）印在海外出货单证上
   address_en: null,
   country_code: null,
   contact_name_en: null,
@@ -41,14 +41,19 @@ const itemData = ref<Record<string, any>>({
   address_line1: null,
   address_line2: null,
   latin: null,
+  // 时区（IANA 名；null = 服务器默认，后端 doc/timezone-utc.md §2）
+  timezone: null,
 })
 
 /** 仓库的拉丁转写只有地址（联系人英文名另有 contact_name_en） */
 const WAREHOUSE_LATIN_KEYS = ['address_line1', 'address_line2', 'locality', 'admin_area'] as const
 
 const errors = ref<Record<string, any>>({
-  name: null
+  name: null,
+  timezone: null,
 })
+/** 服务器默认的时区：仓库没自己设时区时 = 详情接口的生效时区（timezone），否则不知道 */
+const defaultZone = ref<string | null>(null)
 
 // 配置化选项集合
 const selectOptions = reactive({
@@ -97,6 +102,12 @@ watch(
 );
 
 
+/** 提交时去掉只读的 timezone_configured */
+const withoutReadonlyZone = (data: Record<string, any>): Record<string, any> => {
+  const { timezone_configured: _configured, ...rest } = data
+  return rest
+}
+
 // ------------------ 提交保存 ----------------------
 // 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
 const submitting = ref(false)
@@ -114,7 +125,8 @@ const saveWarehouse = async () => {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     // 邮编两个名字都给（zip_code 即 postal_code；读回来的旧 postal_code 不能原样回传，两个不同后端 400 14019）
-    body: { ...itemData.value, postal_code: itemData.value.zip_code ?? null },
+    // timezone_configured 是只读的；timezone 回传仓库自己设的（null = 服务器默认）
+    body: { ...withoutReadonlyZone(itemData.value), postal_code: itemData.value.zip_code ?? null },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
       // 刷新员工信息与页头仓库下拉，并校验当前仓库
@@ -122,6 +134,13 @@ const saveWarehouse = async () => {
       await router.push('/warehouse/')          
     },
     onError: (error) => {
+      // 时区不是合法的 IANA 名（400，field = timezone）
+      if (error.field === 'timezone') {
+        submitting.value = false
+        errors.value.timezone = t('timezone.invalid')
+        showToast(t('timezone.invalid'), 'error')
+        return
+      }
       // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案
       submitting.value = false
       showToast(bizErrorMessage(error), 'error')
@@ -138,7 +157,10 @@ const fetchData = async () => {
         method: 'GET',
         params: route.query,
         onSuccess: (data) => {
-          itemData.value = data;          
+          // 详情的 timezone 是生效时区（仓库设的 → 服务器默认）；表单编辑仓库自己设的 timezone_configured（null = 默认），
+          // 不能把生效值原样回传（会把「用默认」变成固定时区）。旧后端两个都没有时按默认
+          defaultZone.value = data?.timezone_configured ? null : (data?.timezone ?? null)
+          itemData.value = { ...data, timezone: data?.timezone_configured ?? null };
         },
         onError: (error) => {
             showToast(error.message, 'error')
@@ -199,6 +221,13 @@ onMounted(async() => {
                         <VueMultiselect id="product-currency" :show-labels="false" :options="selectOptions.currencies"
                           :multiple="false" v-model="itemData.default_currency">
                         </VueMultiselect>
+                      </div>
+                      <div class="col-xl-6">
+                        <label for="warehouse-timezone" class="form-label">{{ t('warehouse.fields.timezone') }}</label>
+                        <TimeZoneSelect id="warehouse-timezone" v-model="itemData.timezone" :default-zone="defaultZone"
+                          :invalid="!!errors.timezone" @update:model-value="errors.timezone = null" />
+                        <div v-if="errors.timezone" class="invalid-feedback d-block">{{ errors.timezone }}</div>
+                        <div class="form-text">{{ t('warehouse.tips.timezone') }}</div>
                       </div>
 
                       <!-- 结构化地址（国家、按国家排顺序的地址；拉丁转写 = 出口单证 / 国际面单的英文地址，address_en 跟着生成） -->

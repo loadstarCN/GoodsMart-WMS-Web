@@ -308,6 +308,9 @@ onBeforeUnmount(() => {
         <div class="pt-1" v-if="userStore.userInfo?.type !== 'user'">
           <WarehouseSelector :warehouses="warehouseStore.warehouses" :allow-all="warehouseStore.canSelectAll"
             :selected-label="warehouseStore.currentWarehouseLabel" @select="selectWarehouse" />
+          <!-- 选中仓库的时区与浏览器不同时标出（没有单据时区的时刻按它显示） -->
+          <TimeZoneBadge class="ms-1 mt-2" v-if="warehouseStore.currentWarehouse?.timezone"
+            :zone="warehouseStore.currentWarehouse.timezone" />
         </div>
         <!-- End::header-element -->
 

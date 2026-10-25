@@ -325,15 +325,15 @@ onMounted(async() => {
                 </p>
                 <p class="mb-2 text-muted">
                   <span class="fw-semibold text-default">{{t('common.dates.created')}} :</span>
-                  {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
                 <p class="mb-2 text-muted">
                   <span class="fw-semibold text-default">{{t('common.dates.updated')}} :</span>
-                  {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{ $dayjs(itemData?.updated_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
                 <p class="mb-2 text-muted">
                   <span class="fw-semibold text-default">{{t('common.dates.scheduled')}} :</span>
-                  {{ $dayjs(itemData?.scheduled_date,'YYYY-MM-DD') }}
+                  {{ $dayjs(itemData?.scheduled_date, 'YYYY-MM-DD', itemData) }}
                 </p>
 
               </div>
@@ -356,13 +356,13 @@ onMounted(async() => {
               </div>
               <div>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                  {{t('common.dates.created')}}:{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.created')}}:{{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'in_progress'">
-                  {{t('common.dates.started')}}:{{ $dayjs(itemData?.started_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.started')}}:{{ $dayjs(itemData?.started_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
-                  {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
 
               </div>
@@ -538,7 +538,7 @@ onMounted(async() => {
                       <td>{{ item?.task_id }}</td>
                       <td>{{t('common.status.'+item?.old_status.replace('_',"-"))}}</td>
                       <td>{{t('common.status.'+item?.new_status.replace('_',"-"))}}</td>
-                      <td class="d-none d-md-table-cell">{{ $dayjs(item?.changed_at,'YYYY-MM-DD HH:mm:ss') }}</td>
+                      <td class="d-none d-md-table-cell">{{ $dayjs(item?.changed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}</td>
                       <td class="d-none d-xl-table-cell">{{ item?.operator?.user_name }}</td>
                     </tr>
 

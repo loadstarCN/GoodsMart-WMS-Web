@@ -3,7 +3,9 @@
  * 出库单的发货流程（出库单详情的主区域；打包 / 配送任务页用 compact）。
  *
  * 读 GET /dn/<id>/shipping-flow：上面是横向进度条（下单 / 拣货 / 打包 / 发货准备 / 交承运商 / 运输中 / 签收），
- * 下面是逐步清单。每一步显示状态、实际发生时刻（按界面语言、浏览器时区）、来源（仓库 / 承运商 / 规则 / 来源系统）、一行概要和操作；
+ * 下面是逐步清单。每一步显示状态、实际发生时刻（按界面语言、DN 所属仓库的时区：接口顶层的 timezone → 仓库下拉里该仓库的
+ * → 页头 / 浏览器；与浏览器不同时标题旁标出时区，各详细内容 useTimeZone() 用同一个）、来源（仓库 / 承运商 / 规则 / 来源系统）、
+ * 一行概要和操作；
  * 点开看这一步的详细内容，用已有的组件做事：
  * - 打包：DnPackagesEditor（录箱子）
  * - 报关单证：FlowDocumentsDetail（CI / PL、签发、历史、报关问题、补录、报关数据明细）
@@ -45,6 +47,7 @@ import {
   activeStepKey,
   flowActionEnabled,
   flowActionOf,
+  flowActionReasonText,
   normalizeShippingFlow,
   shippingFlowUrl,
   type FlowAction,
@@ -93,6 +96,8 @@ const warehouse = computed(() => flow.value?.warehouse_id ?? props.warehouseId ?
 const carrier = computed(() => flow.value?.carrier || null)
 const tasks = computed(() => flow.value?.tasks || { picking: [], packing: [], delivery: null })
 const locale = computed(() => String(localeProperties.value?.iso || '') || undefined)
+/** DN 所属仓库的时区（子组件的时刻显示 / 输入都用它） */
+const flowTimeZone = provideTimeZone(() => flow.value?.timezone, () => warehouse.value)
 
 // ------------------ 报关视图（要报关的出库单：单证一步、运单的申告价额 / 补录收货人共用） ----------------------
 const customsView = ref<CustomsView | null>(null)
@@ -261,7 +266,9 @@ const canEditPackages = computed(() => flowActionEnabled(packingStep.value, 'edi
   !locked.value && DN_PACKAGE_EDITABLE_STATUSES.includes(dnStatus.value)))
 const packagesReadonlyReason = computed(() => {
   const action = flowActionOf(packingStep.value, 'edit_packages')
-  if (action && !action.enabled && action.reason) return action.reason
+  if (action && !action.enabled && (action.reason || action.reason_code)) {
+    return flowActionReasonText(action, t, te, { carrier: carrier.value?.name || t('customs.carrier.carrier-fallback') })
+  }
   return locked.value ? t('customs.status.locked') : t('customs.packages.readonly-status')
 })
 const canEnterTracking = computed(() => flowActionEnabled(waybillStep.value, 'enter_tracking', !!tasks.value.delivery && !locked.value))
@@ -349,7 +356,13 @@ const summaryText = (step: FlowStep): string => {
     case 'packing': {
       const count = num(s.package_count) ?? 0
       if (count > 0) return t('shipping.summary.packing', { count, weight: num(s.gross_weight_kg) ?? '—' })
-      return step.state === 'todo' || step.state === 'blocked' ? '' : t('shipping.summary.packing-empty')
+      if (step.state === 'todo' || step.state === 'blocked') return ''
+      // 不需要录箱子（国内手工运单等，后端 packages_required = false）：显示打包进度，不说「还没录箱子」
+      const planned = num(s.planned)
+      if (s.packages_required === false && planned !== null) {
+        return t('shipping.summary.packed', { packed: num(s.packed) ?? 0, planned })
+      }
+      return t('shipping.summary.packing-empty')
     }
     case 'documents': {
       if (step.state === 'skipped') return t('shipping.summary.documents-skipped')
@@ -383,7 +396,7 @@ const summaryText = (step: FlowStep): string => {
       const exported = fileExportInfoOf(s)
       if (exported) {
         return exported.exported_at
-          ? t('shipping.summary.waybill-exported', { time: formatLocaleDateTime(exported.exported_at, locale.value) })
+          ? t('shipping.summary.waybill-exported', { time: formatLocaleDateTime(exported.exported_at, locale.value, flowTimeZone.value) })
           : t('shipping.summary.waybill-exported-no-time')
       }
       if (!carrier.value) return t('shipping.summary.no-carrier')
@@ -423,7 +436,7 @@ const summaryText = (step: FlowStep): string => {
       if (step.state === 'done') {
         return step.source === 'rule' ? t('shipping.delivered.by-rule', { days: carrier.value?.auto_sign_days ?? '—' }) : ''
       }
-      if (s.auto_sign_at) return t('shipping.delivered.auto-sign-at', { time: formatLocaleDateTime(String(s.auto_sign_at), locale.value) })
+      if (s.auto_sign_at) return t('shipping.delivered.auto-sign-at', { time: formatLocaleDateTime(String(s.auto_sign_at), locale.value, flowTimeZone.value) })
       if (s.estimated_delivery) return t('customs.carrier.tracking.eta', { date: s.estimated_delivery })
       return ''
     }
@@ -520,6 +533,7 @@ defineExpose({ reload })
         <span class="badge bg-light text-default fw-normal" v-if="flow?.carrier">
           <i class="ri-truck-line me-1"></i>{{ flow.carrier.name }}
         </span>
+        <TimeZoneBadge v-if="flow" :zone="flowTimeZone" />
       </div>
       <div class="d-flex align-items-center gap-2">
         <NuxtLink :to="dnLink" class="fs-12" v-if="mode === 'compact' && !onDnPage">

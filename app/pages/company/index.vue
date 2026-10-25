@@ -29,7 +29,7 @@ const itemData = ref<Record<string, any>>({
   email: null,
   logo: null,
   default_currency: staffStore.staffInfo?.company?.default_currency || 'JPY',
-  // 出口资料（海外出荷単証 CI / PL 上以英文印出）
+  // 出口资料（海外出货单证 CI / PL 上以英文印出）
   legal_name_en: null,
   address_en: null,
   country_code: null,

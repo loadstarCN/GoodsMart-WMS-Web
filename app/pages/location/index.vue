@@ -190,7 +190,7 @@ const activeTab = computed(() => {
                                     </td>
                                     <td class="d-none d-lg-table-cell">{{ t('common.locations.'+location?.location_type) }}</td>
                                     <td class="d-none d-md-table-cell"><NuxtLink :to="`/warehouse/detail/${location?.warehouse_id}`">{{ location?.warehouse_name }}</NuxtLink></td>
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(location?.updated_at) }}</td>
+                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(location?.updated_at, undefined, location) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ location?.creator?.user_name }}</td>
                                     <td>
                                         <div class="hstack gap-2 fs-15">                                            

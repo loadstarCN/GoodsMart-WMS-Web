@@ -39,9 +39,10 @@ const emit = defineEmits<{
   (e: 'changed'): void
 }>()
 
-const { t, localeProperties } = useI18n()
+const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
-const locale = computed(() => String(localeProperties.value?.iso || '') || undefined)
+/** 导出时刻按流程提供的时区（DN 所属仓库）显示 */
+const { formatLocale } = useTimeZone()
 
 const carrierName = computed(() => props.carrier?.name || t('customs.carrier.carrier-fallback'))
 const exportInfo = computed(() => fileExportInfoOf(props.step.summary))
@@ -54,7 +55,7 @@ const canImport = computed(() => !!props.carrier && flowActionEnabled(props.step
   !props.locked && !hasTracking.value))
 const canDiscard = computed(() => flowActionEnabled(props.step, 'discard_export', !props.locked && !!exportInfo.value))
 
-const exportedAtText = computed(() => formatLocaleDateTime(exportInfo.value?.exported_at ?? null, locale.value))
+const exportedAtText = computed(() => formatLocale(exportInfo.value?.exported_at ?? null))
 const exportedByText = computed(() => (exportInfo.value?.exported_by ? formatUserRef(exportInfo.value.exported_by, t) : ''))
 
 const warehouse = computed(() =>

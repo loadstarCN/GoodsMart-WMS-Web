@@ -246,7 +246,7 @@ onMounted(async() => {
                                         <span class="badge bg-secondary-transparent ms-1" v-if="item?.is_active === false">{{ t('common.status.cancelled') }}</span>
                                     </td>
 
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at) }}</td>
+                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at, undefined, item) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ item?.creator?.user_name }}</td>
                                     <td>
                                         <div class="hstack gap-2 fs-15">

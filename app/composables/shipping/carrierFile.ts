@@ -343,7 +343,23 @@ export interface ImportRow {
   order_number: string | null
   tracking_numbers: string[]
   result: ImportRowResult
+  /**
+   * 不是 matched 时的原因码（界面按它出本地化文字，没有对应文字时用 message）：
+   * not_found → DN_NOT_FOUND / NOT_WMS_REFERENCE / NO_REFERENCE；invalid → NO_TRACKING_NUMBER / DN_CLOSED / OTHER_CARRIER /
+   * NUMBER_OWNED_BY_OTHER_DN / API_SHIPMENT_UNRESOLVED / EXPORTED_FOR_OTHER_CARRIER / SHIPPED_WITHOUT_FILE_WAYBILL /
+   * NO_OPEN_TASK；same_number → ALREADY_IMPORTED / ALREADY_SAVED；already_has_number → HAS_OTHER_NUMBER
+   */
+  reason_code: string | null
+  /** 后端的英文说明（兜底） */
   message: string | null
+  /** 拼文字用：DN 已有的 / 已属于别的 DN 的运单号 */
+  existing_tracking_number: string | null
+  /** 拼文字用：DN 的承运商 / 导出时的承运商（OTHER_CARRIER / EXPORTED_FOR_OTHER_CARRIER） */
+  other_carrier: string | null
+  /** 拼文字用：号码已属于的 DN（NUMBER_OWNED_BY_OTHER_DN） */
+  other_dn_id: number | null
+  /** 拼文字用：插件运单的状态（API_SHIPMENT_UNRESOLVED） */
+  shipment_status: string | null
 }
 
 export type ImportSummary = Record<ImportRowResult, number>
@@ -375,7 +391,12 @@ export const normalizeImportResult = (data: any): ImportResult => {
       tracking_numbers: (Array.isArray(r.tracking_numbers) ? r.tracking_numbers : [])
         .filter((x: unknown) => x !== null && x !== undefined && x !== '').map((x: unknown) => String(x)),
       result: ((IMPORT_RESULTS as string[]).includes(String(r.result)) ? r.result : 'invalid') as ImportRowResult,
+      reason_code: r.reason_code ? String(r.reason_code) : null,
       message: r.message ? String(r.message) : null,
+      existing_tracking_number: r.existing_tracking_number ? String(r.existing_tracking_number) : null,
+      other_carrier: r.other_carrier ? String(r.other_carrier) : null,
+      other_dn_id: toNumberOrNull(r.other_dn_id),
+      shipment_status: r.shipment_status ? String(r.shipment_status) : null,
     }))
   const summary = {} as ImportSummary
   for (const key of IMPORT_RESULTS) {
@@ -388,6 +409,25 @@ export const normalizeImportResult = (data: any): ImportResult => {
     summary,
     batch_id: toNumberOrNull(data?.batch_id),
   }
+}
+
+type Translate = (key: string, params?: Record<string, unknown>) => string
+
+/**
+ * 导入预览一行的说明：有 reason_code 且有对应文字时按界面语言拼（shipping.file.import-reasons.<code>），
+ * 否则用后端的英文 message（旧后端没有 reason_code）
+ */
+export const importRowMessage = (row: ImportRow, t: Translate, te: (key: string) => boolean): string => {
+  const key = row.reason_code ? `shipping.file.import-reasons.${row.reason_code}` : ''
+  if (!key || !te(key)) return row.message || ''
+  const number = row.existing_tracking_number || row.tracking_numbers[0] || '—'
+  return t(key, {
+    number,
+    reference: row.reference || '—',
+    carrier: row.other_carrier || t('shipping.file.import-reasons.another-carrier'),
+    dn: row.other_dn_id ?? '—',
+    status: row.shipment_status || '—',
+  })
 }
 
 export interface ImportRequest {

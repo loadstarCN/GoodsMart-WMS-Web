@@ -369,11 +369,11 @@ onMounted(async() => {
                 </p>
                 <p class="mb-2 text-muted">
                   <span class="fw-semibold text-default">{{t('common.dates.created')}} :</span>
-                  {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
                 <p class="mb-2 text-muted">
                   <span class="fw-semibold text-default">{{t('common.dates.updated')}} :</span>
-                  {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{ $dayjs(itemData?.updated_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
                 <p class="mb-2 text-muted" v-if="itemData?.dn?.special_handling">
                   <span class="fw-semibold text-default">{{ t('dn.fields.special-handling') }} :</span>
@@ -403,13 +403,13 @@ onMounted(async() => {
               </div>
               <div>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                  {{t('common.dates.created')}}{{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.created')}}{{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'in_progress'">
-                  {{t('common.dates.started')}}:{{ $dayjs(itemData?.started_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.started')}}:{{ $dayjs(itemData?.started_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
-                  {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at,'YYYY-MM-DD HH:mm:ss') }}
+                  {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 
 
@@ -584,7 +584,7 @@ onMounted(async() => {
                       </td>
                       <td class="d-none d-xl-table-cell">{{ item?.location?.code }}</td>
                       <td class="d-none d-lg-table-cell">{{ item?.picked_quantity }}</td>
-                      <td class="d-none d-md-table-cell">{{ $dayjs(item?.picking_time,'YYYY-MM-DD HH:mm:ss') }}</td>
+                      <td class="d-none d-md-table-cell">{{ $dayjs(item?.picking_time, 'YYYY-MM-DD HH:mm:ss', itemData) }}</td>
                       <td class="d-none d-xl-table-cell">{{ item?.operator?.user_name }}</td>
                       <td v-if="itemData?.status =='in_progress'">
                         <NuxtLink href="javascript:void(0);" @click="deleteDetailItem(item.id)"
@@ -617,7 +617,7 @@ onMounted(async() => {
                       <td>{{ item?.task_id }}</td>
                       <td>{{t('common.status.'+item?.old_status.replace('_',"-"))}}</td>
                       <td>{{t('common.status.'+item?.new_status.replace('_',"-"))}}</td>
-                      <td class="d-none d-md-table-cell">{{ $dayjs(item?.changed_at,'YYYY-MM-DD HH:mm:ss') }}</td>
+                      <td class="d-none d-md-table-cell">{{ $dayjs(item?.changed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}</td>
                       <td class="d-none d-xl-table-cell">{{ item?.operator?.user_name }}</td>
                     </tr>
 

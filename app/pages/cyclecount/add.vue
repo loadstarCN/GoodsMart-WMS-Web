@@ -108,16 +108,17 @@ const addCycleCount = async () => {
 
   if (Object.values(errors.value).some(v => v)) return
 
-  if (taskItem.value.scheduled_date) {
-    taskItem.value.scheduled_date = safeFormatDateTime(taskItem.value.scheduled_date);
-  }
+  // 计划日期：选的那一天按所选仓库时区的 00:00，带偏移提交（不按浏览器时区，免得换算后跨日）
+  const scheduledDay = safeFormatDate(taskItem.value.scheduled_date)
+  const zone = resolveTimeZone(taskItem.value.warehouse_id)
+  const scheduledAt = scheduledDay ? parseDateTime(scheduledDay, zone) : null
 
   submitting.value = true
   await httpRequest('/api/warehouse/cyclecount/', {
     method: 'POST',
     // 用表单里选的仓库作为请求的仓库（页头选「全部仓库」时也能正确建单）
     headers: { 'Content-Type': 'application/json', ...warehouseHeaders(taskItem.value.warehouse_id) },
-    body: taskItem.value,
+    body: { ...taskItem.value, scheduled_date: scheduledAt ? toOffsetIsoString(scheduledAt, zone) : null },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
       await router.push('/cyclecount/')

@@ -463,7 +463,7 @@ onMounted(async() => {
                                         <span class="text-muted" v-if="!dn?.shipping?.carrier_name && !dn?.carrier?.name && !dn?.shipping?.tracking_number">—</span>
                                     </td>
 
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(dn?.updated_at) }}</td>
+                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(dn?.updated_at, undefined, dn) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ dn?.creator?.user_name }}</td>
                                     <td>
                                         <div class="hstack gap-2 fs-15">
