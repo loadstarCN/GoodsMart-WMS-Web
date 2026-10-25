@@ -23,7 +23,9 @@ const menuId = `${uid}-menu`
 const root = useTemplateRef<HTMLElement>('root')
 const menu = useTemplateRef<HTMLElement>('menu')
 
+// 只算看得见的项（只在窄屏出现的项在宽屏是 display: none，不能聚焦）
 const items = () => Array.from(menu.value?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([disabled])') || [])
+  .filter((el) => el.offsetParent !== null)
 const triggerEl = () => root.value?.querySelector<HTMLElement>('[aria-haspopup]') || null
 
 const focusItem = (index: number) => {

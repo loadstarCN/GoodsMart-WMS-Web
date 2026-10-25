@@ -24,6 +24,9 @@ const warehouseCookie = useCookie<string | number | null>('warehouse_id')
 
 const sidebarId = 'w-sidebar'
 const groups = computed(() => (props.variant === 'admin' ? ADMIN_NAV : WMS_NAV))
+/** 搜索结果页：顶栏搜索框显示当前关键词 */
+const searchQuery = computed(() =>
+  (route.path.replace(/\/+$/, '') === '/search' ? parseSearchPageQuery(route.query).q : null))
 
 // ---- 宽屏收起 / 窄屏抽屉 ----
 const mobile = ref(false)
@@ -90,7 +93,7 @@ onBeforeUnmount(() => {
     <div v-if="mobile && drawerOpen" class="w-shell__backdrop" aria-hidden="true" @click="drawerOpen = false" />
     <div class="w-shell__main">
       <ShellTopbar class="w-shell__topbar" :variant="variant" :sidebar-expanded="sidebarExpanded" :mobile="mobile"
-        :sidebar-id="sidebarId" @toggle-sidebar="toggleSidebar" />
+        :sidebar-id="sidebarId" :query="variant === 'wms' ? searchQuery : null" @toggle-sidebar="toggleSidebar" />
       <main id="w-main" class="w-main" tabindex="-1">
         <div class="w-page">
           <slot />

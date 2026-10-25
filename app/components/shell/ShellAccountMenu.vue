@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
  * 账户菜单（设计稿 TopbarSpec「账户菜单」）：头像、名字和公司；菜单里有修改密码、全屏、显示密度、退出登录。
+ * 窄屏（< 768）时顶栏没有搜索框，「搜索」收进这里（打开同一个搜索面板）。
  * 「PDA 客户端」要等平台设置里有下载地址后再加（后端还没有这项设置）。
  */
 const props = withDefaults(defineProps<{
@@ -15,6 +16,7 @@ const authStore = useAuthStore()
 const staffStore = useStaffStore()
 const warehouseStore = useWarehouseStore()
 const { density, setDensity } = useUiPrefs()
+const search = useGlobalSearch()
 
 const userName = computed(() => authStore.userInfo?.user_name || '')
 const initial = computed(() => (userName.value.trim().charAt(0) || '?').toUpperCase())
@@ -80,6 +82,10 @@ const logout = () => {
       </span>
     </div>
     <div class="w-menu-divider" role="separator" />
+    <button v-if="variant === 'wms'" type="button" class="w-menu-item w-account-search" role="menuitem" @click="search.open()">
+      <WIcon name="search" :size="17" />
+      <span class="w-menu-item__label">{{ t('search.dialog') }}</span>
+    </button>
     <NuxtLink to="/authentication/reset-password" class="w-menu-item" role="menuitem">
       <WIcon name="lock" :size="17" />
       <span class="w-menu-item__label">{{ t('shell.account.change-password') }}</span>
@@ -172,7 +178,10 @@ const logout = () => {
   line-height: var(--w-lh-12);
   color: var(--w-text-3);
 }
+/* 「搜索」只在窄屏出现（宽屏用顶栏的搜索框） */
+.w-account-search { display: none; }
 @media (max-width: 767.98px) {
   .w-account-btn__text, .w-account-btn__chevron { display: none; }
+  .w-account-search { display: flex; }
 }
 </style>

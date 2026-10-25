@@ -3,7 +3,8 @@
  * 顶栏（设计稿 Topbar.dc.html，严格 56 高，按钮和账户区都是 36）：
  * 收起菜单 · 全局搜索（Ctrl K） · 仓库（含时区）| 语言 · 深色模式 · 账户。
  * 平台管理员没有仓库、不搜单据：不显示仓库按钮和搜索框。
- * 搜索：这一步只有入口和快捷键（useGlobalSearch），搜索面板与结果页下一步做。
+ * 搜索：点搜索框或 Ctrl K / ⌘K 打开搜索面板（components/search/SearchPanel）。在搜索结果页（传 query）搜索框是输入框，
+ * 显示当前关键词、可清除，改了回车刷新结果；Ctrl K 照常打开面板（带上当前关键词）。窄屏时搜索框收进账户菜单。
  */
 import { SHELL_FEATURES } from '~/data/navigation'
 
@@ -14,18 +15,28 @@ const props = withDefaults(defineProps<{
   /** 窄屏：按钮打开 / 关闭侧栏抽屉 */
   mobile?: boolean
   sidebarId: string
+  /** 搜索结果页的当前关键词（不在结果页时 null：搜索框是打开面板的按钮） */
+  query?: string | null
 }>(), {
   variant: 'wms',
   mobile: false,
+  query: null,
 })
 
 const emit = defineEmits<{ 'toggle-sidebar': [] }>()
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const search = useGlobalSearch()
 const { theme, setTheme } = useUiPrefs()
 const searchButton = useTemplateRef<HTMLButtonElement>('searchButton')
+const searchBox = useTemplateRef<HTMLElement>('searchBox')
+const searchInput = useTemplateRef<HTMLInputElement>('searchInput')
 
 const showSearch = computed(() => props.variant === 'wms')
+const inResults = computed(() => props.query !== null)
+/** 面板对齐的元素：按钮或结果页的输入框 */
+const searchAnchor = computed(() => (inResults.value ? searchBox.value : searchButton.value) ?? null)
 const isMac = ref(false)
 const shortcut = computed(() => (isMac.value ? '⌘ K' : 'Ctrl K'))
 
@@ -34,18 +45,31 @@ const toggleLabel = computed(() => {
   return props.sidebarExpanded ? t('shell.collapse-menu') : t('shell.expand-menu')
 })
 
-// 搜索面板还没有：先只记开关状态并把焦点放到搜索框上（离开搜索框即关闭）；面板做好后由面板管理开关
-const openSearch = () => {
-  search.open()
-  searchButton.value?.focus()
+// ---- 结果页的搜索框：显示当前关键词，回车按新关键词搜（没变时让结果页再搜一次） ----
+const draft = ref('')
+watch(() => props.query, (q) => { draft.value = q ?? '' }, { immediate: true })
+const submitQuery = (event: KeyboardEvent) => {
+  if (event.isComposing || event.keyCode === 229) return
+  const q = draft.value.trim()
+  if (!q) return
+  const current = parseSearchPageQuery(route.query)
+  if (q === current.q) search.refreshTick.value++
+  else router.push(searchPageLocation({ q, scope: current.scope }))
 }
+const clearDraft = () => {
+  draft.value = ''
+  searchInput.value?.focus()
+}
+
+/** 打开搜索面板（结果页上带着搜索框里的关键词） */
+const openSearch = () => search.open(inResults.value ? draft.value.trim() : '')
 
 /** Ctrl K / ⌘ K：打开搜索（在输入框里也生效，浏览器默认的 Ctrl K 是聚焦地址栏搜索） */
 const onKeydown = (event: KeyboardEvent) => {
   if (!showSearch.value) return
   if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
     event.preventDefault()
-    openSearch()
+    if (!search.isOpen.value) openSearch()
   }
 }
 onMounted(() => {
@@ -62,13 +86,25 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       <WIcon :name="sidebarExpanded && !mobile ? 'menu' : 'menu-full'" :size="20" />
     </button>
 
-    <button v-if="showSearch" ref="searchButton" type="button" class="w-topbar__search" aria-haspopup="dialog"
-      :aria-expanded="search.isOpen.value" :aria-label="t('shell.search.label', { shortcut })" @click="openSearch"
-      @blur="search.close()">
-      <WIcon name="search" :size="16" :stroke-width="2" />
-      <span class="w-topbar__search-text">{{ t('shell.search.placeholder') }}</span>
-      <kbd class="w-topbar__kbd">{{ shortcut }}</kbd>
-    </button>
+    <template v-if="showSearch">
+      <div v-if="inResults" ref="searchBox" role="search" class="w-topbar__search is-input">
+        <WIcon name="search" :size="16" :stroke-width="2" />
+        <input ref="searchInput" v-model="draft" type="search" class="w-topbar__search-input" maxlength="100"
+          autocomplete="off" spellcheck="false" :aria-label="t('shell.search.label', { shortcut })"
+          :placeholder="t('shell.search.placeholder')" @keydown.enter="submitQuery">
+        <button v-if="draft" type="button" class="w-topbar__search-clear" :aria-label="t('search.clear')" @click="clearDraft">
+          <WIcon name="close" :size="12" :stroke-width="2.4" />
+        </button>
+        <kbd class="w-topbar__kbd">{{ shortcut }}</kbd>
+      </div>
+      <button v-else ref="searchButton" type="button" class="w-topbar__search" aria-haspopup="dialog"
+        :aria-expanded="search.isOpen.value" :aria-label="t('shell.search.label', { shortcut })" @click="openSearch">
+        <WIcon name="search" :size="16" :stroke-width="2" />
+        <span class="w-topbar__search-text">{{ t('shell.search.placeholder') }}</span>
+        <kbd class="w-topbar__kbd">{{ shortcut }}</kbd>
+      </button>
+      <SearchPanel :anchor="searchAnchor" />
+    </template>
 
     <div class="w-topbar__spacer" />
 
@@ -136,8 +172,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   cursor: pointer;
 }
 .w-topbar__search:hover { border-color: var(--w-border-strong); }
-.w-topbar__search:focus-visible,
-.w-topbar__search[aria-expanded="true"] {
+.w-topbar__search:focus-visible {
   outline: none;
   border-color: var(--w-sel);
   background: var(--w-surface);
@@ -150,6 +185,44 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 结果页：输入框（白底、控件描边，聚焦时强调描边 + 焦点环） */
+.w-topbar__search.is-input {
+  border-color: var(--w-border-strong);
+  background: var(--w-surface);
+  cursor: text;
+}
+.w-topbar__search.is-input:focus-within {
+  border-color: var(--w-sel);
+  box-shadow: var(--w-focus-ring);
+}
+.w-topbar__search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--w-text-1);
+  font: inherit;
+}
+.w-topbar__search-input::placeholder { color: var(--w-text-3); opacity: 1; }
+.w-topbar__search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.w-topbar__search-clear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--w-radius-control);
+  background: transparent;
+  color: var(--w-text-3);
+  cursor: pointer;
+}
+.w-topbar__search-clear:hover { background: var(--w-surface-2); color: var(--w-text-1); }
+.w-topbar__search-clear:focus-visible { outline: none; box-shadow: var(--w-focus-ring); }
 .w-topbar__kbd {
   flex: none;
   padding: 0 6px;
