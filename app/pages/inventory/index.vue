@@ -53,7 +53,7 @@ onMounted(async() => {
 // ------------------ 待上架（分拣完成、还没上到库位：sorted_stock > 0） ----------------------
 // 列表参数 pending_putaway=1 只返回有待上架的库存，每行带 pending_since（最早一件待上架的进入时刻，推算不出时没有）。
 // 页签徽标（件数）与页签内的汇总读 GET /inventory/pending-putaway/summary：范围同列表（页头仓库走请求头，company_id 同列表），
-// 不按搜索词筛
+// 搜索词 keyword 与列表口径一致
 const pendingTab = computed(() => route.query.pending_putaway === '1');
 
 interface PendingPutawaySummary {
@@ -79,7 +79,7 @@ const pendingSummary = ref<PendingPutawaySummary | null>(null);
 const fetchPendingSummary = async () => {
     await httpRequest<PendingPutawaySummary>('/api/warehouse/inventory/pending-putaway/summary', {
         method: 'GET',
-        params: { company_id: route.query.company_id || undefined },
+        params: { company_id: route.query.company_id || undefined, keyword: route.query.keyword || undefined },
         onSuccess: (data) => {
             pendingSummary.value = data;
         },
