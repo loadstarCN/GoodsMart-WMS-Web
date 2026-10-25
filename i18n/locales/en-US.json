@@ -1513,7 +1513,8 @@
       "permissions": "Permissions",
       "webhook-url": "Webhook URL",
       "webhook-secret": "Webhook Secret",
-      "webhook-subscriptions": "Webhook Subscriptions"
+      "webhook-subscriptions": "Webhook Subscriptions",
+      "template": "Permission template"
     },
     "form": {
       "placeholders": {
@@ -1542,6 +1543,20 @@
     "events": {
       "goods_spec_updated": "Goods spec updated",
       "goods_spec_updated_desc": "Sent when a product's weight, dimensions or country of origin changes"
+    },
+    "templates": {
+      "order-integration": {
+        "name": "Order integration",
+        "desc": "Create ASNs and DNs, sync goods and recipients, query inventory and delivery status"
+      },
+      "inventory-sync": {
+        "name": "Inventory sync",
+        "desc": "Query goods and inventory"
+      },
+      "read-only": {
+        "name": "Read-only",
+        "desc": "View all business modules without creating or editing"
+      }
     }
   },
   "webhook-logs": {

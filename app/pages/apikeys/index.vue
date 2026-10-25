@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { PermissionModuleSummary } from '~/utils/permissionGroups'
+import type { ApiKeyTemplate } from '~/utils/apiKeyTemplates'
 
 // 定义页面元数据
 definePageMeta({
@@ -60,6 +61,7 @@ const API_KEY_PERM_PREFIXES = [
   'asn_', 'putaway_',
   'dn_', 'picking_', 'sorting_', 'packing_', 'delivery_', 'payment_',
   'adjustment_', 'cycle_count_', 'transfer_', 'removal_',
+  'carrier_', 'recipient_', 'supplier_', 'warehouse_', 'location_',
 ]
 
 const allPermissions = ref<any[]>([])
@@ -126,6 +128,18 @@ const createForm = ref({
 
 const createErrors = ref({
   system_name: null as string | null,
+})
+
+// 权限模板（utils/apiKeyTemplates.ts）：选中后按模板勾好权限，之后仍可增减
+const applyTemplate = (template: ApiKeyTemplate) => {
+  createForm.value.permissions = apiKeyTemplatePermissionIds(template, apiKeyPermissions.value)
+}
+/** 当前勾选正好等于某个模板时高亮它 */
+const activeTemplateKey = computed(() => {
+  const current = [...createForm.value.permissions].sort((a, b) => a - b).join(',')
+  return API_KEY_TEMPLATES.find(tpl =>
+    apiKeyTemplatePermissionIds(tpl, apiKeyPermissions.value).sort((a, b) => a - b).join(',') === current
+  )?.key ?? null
 })
 
 const openCreateModal = () => {
@@ -531,6 +545,18 @@ const submitEdit = async () => {
               </div>
               <div class="mb-3">
                 <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <span class="fs-12 text-muted">{{ t('apikeys.fields.template') }}</span>
+                  <button v-for="tpl in API_KEY_TEMPLATES" :key="tpl.key" type="button" class="btn btn-sm"
+                    :class="activeTemplateKey === tpl.key ? 'btn-primary' : 'btn-outline-primary'"
+                    :title="t(`apikeys.templates.${tpl.key}.desc`)" @click="applyTemplate(tpl)">
+                    {{ t(`apikeys.templates.${tpl.key}.name`) }}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-light" :disabled="createForm.permissions.length === 0"
+                    @click="createForm.permissions = []">
+                    {{ t('button.reset') }}
+                  </button>
+                </div>
                 <PermissionSelector
                   v-if="apiKeyPermissions.length > 0"
                   :all-permissions="apiKeyPermissions"

@@ -1513,7 +1513,8 @@
       "permissions": "权限",
       "webhook-url": "Webhook URL",
       "webhook-secret": "Webhook Secret",
-      "webhook-subscriptions": "Webhook 订阅事件"
+      "webhook-subscriptions": "Webhook 订阅事件",
+      "template": "权限模板"
     },
     "form": {
       "placeholders": {
@@ -1542,6 +1543,20 @@
     "events": {
       "goods_spec_updated": "商品规格变更",
       "goods_spec_updated_desc": "商品的重量、尺寸、原产国变化时推送"
+    },
+    "templates": {
+      "order-integration": {
+        "name": "订单对接",
+        "desc": "建收货通知和发货单，同步商品和收货方，查询库存和配送进度"
+      },
+      "inventory-sync": {
+        "name": "库存同步",
+        "desc": "查询商品和库存"
+      },
+      "read-only": {
+        "name": "只读查询",
+        "desc": "各业务模块只能查看，不能新建或修改"
+      }
     }
   },
   "webhook-logs": {

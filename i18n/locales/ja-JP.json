@@ -1513,7 +1513,8 @@
       "permissions": "権限",
       "webhook-url": "Webhook URL",
       "webhook-secret": "Webhook Secret",
-      "webhook-subscriptions": "Webhook 購読イベント"
+      "webhook-subscriptions": "Webhook 購読イベント",
+      "template": "権限テンプレート"
     },
     "form": {
       "placeholders": {
@@ -1542,6 +1543,20 @@
     "events": {
       "goods_spec_updated": "商品規格変更",
       "goods_spec_updated_desc": "商品の重量・寸法・原産国が変わったときに通知します"
+    },
+    "templates": {
+      "order-integration": {
+        "name": "受注連携",
+        "desc": "入荷予定・出荷指示の作成、商品・届け先の同期、在庫と配送状況の照会"
+      },
+      "inventory-sync": {
+        "name": "在庫同期",
+        "desc": "商品と在庫の照会"
+      },
+      "read-only": {
+        "name": "参照のみ",
+        "desc": "各業務モジュールの参照のみ（作成・編集不可）"
+      }
     }
   },
   "webhook-logs": {
