@@ -463,12 +463,21 @@
       "pending-putaway": "棚入れ待ち"
     },
     "pending": {
-      "warning": "{count} 品目が棚入れ待ちです。早めにロケーションへ棚入れしてください",
-      "badge-title": "棚入れ待ち {count} 品目",
+      "badge-title": "棚入れ待ち 合計 {count} 個",
       "total": "棚入れ待ち",
       "good": "良品",
       "damaged": "破損品",
       "damaged-part": "うち破損品 {n}",
+      "dwell": "滞留日数",
+      "dwell-days": "{n} 日",
+      "dwell-under-day": "1 日未満",
+      "dwell-since": "{time} から棚入れ待ち",
+      "summary": {
+        "goods": "棚入れ待ち {n} 品目",
+        "quantity": "合計 {total} 個（良品 {good} / 破損品 {damaged}）",
+        "overdue": "{days} 日を超えて棚入れ待ち {n} 個",
+        "oldest": "最も古いものは {time} から棚入れ待ち"
+      },
       "empty": "棚入れ待ちの商品はありません"
     }
   },
@@ -1782,6 +1791,9 @@
         "all-status": "すべてのステータスコード",
         "since": "開始日時",
         "since-hint": "この日時以降のログを表示",
+        "until": "終了日時",
+        "until-hint": "この日時（その分を含む）までのログを表示",
+        "range-invalid": "終了日時は開始日時以降にしてください",
         "keyword-placeholder": "操作者 / API パス"
       },
       "actor": {
@@ -2465,6 +2477,7 @@
     "code-11011": "システム標準の権限は権限コードの変更・削除ができません",
     "code-11012": "システム標準のロールは名前の変更・無効化・削除ができません",
     "code-10015": "パスワードは {min_length}〜{max_length} 文字で、英大文字・英小文字・数字・記号（{special_characters}）をそれぞれ含めてください（使用できるのは英字・数字とこれらの記号のみ）",
+    "code-10016": "ファイルの文字コードが UTF-8 ではありません。UTF-8 の CSV として保存し直してから取り込んでください",
     "code-10004": "CSV ファイルのみ対応しています",
     "code-10005": "CSV に必須の列（code、name）がありません。テンプレートに沿って作成し直してください",
     "code-10005-columns": "CSV に必須の列がありません：{columns}",

@@ -276,12 +276,11 @@ const fetchLocationData = async (goods_id: number, targetRef: Ref<any[]>) => {
   
   const data = await httpRequest<PaginationData>('/api/warehouse/goods/locations/', {
     method: 'GET',
-    params: {warehouse_id:itemData.value.dn?.warehouse_id, all: true, goods_id: goods_id },
+    // 只能从标准库位拣货（破损 / 退货库位的货提交时后端会拒：400 16162）：只请求标准库位
+    params: {warehouse_id:itemData.value.dn?.warehouse_id, all: true, goods_id: goods_id, location_type: 'standard' },
     onSuccess: (data) => {
-      // 只能从标准库位拣货：破损 / 退货库位的货后端会拒（400 16162），这里不列出
-      targetRef.value = (data.items ?? []).filter(
-        (item: any) => Number(item.quantity) > 0 && (item.location?.location_type ?? 'standard') === 'standard',
-      );
+      // 库位类型已由后端筛好；数量为 0 的库位记录后端照样返回，这里不列出
+      targetRef.value = (data.items ?? []).filter((item: any) => Number(item.quantity) > 0);
     },
     onError: (error) => showToast(error.message, 'error'),
     onFinally: () => isLoading.value = false

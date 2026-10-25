@@ -2,7 +2,8 @@
 /**
  * 平台管理 · 操作日志（后端 GET /api/system/logs/，见 Backend system/logs/views.py）
  * - 只记录写操作（POST / PUT / DELETE），GET 不记
- * - 筛选参数：method、status_code、created_at（起始时间，含；后端没有结束时间参数）、keyword（搜操作人 / 接口路径）
+ * - 筛选参数：method、status_code、created_at / created_at_end（起止时间，都含；created_at_end 只给日期时含那一整天）、
+ *   keyword（搜操作人 / 接口路径）。界面按分钟选起止时间，结束时间提交为所选那一分钟的最后一秒（含这一分钟）
  * - 列表不带请求 / 响应正文，点开时读单条 GET /api/system/logs/<id>
  */
 
@@ -34,6 +35,7 @@ const filters = reactive({
   method: '',
   status_code: '',
   since: '',      // <input type="datetime-local"> 的值（浏览器时区）
+  until: '',
   keyword: '',
 });
 
@@ -44,10 +46,21 @@ const restoreFilters = () => {
   filters.status_code = q.status_code ? String(q.status_code) : '';
   const since = q.created_at ? parseDateTime(String(q.created_at), timeZone) : null;
   filters.since = since ? toDateTimeLocalValue(since, timeZone) : '';
+  const until = q.created_at_end ? parseDateTime(String(q.created_at_end), timeZone) : null;
+  filters.until = until ? toDateTimeLocalValue(until, timeZone) : '';
   filters.keyword = q.keyword ? String(q.keyword) : '';
 };
 
+/** 结束时间含所选那一分钟：提交该分钟的最后一秒（后端按「小于等于」筛） */
+const END_OF_MINUTE_MS = 59 * 1000;
+
 const applyFilters = async () => {
+  const since = fromDateTimeLocalValue(filters.since, timeZone);
+  const until = fromDateTimeLocalValue(filters.until, timeZone);
+  if (since && until && until.getTime() < since.getTime()) {
+    showToast(t('admin.logs.filters.range-invalid'), 'error');
+    return;
+  }
   const query: Record<string, any> = { ...route.query, page: '1' };
   const set = (key: string, value: string) => {
     if (value) query[key] = value;
@@ -55,8 +68,8 @@ const applyFilters = async () => {
   };
   set('method', filters.method);
   set('status_code', /^\d{3}$/.test(filters.status_code) ? filters.status_code : '');
-  const since = fromDateTimeLocalValue(filters.since, timeZone);
   set('created_at', since ? toOffsetIsoString(since, timeZone) : '');
+  set('created_at_end', until ? toOffsetIsoString(new Date(until.getTime() + END_OF_MINUTE_MS), timeZone) : '');
   set('keyword', filters.keyword.trim());
   await router.push({ query });
 };
@@ -65,8 +78,9 @@ const resetFilters = async () => {
   filters.method = '';
   filters.status_code = '';
   filters.since = '';
+  filters.until = '';
   filters.keyword = '';
-  const { method: _m, status_code: _s, created_at: _c, keyword: _k, ...rest } = route.query;
+  const { method: _m, status_code: _s, created_at: _c, created_at_end: _e, keyword: _k, ...rest } = route.query;
   await router.push({ query: { ...rest, page: '1' } });
 };
 
@@ -203,31 +217,36 @@ const responseSummary = computed(() => bodySummary(detailItem.value?.response_da
         <div class="card-body">
           <!-- 筛选 -->
           <form class="row g-2 align-items-end mb-3" @submit.prevent="applyFilters">
-            <div class="col-sm-6 col-lg-2">
+            <div class="col-sm-6 col-lg-3 col-xxl-2">
               <label class="form-label fs-12 mb-1" for="log-filter-method">{{ t('admin.logs.fields.method') }}</label>
               <select id="log-filter-method" class="form-select form-select-sm" v-model="filters.method">
                 <option value="">{{ t('admin.logs.filters.all-methods') }}</option>
                 <option v-for="m in LOGGED_METHODS" :key="m" :value="m">{{ m }}</option>
               </select>
             </div>
-            <div class="col-sm-6 col-lg-2">
+            <div class="col-sm-6 col-lg-3 col-xxl-2">
               <label class="form-label fs-12 mb-1" for="log-filter-status">{{ t('admin.logs.fields.status-code') }}</label>
               <select id="log-filter-status" class="form-select form-select-sm" v-model="filters.status_code">
                 <option value="">{{ t('admin.logs.filters.all-status') }}</option>
                 <option v-for="code in STATUS_CODES" :key="code" :value="code">{{ code }}</option>
               </select>
             </div>
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-lg-3 col-xxl-2">
               <label class="form-label fs-12 mb-1" for="log-filter-since">{{ t('admin.logs.filters.since') }}</label>
               <input id="log-filter-since" type="datetime-local" class="form-control form-control-sm" v-model="filters.since"
                 :title="t('admin.logs.filters.since-hint')">
             </div>
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-lg-3 col-xxl-2">
+              <label class="form-label fs-12 mb-1" for="log-filter-until">{{ t('admin.logs.filters.until') }}</label>
+              <input id="log-filter-until" type="datetime-local" class="form-control form-control-sm" v-model="filters.until"
+                :title="t('admin.logs.filters.until-hint')">
+            </div>
+            <div class="col-sm-6 col-lg-6 col-xxl-2">
               <label class="form-label fs-12 mb-1" for="log-filter-keyword">{{ t('common.search') }}</label>
               <input id="log-filter-keyword" type="search" class="form-control form-control-sm" v-model="filters.keyword"
                 :placeholder="t('admin.logs.filters.keyword-placeholder')">
             </div>
-            <div class="col-lg-2 d-flex gap-2">
+            <div class="col-sm-6 col-lg-6 col-xxl-2 d-flex gap-2">
               <button type="submit" class="btn btn-sm btn-primary flex-fill">{{ t('common.search') }}</button>
               <button type="button" class="btn btn-sm btn-light flex-fill" @click="resetFilters">{{ t('button.reset') }}</button>
             </div>

@@ -20,19 +20,19 @@ const uploading = ref(false)
 const result = ref<any>("")
 const selectedOption = ref<'skip' | 'active' | 'append' | 'override'>('skip')
 
-// 下载模板
-const downloadTemplate = async () =>  {
-    const csvContent = '\uFEFF' + "code,name,unit,weight,length,width,height,manufacturer,brand,image_url,thumbnail_url,category,tags,price,discount_price,currency,expiration_date,production_date,description\n4901772434184,家庭教師ヒットマンREBORN！ トレーディングクリア色紙コレクション（全7種） 1BOX入数：7,pcs,,,,,TBSグロウディア,,https://pic.goodsmart.com.cn/uploadfile/raw_docs/4901772434184.jpg,,,,3850,,JPY,,2025-07-01,'※一般情報・予約解禁日時：2025年4月19日 12時00分～厳守(C)天野明／集英社・テレビ東京・リボーン製作委員会'\n4901772429791,家庭教師ヒットマンREBORN！ クリアファイル（F ベルフェゴール）,pcs,,,,,TBSグロウディア,,https://pic.goodsmart.com.cn/uploadfile/raw_docs/4901772429791.jpg,,,,440,,JPY,,2025-07-01,'※一般情報・予約解禁日時：2025年4月19日 12時00分～厳守(C)天野明／集英社・テレビ東京・リボーン製作委員会'\n";
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'Goods_template.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  
-} 
+// 下载模板：后端 GET /goods/bulk_upload/template（UTF-8 带 BOM 的 CSV，表头与导入读的列一致，带一行示例）
+const downloadingTemplate = ref(false)
+const downloadTemplate = async () => {
+  if (downloadingTemplate.value) return
+  downloadingTemplate.value = true
+  try {
+    await downloadFile('/api/warehouse/goods/bulk_upload/template', { method: 'GET' }, 'Goods_template.csv')
+  } catch (error) {
+    showToast(bizErrorMessage(error as HttpRequestError), 'error')
+  } finally {
+    downloadingTemplate.value = false
+  }
+}
 
 
 // 新增文件对象存储

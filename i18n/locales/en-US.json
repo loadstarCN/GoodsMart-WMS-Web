@@ -463,12 +463,21 @@
       "pending-putaway": "Awaiting Putaway"
     },
     "pending": {
-      "warning": "{count} SKU(s) are awaiting putaway. Put them away to locations as soon as possible.",
-      "badge-title": "{count} SKU(s) awaiting putaway",
+      "badge-title": "{count} item(s) awaiting putaway",
       "total": "Awaiting Putaway",
       "good": "Good",
       "damaged": "Damaged",
       "damaged-part": "incl. {n} damaged",
+      "dwell": "Days Waiting",
+      "dwell-days": "{n} day | {n} days",
+      "dwell-under-day": "Under 1 day",
+      "dwell-since": "Awaiting putaway since {time}",
+      "summary": {
+        "goods": "{n} SKU(s) awaiting putaway",
+        "quantity": "{total} item(s) in total ({good} good / {damaged} damaged)",
+        "overdue": "{n} item(s) waiting more than {days} day(s)",
+        "oldest": "Oldest awaiting putaway since {time}"
+      },
       "empty": "No goods are awaiting putaway"
     }
   },
@@ -1782,6 +1791,9 @@
         "all-status": "All status codes",
         "since": "From",
         "since-hint": "Show logs at or after this time",
+        "until": "To",
+        "until-hint": "Show logs up to and including this minute",
+        "range-invalid": "The end time cannot be earlier than the start time",
         "keyword-placeholder": "Actor / endpoint path"
       },
       "actor": {
@@ -2465,6 +2477,7 @@
     "code-11011": "Built-in permissions cannot be renamed or deleted",
     "code-11012": "Built-in roles cannot be renamed, deactivated or deleted",
     "code-10015": "Password must be {min_length}–{max_length} characters with an uppercase letter, a lowercase letter, a digit and a special character ({special_characters}); only letters, digits and these characters are allowed",
+    "code-10016": "The file is not UTF-8 encoded. Save it as a UTF-8 CSV and import again",
     "code-10004": "Only CSV files are supported",
     "code-10005": "The CSV is missing required columns (code, name). Follow the template and import again",
     "code-10005-columns": "The CSV is missing required columns: {columns}",

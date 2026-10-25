@@ -39,7 +39,7 @@ const fetchData = async () => {
 };
 
 watch(() => route.query, async () => {
-    await Promise.all([fetchData(), fetchPendingCount()]);
+    await Promise.all([fetchData(), fetchPendingSummary()]);
 });
 
 async function search() {
@@ -47,29 +47,51 @@ async function search() {
 }
 onMounted(async() => {
     fetchData();
-    fetchPendingCount();
+    fetchPendingSummary();
 });
 
 // ------------------ 待上架（分拣完成、还没上到库位：sorted_stock > 0） ----------------------
-// 列表参数 pending_putaway=1 只返回有待上架的库存；页签上的数字 = 有待上架的商品种数（列表的 total）
+// 列表参数 pending_putaway=1 只返回有待上架的库存，每行带 pending_since（最早一件待上架的进入时刻，推算不出时没有）。
+// 页签徽标（件数）与页签内的汇总读 GET /inventory/pending-putaway/summary：范围同列表（页头仓库走请求头，company_id 同列表），
+// 不按搜索词筛
 const pendingTab = computed(() => route.query.pending_putaway === '1');
-const pendingCount = ref<number | null>(null);
 
-/** 后端认 pending_putaway 时返回的每条都有待上架；混进了 sorted_stock = 0 的，说明后端还没支持这个参数 */
-const pendingFilterSupported = (items: any[]) => items.every((inv) => Number(inv?.sorted_stock) > 0);
+interface PendingPutawaySummary {
+    warehouse_id: number | null
+    /** 有待上架的库存行数 */
+    inventory_count: number
+    /** 商品种数 */
+    goods_count: number
+    /** 待上架合计（件）= 良品 + 破损 */
+    total_quantity: number
+    damaged_quantity: number
+    good_quantity: number
+    /** 超期的天数（后端默认 3） */
+    overdue_days: number
+    /** 进入待上架超过 overdue_days 天的件数（先进先上估算） */
+    overdue_quantity: number
+    overdue_inventory_count: number
+    /** 最早一件待上架的进入时刻（UTC）；没有待上架 / 推算不出时 null */
+    oldest_pending_since: string | null
+}
+const pendingSummary = ref<PendingPutawaySummary | null>(null);
 
-const fetchPendingCount = async () => {
-    await httpRequest<PaginationData>('/api/warehouse/inventory/', {
+const fetchPendingSummary = async () => {
+    await httpRequest<PendingPutawaySummary>('/api/warehouse/inventory/pending-putaway/summary', {
         method: 'GET',
-        params: { pending_putaway: 1, per_page: 20, keyword: route.query.keyword || undefined },
+        params: { company_id: route.query.company_id || undefined },
         onSuccess: (data) => {
-            pendingCount.value = pendingFilterSupported(data?.items || []) ? Number(data?.total) || 0 : null;
+            pendingSummary.value = data;
         },
         onError: () => {
-            pendingCount.value = null;
+            pendingSummary.value = null;
         },
     });
 };
+
+/** 页签徽标：待上架件数 */
+const pendingCount = computed(() => Number(pendingSummary.value?.total_quantity) || 0);
+const overdueQuantity = computed(() => Number(pendingSummary.value?.overdue_quantity) || 0);
 
 const setPendingTab = (pending: boolean) => {
     const query: Record<string, any> = { ...route.query, page: '1' };
@@ -78,12 +100,26 @@ const setPendingTab = (pending: boolean) => {
     router.push({ query });
 };
 
-/** 待上架页签的行：拆成良品 / 破损（后端还不认 pending_putaway 时把没有待上架的行滤掉） */
-const pendingRows = computed(() =>
-    (pageData.value?.items || [])
-        .map((inv: any) => ({ inv, pending: pendingPutaway(inv)! }))
-        .filter((row) => row.pending.total > 0)
-);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 待上架页签的行：拆成良品 / 破损；days = 停留了几整天（没有 pending_since 时 null），
+ * overdue = 停留超过汇总的 overdue_days 天（同后端的超期口径）
+ */
+const pendingRows = computed(() => {
+    const now = Date.now();
+    const overdueDays = pendingSummary.value ? Number(pendingSummary.value.overdue_days) : NaN;
+    return (pageData.value?.items || []).map((inv: any) => {
+        const since = inv?.pending_since ? parseDateTime(inv.pending_since) : null;
+        const elapsed = since ? Math.max(0, now - since.getTime()) : null;
+        return {
+            inv,
+            pending: pendingPutaway(inv)!,
+            days: elapsed === null ? null : Math.floor(elapsed / DAY_MS),
+            overdue: elapsed !== null && Number.isFinite(overdueDays) && elapsed > overdueDays * DAY_MS,
+        };
+    });
+});
 
 /** 进入商品详情并打开上架弹窗 */
 const putawayLink = (inv: any) => ({
@@ -158,10 +194,19 @@ function calculateTotalStock(inventory: any) {
                         </li>
                     </ul>
 
-                    <!-- 待上架：每行拆良品 / 破损，可直接去上架 -->
+                    <!-- 待上架：上方一行汇总；每行拆良品 / 破损、停留天数，可直接去上架 -->
                     <template v-if="pendingTab">
-                        <div class="alert alert-warning-transparent fs-13 py-2" v-if="pendingRows.length > 0">
-                            <i class="ri-error-warning-line me-1"></i>{{ t('inventory.pending.warning', { count: pageData?.total ?? pendingRows.length }) }}
+                        <div class="alert alert-warning-transparent fs-13 py-2 d-flex flex-wrap align-items-center column-gap-3 row-gap-1" v-if="pendingSummary && pendingCount > 0">
+                            <span><i class="ri-error-warning-line me-1"></i>{{ t('inventory.pending.summary.goods', { n: $n(Number(pendingSummary.goods_count) || 0) }) }}</span>
+                            <span>{{ t('inventory.pending.summary.quantity', {
+                                total: $n(pendingCount),
+                                good: $n(Number(pendingSummary.good_quantity) || 0),
+                                damaged: $n(Number(pendingSummary.damaged_quantity) || 0),
+                            }) }}</span>
+                            <span :class="overdueQuantity > 0 ? 'text-danger fw-semibold' : 'text-muted'">
+                                <i class="ri-time-line me-1" v-if="overdueQuantity > 0"></i>{{ t('inventory.pending.summary.overdue', { days: pendingSummary.overdue_days, n: $n(overdueQuantity) }) }}
+                            </span>
+                            <span class="text-muted" v-if="pendingSummary.oldest_pending_since">{{ t('inventory.pending.summary.oldest', { time: $dayjs(pendingSummary.oldest_pending_since, 'YYYY-MM-DD HH:mm', pendingSummary) }) }}</span>
                         </div>
                         <div class="table-responsive">
                             <table class="table text-nowrap table-bordered">
@@ -172,6 +217,7 @@ function calculateTotalStock(inventory: any) {
                                         <th scope="col" class="text-end">{{ t('inventory.pending.total') }}</th>
                                         <th scope="col" class="text-end">{{ t('inventory.pending.good') }}</th>
                                         <th scope="col" class="text-end">{{ t('inventory.pending.damaged') }}</th>
+                                        <th scope="col" class="text-end">{{ t('inventory.pending.dwell') }}</th>
                                         <th scope="col">{{ t('common.fields.action') }}</th>
                                     </tr>
                                 </thead>
@@ -199,6 +245,13 @@ function calculateTotalStock(inventory: any) {
                                         <td class="text-end">{{ $n(row.pending.good) }}</td>
                                         <td class="text-end">
                                             <span :class="row.pending.damaged > 0 ? 'text-danger fw-semibold' : 'text-muted'">{{ $n(row.pending.damaged) }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <span v-if="row.days !== null" :class="{ 'text-danger fw-semibold': row.overdue }"
+                                                :title="t('inventory.pending.dwell-since', { time: $dayjs(row.inv.pending_since, 'YYYY-MM-DD HH:mm', row.inv) })">
+                                                {{ row.days > 0 ? t('inventory.pending.dwell-days', { n: $n(row.days) }, row.days) : t('inventory.pending.dwell-under-day') }}
+                                            </span>
+                                            <span class="text-muted" v-else>—</span>
                                         </td>
                                         <td>
                                             <NuxtLink :to="putawayLink(row.inv)" class="btn btn-sm btn-primary-light">

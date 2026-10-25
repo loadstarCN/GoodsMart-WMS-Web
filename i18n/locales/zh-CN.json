@@ -463,12 +463,21 @@
       "pending-putaway": "待上架"
     },
     "pending": {
-      "warning": "{count} 种商品待上架，请尽快上架入位",
-      "badge-title": "{count} 种商品待上架",
+      "badge-title": "共 {count} 件待上架",
       "total": "待上架",
       "good": "良品",
       "damaged": "破损",
       "damaged-part": "其中破损 {n}",
+      "dwell": "停留天数",
+      "dwell-days": "{n} 天",
+      "dwell-under-day": "不到 1 天",
+      "dwell-since": "{time} 起待上架",
+      "summary": {
+        "goods": "{n} 种商品待上架",
+        "quantity": "合计 {total} 件（良品 {good} / 破损 {damaged}）",
+        "overdue": "超过 {days} 天未上架 {n} 件",
+        "oldest": "最早一笔自 {time} 起待上架"
+      },
       "empty": "没有待上架的商品"
     }
   },
@@ -1782,6 +1791,9 @@
         "all-status": "全部状态码",
         "since": "起始时间",
         "since-hint": "显示该时间（含）之后的日志",
+        "until": "结束时间",
+        "until-hint": "显示该时间（含这一分钟）之前的日志",
+        "range-invalid": "结束时间不能早于起始时间",
         "keyword-placeholder": "操作人 / 接口路径"
       },
       "actor": {
@@ -2465,6 +2477,7 @@
     "code-11011": "系统内置权限不能修改权限代码或删除",
     "code-11012": "系统内置角色不能改名、停用或删除",
     "code-10015": "密码须为 {min_length}–{max_length} 位，同时包含大写字母、小写字母、数字和特殊符号（{special_characters}），只能使用英文字母、数字和这些符号",
+    "code-10016": "文件编码不是 UTF-8，请另存为 UTF-8 编码的 CSV 后重新导入",
     "code-10004": "只支持 CSV 文件",
     "code-10005": "CSV 缺少必需的列（code、name），请按模板整理后再导入",
     "code-10005-columns": "CSV 缺少必需的列：{columns}",

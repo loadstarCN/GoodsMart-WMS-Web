@@ -18,7 +18,7 @@
  *   SHIPPING_OPTIONS_LOCKED），已发货 409 16065
  */
 import { httpRequest, type HttpRequestError } from '~/utils/http'
-import { authFetch } from '~/composables/auth/authFetch'
+import { downloadFile } from '~/utils/download'
 
 /** 后端给的多语言文字：{en-US, zh-CN, ja-JP}，也可能直接是字符串 */
 export type LocalizedText = Record<string, string | null | undefined> | string | null | undefined
@@ -260,33 +260,6 @@ export const exportProblemRows = (error: HttpRequestError | null | undefined): E
     }))
 }
 
-/** Content-Disposition 里的文件名（filename*=UTF-8''… 优先，其次 filename="…"）；没有时 null */
-export const fileNameFromDisposition = (header: string | null | undefined): string | null => {
-  if (!header) return null
-  const star = /filename\*\s*=\s*([^']*)'[^']*'([^;]+)/i.exec(header)
-  if (star && star[2]) {
-    try {
-      return decodeURIComponent(star[2].trim().replace(/^"|"$/g, ''))
-    } catch {
-      // 编码不对时退回 filename=
-    }
-  }
-  const plain = /filename\s*=\s*("([^"]*)"|[^;]+)/i.exec(header)
-  if (plain) return (plain[2] ?? plain[1] ?? '').trim().replace(/^"|"$/g, '') || null
-  return null
-}
-
-const saveBlob = (blob: Blob, fileName: string) => {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 60 * 1000)
-}
-
 export interface ExportRequest {
   carrier_id: number
   dn_ids: number[]
@@ -295,41 +268,17 @@ export interface ExportRequest {
 
 /**
  * 导出承运商文件并下载。成功返回文件名；失败抛出 HttpRequestError（16137 时 details.rows 是逐行问题）。
- * 通用 httpRequest 只解析 JSON，文件要直接用 authFetch 取二进制。
+ * 取文件、文件名、出错时的业务码见 utils/download.ts。
  */
 export const exportCarrierFile = async (req: ExportRequest): Promise<string> => {
   const body: Record<string, any> = { carrier_id: req.carrier_id, dn_ids: req.dn_ids }
   if (req.warehouse_id !== null && req.warehouse_id !== undefined) body.warehouse_id = req.warehouse_id
-  let res: Response
-  try {
-    res = await authFetch(CARRIER_FILES_EXPORT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  } catch (e) {
-    const err: HttpRequestError = { status: -1, message: e instanceof Error ? e.message : 'Unknown error' }
-    throw err
-  }
-  const contentType = (res.headers.get('Content-Type') || '').toLowerCase()
-  if (!res.ok || contentType.includes('application/json')) {
-    const data = await res.json().catch(() => null)
-    const err: HttpRequestError = {
-      status: res.ok ? 500 : res.status,
-      message: data?.message || `Request failed (${res.status})`,
-    }
-    if (data && typeof data === 'object') {
-      if (data.code !== undefined) err.code = data.code
-      if (data.details !== undefined) err.details = data.details
-      if (data.field !== undefined) err.field = data.field
-    }
-    throw err
-  }
-  const blob = await res.blob()
   const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')
-  const fileName = fileNameFromDisposition(res.headers.get('Content-Disposition')) || `carrier-${req.carrier_id}-${stamp}.csv`
-  saveBlob(blob, fileName)
-  return fileName
+  return downloadFile(CARRIER_FILES_EXPORT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }, `carrier-${req.carrier_id}-${stamp}.csv`)
 }
 
 // ------------------ 导入 ----------------------
