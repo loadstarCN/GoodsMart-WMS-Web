@@ -11,9 +11,24 @@ const taskId = route.params.id;
 const itemData = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+// 商品分类存英文原值，显示译名
+const { categoryLabel } = useOptionLabel();
 // 按权限显示审批 / 完成 / 取消按钮（鉴权仍以后端为准）
 const staffStore = useStaffStore();
 const { bizErrorMessage } = useBizError();
+/**
+ * 调整原因：从盘点单生成的调整单，后端写的是固定英文「Adjustment by CycleCountTask ID: 12」→ 显示「按盘点单 CC-12 生成」；
+ * 手工填写的原因原样显示
+ */
+const AUTO_REASON_RE = /^Adjustment by CycleCountTask ID:\s*(\d+)$/;
+const adjustmentReasonText = computed(() => {
+  const reason = String(itemData.value?.adjustment_reason || '').trim();
+  if (!reason) return '';
+  const auto = AUTO_REASON_RE.exec(reason);
+  return auto ? t('adjustment.tips.from-cyclecount', { id: auto[1] }) : reason;
+});
+/** 来源盘点单（只有从盘点单生成的调整单有） */
+const sourceCyclecountId = computed(() => itemData.value?.cyclecount_id ?? null);
 /** 已取消：取消后 status 保持原值，is_active=false；之后一切操作 409 16111 */
 const cancelled = computed(() => itemData.value?.is_active === false);
 // 计算属性转换
@@ -172,6 +187,15 @@ onMounted(async() => {
                   {{ $dayjs(itemData?.approved_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </p>
 
+                <p class="mb-2 text-muted" v-if="adjustmentReasonText">
+                  <span class="fw-semibold text-default">{{t('adjustment.fields.adjustment-reason')}} :</span>
+                  {{ adjustmentReasonText }}
+                </p>
+                <p class="mb-2 text-muted" v-if="sourceCyclecountId">
+                  <span class="fw-semibold text-default">{{t('adjustment.fields.source-cyclecount')}} :</span>
+                  <NuxtLink :to="`/cyclecount/detail/${sourceCyclecountId}`">CC-{{ sourceCyclecountId }}</NuxtLink>
+                </p>
+
                 <p class="mb-2 text-muted" v-if="itemData?.operator">
                   <span class="fw-semibold text-default">{{t('common.users.operator')}} :</span>
                   {{ itemData?.operator?.user_name }}
@@ -201,10 +225,10 @@ onMounted(async() => {
               </div>
               <div>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                  {{t('common.dates.created')}}{{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
+                  {{t('common.dates.created')}}:{{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'approved'">
-                  {{t('common.dates.started')}}:{{ $dayjs(itemData?.approved_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
+                  {{t('common.dates.approved')}}:{{ $dayjs(itemData?.approved_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
                 </span>
                 <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
                   {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
@@ -246,7 +270,7 @@ onMounted(async() => {
                             </p>
                             <p class="mb-0 fs-11 text-muted">{{ item?.goods?.code }}</p>
                             <p class="mb-0 fs-11 text-muted">{{ item?.goods?.brand }}</p>
-                            <p class="mb-0 fs-11 text-muted">{{ item?.goods?.category }}</p>
+                            <p class="mb-0 fs-11 text-muted">{{ categoryLabel(item?.goods?.category) }}</p>
                           </div>
                         </div>
                       </td>

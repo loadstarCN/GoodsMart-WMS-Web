@@ -8,6 +8,8 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n()
+// 角色存代码（company_admin 等），显示译名
+const { roleLabel } = useOptionLabel()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -62,15 +64,13 @@ const { bizErrorMessage } = useBizError()
 const submitting = ref(false)
 const saveStaff = async () => {
   if (submitting.value) return
-  var password_min_length = 6;
   errors.value = {
     user_name: !itemData.value.user_name ? t('common.validation.name-required', { entity: t('staff.entity') }) : null,
     password:(() => {
       const password = itemData.value.password;
-      // if (!password) return t('common.validation.password-required');
-      // 仅当输入非空时进行长度验证
-      if (password && password.length < password_min_length) {
-        return t('common.validation.password-min-length', { min: password_min_length });
+      // 填了密码才校验：与后端的密码规则一致（8–16 位，含大小写字母、数字和特殊符号）
+      if (password && !isValidPassword(password)) {
+        return t('common.validation.password-policy', passwordPolicyParams());
       }
       return null;
     })(),
@@ -107,15 +107,12 @@ const saveStaff = async () => {
   })
 }
 
+// 密码框默认遮住；点「生成」后明文显示生成的密码，方便告知员工
+const passwordVisible = ref(false)
 const generatePassword = () => {
-  const length = 8;
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * charset.length);
-    password += charset[randomIndex];
-  }
-  itemData.value.password = password;
+  // 生成符合密码规则的随机密码（加密安全的随机数；规则见 utils/passwordPolicy.ts，与后端 10015 一致）
+  itemData.value.password = generatePolicyPassword();
+  passwordVisible.value = true;
 }
 
 
@@ -216,18 +213,19 @@ onMounted(async () => {
                       <div class="col-xl-12">
                         <label for="staff-password" class="form-label">{{t('common.fields.password')}}</label>
 
-                        <div class="input-group mb-3">
-                          <input type="text" class="form-control" id="staff-password" :placeholder="t('common.placeholders.password')"
-                            v-model="itemData.password">
-                          <button class="btn btn-primary" type="button" id="button-addon2" @click="generatePassword()">{{t('button.generate')}}</button>
-                        </div>
+                        <SecretInput class="mb-3" id="staff-password" v-model="itemData.password" v-model:visible="passwordVisible"
+                          :placeholder="t('common.placeholders.password')" autocomplete="new-password">
+                          <template #append>
+                            <button class="btn btn-primary" type="button" @click="generatePassword()">{{t('button.generate')}}</button>
+                          </template>
+                        </SecretInput>
                         <div v-if="errors.password" class="invalid-feedback d-block">{{ errors.password }}</div>
                       </div>
                       <div class="col-xl-12">
                         <label for="staff-rolese" class="form-label">{{t('staff.fields.roles')}} <abbr title="required" aria-hidden="true"
                             class="text-danger">*</abbr></label>
                         <VueMultiselect id="staff-roles" :show-labels="false" :options="selectOptions.roles"
-                          :multiple="true" v-model="itemData.roles">
+                          :custom-label="roleLabel" :multiple="true" v-model="itemData.roles">
                         </VueMultiselect>
                         <div v-if="errors.roles" class="invalid-feedback d-block">{{ errors.roles
                           }}</div>

@@ -12,6 +12,8 @@ const itemData = ref<any>(null);
 const currentItem = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+// 商品分类、库位类型存代码，显示译名
+const { categoryLabel, locationTypeLabel } = useOptionLabel();
 const { bizErrorMessage } = useBizError();
 // 批次提交的幂等键与提交锁
 const batchKey = useBatchSubmitKey();
@@ -266,7 +268,7 @@ const isLoading = ref(false);
 const selectedLocation = ref<any>(null);
 const locationSelectedOptions = ref<any[]>([]);
 const nameWithQuantity = (({ location,quantity }: any) => {
-  return `[${location.location_type}] ${location.code} (${quantity})`
+  return `[${locationTypeLabel(location.location_type)}] ${location.code} (${quantity})`
 })
 const fetchLocationData = async (goods_id: number, targetRef: Ref<any[]>) => {
   if (!goods_id) return;
@@ -276,8 +278,9 @@ const fetchLocationData = async (goods_id: number, targetRef: Ref<any[]>) => {
     method: 'GET',
     params: {warehouse_id:itemData.value.dn?.warehouse_id, all: true, goods_id: goods_id },
     onSuccess: (data) => {
+      // 只能从标准库位拣货：破损 / 退货库位的货后端会拒（400 16162），这里不列出
       targetRef.value = (data.items ?? []).filter(
-        (item: any) => Number(item.quantity) > 0,
+        (item: any) => Number(item.quantity) > 0 && (item.location?.location_type ?? 'standard') === 'standard',
       );
     },
     onError: (error) => showToast(error.message, 'error'),
@@ -447,7 +450,7 @@ onMounted(async() => {
                             </p>
                             <p class="mb-0 fs-11 text-muted">{{ item?.goods?.code }}</p>
                             <p class="mb-0 fs-11 text-muted">{{ item?.goods?.brand }}</p>
-                            <p class="mb-0 fs-11 text-muted">{{ item?.goods?.category }}</p>
+                            <p class="mb-0 fs-11 text-muted">{{ categoryLabel(item?.goods?.category) }}</p>
                           </div>
                         </div>
                       </td>

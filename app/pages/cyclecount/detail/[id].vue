@@ -11,6 +11,8 @@ const taskId = route.params.id;
 const itemData = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+// 商品分类存英文原值，显示译名
+const { categoryLabel } = useOptionLabel();
 const { bizErrorMessage } = useBizError();
 const router = useRouter();
 // 防重复提交：保存明细 / 生成调整单进行中
@@ -25,19 +27,32 @@ const dataToPass = computed(() => ({
 }));
 
 
-const totalNewCyclecount = computed<number>(() => {
-  return (itemData.value?.task_details ?? []) // 空值防御链[1,4](@ref)
-    .reduce((sum: number, item: any) => {
-      return sum + (Number(item.new_cyclecount_quantity) || 0) // 安全数值转换[3](@ref)
-    }, 0)
-})
+/**
+ * 实盘录入（后端 cyclecount/services.py batch_save_task_details）：提交的 actual_quantity 就是该行的实盘数（绝对值，
+ * 不是在已存的数上累加），后端按录入那一刻的库位库存重取系统数、算差异。录入框里填的也是实盘数：盘错了直接改。
+ * 「已录入」= 明细已完成或有录入人（operator_id），与后端 is_recorded 一致。
+ */
+const isRecorded = (item: any) => item?.status === 'completed' || (item?.operator_id !== null && item?.operator_id !== undefined);
+/** 本次录入框里有值 */
+const hasInput = (item: any) => item?.new_cyclecount_quantity !== undefined && item?.new_cyclecount_quantity !== null
+  && String(item.new_cyclecount_quantity).trim() !== '';
+/** 该行当前的实盘数：本次录入的值优先，否则已保存的实盘数 */
+const effectiveActual = (item: any): number =>
+  hasInput(item) ? (Number(item.new_cyclecount_quantity) || 0) : (Number(item?.actual_quantity) || 0);
+/** 该行是否计入差异：已录入或本次录入了 */
+const counted = (item: any) => isRecorded(item) || hasInput(item);
+/** 该行差异（实盘 − 系统）；还没录入的行 null */
+const rowDifference = (item: any): number | null =>
+  counted(item) ? effectiveActual(item) - (Number(item?.system_quantity) || 0) : null;
 
-const totalOldCyclecount = computed<number>(() => {
-  return (itemData.value?.task_details ?? []) // 空值防御链[1,4](@ref)
-    .reduce((sum: number, item: any) => {
-      return sum + (Number(item.old_cyclecount_quantity) || 0) // 安全数值转换[3](@ref)
-    }, 0)
-})
+/** 进行中的实际总数：每行当前的实盘数 */
+const totalActualInProgress = computed<number>(() =>
+  (itemData.value?.task_details ?? []).reduce((sum: number, item: any) => sum + effectiveActual(item), 0)
+)
+/** 进行中的差异合计：只算已录入 / 本次录入的行（未录入的行还没有差异） */
+const totalDifferenceInProgress = computed<number>(() =>
+  (itemData.value?.task_details ?? []).reduce((sum: number, item: any) => sum + (rowDifference(item) ?? 0), 0)
+)
 
 
 
@@ -69,8 +84,9 @@ const isTouched = (item: any) => !!item?.touched && item?.status !== 'completed'
 /** 完成盘点被拒（16114）时还没录入的明细 id：对应行标红 */
 const unrecordedIds = ref<number[]>([]);
 
+// 点「录入」：录入框带出已保存的实盘数（还没录入过的留空），在此基础上改成实盘数
 const addCycleCountQTY = (item:any) => {
-    item.new_cyclecount_quantity = 0;
+    item.new_cyclecount_quantity = isRecorded(item) ? (Number(item.actual_quantity) || 0) : '';
     item.touched = true;
 };
 const markTouched = (item: any) => {
@@ -88,16 +104,17 @@ const saveTask = async () => {
   if (saving.value) return;
   // 只提交本次录入过且未完成的行（含增量 0：盘到 0 件也要提交），没动过的行不提交：
   // 先过滤再映射（映射后的对象没有录入标记）；整单提交会按打开页面时的旧值覆盖别人刚录的结果；已完成的行后端也会拒绝
-  const details = (itemData.value?.task_details ?? [])
-    .filter((item: any) => isTouched(item))
-    .map((item: any) => {
-      const newQuantity = Number(item?.new_cyclecount_quantity) || 0;
-      const actualQuantity = newQuantity + (Number(item.actual_quantity) || 0);
-      return {
-        id: item.id,
-        actual_quantity: actualQuantity,
-      };
-    });
+  const touchedItems = (itemData.value?.task_details ?? []).filter((item: any) => isTouched(item));
+  // 打开了录入框却没填数：不提交（盘到 0 件要明确填 0）
+  if (touchedItems.some((item: any) => !hasInput(item))) {
+    showToast(t('cyclecount.validation.no-quantity'), 'error');
+    return;
+  }
+  // 提交的是实盘数（绝对值），不是增量
+  const details = touchedItems.map((item: any) => ({
+    id: item.id,
+    actual_quantity: Math.max(0, Math.floor(Number(item.new_cyclecount_quantity) || 0)),
+  }));
 
   // 组合请求参数（保持原逻辑不变）
   const payload = {
@@ -200,10 +217,9 @@ const hasUnsavedChanges = computed(() => {
   return itemData.value?.task_details?.some((item: any) => isTouched(item)) ?? false
 })
 
-const allItemsCompleted = computed(() => {
-  return itemData.value?.task_details?.every((item: any) => {
-    return item.status === 'completed'
-  }) ?? false
+// 完成盘点的条件与后端一致（complete_task：每条明细都已录入即可，不要求每行都点「完成」；否则 409 16114）
+const allItemsRecorded = computed(() => {
+  return itemData.value?.task_details?.every((item: any) => isRecorded(item)) ?? false
 })
 
 function completeFn() {
@@ -304,7 +320,7 @@ onMounted(async() => {
           <div class="card custom-card">
             <div class="card-header">
               <div class="card-title">
-                <span class="text-primary">#C-{{ itemData?.id }}</span>
+                <span class="text-primary">#CC-{{ itemData?.id }}</span>
                 <span class="badge bg-primary ms-2">{{ t('common.status.' + itemData?.status.replace('_',"-"))}}</span>
               </div>
             </div>
@@ -338,7 +354,7 @@ onMounted(async() => {
 
               </div>
               <div class="col-xl-6 text-end">
-                <Barcode :value="`C-${taskId}`" />
+                <Barcode :value="`CC-${taskId}`" />
               </div>
             </div>
 
@@ -399,7 +415,7 @@ onMounted(async() => {
                             </p>
                             <p class="mb-0 fs-11 text-muted">{{ item?.goods?.code }}</p>
                             <p class="mb-0 fs-11 text-muted">{{ item?.goods?.brand }}</p>
-                            <p class="mb-0 fs-11 text-muted">{{ item?.goods?.category }}</p>
+                            <p class="mb-0 fs-11 text-muted">{{ categoryLabel(item?.goods?.category) }}</p>
                           </div>
                         </div>
                       </td>
@@ -410,23 +426,25 @@ onMounted(async() => {
                       </td>
                       <td>{{ item.system_quantity}}
                         <template v-if="itemData.status !== 'pending'">
-                          <span class="text-danger ms-2"
-                            v-if="item.system_quantity!=item.actual_quantity+(item.new_cyclecount_quantity ?? 0) + (item.old_cyclecount_quantity??0)">({{
-                            item.actual_quantity-item.system_quantity+(item.new_cyclecount_quantity ?? 0) +
-                            (item.old_cyclecount_quantity??0) }})</span>
+                          <span class="text-danger ms-2" v-if="rowDifference(item) !== null && rowDifference(item) !== 0">({{
+                            rowDifference(item)! > 0 ? '+' : '' }}{{ rowDifference(item) }})</span>
                         </template>
                       </td>
 
                       <td>
                         <span v-if="itemData.status != 'in_progress'">{{ item.actual_quantity }}</span>
-                        <span class="mb-2" v-if="itemData.status == 'in_progress'">{{t('common.status.processed')}}:{{ item.actual_quantity}}</span>
-                        <NuxtLink class="ms-2 btn btn-secondary btn-wave btn-sm" @click="addCycleCountQTY(item)"
-                          v-show="item.new_cyclecount_quantity==undefined" v-if="itemData.status == 'in_progress' && item.status == 'pending'">
-                          <i class="ri-add-line"></i>
+                        <span class="mb-2" v-if="itemData.status == 'in_progress'">
+                          <template v-if="isRecorded(item)">{{ t('cyclecount.fields.recorded') }}: {{ item.actual_quantity }}</template>
+                          <span class="text-muted" v-else>{{ t('cyclecount.fields.not-recorded') }}</span>
+                        </span>
+                        <NuxtLink class="ms-2 btn btn-secondary btn-wave btn-sm" @click="addCycleCountQTY(item)" :title="t('cyclecount.operations.record')"
+                          v-show="item.new_cyclecount_quantity === undefined" v-if="itemData.status == 'in_progress' && item.status == 'pending'">
+                          <i class="ri-edit-line"></i>
                         </NuxtLink>
-                        <input v-maska:[] type="number" class="form-control number-format" id="product-length"
-                          data-maska="0" data-maska-tokens="0:\d:multiple|9:\d:optional"
-                          v-model="item.new_cyclecount_quantity" v-show="item.new_cyclecount_quantity>=0" @input="markTouched(item)"
+                        <!-- 录入实盘数（绝对值）：盘错了可以改大改小 -->
+                        <input v-maska:[] type="number" min="0" class="form-control number-format" :id="`cyclecount-actual-${item.id}`"
+                          data-maska="0" data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('cyclecount.form.placeholders.actual')"
+                          v-model="item.new_cyclecount_quantity" v-show="item.new_cyclecount_quantity !== undefined" @input="markTouched(item)"
                           v-if="itemData.status == 'in_progress'">
                       </td>
                       <td v-if="itemData.status == 'in_progress'">
@@ -449,8 +467,7 @@ onMounted(async() => {
                         <div class="fw-semibold">{{t('common.quantities.total-actual')}} :</div>
                       </td>
                       <td>
-                        <span v-if="itemData.status == 'in_progress'">{{
-                          itemData?.total_actual_quantity+totalOldCyclecount+totalNewCyclecount }}</span>
+                        <span v-if="itemData.status == 'in_progress'">{{ totalActualInProgress }}</span>
                         <span v-else>{{ itemData?.total_actual_quantity }}</span>
                       </td>
                     </tr>
@@ -460,7 +477,7 @@ onMounted(async() => {
                         <div class="fw-semibold">{{t('common.quantities.total-difference')}} :</div>
                       </td>
                       <td>
-                        <span v-if="itemData.status == 'in_progress'">{{ totalOldCyclecount+totalNewCyclecount }}</span>
+                        <span v-if="itemData.status == 'in_progress'">{{ totalDifferenceInProgress }}</span>
                         <span v-else>{{ itemData?.total_difference }}</span>
                       </td>
                     </tr>
@@ -485,7 +502,7 @@ onMounted(async() => {
                   <i v-else class="ri-draft-line me-1 align-middle"></i>{{t('button.save')}}</button>
 
                 <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.complete')"
-                  @click="completeFn()" :disabled="hasUnsavedChanges || !allItemsCompleted"><i class="ri-save-line me-1 align-middle"></i>{{t('button.complete')}}
+                  @click="completeFn()" :disabled="hasUnsavedChanges || !allItemsRecorded"><i class="ri-save-line me-1 align-middle"></i>{{t('button.complete')}}
                 </button>
                 <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='completed' && validDetails.length > 0 && !adjustmentCreated" :title="t('adjustment.operations.add')"
                     @click="carete_adjustmentFn()" :disabled="creatingAdjustment">

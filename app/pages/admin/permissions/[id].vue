@@ -6,6 +6,8 @@ definePageMeta({
 });
 
 const { t } = useI18n();
+// 保存失败按业务码显示三语文案（如内置权限改代码 11011）
+const { bizErrorMessage } = useBizError();
 const router = useRouter();
 const route = useRoute();
 const itemId = route.params.id;
@@ -22,6 +24,8 @@ let itemData = ref({
   name: '',
   description: '',
 });
+// 内置权限：权限代码只读（描述可以改）；后端还没有 is_builtin 时按 false
+const isBuiltin = ref(false);
 
 let errors = ref<Record<string, string>>({});
 
@@ -34,6 +38,7 @@ const fetchData = async () => {
         name: data.name || '',
         description: data.description || '',
       };
+      isBuiltin.value = data.is_builtin === true;
     },
     onError: (error) => {
       showToast(error.message, 'error');
@@ -63,7 +68,7 @@ const submitForm = async () => {
       router.push('/admin/permissions/');
     },
     onError: (error) => {
-      showToast(error.message, 'error');
+      showToast(bizErrorMessage(error), 'error');
     },
     onFinally: () => {
       saving.value = false;
@@ -100,9 +105,13 @@ onMounted(() => {
             <div class="row gy-3">
               <!-- Name -->
               <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.name') }} <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" v-model="itemData.name" :class="{'is-invalid': errors.name}" :placeholder="t('admin.permissions.placeholders.name')">
+                <label class="form-label">{{ t('common.fields.name') }} <span class="text-danger">*</span>
+                  <span class="badge bg-secondary-transparent ms-1" v-if="isBuiltin">{{ t('admin.builtin.label') }}</span>
+                </label>
+                <input type="text" class="form-control" v-model="itemData.name" :class="{'is-invalid': errors.name}" :placeholder="t('admin.permissions.placeholders.name')"
+                  :readonly="isBuiltin">
                 <div class="invalid-feedback">{{ errors.name }}</div>
+                <div class="form-text" v-if="isBuiltin">{{ t('admin.builtin.permission-tip') }}</div>
               </div>
               <!-- Description -->
               <div class="col-xl-6">

@@ -453,8 +453,8 @@ onMounted(async() => {
                                     </td>
                                     <td class="d-none d-lg-table-cell">{{ dn?.recipient?.name }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('dn.type.'+dn?.dn_type) }}</td>
-                                    <td class="d-none d-xl-table-cell">{{ $n(dn?.detail_count) }} SKUs<br>{{
-                                        $n(dn?.total_quantity) }} PCS</td>
+                                    <td class="d-none d-xl-table-cell">{{ t('common.units.sku-count', { n: $n(dn?.detail_count ?? 0) }, Number(dn?.detail_count) || 0) }}<br>{{
+                                        t('common.units.pcs-count', { n: $n(dn?.total_quantity ?? 0) }, Number(dn?.total_quantity) || 0) }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+dn?.status.replace('_',"-")) }}</td>
                                     <td><ShippingStageBadge :stage="dn?.shipping_stage" /></td>
                                     <td class="d-none d-lg-table-cell">

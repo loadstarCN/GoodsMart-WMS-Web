@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import { languages } from '~/data/headerData.js'
+import type { HttpRequestError } from '~/utils/http'
 
 definePageMeta({
   layout: 'custom',
 });
 
 const { t, setLocale: setI18nLocale } = useI18n();
+const { bizErrorMessage } = useBizError();
 const router = useRouter();
 const cookieLang = useCookie('i18n_lang', { maxAge: 2592000 });
 const currentLang = ref(cookieLang.value || 'en');
@@ -37,13 +39,20 @@ const startCountdown = () => {
   }, 1000);
 };
 
+/**
+ * 发送验证码失败的提示：后端对存在 / 不存在的邮箱都返回 200（防账号枚举），所以出错就是真的失败——
+ * 限流（429：每分钟 5 次 / 每小时 30 次）、邮箱为空、网络错误等，按错误显示，不进入下一步
+ */
+const sendCodeErrorMessage = (error: HttpRequestError) =>
+  error.status === 429 ? t('forgot-password.rate-limited') : bizErrorMessage(error);
+
 const sendCode = async () => {
   if (!email.value.trim()) {
     showToast(t('forgot-password.email-required'), 'error');
     return;
   }
   loading.value = true;
-  // 无论邮箱是否存在都只显示通用文案，避免账号枚举
+  // 成功时无论邮箱是否存在都只显示通用文案，避免账号枚举
   await httpRequest('/api/system/user/forgot-password', {
     method: 'POST',
     body: { email: email.value.trim() },
@@ -52,10 +61,8 @@ const sendCode = async () => {
       step.value = 2;
       startCountdown();
     },
-    onError: () => {
-      showToast(t('forgot-password.code-sent-generic'), 'success');
-      step.value = 2;
-      startCountdown();
+    onError: (error) => {
+      showToast(sendCodeErrorMessage(error), 'error');
     },
     onFinally: () => {
       loading.value = false;
@@ -73,9 +80,8 @@ const resendCode = async () => {
       showToast(t('forgot-password.code-sent-generic'), 'success');
       startCountdown();
     },
-    onError: () => {
-      showToast(t('forgot-password.code-sent-generic'), 'success');
-      startCountdown();
+    onError: (error) => {
+      showToast(sendCodeErrorMessage(error), 'error');
     },
     onFinally: () => {
       loading.value = false;
@@ -90,6 +96,11 @@ const resetPassword = async () => {
   }
   if (!newPassword.value) {
     showToast(t('forgot-password.password-required'), 'error');
+    return;
+  }
+  // 与修改密码页、后端（10015）同一套密码规则
+  if (!isValidPassword(newPassword.value)) {
+    showToast(t('common.validation.password-policy', passwordPolicyParams()), 'error');
     return;
   }
   if (newPassword.value !== confirmPassword.value) {
@@ -109,7 +120,8 @@ const resetPassword = async () => {
       router.push('/auth/login');
     },
     onError: (error) => {
-      showToast(error.message, 'error');
+      // 验证码错误 / 过期、密码不合规（10015）、限流等：有三语文案的业务码用文案，否则后端原文
+      showToast(error.status === 429 ? t('forgot-password.rate-limited') : bizErrorMessage(error), 'error');
     },
     onFinally: () => {
       loading.value = false;
@@ -191,6 +203,7 @@ onUnmounted(() => {
               <div class="mb-3">
                 <label class="form-label text-default">{{ t('forgot-password.new-password') }}</label>
                 <passwordInput v-model="newPassword" id="new-password" autocomplete="new-password" :placeholder="t('forgot-password.new-password-placeholder')" required />
+                <small class="text-muted">{{ t('common.validation.password-policy', passwordPolicyParams()) }}</small>
               </div>
               <div class="mb-3">
                 <label class="form-label text-default">{{ t('forgot-password.confirm-password') }}</label>

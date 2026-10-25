@@ -245,6 +245,9 @@ export const cleanShipTo = (address: Record<string, any> | null | undefined): St
   return Object.keys(result).length ? (result as StructuredAddress) : null
 }
 
+/** 14019 里属于结构化地址的 field（仓库新建 / 编辑页用；其余如出口资料的字段用业务码的文案） */
+export const ADDRESS_ERROR_FIELD = /^(postal_code|zip_code|admin_area|locality|address_line1|address_line2|latin(\..+)?)$/
+
 /**
  * 结构化地址字段的名称（后端 400 14019 / 14020 的 field，如 ship_to.address_line1、latin.name、postal_code）。
  * t / te 由调用方传入（useI18n）；认不出的字段原样返回。

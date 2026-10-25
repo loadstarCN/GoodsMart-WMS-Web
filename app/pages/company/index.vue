@@ -63,7 +63,10 @@ const selectOptions = reactive({
 
 
 // ------------------ 提交保存 ----------------------
+// 防重复提交：请求期间禁用按钮
+const submitting = ref(false)
 const saveCompany = async () => {
+  if (submitting.value) return
   errors.value = {
     name: !itemData.value.name ? t("common.validation.name-required", { entity: t('company.entity') }) : null,
     email: (() => {
@@ -84,6 +87,7 @@ const saveCompany = async () => {
     return
   }
 
+  submitting.value = true
   await httpRequest(`/api/warehouse/company/${companyId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -96,6 +100,9 @@ const saveCompany = async () => {
     onError: (error) => {
       // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案
       showToast(bizErrorMessage(error), 'error')
+    },
+    onFinally: () => {
+      submitting.value = false
     }
   })
 }
@@ -158,39 +165,39 @@ onMounted(async() => {
                   <div class="card-body p-0">
                     <div class="row gy-3 mb-3">
                       <div class="col-xl-12">
-                        <label for="carrier-name" class="form-label">{{ t('company.fields.name')}} <abbr title="required" aria-hidden="true"
+                        <label for="company-name" class="form-label">{{ t('company.fields.name')}} <abbr title="required" aria-hidden="true"
                             class="text-danger">*</abbr></label>
-                        <input type="text" class="form-control" id="carrier-name" :placeholder="t('common.placeholders.name')"
+                        <input type="text" class="form-control" id="company-name" :placeholder="t('common.placeholders.name')"
                           v-model="itemData.name">
-                        <label for="carrier-name" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{t('common.tips.name')}}</label>
+                        <label for="company-name" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{t('common.tips.name')}}</label>
                         <div v-if="errors.name" class="invalid-feedback d-block">{{ errors.name }}</div>
                       </div>
 
                       <div class="col-xl-12">
-                        <label for="carrier-address" class="form-label">{{ t('company.fields.address')}}</label>
-                        <input type="text" class="form-control" id="carrier-address" :placeholder="t('common.placeholders.address')"
+                        <label for="company-address" class="form-label">{{ t('company.fields.address')}}</label>
+                        <input type="text" class="form-control" id="company-address" :placeholder="t('common.placeholders.address')"
                           v-model="itemData.address">
                       </div>
                       <div class="col-xl-6">
-                        <label for="carrier-zip_code" class="form-label">{{ t('common.fields.zip')}}</label>
-                        <input type="text" class="form-control" id="carrier-zip_code" :placeholder="t('common.placeholders.zip')"
+                        <label for="company-zip-code" class="form-label">{{ t('common.fields.zip')}}</label>
+                        <input type="text" class="form-control" id="company-zip-code" :placeholder="t('common.placeholders.zip')"
                           v-model="itemData.zip_code">
                       </div>
                       <div class="col-xl-6">
-                        <label for="carrier-phone" class="form-label">{{ t('common.fields.phone')}}</label>
-                        <input type="text" class="form-control" id="carrier-phone" :placeholder="t('common.placeholders.phone')"
+                        <label for="company-phone" class="form-label">{{ t('common.fields.phone')}}</label>
+                        <input type="text" class="form-control" id="company-phone" :placeholder="t('common.placeholders.phone')"
                           v-model="itemData.phone">
                       </div>
                       <div class="col-xl-6">
-                        <label for="carrier-email" class="form-label">{{ t('common.fields.email')}}</label>
-                        <input type="email" class="form-control" id="carrier-email" :placeholder="t('common.placeholders.email')"
+                        <label for="company-email" class="form-label">{{ t('common.fields.email')}}</label>
+                        <input type="email" class="form-control" id="company-email" :placeholder="t('common.placeholders.email')"
                           v-model="itemData.email">
                           <div v-if="errors.email" class="invalid-feedback d-block">{{ errors.email }}</div>
                       </div>
                       
                       <div class="col-xl-6">
-                        <label for="product-currency" class="form-label">{{ t('common.fields.currency')}}</label>
-                        <VueMultiselect id="product-currency" :show-labels="false" :options="selectOptions.currencies"
+                        <label for="company-currency" class="form-label">{{ t('common.fields.currency')}}</label>
+                        <VueMultiselect id="company-currency" :show-labels="false" :options="selectOptions.currencies"
                           :multiple="false" v-model="itemData.default_currency">
                         </VueMultiselect>
                       </div>
@@ -273,8 +280,10 @@ onMounted(async() => {
             </div>
           </div>
           <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
-            <button class="btn btn-primary-light m-1" @click="saveCompany">{{ t('company.operations.edit')}}<i
-                class="ri-add-line ms-2"></i></button>
+            <button class="btn btn-primary-light m-1" :disabled="submitting" @click="saveCompany">
+              <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="ri-save-line me-1"></i>{{ t('button.save') }}
+            </button>
           </div>
         </div>
       </div>

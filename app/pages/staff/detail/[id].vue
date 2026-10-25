@@ -12,6 +12,8 @@ const itemData = ref<any>(null);
 
 // 获取国际化方法
 const { t } = useI18n();
+// 角色存代码（company_admin 等），显示译名
+const { roleLabel } = useOptionLabel();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -75,7 +77,7 @@ onMounted(async() => {
 
                     <div class="mb-4" v-if="itemData?.roles">
                       <p class="fs-15 fw-semibold mb-1">{{t('staff.fields.roles')}} :</p>
-                      <p class="text-muted mb-0"><span class="badge rounded-pill bg-info fs-10 fw-normal ms-2" v-for="role in itemData?.roles">{{ role }}</span></p>
+                      <p class="text-muted mb-0"><span class="badge rounded-pill bg-info fs-10 fw-normal ms-2" v-for="role in itemData?.roles" :key="role" :title="role">{{ roleLabel(role) }}</span></p>
                     </div>
 
                     <div class="mb-4" v-if="itemData?.email">

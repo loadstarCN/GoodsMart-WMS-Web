@@ -4,6 +4,8 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n()
+// 导入失败按后端业务码显示三语文案（带行号等 details 时显示到具体行）；没有对应文案时显示后端 message
+const { bizErrorMessage } = useBizError()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -79,10 +81,11 @@ const triggerUpload = async () => {
     body: formData,
     onSuccess: async (data) => {
       is_end.value = true;
-      result.value = data?.message;
+      const processed = processedCount(data);
+      result.value = processed !== null ? t('goods.import.processed', { count: processed }) : (data?.message || '');
     },
-    onError: (error) => {        
-      showToast(error?.message, 'error');
+    onError: (error) => {
+      showToast(bizErrorMessage(error), 'error');
     },
     onFinally: () => {
       uploading.value = false;
@@ -91,8 +94,20 @@ const triggerUpload = async () => {
   })
 }
 
+/**
+ * 导入成功处理了几条：后端给 processed 时用它；否则从英文 message（Bulk upload successful. Processed N goods.）里取；
+ * 都没有时 null（原样显示 message）
+ */
+const processedCount = (data: any): number | null => {
+  if (data?.processed !== undefined && data?.processed !== null && Number.isFinite(Number(data.processed))) {
+    return Number(data.processed);
+  }
+  const match = /Processed (\d+) goods/i.exec(String(data?.message || ''));
+  return match ? Number(match[1]) : null;
+}
+
 const resetToUpload = () => {
-  result.value = {};
+  result.value = '';
   is_end.value = false;
 }
 
@@ -171,11 +186,11 @@ const resetToUpload = () => {
                         <path
                             d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                     </svg>
-                    <h5>Congratulations</h5>
+                    <h5>{{ t('goods.import.success-title') }}</h5>
                     <p class="">{{result}}</p>
                     <div class="">
-                        <button class="btn btn-sm btn-primary m-1" @click="resetToUpload">Upload new files</button>
-                        <NuxtLink class="btn btn-sm btn-info m-1" :to="`/goods/`">Close</NuxtLink>
+                        <button class="btn btn-sm btn-primary m-1" @click="resetToUpload">{{ t('goods.import.upload-another') }}</button>
+                        <NuxtLink class="btn btn-sm btn-info m-1" :to="`/goods/`">{{ t('goods.import.back-to-list') }}</NuxtLink>
                     </div>
                 </div>
               </template>

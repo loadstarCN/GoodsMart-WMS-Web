@@ -93,7 +93,9 @@ export const useAuthStore = defineStore('auth', {
 
     // 用户登出函数：先清本地会话，再尽力通知后端吊销令牌（失败忽略）
     async logUserOut() {
+      // 清 cookie 前先取出两枚令牌：通知后端时一并吊销（后端 /user/logout 请求体可带 refresh_token）
       const accessToken = useCookie('token').value;
+      const refreshToken = useCookie('refresh_token').value;
 
       // 清理所有认证相关 Cookie
       const cookiesToClear = [
@@ -118,11 +120,14 @@ export const useAuthStore = defineStore('auth', {
       this.authenticated = false;
       this.userInfo = null;
 
-      if (accessToken) {
+      // 后端 logout 不校验令牌类型：没有 access token 时用 refresh token 本身认证（同样会被吊销）
+      const bearer = accessToken || refreshToken;
+      if (bearer) {
         try {
           await $fetch('/api/system/user/logout', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + accessToken },
+            headers: { 'Authorization': 'Bearer ' + bearer },
+            body: accessToken && refreshToken ? { refresh_token: refreshToken } : {},
           });
         } catch {
           // 令牌可能已过期或已吊销，忽略

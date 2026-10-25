@@ -6,6 +6,10 @@ definePageMeta({
 });
 
 const { t } = useI18n();
+// 角色名是代码（company_admin 等）：显示译名，代码放在旁边
+const { roleLabel } = useOptionLabel();
+// 删除失败按业务码显示三语文案（如内置角色 11012、仍有用户使用 44002）
+const { bizErrorMessage } = useBizError();
 
 const dataToPass = computed(() => ({
   current: t('admin.nav.roles'),
@@ -64,7 +68,7 @@ const deleteItem = async (item_id: Number) => {
                 await fetchData();
             },
             onError: (error) => {
-                showToast(error.message, 'error')
+                showToast(bizErrorMessage(error), 'error')
             }
         })
     }
@@ -113,7 +117,12 @@ const deleteItem = async (item_id: Number) => {
                             <tbody>
                                 <tr v-for="role in pageData?.items" :key="role?.id" class="invoice-list">
                                     <td class="d-none d-md-table-cell">{{ role?.id }}</td>
-                                    <td>{{ role?.name }}</td>
+                                    <td>
+                                      {{ roleLabel(role?.name) }}
+                                      <code class="fs-11 ms-1 text-muted" v-if="roleLabel(role?.name) !== role?.name">{{ role?.name }}</code>
+                                      <!-- 内置角色（代码里按名字判断；后端 is_builtin，缺失按 false）：不能改名、停用、删除 -->
+                                      <span class="badge bg-secondary-transparent ms-1" v-if="role?.is_builtin" :title="t('admin.builtin.role-tip')">{{ t('admin.builtin.label') }}</span>
+                                    </td>
                                     <td class="d-none d-lg-table-cell">{{ role?.description || '-' }}</td>
                                     <td class="d-none d-xxl-table-cell">
                                       <span v-for="perm in role?.permissions?.slice(0, 5)" :key="perm" class="badge bg-light text-default me-1 mb-1">{{ perm }}</span>
@@ -124,7 +133,11 @@ const deleteItem = async (item_id: Number) => {
                                     <td>
                                         <div class="hstack gap-2 fs-15">
                                             <NuxtLink :to="`/admin/roles/${role.id}`" class="btn btn-icon btn-sm btn-info-light product-btn"><i class="ri-edit-line"></i></NuxtLink>
-                                            <NuxtLink href="javascript:void(0);" @click="deleteItem(role.id)" class="btn btn-icon btn-sm btn-danger-light product-btn"><i class="ri-delete-bin-line"></i></NuxtLink>
+                                            <!-- 禁用的按钮不触发 title，提示放在外层 -->
+                                            <span class="d-inline-block" :title="role?.is_builtin ? t('admin.builtin.role-delete-tip') : undefined">
+                                              <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" :disabled="!!role?.is_builtin"
+                                                :aria-label="t('button.delete')" @click="deleteItem(role.id)"><i class="ri-delete-bin-line"></i></button>
+                                            </span>
                                         </div>
                                     </td>
                                 </tr>

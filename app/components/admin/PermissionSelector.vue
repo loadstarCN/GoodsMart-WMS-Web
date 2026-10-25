@@ -13,84 +13,8 @@ const selected = computed({
   set: (val) => emit('update:modelValue', val),
 });
 
-// 模块分组定义
-const CATEGORIES = [
-  {
-    label: 'admin.permissions.categories.global',
-    modules: [
-      { label: 'admin.permissions.modules.global', perms: ['all_access', 'company_all_access'] },
-      { label: 'admin.permissions.modules.tasks', perms: ['tasks_execute'] },
-    ]
-  },
-  {
-    label: 'admin.permissions.categories.system',
-    modules: [
-      { label: 'admin.permissions.modules.user', prefix: 'user' },
-      { label: 'admin.permissions.modules.role', prefix: 'role' },
-      { label: 'admin.permissions.modules.permission', prefix: 'permission' },
-      { label: 'admin.permissions.modules.logs', prefix: 'logs', ops: ['read', 'create', 'edit', 'delete'] },
-      { label: 'admin.permissions.modules.limiter', prefix: 'limiter' },
-      { label: 'admin.permissions.modules.api-keys', prefix: 'api_keys' },
-    ]
-  },
-  {
-    label: 'admin.permissions.categories.master-data',
-    modules: [
-      { label: 'admin.permissions.modules.company', prefix: 'company' },
-      { label: 'admin.permissions.modules.staff', prefix: 'staff' },
-      { label: 'admin.permissions.modules.department', prefix: 'department' },
-      { label: 'admin.permissions.modules.warehouse', prefix: 'warehouse' },
-      { label: 'admin.permissions.modules.location', prefix: 'location' },
-      { label: 'admin.permissions.modules.supplier', prefix: 'supplier' },
-      { label: 'admin.permissions.modules.carrier', prefix: 'carrier' },
-      { label: 'admin.permissions.modules.recipient', prefix: 'recipient' },
-    ]
-  },
-  {
-    label: 'admin.permissions.categories.goods',
-    modules: [
-      { label: 'admin.permissions.modules.goods', prefix: 'goods', ops: ['read', 'edit', 'delete', 'add'] },
-      { label: 'admin.permissions.modules.inventory', prefix: 'inventory', ops: ['read'] },
-    ]
-  },
-  {
-    label: 'admin.permissions.categories.inbound',
-    modules: [
-      { label: 'admin.permissions.modules.asn', prefix: 'asn' },
-      { label: 'admin.permissions.modules.putaway', prefix: 'putaway', ops: ['read', 'edit'] },
-    ]
-  },
-  {
-    label: 'admin.permissions.categories.outbound',
-    modules: [
-      { label: 'admin.permissions.modules.dn', prefix: 'dn' },
-      { label: 'admin.permissions.modules.picking', prefix: 'picking' },
-      { label: 'admin.permissions.modules.sorting', prefix: 'sorting' },
-      { label: 'admin.permissions.modules.packing', prefix: 'packing' },
-      { label: 'admin.permissions.modules.delivery', prefix: 'delivery' },
-      { label: 'admin.permissions.modules.payment', prefix: 'payment' },
-    ]
-  },
-  {
-    label: 'admin.permissions.categories.inventory-ops',
-    modules: [
-      { label: 'admin.permissions.modules.adjustment', prefix: 'adjustment' },
-      { label: 'admin.permissions.modules.cycle-count', prefix: 'cycle_count' },
-      { label: 'admin.permissions.modules.transfer', prefix: 'transfer', ops: ['read', 'edit'] },
-      { label: 'admin.permissions.modules.removal', prefix: 'removal', ops: ['read', 'edit'] },
-    ]
-  },
-];
-
-// 标准操作映射
-const OP_LABELS = {
-  read: 'admin.permissions.ops.read',
-  edit: 'admin.permissions.ops.edit',
-  delete: 'admin.permissions.ops.delete',
-  add: 'admin.permissions.ops.add',
-  create: 'admin.permissions.ops.create',
-  execute: 'admin.permissions.ops.execute',
-};
+// 模块分组定义、操作文案：见 utils/permissionGroups.ts（与 API 密钥列表的权限列共用）
+const CATEGORIES = PERMISSION_CATEGORIES;
 
 // 查找权限对象 by name
 const permByName = computed(() => {
@@ -112,9 +36,10 @@ const groupedData = computed(() => {
           .filter(Boolean);
         return { label: mod.label, items, isSpecial: true };
       }
-      const ops = mod.ops || ['read', 'edit', 'delete'];
+      const ops = mod.ops || DEFAULT_PERMISSION_OPS;
       const items = ops.map(op => ({
         op,
+        opLabel: permissionOpLabelKey(mod, op),
         perm: permByName.value[`${mod.prefix}_${op}`] || null,
       }));
       return { label: mod.label, items, isSpecial: false };
@@ -215,7 +140,7 @@ const isCategoryAllSelected = (cat) => {
                           <template v-if="item.perm">
                             <input class="form-check-input" type="checkbox" :id="`perm-${item.perm.id}`"
                               :checked="selected.includes(item.perm.id)" @change="toggle(item.perm.id)">
-                            <label class="form-check-label" :for="`perm-${item.perm.id}`">{{ t(OP_LABELS[item.op]) }}</label>
+                            <label class="form-check-label" :for="`perm-${item.perm.id}`">{{ t(item.opLabel) }}</label>
                           </template>
                         </div>
                       </div>

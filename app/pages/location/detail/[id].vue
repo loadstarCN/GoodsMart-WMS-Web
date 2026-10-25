@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import {removalReasonsOptions}  from '~/data/selectOptions'
+import { pendingPutaway, putawayLimit, putawayQuantityError, type PendingPutaway } from '~/composables/inventory/putawayStock'
 
 // 定义页面元数据
 definePageMeta({
@@ -19,6 +20,8 @@ const tabData = ref<any>(null);
 const { t } = useI18n();
 // 上架 / 下架 / 移库失败按业务码显示三语文案（如移库时源库位没有该商品 16120）
 const { bizErrorMessage } = useBizError();
+// 库位类型 / 下架原因存代码，显示译名
+const { locationTypeLabel, removalReasonLabel } = useOptionLabel();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -77,7 +80,7 @@ const fetchGoodsData = async (code: string) => {
 
 
 const nameWithTypeAndWarehouse = (({ code,location_type,warehouse_name }: any) => {
-  return `[${warehouse_name} | ${t('common.locations.'+location_type)}] ${code}`
+  return `[${warehouse_name} | ${locationTypeLabel(location_type)}] ${code}`
 })
 
 
@@ -85,8 +88,47 @@ const nameWithCodeAndName = (({ code, name }: any) => {
   return `${code} | ${name}`
 })
 
+// ------------------ 上架：所选商品在本仓库的待上架（良品 / 破损） ----------------------
+// 本库位是标准 / 退货库位时只能上良品；读不到库存（没有库存查看权限等）时不提示、不预校验，以后端为准
+const putawayInventory = ref<any | null | undefined>(undefined);
+const putawayPending = computed<PendingPutaway | null>(() => {
+  if (putawayInventory.value === undefined) return null;
+  return pendingPutaway(putawayInventory.value) ?? { total: 0, good: 0, damaged: 0 };
+});
+const putawayMax = computed<number | null>(() =>
+  putawayPending.value ? putawayLimit(putawayPending.value, itemData.value?.location_type) : null
+);
+const loadPutawayInventory = async (goodsId: number | null | undefined) => {
+  putawayInventory.value = undefined;
+  const warehouseId = itemData.value?.warehouse_id;
+  if (!goodsId || !warehouseId) return;
+  await httpRequest(`/api/warehouse/inventory/goods/${goodsId}/warehouse/${warehouseId}`, {
+    method: 'GET',
+    headers: warehouseHeaders(warehouseId),
+    onSuccess: (data) => {
+      // 选的商品在等待期间换了：丢弃旧结果
+      if (selectedGoods.value?.id === goodsId) putawayInventory.value = data || null;
+    },
+    onError: (error) => {
+      // 本仓库还没有该商品的库存记录 = 没有待上架
+      if (selectedGoods.value?.id === goodsId) putawayInventory.value = error.status === 404 ? null : undefined;
+    },
+  });
+};
+// 上架弹窗打开期间才按所选商品查库存（下架 / 移库弹窗也用 selectedGoods）
+const activePutaway = ref(false);
+watch(() => selectedGoods.value?.id, (goodsId) => {
+  if (activePutaway.value) loadPutawayInventory(goodsId);
+});
+
 const putawayFn = () => {
+  activePutaway.value = true;
   selectedGoods.value = null;
+  quantity.value = null;
+  remark.value = null;
+  errors.value.goods = null;
+  errors.value.quantity = null;
+  putawayInventory.value = undefined;
 }
 
 const createPutaway = async () => {
@@ -102,7 +144,14 @@ const createPutaway = async () => {
     errors.value.quantity = t('location.validation.quantity-required');
     return;
   }
+  // 预校验待上架数量（后端同样会拦：超出待上架 15007；标准 / 退货库位超出良品 15016）
+  const quantityError = putawayQuantityError(putawayPending.value, itemData.value?.location_type, Number(quantity.value));
+  if (quantityError) {
+    errors.value.quantity = bizErrorMessage(quantityError);
+    return;
+  }
   loading.value = true;
+  const goodsId = selectedGoods.value.id;
   const data = await httpRequest('/api/warehouse/putaway/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -112,9 +161,14 @@ const createPutaway = async () => {
         quantity.value = null;
         remark.value = null;
         showToast(t('action-results.success'), 'success')
-        await fetchTabData();      
+        await fetchTabData();
       },
       onError: (error) => {
+          // 15016 破损品不能上到标准 / 退货库位、15007 待上架不足：标在数量下，并刷新待上架
+          if (error.code === 15016 || error.code === 15007) {
+            errors.value.quantity = bizErrorMessage(error);
+            loadPutawayInventory(goodsId);
+          }
           showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
@@ -125,6 +179,7 @@ const createPutaway = async () => {
 };
 
 const removalFn = (item: any) => {
+  activePutaway.value = false;
   selectedGoods.value = item.goods;
   maxQuantity.value = item.quantity;
 }
@@ -172,6 +227,7 @@ const createRemoval = async () => {
 };
 
 const transferFn = (item: any) => {
+  activePutaway.value = false;
   selectedGoods.value = item.goods;
   maxQuantity.value = item.quantity;
 }
@@ -353,7 +409,7 @@ onMounted(async() => {
                 <div class="col-xl-8 mt-xxl-0 mt-3">
                   <div>
                     <p class="fs-18 fw-semibold mb-3">{{ itemData?.code}} <span
-                        class="badge rounded-pill bg-info fs-10 fw-normal ms-2">{{ itemData?.location_type }}</span></p>
+                        class="badge rounded-pill fs-10 fw-normal ms-2" :class="itemData?.location_type === 'damaged' ? 'bg-danger' : 'bg-info'">{{ locationTypeLabel(itemData?.location_type) }}</span></p>
 
                     <div class="mb-4" v-if="itemData?.description">
                       <p class="fs-15 fw-semibold mb-1">{{t('location.fields.description')}} :</p>
@@ -367,7 +423,7 @@ onMounted(async() => {
                         <div class="col-xl-6">
                           <ul class="mb-0">
                             <li class="text-muted mb-2" v-if="itemData?.location_type">
-                              {{t('location.fields.location-type')}}: {{ itemData.location_type }}
+                              {{t('location.fields.location-type')}}: {{ locationTypeLabel(itemData.location_type) }}
                             </li>
                             <li class="text-muted" v-if="itemData?.capacity">
                               {{t('location.fields.capacity')}}: {{ itemData.capacity }} m³
@@ -500,7 +556,7 @@ onMounted(async() => {
                   <tr v-if="activeTab === 'storage'">
                     <th scope="col">{{t('common.entities.goods')}}</th>
                     <th scope="col">{{t('common.fields.quantity')}}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">Type</th>
+                    <th scope="col" class="d-none d-lg-table-cell">{{ t('location.fields.location-type') }}</th>
                     <th scope="col" class="d-none d-md-table-cell">{{ t('common.dates.created') }}</th>
                     <th scope="col" class="d-none d-lg-table-cell">{{ t('common.dates.updated') }}</th>
                     <th scope="col">{{ t('common.fields.action') }}</th>
@@ -581,11 +637,11 @@ onMounted(async() => {
                     <td class="d-none d-xl-table-cell">{{ $dayjs(item?.updated_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                     <td>
                       <button class="btn btn-sm btn-warning btn-wave waves-light me-2" data-bs-toggle="modal"
-                        data-bs-target="#removalModal" @click="removalFn(item)" title="Removal">
+                        data-bs-target="#removalModal" @click="removalFn(item)" :title="t('common.inventory-ops.removal')">
                         <i class="ri-arrow-down-line"></i>
                       </button>
                       <button class="btn btn-sm btn-info btn-wave waves-light" data-bs-toggle="modal"
-                        data-bs-target="#transferModal" @click="transferFn(item)" title="Transfer">
+                        data-bs-target="#transferModal" @click="transferFn(item)" :title="t('common.inventory-ops.transfer')">
                         <i class="ri-arrow-right-line"></i>
                       </button>
                     </td>
@@ -636,7 +692,7 @@ onMounted(async() => {
                       </div>
                     </td>
                     <td>↓{{ item?.quantity }}</td>
-                    <td class="d-none d-xl-table-cell">{{ item?.reason }}</td>
+                    <td class="d-none d-xl-table-cell">{{ removalReasonLabel(item?.reason) }}</td>
                     <td class="d-none d-lg-table-cell">{{ item?.operator_name }}</td>
                     <td class="d-none d-md-table-cell">{{ $dayjs(item?.removal_time, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                     <td class="d-none d-xl-table-cell">{{ item?.remark }}</td>
@@ -662,7 +718,7 @@ onMounted(async() => {
                       </div>
                     </td>
                     <td>
-                      <NuxtLink :to="`/adjustment/${item?.adjustment_id}`" target="_blank">ADJ-{{ item?.adjustment_id }}
+                      <NuxtLink :to="`/adjustment/detail/${item?.adjustment_id}`" target="_blank">ADJ-{{ item?.adjustment_id }}
                       </NuxtLink>
                     </td>
                     <td>{{ item?.system_quantity }}</td>
@@ -769,6 +825,13 @@ onMounted(async() => {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
+          <div class="mb-3" v-if="itemData">
+            <label class="form-label">{{ t('putaway.target-location') }}</label>
+            <div>
+              {{ itemData.code }}
+              <span class="badge fs-10 fw-normal ms-1" :class="itemData.location_type === 'damaged' ? 'bg-danger' : 'bg-info'">{{ locationTypeLabel(itemData.location_type) }}</span>
+            </div>
+          </div>
           <div class="mb-3">
             <label class="form-label">{{ t('common.entities.goods')}} <abbr title="required" aria-hidden="true"
                 class="text-danger">*</abbr></label>
@@ -779,13 +842,18 @@ onMounted(async() => {
                 :options-limit="100" @search-change="fetchGoodsData" />
             </div>
             <div v-if="errors.goods" class="invalid-feedback d-block">{{ errors.goods }}</div>
+            <!-- 待上架：良品 N · 破损 M；本库位不是破损库位而有破损待上架时提示 -->
+            <PutawayPendingNotice v-if="selectedGoods && putawayPending" class="mt-2" :pending="putawayPending"
+              :location-type="itemData?.location_type" :warehouse-id="itemData?.warehouse_id" />
           </div>
           <div class="mb-3">
             <label class="form-label">{{ t('common.fields.quantity')}} <abbr title="required" aria-hidden="true"
                 class="text-danger">*</abbr></label>
             <div class="flex-nowrap input-group-custom">
-              <input type="number" class="form-control" v-model="quantity" :placeholder="t('common.placeholders.quantity')" />
+              <input type="number" class="form-control" v-model="quantity" :placeholder="t('common.placeholders.quantity')"
+                min="1" :max="putawayMax ?? undefined" />
               <div v-if="errors.quantity" class="invalid-feedback d-block">{{ errors.quantity }}</div>
+              <div v-else-if="selectedGoods && putawayMax !== null" class="form-text">{{ t('putaway.max', { max: putawayMax }) }}</div>
             </div>
           </div>
           <div class="mb-3">
@@ -832,7 +900,7 @@ onMounted(async() => {
             <label for="removal-reason" class="form-label">{{ t('common.fields.reason')}} <abbr title="required" aria-hidden="true"
                 class="text-danger">*</abbr></label>
             <VueMultiselect id="removal-reason" :show-labels="false" :options="removalReasonsOptions" :multiple="false"
-              v-model="reason">
+              :custom-label="removalReasonLabel" v-model="reason">
             </VueMultiselect>
             <div v-if="errors.reason" class="invalid-feedback d-block">{{ errors.reason }}</div>
           </div>

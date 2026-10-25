@@ -13,6 +13,8 @@ import { categoriesOptions, currenciesOptions, unitsOptions,tagsOptions } from '
 // 获取国际化方法
 const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
+// 分类 / 标签 / 计量单位存英文原值，下拉显示译名（手工加的标签原样）
+const { categoryLabel, tagLabel, unitOptionLabel } = useOptionLabel()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -146,7 +148,7 @@ const addProduct = async () => {
                       <div class="col-xl-6">
                         <label for="product-category" class="form-label">{{ t('goods.fields.category')}}</label>
                         <VueMultiselect id="product-category" :show-labels="false" :options="selectOptions.categories"
-                          :multiple="false" v-model="itemData.category">
+                          :custom-label="categoryLabel" :multiple="false" v-model="itemData.category">
                         </VueMultiselect>
                       </div>
 
@@ -166,7 +168,7 @@ const addProduct = async () => {
                         <VueMultiselect id="product-tags" :show-labels="false" v-model="itemData.tags"
                           :tag-placeholder="t('goods.form.placeholders.tag-add')"
                           :placeholder="t('goods.form.placeholders.tags')" :options="selectOptions.tagOptions"
-                          :multiple="true" :taggable="true" @tag="addTag">
+                          :custom-label="tagLabel" :multiple="true" :taggable="true" @tag="addTag">
                         </VueMultiselect>
                       </div>
 
@@ -206,7 +208,7 @@ const addProduct = async () => {
                         <label for="product-unit" class="form-label">{{ t('goods.fields.unit')}}</label>
 
                         <VueMultiselect id="product-unit" :show-labels="false" :options="selectOptions.units"
-                          :multiple="false" v-model="itemData.unit">
+                          :custom-label="unitOptionLabel" :multiple="false" v-model="itemData.unit">
                         </VueMultiselect>
                       </div>
                       <div class="col-xl-6">

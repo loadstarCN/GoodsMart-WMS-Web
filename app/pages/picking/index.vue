@@ -213,6 +213,7 @@ onMounted(async() => {
                                 <tr>
                                     <th scope="col" class="">{{ t('common.fields.id') }}</th>
                                     <th scope="col">DN</th>
+                                    <!-- 表头与单元格的显示断点一致（否则中等宽度时列错位） -->
                                     <th scope="col" class="d-none d-md-table-cell">{{t('common.fields.quantity')}}</th>
                                     <th scope="col" class="d-none d-md-table-cell">{{t('dn.fields.scheduled-date')}}</th>
                                     <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.status') }}</th>
@@ -228,7 +229,7 @@ onMounted(async() => {
                                     </td>
                                     <td class=""><NuxtLink :to="`/dn/detail/${item?.dn_id}`" class="text-default">DN-{{ item?.dn_id }}</NuxtLink>
                                     </td>
-                                    <td class="d-none d-xl-table-cell">{{ $n(item?.expected_quantity) }} PCS</td>
+                                    <td class="d-none d-md-table-cell">{{ t('common.units.pcs-count', { n: $n(item?.expected_quantity ?? 0) }, Number(item?.expected_quantity) || 0) }}</td>
                                     <td class="d-none d-md-table-cell">{{ item?.expected_shipping_date }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+item?.status.replace('_',"-")) }}</td>
 

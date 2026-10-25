@@ -6,6 +6,9 @@ definePageMeta({
 });
 
 const { t } = useI18n();
+// 角色存代码（company_admin 等），显示译名；自定义角色原样
+const { roleLabel } = useOptionLabel();
+const { bizErrorMessage } = useBizError();
 const router = useRouter();
 
 const dataToPass = computed(() => ({
@@ -85,6 +88,9 @@ const validate = () => {
     }
     if (!adminData.value.password) {
       errors.value.admin_password = t('common.validation.password-required');
+    } else if (!isValidPassword(adminData.value.password)) {
+      // 先在前端按后端的密码规则（10015）拦下：否则公司建好了、管理员却建不了
+      errors.value.admin_password = t('common.validation.password-policy', passwordPolicyParams());
     }
     if (!adminData.value.role) {
       errors.value.admin_role = t('common.validation.role-min-count');
@@ -125,7 +131,7 @@ const createAdminStaff = async (companyId: number): Promise<boolean> => {
       ok = true;
     },
     onError: (error) => {
-      showToast(t('admin.tenants.admin.create-failed', { message: error.message }), 'error');
+      showToast(t('admin.tenants.admin.create-failed', { message: bizErrorMessage(error) }), 'error');
     }
   });
   return ok;
@@ -242,7 +248,7 @@ onMounted(() => {
                   <label class="form-label">{{ t('staff.fields.roles') }}</label>
                   <select class="form-select" v-model="adminData.role" :class="{'is-invalid': errors.admin_role}">
                     <option value="">{{ t('common.select-placeholder') }}</option>
-                    <option v-for="role in roleOptions" :key="role" :value="role">{{ role }}</option>
+                    <option v-for="role in roleOptions" :key="role" :value="role">{{ roleLabel(role) }}</option>
                   </select>
                   <div class="invalid-feedback">{{ errors.admin_role }}</div>
                 </div>

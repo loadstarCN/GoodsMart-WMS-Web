@@ -6,6 +6,9 @@ definePageMeta({
 });
 
 const { t } = useI18n();
+// 角色存代码（company_admin 等），显示译名；自定义角色原样
+const { roleLabel } = useOptionLabel();
+const { bizErrorMessage } = useBizError();
 const authStore = useAuthStore();
 
 const dataToPass = computed(() => ({
@@ -184,9 +187,11 @@ const validateForm = () => {
     } else if (!/\S+@\S+\.\S+/.test(form.value.email)) {
         formErrors.value.email = t('common.validation.email-format');
     }
-    // 新增必须填密码；编辑留空表示不修改
+    // 新增必须填密码；编辑留空表示不修改；填了就按后端的密码规则（10015）校验
     if (!editingId.value && !form.value.password) {
         formErrors.value.password = t('common.validation.password-required');
+    } else if (form.value.password && !isValidPassword(form.value.password)) {
+        formErrors.value.password = t('common.validation.password-policy', passwordPolicyParams());
     }
     if (form.value.roles.length === 0) {
         formErrors.value.roles = t('common.validation.role-min-count');
@@ -216,7 +221,7 @@ const submitForm = async () => {
             await fetchData();
         },
         onError: (error) => {
-            showToast(error.message, 'error');
+            showToast(bizErrorMessage(error), 'error');
         },
         onFinally: () => {
             saving.value = false;
@@ -289,7 +294,7 @@ const submitForm = async () => {
                                       </span>
                                     </td>
                                     <td class="d-none d-xxl-table-cell">
-                                      <span v-for="role in user?.roles" :key="role" class="badge bg-light text-default me-1">{{ role }}</span>
+                                      <span v-for="role in user?.roles" :key="role" class="badge bg-light text-default me-1" :title="role">{{ roleLabel(role) }}</span>
                                     </td>
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(user?.created_at) }}</td>
                                     <td>
@@ -353,7 +358,7 @@ const submitForm = async () => {
               </div>
               <div class="mb-3">
                 <label class="form-label">{{ t('staff.fields.roles') }} <span class="text-danger">*</span></label>
-                <VueMultiselect :show-labels="false" :options="roleOptions" :multiple="true" v-model="form.roles"></VueMultiselect>
+                <VueMultiselect :show-labels="false" :options="roleOptions" :custom-label="roleLabel" :multiple="true" v-model="form.roles"></VueMultiselect>
                 <div v-if="formErrors.roles" class="invalid-feedback d-block">{{ formErrors.roles }}</div>
               </div>
               <div class="mb-1">

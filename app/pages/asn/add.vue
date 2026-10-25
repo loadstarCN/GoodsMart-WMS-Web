@@ -8,6 +8,8 @@ definePageMeta({
 
 // 获取国际化方法
 const { t } = useI18n();
+// 下拉显示类型的译名（选项值仍是 inbound 等代码）
+const { translateOption } = useOptionLabel();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -406,7 +408,8 @@ const saveRemark = () => {
               <label class="form-label">{{t('asn.fields.type')}} <abbr title="required" aria-hidden="true"
                   class="text-danger">*</abbr></label>
               <div class="flex-nowrap input-group-custom">
-                <VueMultiselect id="product-category" :show-labels="false" :options="selectOptions.asn_types"
+                <VueMultiselect id="asn-type" :show-labels="false" :options="selectOptions.asn_types"
+                  :custom-label="(v: string) => translateOption(v, 'asn.type')"
                   :multiple="false" v-model="asnItem.asn_type"></VueMultiselect>
               </div>
               <div v-if="errors.asn_type" class="invalid-feedback d-block">{{ errors.asn_type }}</div>

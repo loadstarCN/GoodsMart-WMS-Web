@@ -564,7 +564,9 @@ export default {
     window.addEventListener('scroll', this.menuscrollFn);
     let mainContent = document.querySelector('.main-content')
     // Adding the mainContentFn after the component created.
-    mainContent.addEventListener('click', this.mainContentFn);
+    // 记下元素：卸载时从同一个元素上移除（切换布局后 .main-content 可能已换成新的）
+    this.sidebarMainContent = mainContent;
+    mainContent?.addEventListener('click', this.mainContentFn);
     // Used to check on mounting face to close the menu.
     if (window.innerWidth < 992) {
       document.documentElement.setAttribute('data-toggled', 'close');
@@ -583,11 +585,18 @@ export default {
 
     // Start observing the target element
     observer.observe(targetElement, config);
+    this.sidebarAttrObserver = observer;
   },
   beforeUnmount() {
     // Removing the menuResize before destorying the component
     window.removeEventListener('resize', this.menuResizeFn);
     window.removeEventListener('resize', this.checkHoriMenu);
+    // 挂载时加的滚动、.main-content 点击监听和 <html> 属性观察一并移除（切换 default / admin 布局时会重新挂载）
+    window.removeEventListener('scroll', this.menuscrollFn);
+    this.sidebarMainContent?.removeEventListener('click', this.mainContentFn);
+    this.sidebarMainContent = null;
+    this.sidebarAttrObserver?.disconnect();
+    this.sidebarAttrObserver = null;
   },
 }
 </script>

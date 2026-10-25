@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { PermissionModuleSummary } from '~/utils/permissionGroups'
 
 // 定义页面元数据
 definePageMeta({
@@ -73,6 +74,15 @@ const toggleSubscription = (list: string[], event: string) => {
   const idx = list.indexOf(event)
   if (idx >= 0) list.splice(idx, 1)
   else list.push(event)
+}
+
+/** 列表的权限列：按模块归并显示「商品：查看 / 编辑」（见 utils/permissionGroups.ts），权限代码放在 title 里 */
+const permissionSummaries = computed<Record<string, ReturnType<typeof summarizePermissions>>>(() =>
+  Object.fromEntries((pageData.value?.items || []).map((item: any) => [item.id, summarizePermissions(item.permissions)]))
+)
+const moduleSummaryText = (mod: PermissionModuleSummary) => {
+  const ops = mod.items.filter(i => i.opLabel).map(i => t(i.opLabel!))
+  return ops.length ? t('apikeys.tips.permission-module', { module: t(mod.label), ops: ops.join(' / ') }) : t(mod.label)
 }
 
 const apiKeyPermissions = computed(() =>
@@ -395,7 +405,9 @@ const submitEdit = async () => {
                   </td>
                   <td class="">
                     <div v-if="item.permissions && item.permissions.length > 0" class="d-flex flex-wrap gap-1">
-                      <span class="badge bg-primary-transparent" v-for="perm in item.permissions" :key="perm">{{ perm }}</span>
+                      <span class="badge bg-primary-transparent" v-for="mod in permissionSummaries[item.id]?.modules" :key="mod.label"
+                        :title="mod.items.map(i => i.name).join(', ')">{{ moduleSummaryText(mod) }}</span>
+                      <span class="badge bg-light text-default" v-for="perm in permissionSummaries[item.id]?.others" :key="perm">{{ perm }}</span>
                     </div>
                     <span v-else class="text-muted fs-12">—</span>
                   </td>
@@ -497,8 +509,9 @@ const submitEdit = async () => {
               </div>
               <div class="mb-3">
                 <label class="form-label">{{ t('apikeys.fields.webhook-secret') }}</label>
-                <input type="text" class="form-control" v-model="createForm.webhook_secret"
-                  :placeholder="t('apikeys.form.placeholders.webhook-secret')">
+                <!-- 签名密钥默认遮住，可切换显示 -->
+                <SecretInput id="apikey-create-webhook-secret" v-model="createForm.webhook_secret" autocomplete="new-password"
+                  :placeholder="t('apikeys.form.placeholders.webhook-secret')" />
               </div>
               <div class="mb-3">
                 <label class="form-label mb-1">{{ t('apikeys.fields.webhook-subscriptions') }}</label>
@@ -568,8 +581,8 @@ const submitEdit = async () => {
             </div>
             <div class="mb-3">
               <label class="form-label">{{ t('apikeys.fields.webhook-secret') }}</label>
-              <input type="text" class="form-control" v-model="editForm.webhook_secret"
-                :placeholder="editingItem?.has_webhook_secret ? t('apikeys.form.placeholders.webhook-secret-keep') : t('apikeys.form.placeholders.webhook-secret')">
+              <SecretInput id="apikey-edit-webhook-secret" v-model="editForm.webhook_secret" autocomplete="new-password"
+                :placeholder="editingItem?.has_webhook_secret ? t('apikeys.form.placeholders.webhook-secret-keep') : t('apikeys.form.placeholders.webhook-secret')" />
             </div>
             <div class="mb-3">
               <label class="form-label mb-1">{{ t('apikeys.fields.webhook-subscriptions') }}</label>

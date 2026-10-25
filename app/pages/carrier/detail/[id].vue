@@ -62,8 +62,7 @@ onMounted(async() => {
               <div class="row gx-5">
                 <div class="col-xl-8 mt-xxl-0 mt-3">
                   <div>
-                    <p class="fs-18 fw-semibold mb-3">{{ itemData?.name}} <span
-                        class="badge rounded-pill bg-info fs-10 fw-normal ms-2">{{ itemData?.location_type }}</span><span v-if="itemData?.code" class="badge rounded-pill bg-secondary fs-10 fw-normal ms-2">{{ itemData?.code }}</span></p>
+                    <p class="fs-18 fw-semibold mb-3">{{ itemData?.name}}<span v-if="itemData?.code" class="badge rounded-pill bg-secondary fs-10 fw-normal ms-2">{{ itemData?.code }}</span></p>
 
                     <div class="mb-4">
                       <p class="fs-15 fw-semibold mb-1">{{ t('carrier.integration.title') }} :</p>

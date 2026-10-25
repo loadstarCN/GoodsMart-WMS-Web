@@ -80,8 +80,7 @@ const zoneText = (w: any): string => {
               <div class="row gx-5">
                 <div class="col-xl-8 mt-xxl-0 mt-3">
                   <div>
-                    <p class="fs-18 fw-semibold mb-3">{{ itemData?.name}} <span
-                        class="badge rounded-pill bg-info fs-10 fw-normal ms-2">{{ itemData?.location_type }}</span></p>
+                    <p class="fs-18 fw-semibold mb-3">{{ itemData?.name}}</p>
 
                     <!-- 地址：结构化地址按国家排版（+ 拉丁转写 / 英文单行地址 address_en），旧数据只有单行地址 -->
                     <div class="mb-4" v-if="hasAddress">

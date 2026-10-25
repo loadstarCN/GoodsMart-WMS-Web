@@ -1,5 +1,7 @@
 # Logs
 logs
+# 平台管理「操作日志」页面的路由目录叫 logs，不能被上面的规则忽略（以前因此一直没进仓库，菜单点了 404）
+!app/pages/admin/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*

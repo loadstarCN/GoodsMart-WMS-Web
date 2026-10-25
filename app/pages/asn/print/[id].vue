@@ -71,7 +71,8 @@ fetchData();
           <div class="tm_invoice_head tm_align_center tm_mb20">
             <div class="tm_invoice_left">
               <div class="tm_logo" v-if="staffStore?.staffInfo?.company?.logo"><img :src="staffStore?.staffInfo?.company?.logo" alt="Logo" style="width: 250px;"></div>
-              <div class="tm_logo" v-else><img src="/images/brand-logos/desktop-logo.svg" alt="Logo" style="width: 250px;"></div>
+              <!-- 公司没传 Logo：只印公司名称（客户单据上不放系统自带的 Logo） -->
+              <div class="tm_logo tm_f20 tm_bold tm_primary_color" v-else-if="staffStore?.staffInfo?.company?.name">{{ staffStore.staffInfo.company.name }}</div>
             </div>
             <div class="tm_invoice_right tm_text_right">
               <div class="tm_primary_color tm_f50 tm_text_uppercase">{{t('asn.entity')}}
@@ -93,7 +94,7 @@ fetchData();
             <div class="row g-3">
             <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.entities.warehouse')}}</b></p>
-              <p>{{itemData?.warehouse?.name}} (ID:{{itemData?.warehouse_id}})<br>
+              <p>{{itemData?.warehouse?.name}}<br>
                 <span v-if="itemData?.warehouse?.address" class="me-2">{{ t('common.fields.address') }} :{{itemData?.warehouse?.address}}</span><br>
                 <span v-if="itemData?.warehouse?.zip_code">{{ t('common.fields.zip') }} :{{itemData?.warehouse?.zip_code}}</span><br>
                 <span v-if="itemData?.warehouse?.phone">{{ t('common.fields.phone') }} :{{itemData?.warehouse?.phone}}</span>
@@ -101,7 +102,7 @@ fetchData();
             </div>
             <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.entities.supplier')}}</b></p>
-              <p>{{itemData?.supplier?.name}} (ID:{{itemData?.supplier_id}})<br>
+              <p>{{itemData?.supplier?.name}}<br>
                 <span v-if="itemData?.supplier?.address" class="me-2">{{ t('common.fields.address') }} :{{itemData?.supplier?.address}}</span><br>
                 <span v-if="itemData?.supplier?.zip_code">{{ t('common.fields.zip') }} :{{itemData?.supplier?.zip_code}}</span><br>
                 <span v-if="itemData?.supplier?.phone">{{ t('common.fields.phone') }} :{{itemData?.supplier?.phone}}</span>
@@ -109,10 +110,10 @@ fetchData();
             </div>
             <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.entities.carrier')}}</b></p>
-              <p>{{itemData?.carrier?.name}} (ID:{{itemData?.carrier_id}})<br>
+              <p>{{itemData?.carrier?.name}}<br>
                 <span v-if="itemData?.tracking_number">{{t('common.fields.tracking-number')}}: #{{itemData?.tracking_number}}</span><br>
-                <span v-if="itemData?.supplier?.contact">{{ t('common.fields.contact') }} :{{itemData?.supplier?.contact}}</span><br>
-                <span v-if="itemData?.supplier?.phone">{{ t('common.fields.phone') }} :{{itemData?.supplier?.phone}}</span>
+                <span v-if="itemData?.carrier?.contact">{{ t('common.fields.contact') }} :{{itemData?.carrier?.contact}}</span><br>
+                <span v-if="itemData?.carrier?.phone">{{ t('common.fields.phone') }} :{{itemData?.carrier?.phone}}</span>
               </p>
             </div>
             <div class="col-3 text-right">
@@ -124,7 +125,7 @@ fetchData();
             </div>
             <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('asn.fields.actual-date')}}</b></p>
-              <p>{{itemData?.actual_arrival_date}}</p>
+              <p>{{ $dayjs(itemData?.received_at, 'YYYY-MM-DD HH:mm', itemData) }}</p>
             </div>
             <div class="col-3" v-if="itemData?.status == 'pending' || itemData?.status == 'received'">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.dates.created')}}</b></p>
@@ -189,12 +190,12 @@ fetchData();
                 <table>
                   <tbody>
                     <tr>
-                      <td class="tm_width_3 tm_primary_color tm_border_none tm_bold">{{t('common.quantities.total-items')}}</td>
+                      <td class="tm_width_3 tm_primary_color tm_border_none tm_bold">{{t('common.quantities.total-expected')}}</td>
                       <td class="tm_width_3 tm_primary_color tm_text_right tm_border_none tm_bold">{{ itemData?.total_quantity }}</td>
                     </tr>
                     <tr>
-                      <td class="tm_width_3 tm_primary_color tm_border_none tm_pt0">{{t('common.quantities.total-actual')}}</td>
-                      <td class="tm_width_3 tm_primary_color tm_text_right tm_border_none tm_pt0">{{ itemData?.total_actual_quantity }}</td>
+                      <td class="tm_width_3 tm_primary_color tm_border_none tm_pt0">{{t('common.quantities.total-sorted')}}</td>
+                      <td class="tm_width_3 tm_primary_color tm_text_right tm_border_none tm_pt0">{{ itemData?.total_sorted_quantity }}</td>
                     </tr>
                     <tr>
                       <td class="tm_width_3 tm_primary_color tm_border_none tm_pt0">{{t('common.quantities.total-damage')}}</td>

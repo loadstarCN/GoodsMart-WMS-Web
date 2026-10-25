@@ -16,6 +16,8 @@ const asnId = String(route.params.id);
 
 const itemData = ref<any>(null);
 const { t } = useI18n();
+// 商品分类存英文原值，显示译名
+const { categoryLabel } = useOptionLabel();
 // 按权限显示操作按钮（鉴权仍以后端为准）
 const staffStore = useStaffStore();
 const { bizErrorMessage } = useBizError();
@@ -186,7 +188,7 @@ const cancelASN = async () => {
                                                         </p>
                                                         <p class="mb-0 fs-11 text-muted">{{ item?.goods?.code }}</p>
                                                         <p class="mb-0 fs-11 text-muted">{{ item?.goods?.brand }}</p>
-                                                        <p class="mb-0 fs-11 text-muted">{{ item?.goods?.category }}</p>
+                                                        <p class="mb-0 fs-11 text-muted">{{ categoryLabel(item?.goods?.category) }}</p>
                                                     </div>
                                                 </div>
                                             </td>

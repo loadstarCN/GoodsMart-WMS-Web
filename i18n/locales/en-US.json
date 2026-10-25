@@ -150,7 +150,7 @@
       "delete-success": "Product image deleted successfully",
       "delete-failed": "Failed to delete image. Please try again later."
     },
-    "upload-image-type-error": "Only PNG, JPEG and WebP files are allowed",
+    "upload-image-type-error": "Only PNG, JPEG and GIF images are allowed",
     "upload-image-size-error": "File size must be less than {max}MB",
     "upload-image-failed": "Image upload failed, please try again",
     "image-uploader-hint": "Click or drag to upload"
@@ -274,9 +274,9 @@
       "from": "From Location",
       "to": "To Location",
       "placeholder": "Select location",
-      "standard": "Standard",
-      "damaged": "Damaged",
-      "return": "Return"
+      "standard": "Standard Location",
+      "damaged": "Damaged Goods Location",
+      "return": "Returns Location"
     },
     "quantities": {
       "system": "System Quantity",
@@ -325,7 +325,9 @@
     "units": {
       "weight": "kg",
       "length": "mm",
-      "volume": "m³"
+      "volume": "m³",
+      "pcs-count": "{n} pc | {n} pcs",
+      "sku-count": "{n} SKU | {n} SKUs"
     },
     "placeholders": {
       "name": "Enter name",
@@ -379,7 +381,8 @@
       "password-complexity": "Password must be at least {min} characters and include uppercase, lowercase, number, and special character",
       "password-mismatch": "New password and confirmation do not match",
       "password-same-as-old": "New password cannot be the same as the current password",
-      "quantity-exceeds-available": "Quantity exceeds the available stock (max {max})"
+      "quantity-exceeds-available": "Quantity exceeds the available stock (max {max})",
+      "password-policy": "Password must be {min}–{max} characters with an uppercase letter, a lowercase letter, a digit and a special character ({special}); only letters, digits and these characters are allowed"
     },
     "statistics": {
       "title": "Statistics",
@@ -387,14 +390,15 @@
       "last-year": "Past Year",
       "last-month": "Past Month",
       "last-n-months": "Last {n} Months"
-    }
+    },
+    "show-secret": "Show",
+    "hide-secret": "Hide"
   },
   "roles": {
     "admin": "System Administrator",
     "company_admin": "Company Administrator",
     "warehouse_admin": "Warehouse Administrator",
-    "warehouse_operator": "Warehouse Operator",
-    "default_role": "Regular User"
+    "warehouse_operator": "Warehouse Operator"
   },
   "login": {
     "title": "Warehouse Management System (WMS)",
@@ -453,6 +457,19 @@
       "high-threshold": "High threshold: Triggers clearance request when inventory exceeds this level.",
       "available": "Available Stock: Current stock quantity ready for use (includes physical on-hand + damaged + returned items), excluding locked and pending outbound inventory.",
       "sale": "Sellable Stock: Current stock quantity available for sale, excluding locked and pending outbound inventory."
+    },
+    "tabs": {
+      "all": "All Inventory",
+      "pending-putaway": "Awaiting Putaway"
+    },
+    "pending": {
+      "warning": "{count} SKU(s) are awaiting putaway. Put them away to locations as soon as possible.",
+      "badge-title": "{count} SKU(s) awaiting putaway",
+      "total": "Awaiting Putaway",
+      "good": "Good",
+      "damaged": "Damaged",
+      "damaged-part": "incl. {n} damaged",
+      "empty": "No goods are awaiting putaway"
     }
   },
   "company": {
@@ -893,6 +910,12 @@
     "tips": {
       "origin-missing": "Not set",
       "company-missing": "Your company information could not be loaded, so the file cannot be uploaded. Refresh the page or sign in again"
+    },
+    "import": {
+      "success-title": "Import completed",
+      "processed": "{count} goods processed",
+      "upload-another": "Import another file",
+      "back-to-list": "Back to goods list"
     }
   },
   "cyclecount": {
@@ -906,7 +929,9 @@
       "actual-date": "Actual Date",
       "difference": "Difference",
       "reason": "Reason",
-      "items": "Items"
+      "items": "Items",
+      "recorded": "Counted",
+      "not-recorded": "Not counted"
     },
     "form": {
       "placeholders": {
@@ -914,14 +939,16 @@
         "description": "Enter description",
         "reason": "Enter difference reason",
         "search": "Count No./Product Code",
-        "scheduled-date": "Select scheduled date"
+        "scheduled-date": "Select scheduled date",
+        "actual": "Counted quantity"
       }
     },
     "operations": {
       "add": "Add Count",
       "edit": "Edit Count",
       "delete": "Delete Count",
-      "back-to-list": "Back to Count List"
+      "back-to-list": "Back to Count List",
+      "record": "Enter counted quantity"
     },
     "validation": {
       "no-valid-records": "No valid records to adjust.",
@@ -939,7 +966,9 @@
       "actual-date": "Actual Date",
       "difference": "Difference",
       "reason": "Reason",
-      "items": "Items"
+      "items": "Items",
+      "adjustment-reason": "Adjustment Reason",
+      "source-cyclecount": "Source Cycle Count"
     },
     "form": {
       "placeholders": {
@@ -959,7 +988,8 @@
     },
     "tips": {
       "cancel-confirm-title": "Cancel this adjustment?",
-      "cancel-confirm": "ADJ-{id} will be cancelled. Stock is not changed, and it can no longer be approved or completed. This cannot be undone."
+      "cancel-confirm": "ADJ-{id} will be cancelled. Stock is not changed, and it can no longer be approved or completed. This cannot be undone.",
+      "from-cyclecount": "Generated from cycle count CC-{id}"
     }
   },
   "asn": {
@@ -994,7 +1024,7 @@
     "type": {
       "inbound": "Standard Inbound",
       "return_from_customer": "Customer Return",
-      "transfer": "Transfer"
+      "transfer": "Transfer In"
     },
     "tips": {
       "created-successfully": "ASN created by {creator} successfully.",
@@ -1107,7 +1137,7 @@
       "placeholders": {
         "number": "Enter DN number",
         "recipient": "Select recipient",
-        "search": "DN/Product Code/Tracking No.",
+        "search": "DN/Order No./Product Code/Tracking No.",
         "scheduled-date": "Select scheduled date",
         "shipping-address": "Enter shipping address",
         "order-no": "Enter order number"
@@ -1126,14 +1156,14 @@
     },
     "type": {
       "shipping": "Standard Outbound",
-      "return_to_supplier": "Supplier Return",
-      "damage_to_supplier": "Damage to Supplier",
-      "transfer": "Transfer"
+      "return_to_supplier": "Return to Supplier",
+      "damage_to_supplier": "Damaged Return to Supplier",
+      "transfer": "Transfer Out"
     },
     "transportation": {
       "express": "Express Delivery",
       "pickup": "Self Pickup",
-      "courier": "Courier Delivery",
+      "courier": "Dedicated Courier",
       "air": "Air Freight",
       "sea": "Sea Freight",
       "land": "Land Freight",
@@ -1506,7 +1536,8 @@
       "key-warning": "Please save this key securely. It will not be shown again after closing.",
       "no-keys": "No API keys yet. Click the button above to create one.",
       "subscriptions": "Existing events (e.g. ASN completed, DN delivered) are sent regardless of subscriptions.",
-      "subscriptions-need-url": "Set a Webhook URL to receive notifications"
+      "subscriptions-need-url": "Set a Webhook URL to receive notifications",
+      "permission-module": "{module}: {ops}"
     },
     "events": {
       "goods_spec_updated": "Goods spec updated",
@@ -1523,7 +1554,8 @@
       "created-at": "Created At",
       "sent-at": "Sent At",
       "next-retry": "Next Retry",
-      "payload": "Payload"
+      "payload": "Payload",
+      "target-system": "Target System"
     },
     "status": {
       "all": "All",
@@ -1543,6 +1575,19 @@
     },
     "tips": {
       "no-events": "No push logs yet"
+    },
+    "events": {
+      "asn_received": "ASN received",
+      "asn_completed": "ASN completed",
+      "asn_cancelled": "ASN cancelled",
+      "dn_in_progress": "DN in progress",
+      "dn_picked": "DN picked",
+      "dn_packed": "DN packed",
+      "dn_delivered": "DN shipped",
+      "dn_tracking_updated": "DN tracking updated",
+      "dn_completed": "DN delivered (signed)",
+      "dn_cancelled": "DN cancelled",
+      "goods_spec_updated": "Goods spec updated"
     }
   },
   "forgot-password": {
@@ -1568,7 +1613,8 @@
     "back-to-login": "Back to Login",
     "cover-title": "Secure Password Recovery",
     "cover-text": "We'll send a verification code to your registered email to help you reset your password safely.",
-    "code-sent-generic": "If the email exists, a verification code has been sent"
+    "code-sent-generic": "If the email exists, a verification code has been sent",
+    "rate-limited": "Too many requests. Please try again later."
   },
   "admin": {
     "title": "Admin Console",
@@ -1687,7 +1733,8 @@
         "adjustment": "Adjustment",
         "cycle-count": "Cycle Count",
         "transfer": "Transfer",
-        "removal": "Removal"
+        "removal": "Removal",
+        "webhook": "Webhook Delivery"
       },
       "ops": {
         "read": "View",
@@ -1695,7 +1742,9 @@
         "delete": "Delete",
         "add": "Import",
         "create": "Create",
-        "execute": "Execute"
+        "execute": "Execute",
+        "approve": "Approve",
+        "retry": "Resend"
       }
     },
     "logs": {
@@ -1708,7 +1757,36 @@
         "ip": "IP Address",
         "processing-time": "Processing Time",
         "request-data": "Request Data",
-        "response-data": "Response Data"
+        "response-data": "Response Data",
+        "time": "Time",
+        "actor": "Actor",
+        "endpoint": "Endpoint"
+      },
+      "filters": {
+        "all-methods": "All methods",
+        "all-status": "All status codes",
+        "since": "From",
+        "since-hint": "Show logs at or after this time",
+        "keyword-placeholder": "Actor / endpoint path"
+      },
+      "actor": {
+        "system": "External system: {name}",
+        "unknown": "Not signed in"
+      },
+      "detail": {
+        "title": "Log Detail",
+        "request": "Request summary",
+        "response": "Response summary",
+        "empty": "(none)",
+        "redacted": "Sensitive endpoint; the body was not recorded",
+        "stream": "File / streamed response; the body was not recorded",
+        "file": "The body was large and saved to a server file:",
+        "truncated": "Only the first {n} characters are shown",
+        "ms": "{n} ms"
+      },
+      "tips": {
+        "no-logs": "No operation logs yet",
+        "only-write": "Only write requests (POST / PUT / DELETE) are logged"
       }
     },
     "settings": {
@@ -1735,8 +1813,16 @@
         "test-recipient-placeholder": "Enter test recipient email",
         "test-send": "Send Test Email",
         "test-success": "Test email sent successfully",
-        "test-required": "Please enter recipient email"
+        "test-required": "Please enter recipient email",
+        "password-configured": "Set (leave blank to keep)"
       }
+    },
+    "builtin": {
+      "label": "Built-in",
+      "permission-tip": "Built-in permission: the permission code cannot be changed; the description can",
+      "permission-delete-tip": "Built-in permissions cannot be deleted",
+      "role-tip": "Built-in role: it cannot be renamed or deactivated; the description and permissions can be changed",
+      "role-delete-tip": "Built-in roles cannot be deleted"
     }
   },
   "options": {
@@ -1771,9 +1857,84 @@
       "other": "Other"
     },
     "location-types": {
-      "standard": "Standard",
-      "damaged": "Damaged",
-      "return": "Return"
+      "standard": "Standard Location",
+      "damaged": "Damaged Goods Location",
+      "return": "Returns Location"
+    },
+    "goods-categories": {
+      "pins-badges": "Pins & Badges",
+      "action-figures-models": "Action Figures & Models",
+      "acrylic-stands-goods": "Acrylic Stands & Goods",
+      "plush-toys": "Plush Toys",
+      "art-boards-shikishi": "Art Boards & Shikishi",
+      "card-games-collectibles": "Card Games & Collectibles",
+      "apparel-bags": "Apparel & Bags",
+      "3c-accessories": "Electronics Accessories",
+      "themed-food-beverages": "Themed Food & Beverages",
+      "others": "Others"
+    },
+    "units": {
+      "pcs": "pcs",
+      "set": "set",
+      "box": "box",
+      "roll": "roll",
+      "kg": "kg",
+      "l": "L",
+      "pair": "pair",
+      "piece": "piece",
+      "sheet": "sheet",
+      "pack": "pack",
+      "case": "case",
+      "bottle": "bottle",
+      "bag": "bag"
+    },
+    "goods-tags": {
+      "room-temperature": "Room Temperature",
+      "refrigerated-2-8": "Refrigerated (2–8℃)",
+      "frozen-18": "Frozen (-18℃)",
+      "climate-controlled": "Climate Controlled",
+      "high-rack-zone": "High Rack Zone",
+      "floor-stacking-area": "Floor Stacking Area",
+      "cross-border-warehouse": "Cross-Border Warehouse",
+      "bonded-warehouse": "Bonded Warehouse",
+      "return-holding-area": "Return Holding Area",
+      "standard-packaging": "Standard Packaging",
+      "irregular-shape": "Irregular Shape",
+      "heavy-cargo-50kg": "Heavy Cargo (over 50 kg)",
+      "lightweight-cargo": "Lightweight Cargo",
+      "near-expiry-3m": "Near Expiry (within 3 months)",
+      "batch-traceability": "Batch Traceability",
+      "expiry-lockdown": "Expiry Lockdown",
+      "supplier-batch": "Supplier Batch",
+      "production-batch": "Production Batch",
+      "rework-batch": "Rework Batch",
+      "customer-owned-batch": "Customer-Owned Batch",
+      "flammable-liquids": "Flammable Liquids",
+      "corrosives": "Corrosives",
+      "lithium-battery": "Lithium Battery",
+      "un-certified": "UN-Certified",
+      "pending-full-inspection": "Pending Full Inspection",
+      "sampling-qualified": "Sampling Qualified",
+      "inventory-freeze": "Inventory Freeze",
+      "pending-destruction": "Pending Destruction",
+      "abc-classification-a-class": "ABC Classification (A-Class)",
+      "fifo": "FIFO",
+      "lifo": "LIFO",
+      "single-sku": "Single SKU",
+      "combo-kit": "Combo Kit",
+      "virtual-assembly": "Virtual Assembly",
+      "consumable-accessory": "Consumable Accessory",
+      "certified-return": "Certified Return",
+      "refurbishable": "Refurbishable",
+      "resalable": "Resalable",
+      "defect-isolation": "Defect Isolation",
+      "agv-compatible": "AGV Compatible",
+      "robotic-gripping-point": "Robotic Gripping Point",
+      "asrs-pallet-code": "AS/RS Pallet Code",
+      "shockproof-packaging": "Shockproof Packaging",
+      "tamper-evident-seal": "Tamper-Evident Seal",
+      "cold-chain-gel-pack": "Cold Chain Gel Pack",
+      "wooden-crate-reinforced": "Wooden Crate Reinforced"
     }
   },
   "countries": {
@@ -2282,7 +2443,22 @@
     "code-16076-ship-to-locked": "The waybill has been created or exported with the current address, so the ship-to address can't be changed. Cancel the waybill (or discard the export) in the Waybill step first",
     "code-16140": "This ASN has no tracking number that can be tracked through the carrier's integration",
     "code-14022": "Invalid time zone: choose an IANA time zone (e.g. Asia/Tokyo) or the server default",
-    "code-16117": "The documents can't be laid out: a consignee / recipient field is too long to fit on one page. Shorten the name, company, address, city, state, postal code or phone and issue again"
+    "code-16117": "The documents can't be laid out: a consignee / recipient field is too long to fit on one page. Shorten the name, company, address, city, state, postal code or phone and issue again",
+    "code-15007": "Not enough stock awaiting putaway. Put away no more than the quantity awaiting putaway",
+    "code-15016": "Only good items can go to standard / returns locations: {good_pending} good item(s) can be put away; put the {damaged_pending} damaged item(s) away to a damaged goods location",
+    "code-16162": "Stock in damaged goods or returns locations cannot be picked. Pick from a standard location",
+    "code-11011": "Built-in permissions cannot be renamed or deleted",
+    "code-11012": "Built-in roles cannot be renamed, deactivated or deleted",
+    "code-10015": "Password must be {min_length}–{max_length} characters with an uppercase letter, a lowercase letter, a digit and a special character ({special_characters}); only letters, digits and these characters are allowed",
+    "code-10004": "Only CSV files are supported",
+    "code-10005": "The CSV is missing required columns (code, name). Follow the template and import again",
+    "code-10005-columns": "The CSV is missing required columns: {columns}",
+    "code-10006": "A row in the CSV is missing required values (code, name)",
+    "code-10006-row": "Row {row}: required values (code, name) are missing",
+    "code-10012-row": "Row {row}: invalid number (the price must not be negative, and the discount price must not exceed the price)",
+    "code-10014-row": "Row {row}: invalid country of origin (ISO 3166-1 alpha-2 code required)",
+    "code-16100-row": "Row {row}: invalid goods value ({field}): weight must be greater than 0 and at most 99999.999 kg, dimensions must be positive millimetres, and prices must be between 0 and 9999999999.99",
+    "code-16101-row": "Goods code {code} appears more than once in the CSV (rows {rows}). Merge them and import again"
   },
   "shipping": {
     "title": "Shipping flow",
@@ -2330,7 +2506,7 @@
       "rule": "Rule",
       "api": "Source system",
       "system": "System",
-      "carrier-api": "Carrier API"
+      "carrier-api": "Carrier (online)"
     },
     "stage": {
       "preparing": "In progress",
@@ -2344,7 +2520,7 @@
       "closed": "Closed"
     },
     "waybill-sources": {
-      "api": "API",
+      "api": "Online label",
       "file": "File",
       "manual": "Manual"
     },
@@ -2715,5 +2891,15 @@
     "input-hint": "In the warehouse's time zone: {zone}",
     "invalid": "Not a valid time zone",
     "warehouse-local-hint": "Times are each warehouse's local time."
+  },
+  "putaway": {
+    "pending": "Awaiting putaway: good {good} · damaged {damaged}",
+    "none": "Nothing awaiting putaway",
+    "damaged-hint": "Put damaged goods away to a damaged goods location",
+    "no-damaged-location": "This warehouse has no damaged goods location yet",
+    "create-damaged-location": "Create damaged goods location",
+    "show-damaged-locations": "Show damaged goods locations",
+    "target-location": "Putaway Location",
+    "max": "Up to {max} can be put away"
   }
 }

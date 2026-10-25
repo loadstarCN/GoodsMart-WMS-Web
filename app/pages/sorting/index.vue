@@ -197,6 +197,7 @@ onMounted(async() => {
                                 <tr>
                                     <th scope="col">{{ t('common.fields.id') }}</th>
                                     <th scope="col">ASN</th>
+                                    <!-- 表头与单元格的显示断点一致（否则中等宽度时列错位） -->
                                     <th scope="col" class="d-none d-md-table-cell">{{t('common.fields.quantity')}}</th>
                                     <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.status') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
@@ -211,7 +212,7 @@ onMounted(async() => {
                                     </td>
                                     <td class=""><NuxtLink :to="`/asn/detail/${item?.asn_id}`" class="text-default">ASN-{{ item?.asn_id }}</NuxtLink>
                                     </td>
-                                    <td class="d-none d-xl-table-cell">{{ $n(item?.expected_quantity) }} PCS</td>
+                                    <td class="d-none d-md-table-cell">{{ t('common.units.pcs-count', { n: $n(item?.expected_quantity ?? 0) }, Number(item?.expected_quantity) || 0) }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+item?.status.replace('_',"-")) }}</td>
 
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(item?.updated_at, undefined, item) }}</td>

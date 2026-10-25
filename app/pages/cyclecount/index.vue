@@ -229,10 +229,10 @@ onMounted(async() => {
                             <tbody>
                                 <tr v-for="item in pageData?.items" class="invoice-list">
                                     <td class="">
-                                        <NuxtLink :to="`/cyclecount/detail/${item?.id}`" class="text-default">C-{{ item?.id }}
+                                        <NuxtLink :to="`/cyclecount/detail/${item?.id}`" class="text-default">CC-{{ item?.id }}
                                         </NuxtLink>
                                     </td>
-                                    <td class="">{{ item?.detail_count }} SKU</td>
+                                    <td class="">{{ t('common.units.sku-count', { n: $n(item?.detail_count ?? 0) }, Number(item?.detail_count) || 0) }}</td>
                                     <td class="d-none d-md-table-cell">{{ $dayjs(item?.scheduled_date, 'YYYY-MM-DD', item) }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+item?.status.replace('_',"-")) }}</td>
 

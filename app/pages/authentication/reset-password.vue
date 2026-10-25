@@ -37,7 +37,7 @@ const errors = ref<Record<string, any>>({
   confirm_password: null
 })
 
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,16}$/
+// 密码规则见 utils/passwordPolicy.ts（与后端 10015 一致，找回密码页共用）
 
 // 校验规则
 const validatePasswords = () => {
@@ -60,8 +60,8 @@ const validatePasswords = () => {
   if (!formState.newPassword) {
     errors.value.new_password = t('common.validation.new-password-required');
     isValid = false;
-  } else if (!PASSWORD_REGEX.test(formState.newPassword)) {
-    errors.value.new_password = t('common.validation.password-complexity', { min: 8 });
+  } else if (!isValidPassword(formState.newPassword)) {
+    errors.value.new_password = t('common.validation.password-policy', passwordPolicyParams());
     isValid = false;
   }
   
@@ -102,9 +102,11 @@ const handleSubmit = async () => {
         formState.currentPassword = '';
         formState.newPassword = '';
         formState.confirmPassword = '';
-        // 重定向到登录页面
-        setTimeout(() => {
-          navigateTo('/auth/login');
+        // 改密后用新密码重新登录：先登出（清本地令牌并通知后端吊销），否则带着旧 token 去登录页会被
+        // auth.global 中间件转回首页
+        setTimeout(async () => {
+          await useAuthStore().logUserOut();
+          await navigateTo('/auth/login');
         }, 1000);
       },
       onError: (error) => {

@@ -1,13 +1,14 @@
 <script lang="ts" setup>
 import { currenciesOptions } from '~/data/selectOptions'
 import { hasNonLatin } from '~/composables/customs/customsDocuments'
+import { addressFieldLabel, ADDRESS_ERROR_FIELD } from '~/composables/address/structuredAddress'
 
 // 定义页面元数据
 definePageMeta({
 })
 
 // 获取国际化方法
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
 
 // 计算属性转换
@@ -141,8 +142,15 @@ const saveWarehouse = async () => {
         showToast(t('timezone.invalid'), 'error')
         return
       }
-      // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案
       submitting.value = false
+      // 结构化地址的字段不对（14019，field 为 admin_area / latin.xxx 等）：指明是哪一项（同新建页）
+      if (error.code === 14019 && ADDRESS_ERROR_FIELD.test(String(error.field || ''))) {
+        showToast(t('address.errors.invalid-field', {
+          field: addressFieldLabel(error.field, itemData.value.country_code, t, te), message: error.message || '—',
+        }), 'error')
+        return
+      }
+      // 14019 文本超长 / 14020 国家代码不合法 等业务码用三语文案
       showToast(bizErrorMessage(error), 'error')
     }
   })

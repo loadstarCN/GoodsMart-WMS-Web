@@ -174,10 +174,11 @@ const activeTab = computed(() => {
                                 <tr>
                                     <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.id') }}</th>
                                     <th scope="col">{{ $t('common.fields.name') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('staff.fields.department') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('staff.fields.position') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('staff.fields.employee-number') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('staff.fields.hire-date') }}</th>
+                                    <!-- 列按重要程度逐级显示（以前除姓名外都要到 xxl / 1400px 才显示）；表头与单元格断点一致 -->
+                                    <th scope="col" class="d-none d-md-table-cell">{{ t('staff.fields.department') }}</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('staff.fields.position') }}</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('staff.fields.employee-number') }}</th>
+                                    <th scope="col" class="d-none d-xl-table-cell">{{ t('staff.fields.hire-date') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
                                     <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.creator') }}</th>
                                     <th scope="col">{{ t('common.fields.action') }}</th>
@@ -190,10 +191,10 @@ const activeTab = computed(() => {
                                     <td>
                                       <NuxtLink :to="`/staff/detail/${staff?.id}`">{{ staff?.user_name }}</NuxtLink>
                                     </td>
-                                    <td class="d-none d-xxl-table-cell">{{ staff?.department?.name }}</td>
-                                    <td class="d-none d-xxl-table-cell">{{ staff?.position }}</td>
-                                    <td class="d-none d-xxl-table-cell">{{ staff?.employee_number }}</td>
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(staff?.hire_date,'YYYY-MM-DD') }}</td>
+                                    <td class="d-none d-md-table-cell">{{ staff?.department?.name }}</td>
+                                    <td class="d-none d-lg-table-cell">{{ staff?.position }}</td>
+                                    <td class="d-none d-lg-table-cell">{{ staff?.employee_number }}</td>
+                                    <td class="d-none d-xl-table-cell">{{ $dayjs(staff?.hire_date,'YYYY-MM-DD') }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(staff?.updated_at) }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ staff?.creator?.user_name }}</td>
                                     <td>

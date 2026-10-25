@@ -70,7 +70,8 @@ fetchData();
           <div class="tm_invoice_head tm_align_center tm_mb20">
             <div class="tm_invoice_left">
               <div class="tm_logo" v-if="staffStore?.staffInfo?.company?.logo"><img :src="staffStore?.staffInfo?.company?.logo" alt="Logo" style="width: 250px;"></div>
-              <div class="tm_logo" v-else><img src="/images/brand-logos/desktop-logo.svg" alt="Logo" style="width: 250px;"></div>
+              <!-- 公司没传 Logo：只印公司名称（客户单据上不放系统自带的 Logo） -->
+              <div class="tm_logo tm_f20 tm_bold tm_primary_color" v-else-if="staffStore?.staffInfo?.company?.name">{{ staffStore.staffInfo.company.name }}</div>
             </div>
             <div class="tm_invoice_right tm_text_right">
               <div class="tm_primary_color tm_f50 tm_text_uppercase">{{t('dn.entity')}}
@@ -92,7 +93,7 @@ fetchData();
             <div class="row g-3">
               <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.entities.recipient')}}</b></p>
-              <p>{{itemData?.recipient?.name}} (ID:{{itemData?.recipient_id}})<br>
+              <p>{{itemData?.recipient?.name}}<br>
                 <span v-if="itemData?.shipping_address" class="me-2">{{ t('dn.fields.shipping-address') }} :{{itemData?.shipping_address}}</span><br>
                 <span v-if="itemData?.recipient?.zip_code">{{ t('common.fields.zip') }} :{{itemData?.recipient?.zip_code}}</span><br>
                 <span v-if="itemData?.recipient?.phone">{{ t('common.fields.phone') }} :{{itemData?.recipient?.phone}}</span>
@@ -102,7 +103,7 @@ fetchData();
             <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.entities.carrier')}}</b></p>
               <!-- DN 的承运商（carrier）：联系人 / 电话；DN 本身没有运单号（运单号在发货任务上） -->
-              <p>{{itemData?.carrier?.name}} (ID:{{itemData?.carrier_id}})<br>
+              <p>{{itemData?.carrier?.name}}<br>
                 <span v-if="itemData?.carrier?.contact">{{ t('common.fields.contact') }} :{{itemData?.carrier?.contact}}</span><br>
                 <span v-if="itemData?.carrier?.phone">{{ t('common.fields.phone') }} :{{itemData?.carrier?.phone}}</span>
               </p>
@@ -110,7 +111,7 @@ fetchData();
 
             <div class="col-3">
               <p class="tm_mb2"><b class="tm_primary_color">{{t('common.entities.warehouse')}}</b></p>
-              <p>{{itemData?.warehouse?.name}} (ID:{{itemData?.warehouse_id}})<br>
+              <p>{{itemData?.warehouse?.name}}<br>
                 <span v-if="itemData?.warehouse?.address" class="me-2">{{ t('common.fields.address') }} :{{itemData?.warehouse?.address}}</span><br>
                 <span v-if="itemData?.warehouse?.zip_code">{{ t('common.fields.zip') }} :{{itemData?.warehouse?.zip_code}}</span><br>
                 <span v-if="itemData?.warehouse?.phone">{{ t('common.fields.phone') }} :{{itemData?.warehouse?.phone}}</span>

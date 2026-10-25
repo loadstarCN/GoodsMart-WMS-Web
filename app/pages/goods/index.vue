@@ -7,6 +7,8 @@ definePageMeta({
 
 // 获取国际化方法
 const { t, locale } = useI18n();
+// 商品分类存英文原值，显示译名
+const { categoryLabel } = useOptionLabel();
 const { bizErrorMessage } = useBizError();
 
 // 计算属性转换
@@ -225,7 +227,7 @@ const activeTab = computed(() => {
                                     </td>
                                     <td class="d-none d-lg-table-cell">{{ goods?.manufacturer }}</td>
                                     <td class="d-none d-md-table-cell">{{ goods?.brand }}</td>
-                                    <td class="d-none d-xl-table-cell">{{ goods?.category }}</td>
+                                    <td class="d-none d-xl-table-cell">{{ categoryLabel(goods?.category) }}</td>
                                     <td class="d-none d-lg-table-cell">
                                         <!-- 列表模型没带该字段（undefined）时不显示，null 才是「未录入」 -->
                                         <span v-if="goods?.origin_country" :title="countryName(goods.origin_country, locale)">{{ String(goods.origin_country).toUpperCase() }}</span>

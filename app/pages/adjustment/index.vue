@@ -239,7 +239,7 @@ onMounted(async() => {
                                         <NuxtLink :to="`/adjustment/detail/${item?.id}`" class="text-default">ADJ-{{ item?.id }}
                                         </NuxtLink>
                                     </td>
-                                    <td class="">{{ item?.detail_count }} SKU</td>
+                                    <td class="">{{ t('common.units.sku-count', { n: $n(item?.detail_count ?? 0) }, Number(item?.detail_count) || 0) }}</td>
                                     <td class="d-none d-xl-table-cell">
                                         {{ t('common.status.'+item?.status.replace('_',"-")) }}
                                         <!-- 已取消：status 保持取消前的值，is_active=false -->

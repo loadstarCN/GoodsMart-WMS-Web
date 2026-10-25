@@ -17,6 +17,7 @@ const taskId = String(route.params.id);
 const itemData = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+const { translateOption } = useOptionLabel();
 const { bizErrorMessage } = useBizError();
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -48,7 +49,10 @@ const fetchData = async () => {
         params: route.query,
         onSuccess: (data) => {
           itemData.value = data;
-          itemData.value.currency= staffStore.staffInfo?.company?.default_currency || 'JPY';         
+          // 任务自己的币种优先；没有时才用公司默认币种（以前每次读取都改成默认币种，覆盖了任务的币种）
+          if (!itemData.value.currency) {
+            itemData.value.currency = staffStore.staffInfo?.company?.default_currency || 'JPY';
+          }         
           savedCarrierId.value = itemData.value?.carrier_id ?? null;
           selectedCarrier.value = itemData.value?.carrier_id
             ? itemData.value?.carrier
@@ -354,6 +358,7 @@ const syncFromTask = async () => {
                         <div class="flex-nowrap input-group-custom">
                           <VueMultiselect id="dn_transportation_mode" :show-labels="false"
                             :options="selectOptions.transportation_modes" :multiple="false"
+                            :custom-label="(v: string) => translateOption(v, 'dn.transportation')"
                             v-model="itemData.transportation_mode" :disabled="!taskEditable">
                           </VueMultiselect>
                         </div>

@@ -21,7 +21,8 @@ const props = withDefaults(defineProps<{
 }>(), {
   shape: 'circle',
   size: 100,
-  accept: 'image/png,image/jpeg,image/webp',
+  // 与后端一致（extensions/oss.py allowed_image_file：png / jpg / jpeg / gif；公司 Logo、员工头像、商品图片同一校验），WebP 后端不收
+  accept: 'image/png,image/jpeg,image/gif',
   maxSize: 5 * 1024 * 1024,
   fallbackSrc: '/images/goods/default.png',
 })
@@ -82,7 +83,7 @@ const processFile = async (file: File) => {
   // Validate type
   const acceptedTypes = props.accept.split(',').map(s => s.trim())
   if (!acceptedTypes.includes(file.type)) {
-    showToast(t('upload.upload-image-type-error', 'Only PNG, JPEG and WebP files are allowed'), 'error')
+    showToast(t('upload.upload-image-type-error'), 'error')
     return
   }
 

@@ -11,6 +11,8 @@ const taskId = route.params.id;
 const itemData = ref<any>(null);
 const activeTab = ref('details');
 const { t } = useI18n();
+// 商品分类存英文原值，显示译名
+const { categoryLabel } = useOptionLabel();
 const { bizErrorMessage } = useBizError();
 // 批次提交的幂等键与提交锁
 const batchKey = useBatchSubmitKey();
@@ -378,7 +380,7 @@ const flowRef = ref<{ reload: () => Promise<void> } | null>(null);
                             </p>
                             <p class="mb-0 fs-11 text-muted">{{ item?.goods?.code }}</p>
                             <p class="mb-0 fs-11 text-muted">{{ item?.goods?.brand }}</p>
-                            <p class="mb-0 fs-11 text-muted">{{ item?.goods?.category }}</p>
+                            <p class="mb-0 fs-11 text-muted">{{ categoryLabel(item?.goods?.category) }}</p>
                           </div>
                         </div>
                       </td>

@@ -6,6 +6,8 @@ definePageMeta({
 });
 
 const { t } = useI18n();
+// 删除失败按业务码显示三语文案（如内置权限 11011）
+const { bizErrorMessage } = useBizError();
 
 const dataToPass = computed(() => ({
   current: t('admin.nav.permissions'),
@@ -64,7 +66,7 @@ const deleteItem = async (item_id: Number) => {
                 await fetchData();
             },
             onError: (error) => {
-                showToast(error.message, 'error')
+                showToast(bizErrorMessage(error), 'error')
             }
         })
     }
@@ -112,13 +114,21 @@ const deleteItem = async (item_id: Number) => {
                             <tbody>
                                 <tr v-for="perm in pageData?.items" :key="perm?.id" class="invoice-list">
                                     <td class="d-none d-md-table-cell">{{ perm?.id }}</td>
-                                    <td><span class="badge bg-light text-default">{{ perm?.name }}</span></td>
+                                    <td>
+                                      <span class="badge bg-light text-default">{{ perm?.name }}</span>
+                                      <!-- 内置权限（代码里按名字校验；后端 is_builtin，缺失按 false）：不能改代码、不能删除 -->
+                                      <span class="badge bg-secondary-transparent ms-1" v-if="perm?.is_builtin" :title="t('admin.builtin.permission-tip')">{{ t('admin.builtin.label') }}</span>
+                                    </td>
                                     <td class="d-none d-lg-table-cell">{{ perm?.description || '-' }}</td>
                                     <td class="d-none d-xxl-table-cell">{{ $dayjs(perm?.created_at) }}</td>
                                     <td>
                                         <div class="hstack gap-2 fs-15">
                                             <NuxtLink :to="`/admin/permissions/${perm.id}`" class="btn btn-icon btn-sm btn-info-light product-btn"><i class="ri-edit-line"></i></NuxtLink>
-                                            <NuxtLink href="javascript:void(0);" @click="deleteItem(perm.id)" class="btn btn-icon btn-sm btn-danger-light product-btn"><i class="ri-delete-bin-line"></i></NuxtLink>
+                                            <!-- 禁用的按钮不触发 title，提示放在外层 -->
+                                            <span class="d-inline-block" :title="perm?.is_builtin ? t('admin.builtin.permission-delete-tip') : undefined">
+                                              <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" :disabled="!!perm?.is_builtin"
+                                                :aria-label="t('button.delete')" @click="deleteItem(perm.id)"><i class="ri-delete-bin-line"></i></button>
+                                            </span>
                                         </div>
                                     </td>
                                 </tr>

@@ -12,6 +12,8 @@ import { locationTypesOptions } from '~/data/selectOptions'
 
 // 获取国际化方法
 const { t } = useI18n()
+// 库位类型存代码（standard / damaged / return），下拉显示「标准库位 / 破损库位 / 退货库位」
+const { locationTypeLabel } = useOptionLabel()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -183,7 +185,7 @@ const fetchData = async () => {
                       <div class="col-xl-6">
                         <label for="location_type" class="form-label">{{t('location.fields.location-type')}}</label>
                         <VueMultiselect id="location_type" :show-labels="false" :options="selectOptions.location_type"
-                          :multiple="false" v-model="itemData.location_type">
+                          :custom-label="locationTypeLabel" :multiple="false" v-model="itemData.location_type">
                         </VueMultiselect>
                         <div v-if="errors.location_type" class="invalid-feedback d-block">{{ errors.location_type
                           }}</div>

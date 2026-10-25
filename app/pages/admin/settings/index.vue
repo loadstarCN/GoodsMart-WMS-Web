@@ -26,6 +26,20 @@ const smtp = ref({
   smtp_use_tls: true,
 });
 
+// 后端没返回密码明文：设置过时返回 ********（见 system/settings/views.py）
+const MASKED_PASSWORD = '********';
+const passwordConfigured = ref(false);
+
+/**
+ * smtp_use_tls 后端存字符串（"True" / "False"，旧数据可能是 true / 1 / yes）；空串 = 没配置过，按后端默认开启
+ */
+const parseUseTls = (value: unknown): boolean => {
+  if (typeof value === 'boolean') return value;
+  const text = String(value ?? '').trim().toLowerCase();
+  if (!text) return true;
+  return ['true', '1', 'yes', 'on'].includes(text);
+};
+
 // Test email
 const testEmail = ref('');
 
@@ -38,10 +52,12 @@ const fetchSmtpConfig = async () => {
         smtp_host: data.smtp_host || '',
         smtp_port: data.smtp_port || 587,
         smtp_username: data.smtp_username || '',
+        // 密码框留空：设过时占位显示「已设置」，不改就不提交
         smtp_password: '',
         smtp_sender: data.smtp_sender || '',
-        smtp_use_tls: data.smtp_use_tls ?? true,
+        smtp_use_tls: parseUseTls(data.smtp_use_tls),
       };
+      passwordConfigured.value = !!data.smtp_password;
     },
     onError: (error) => {
       showToast(error.message, 'error');
@@ -54,11 +70,19 @@ const fetchSmtpConfig = async () => {
 
 const saveSmtpConfig = async () => {
   saving.value = true;
+  // 密码没填（或误填了占位的 ********）就不提交该字段，后端保留原密码
+  const { smtp_password: password, ...rest } = smtp.value;
+  const body: Record<string, any> = { ...rest };
+  if (password && password !== MASKED_PASSWORD) body.smtp_password = password;
   await httpRequest('/api/system/settings/smtp', {
     method: 'PUT',
-    body: smtp.value,
+    body,
     onSuccess: () => {
       showToast(t('admin.settings.smtp.save-success'), 'success');
+      if (body.smtp_password) {
+        passwordConfigured.value = true;
+        smtp.value.smtp_password = '';
+      }
     },
     onError: (error) => {
       showToast(error.message, 'error');
@@ -133,8 +157,11 @@ onMounted(() => {
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label">{{ t('admin.settings.smtp.password') }}</label>
-                <input v-model="smtp.smtp_password" type="password" class="form-control" :placeholder="t('admin.settings.smtp.password-placeholder')" autocomplete="new-password">
-                <small class="text-muted">{{ t('admin.settings.smtp.password-hint') }}</small>
+                <SecretInput id="smtp-password" v-model="smtp.smtp_password" autocomplete="new-password"
+                  :placeholder="passwordConfigured ? t('admin.settings.smtp.password-configured') : t('admin.settings.smtp.password-placeholder')" />
+                <small class="text-muted" v-if="passwordConfigured">
+                  <i class="ri-checkbox-circle-line text-success me-1"></i>{{ t('admin.settings.smtp.password-hint') }}
+                </small>
               </div>
             </div>
             <div class="row">

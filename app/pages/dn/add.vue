@@ -23,6 +23,8 @@ definePageMeta({
 
 // 获取国际化方法
 const { t, te } = useI18n();
+// 下拉显示发货类型 / 运输方式的译名（选项值仍是 shipping、express 等代码）
+const { translateOption } = useOptionLabel();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -589,7 +591,8 @@ const saveRemark = () => {
               <label class="form-label">{{t('dn.fields.type')}} <abbr title="required" aria-hidden="true"
                   class="text-danger">*</abbr></label>
               <div class="flex-nowrap input-group-custom">
-                <VueMultiselect id="product-category" :show-labels="false" :options="selectOptions.dn_types"
+                <VueMultiselect id="dn-type" :show-labels="false" :options="selectOptions.dn_types"
+                  :custom-label="(v: string) => translateOption(v, 'dn.type')"
                   :multiple="false" v-model="dnItem.dn_type"></VueMultiselect>
               </div>
               <div v-if="errors.dn_type" class="invalid-feedback d-block">{{ errors.dn_type }}</div>
@@ -660,7 +663,8 @@ const saveRemark = () => {
               <label class="form-label">{{t('dn.fields.transportation')}}</label>
               <div class="flex-nowrap input-group-custom">
                 <VueMultiselect id="dn_transportation_mode" :show-labels="false"
-                  :options="selectOptions.transportation_modes" :multiple="false" v-model="dnItem.transportation_mode">
+                  :options="selectOptions.transportation_modes" :multiple="false" v-model="dnItem.transportation_mode"
+                  :custom-label="(v: string) => translateOption(v, 'dn.transportation')">
                 </VueMultiselect>
                 
               </div>

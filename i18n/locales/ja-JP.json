@@ -150,7 +150,7 @@
       "delete-success": "商品画像が正常に削除されました",
       "delete-failed": "画像の削除に失敗しました。後ほど再度お試しください。"
     },
-    "upload-image-type-error": "PNG、JPEG、WebP形式の画像のみ対応しています",
+    "upload-image-type-error": "PNG、JPEG、GIF 形式の画像のみ対応しています",
     "upload-image-size-error": "ファイルサイズは{max}MB以内にしてください",
     "upload-image-failed": "画像のアップロードに失敗しました。再試行してください",
     "image-uploader-hint": "クリックまたはドラッグでアップロード"
@@ -274,9 +274,9 @@
       "from": "移動元",
       "to": "移動先",
       "placeholder": "ロケーション選択",
-      "standard": "標準",
-      "damaged": "不良品",
-      "return": "返品"
+      "standard": "標準ロケーション",
+      "damaged": "破損品ロケーション",
+      "return": "返品ロケーション"
     },
     "quantities": {
       "system": "システム数量",
@@ -325,7 +325,9 @@
     "units": {
       "weight": "kg",
       "length": "mm",
-      "volume": "m³"
+      "volume": "m³",
+      "pcs-count": "{n} 個",
+      "sku-count": "{n} SKU"
     },
     "placeholders": {
       "name": "名称を入力",
@@ -379,7 +381,8 @@
       "password-complexity": "パスワードは{min}文字以上で、大文字、小文字、数字、特殊文字を含める必要があります",
       "password-mismatch": "新しいパスワードと確認が一致しません",
       "password-same-as-old": "新しいパスワードは現在のパスワードと同じにすることはできません",
-      "quantity-exceeds-available": "数量が引当可能数を超えています（最大 {max}）"
+      "quantity-exceeds-available": "数量が引当可能数を超えています（最大 {max}）",
+      "password-policy": "パスワードは {min}〜{max} 文字で、英大文字・英小文字・数字・記号（{special}）をそれぞれ含めてください（使用できるのは英字・数字とこれらの記号のみ）"
     },
     "statistics": {
       "title": "統計情報",
@@ -387,14 +390,15 @@
       "last-year": "過去1年",
       "last-month": "過去1ヶ月",
       "last-n-months": "過去{n}ヶ月"
-    }
+    },
+    "show-secret": "表示",
+    "hide-secret": "非表示"
   },
   "roles": {
     "admin": "システム管理者",
     "company_admin": "会社管理者",
     "warehouse_admin": "倉庫管理者",
-    "warehouse_operator": "倉庫作業員",
-    "default_role": "一般ユーザー"
+    "warehouse_operator": "倉庫作業員"
   },
   "login": {
     "title": "倉庫管理システム（WMS）",
@@ -453,6 +457,19 @@
       "high-threshold": "高閾値：在庫が超えた場合、整理または販促をトリガー",
       "available": "利用可能在庫：現在使用可能な在庫数量（実在庫＋破損品＋返品品を含む）。ロック済み・出庫待ち在庫は除く。",
       "sale": "販売可能在庫：現在販売可能な在庫数量。ロック済み・出庫待ち在庫は除く。"
+    },
+    "tabs": {
+      "all": "全在庫",
+      "pending-putaway": "棚入れ待ち"
+    },
+    "pending": {
+      "warning": "{count} 品目が棚入れ待ちです。早めにロケーションへ棚入れしてください",
+      "badge-title": "棚入れ待ち {count} 品目",
+      "total": "棚入れ待ち",
+      "good": "良品",
+      "damaged": "破損品",
+      "damaged-part": "うち破損品 {n}",
+      "empty": "棚入れ待ちの商品はありません"
     }
   },
   "company": {
@@ -893,6 +910,12 @@
     "tips": {
       "origin-missing": "未登録",
       "company-missing": "会社情報を取得できないため、アップロードできません。ページを再読み込みするか、再ログインしてください"
+    },
+    "import": {
+      "success-title": "取り込み完了",
+      "processed": "{count} 件の商品を処理しました",
+      "upload-another": "続けて取り込む",
+      "back-to-list": "商品一覧に戻る"
     }
   },
   "cyclecount": {
@@ -906,7 +929,9 @@
       "actual-date": "実績日",
       "difference": "差異",
       "reason": "理由",
-      "items": "商品"
+      "items": "商品",
+      "recorded": "実棚入力済み",
+      "not-recorded": "未入力"
     },
     "form": {
       "placeholders": {
@@ -914,14 +939,16 @@
         "description": "説明入力",
         "reason": "差異理由入力",
         "search": "カウント番号/商品コード",
-        "scheduled-date": "予定日選択"
+        "scheduled-date": "予定日選択",
+        "actual": "実棚数"
       }
     },
     "operations": {
       "add": "カウント追加",
       "edit": "カウント編集",
       "delete": "カウント削除",
-      "back-to-list": "一覧に戻る"
+      "back-to-list": "一覧に戻る",
+      "record": "実棚数を入力"
     },
     "validation": {
       "no-valid-records": "調整対象の有効なレコードがありません。",
@@ -939,7 +966,9 @@
       "actual-date": "実績日",
       "difference": "差異",
       "reason": "理由",
-      "items": "商品"
+      "items": "商品",
+      "adjustment-reason": "調整理由",
+      "source-cyclecount": "元の棚卸し"
     },
     "form": {
       "placeholders": {
@@ -959,7 +988,8 @@
     },
     "tips": {
       "cancel-confirm-title": "調整を取り消しますか？",
-      "cancel-confirm": "ADJ-{id} を取り消します。在庫は変更されず、取消後は承認・完了できません。元に戻せません。"
+      "cancel-confirm": "ADJ-{id} を取り消します。在庫は変更されず、取消後は承認・完了できません。元に戻せません。",
+      "from-cyclecount": "棚卸し CC-{id} から作成"
     }
   },
   "asn": {
@@ -994,7 +1024,7 @@
     "type": {
       "inbound": "通常入庫",
       "return_from_customer": "顧客返品",
-      "transfer": "在庫移動"
+      "transfer": "移動入庫"
     },
     "tips": {
       "created-successfully": "{creator}によるASN作成完了。",
@@ -1107,7 +1137,7 @@
       "placeholders": {
         "number": "DN番号入力",
         "recipient": "受取先選択",
-        "search": "DN/商品コード/追跡番号",
+        "search": "DN/注文番号/商品コード/追跡番号",
         "scheduled-date": "予定日選択",
         "shipping-address": "配送先入力",
         "order-no": "注文番号入力"
@@ -1126,14 +1156,14 @@
     },
     "type": {
       "shipping": "通常出庫",
-      "return_to_supplier": "サプライヤー返品",
-      "damage_to_supplier": "サプライヤー不良",
-      "transfer": "在庫移動"
+      "return_to_supplier": "仕入先返品",
+      "damage_to_supplier": "不良品返品（仕入先）",
+      "transfer": "移動出庫"
     },
     "transportation": {
       "express": "宅配便",
-      "pickup": "自宅受け取り",
-      "courier": "配送員配達",
+      "pickup": "引取り",
+      "courier": "専用便",
       "air": "航空便",
       "sea": "海上輸送",
       "land": "陸上輸送",
@@ -1506,7 +1536,8 @@
       "key-warning": "このキーを安全に保管してください。閉じた後は再表示できません。",
       "no-keys": "APIキーはまだありません。上のボタンをクリックして作成してください。",
       "subscriptions": "入荷完了・出荷完了などの既存イベントは購読の有無に関係なく送信されます。",
-      "subscriptions-need-url": "通知を受け取るには Webhook URL を設定してください"
+      "subscriptions-need-url": "通知を受け取るには Webhook URL を設定してください",
+      "permission-module": "{module}：{ops}"
     },
     "events": {
       "goods_spec_updated": "商品規格変更",
@@ -1523,7 +1554,8 @@
       "created-at": "作成日時",
       "sent-at": "送信日時",
       "next-retry": "次回リトライ",
-      "payload": "ペイロード"
+      "payload": "ペイロード",
+      "target-system": "送信先システム"
     },
     "status": {
       "all": "すべて",
@@ -1543,6 +1575,19 @@
     },
     "tips": {
       "no-events": "プッシュログはまだありません"
+    },
+    "events": {
+      "asn_received": "入荷予定・受付済み",
+      "asn_completed": "入荷予定・完了",
+      "asn_cancelled": "入荷予定・取消",
+      "dn_in_progress": "出荷指示・作業中",
+      "dn_picked": "出荷指示・ピッキング済み",
+      "dn_packed": "出荷指示・梱包済み",
+      "dn_delivered": "出荷指示・出荷済み",
+      "dn_tracking_updated": "出荷指示・配送状況更新",
+      "dn_completed": "出荷指示・配達完了",
+      "dn_cancelled": "出荷指示・取消",
+      "goods_spec_updated": "商品規格変更"
     }
   },
   "forgot-password": {
@@ -1568,7 +1613,8 @@
     "back-to-login": "ログインに戻る",
     "cover-title": "安全なパスワード回復",
     "cover-text": "登録済みメールアドレスに認証コードを送信し、安全にパスワードをリセットします。",
-    "code-sent-generic": "メールアドレスが存在する場合、認証コードを送信しました"
+    "code-sent-generic": "メールアドレスが存在する場合、認証コードを送信しました",
+    "rate-limited": "リクエストが多すぎます。しばらくしてから再度お試しください"
   },
   "admin": {
     "title": "管理コンソール",
@@ -1687,7 +1733,8 @@
         "adjustment": "在庫調整",
         "cycle-count": "棚卸し",
         "transfer": "在庫移動",
-        "removal": "在庫除去"
+        "removal": "在庫除去",
+        "webhook": "Webhook 通知"
       },
       "ops": {
         "read": "閲覧",
@@ -1695,7 +1742,9 @@
         "delete": "削除",
         "add": "インポート",
         "create": "作成",
-        "execute": "実行"
+        "execute": "実行",
+        "approve": "承認",
+        "retry": "再送"
       }
     },
     "logs": {
@@ -1708,7 +1757,36 @@
         "ip": "IPアドレス",
         "processing-time": "処理時間",
         "request-data": "リクエスト内容",
-        "response-data": "レスポンス内容"
+        "response-data": "レスポンス内容",
+        "time": "日時",
+        "actor": "操作者",
+        "endpoint": "API"
+      },
+      "filters": {
+        "all-methods": "すべてのメソッド",
+        "all-status": "すべてのステータスコード",
+        "since": "開始日時",
+        "since-hint": "この日時以降のログを表示",
+        "keyword-placeholder": "操作者 / API パス"
+      },
+      "actor": {
+        "system": "外部システム：{name}",
+        "unknown": "未ログイン"
+      },
+      "detail": {
+        "title": "ログ詳細",
+        "request": "リクエスト概要",
+        "response": "レスポンス概要",
+        "empty": "（なし）",
+        "redacted": "機密性の高い API のため本文は記録されていません",
+        "stream": "ファイル / ストリーム応答のため本文は記録されていません",
+        "file": "本文が大きいためサーバー上のファイルに保存されています：",
+        "truncated": "先頭 {n} 文字のみ表示しています",
+        "ms": "{n} ミリ秒"
+      },
+      "tips": {
+        "no-logs": "操作ログはまだありません",
+        "only-write": "書き込み操作（POST / PUT / DELETE）のみ記録します"
       }
     },
     "settings": {
@@ -1735,8 +1813,16 @@
         "test-recipient-placeholder": "テスト受信者メールを入力",
         "test-send": "テストメールを送信",
         "test-success": "テストメールの送信に成功しました",
-        "test-required": "受信者メールを入力してください"
+        "test-required": "受信者メールを入力してください",
+        "password-configured": "設定済み（変更しない場合は空欄のまま）"
       }
+    },
+    "builtin": {
+      "label": "システム標準",
+      "permission-tip": "システム標準の権限です。権限コードは変更できません（説明は変更できます）",
+      "permission-delete-tip": "システム標準の権限は削除できません",
+      "role-tip": "システム標準のロールです。名前の変更・無効化はできません（説明と権限は変更できます）",
+      "role-delete-tip": "システム標準のロールは削除できません"
     }
   },
   "options": {
@@ -1772,8 +1858,83 @@
     },
     "location-types": {
       "standard": "標準ロケーション",
-      "damaged": "破損ロケーション",
+      "damaged": "破損品ロケーション",
       "return": "返品ロケーション"
+    },
+    "goods-categories": {
+      "pins-badges": "缶バッジ・ピンズ",
+      "action-figures-models": "フィギュア・模型",
+      "acrylic-stands-goods": "アクリルスタンド・アクリルグッズ",
+      "plush-toys": "ぬいぐるみ",
+      "art-boards-shikishi": "色紙・アートボード",
+      "card-games-collectibles": "カード・コレクション",
+      "apparel-bags": "アパレル・バッグ",
+      "3c-accessories": "デジタルアクセサリー",
+      "themed-food-beverages": "コラボ食品・飲料",
+      "others": "その他"
+    },
+    "units": {
+      "pcs": "個",
+      "set": "セット",
+      "box": "箱",
+      "roll": "巻",
+      "kg": "kg",
+      "l": "L",
+      "pair": "組",
+      "piece": "点",
+      "sheet": "枚",
+      "pack": "パック",
+      "case": "ケース",
+      "bottle": "本",
+      "bag": "袋"
+    },
+    "goods-tags": {
+      "room-temperature": "常温",
+      "refrigerated-2-8": "冷蔵（2〜8℃）",
+      "frozen-18": "冷凍（-18℃）",
+      "climate-controlled": "定温定湿",
+      "high-rack-zone": "高層ラック区画",
+      "floor-stacking-area": "平置き区画",
+      "cross-border-warehouse": "越境倉庫",
+      "bonded-warehouse": "保税倉庫",
+      "return-holding-area": "返品仮置き区画",
+      "standard-packaging": "標準梱包",
+      "irregular-shape": "異形品",
+      "heavy-cargo-50kg": "重量物（50kg 超）",
+      "lightweight-cargo": "軽量かさ高品",
+      "near-expiry-3m": "期限間近（3 か月以内）",
+      "batch-traceability": "ロットトレース",
+      "expiry-lockdown": "期限切れ出荷停止",
+      "supplier-batch": "仕入先ロット",
+      "production-batch": "製造ロット",
+      "rework-batch": "手直しロット",
+      "customer-owned-batch": "顧客支給ロット",
+      "flammable-liquids": "引火性液体",
+      "corrosives": "腐食性物質",
+      "lithium-battery": "リチウム電池",
+      "un-certified": "UN 規格品",
+      "pending-full-inspection": "全数検品待ち",
+      "sampling-qualified": "抜取検査合格",
+      "inventory-freeze": "在庫凍結",
+      "pending-destruction": "廃棄待ち",
+      "abc-classification-a-class": "ABC 分析・A ランク",
+      "fifo": "先入先出",
+      "lifo": "後入先出",
+      "single-sku": "単品管理",
+      "combo-kit": "セット商品",
+      "virtual-assembly": "バーチャルセット",
+      "consumable-accessory": "消耗品・付属品",
+      "certified-return": "検品済み返品",
+      "refurbishable": "再生可能品",
+      "resalable": "再販可能",
+      "defect-isolation": "不良品隔離",
+      "agv-compatible": "AGV 対応",
+      "robotic-gripping-point": "ロボット把持ポイント",
+      "asrs-pallet-code": "自動倉庫パレットコード",
+      "shockproof-packaging": "緩衝梱包",
+      "tamper-evident-seal": "改ざん防止シール",
+      "cold-chain-gel-pack": "保冷剤（コールドチェーン）",
+      "wooden-crate-reinforced": "木枠補強"
     }
   },
   "countries": {
@@ -2282,7 +2443,22 @@
     "code-16076-ship-to-locked": "送り状は現在の住所で作成・出力済みのため、お届け先を変更できません。変更するには出荷フローの「送り状」ステップで送り状を取り消して（ファイル方式は出力を取り消して）ください",
     "code-16140": "この入荷予定には運送会社の API で追跡できる送り状番号がありません",
     "code-14022": "タイムゾーンが正しくありません。IANA のタイムゾーン（例：Asia/Tokyo）を選ぶか、サーバーの既定にしてください",
-    "code-16117": "書類をレイアウトできません。荷受人（受取人）の項目が長すぎて 1 ページに収まりません。名前・会社名・住所・市区町村・州・郵便番号・電話番号を短くしてから再発行してください"
+    "code-16117": "書類をレイアウトできません。荷受人（受取人）の項目が長すぎて 1 ページに収まりません。名前・会社名・住所・市区町村・州・郵便番号・電話番号を短くしてから再発行してください",
+    "code-15007": "棚入れ待ちの在庫が足りません。棚入れ待ちの数量以内で棚入れしてください",
+    "code-15016": "標準 / 返品ロケーションには良品のみ棚入れできます：棚入れ可能な良品 {good_pending} 個、破損品 {damaged_pending} 個は破損品ロケーションへ棚入れしてください",
+    "code-16162": "破損品ロケーション・返品ロケーションの在庫はピッキングできません。標準ロケーションからピッキングしてください",
+    "code-11011": "システム標準の権限は権限コードの変更・削除ができません",
+    "code-11012": "システム標準のロールは名前の変更・無効化・削除ができません",
+    "code-10015": "パスワードは {min_length}〜{max_length} 文字で、英大文字・英小文字・数字・記号（{special_characters}）をそれぞれ含めてください（使用できるのは英字・数字とこれらの記号のみ）",
+    "code-10004": "CSV ファイルのみ対応しています",
+    "code-10005": "CSV に必須の列（code、name）がありません。テンプレートに沿って作成し直してください",
+    "code-10005-columns": "CSV に必須の列がありません：{columns}",
+    "code-10006": "CSV に必須項目（code、name）が空の行があります",
+    "code-10006-row": "{row} 行目：必須項目（code、name）が空です",
+    "code-10012-row": "{row} 行目：数値が正しくありません（価格は 0 以上、割引価格は価格以下にしてください）",
+    "code-10014-row": "{row} 行目：原産国コードが正しくありません（ISO 3166-1 の 2 文字コード）",
+    "code-16100-row": "{row} 行目：商品の数値が正しくありません（{field}）。重量は 0 より大きく 99999.999 kg 以下、縦横高さは正の mm、価格は 0～9999999999.99 の範囲で入力してください",
+    "code-16101-row": "商品コード {code} が CSV に重複しています（{rows} 行目）。まとめてから取り込んでください"
   },
   "shipping": {
     "title": "出荷フロー",
@@ -2330,7 +2506,7 @@
       "rule": "ルール",
       "api": "連携元システム",
       "system": "システム",
-      "carrier-api": "運送会社 API"
+      "carrier-api": "運送会社（オンライン）"
     },
     "stage": {
       "preparing": "作業中",
@@ -2344,7 +2520,7 @@
       "closed": "クローズ"
     },
     "waybill-sources": {
-      "api": "API",
+      "api": "オンライン発行",
       "file": "ファイル",
       "manual": "手入力"
     },
@@ -2715,5 +2891,15 @@
     "input-hint": "倉庫のタイムゾーン（{zone}）で入力",
     "invalid": "無効なタイムゾーンです",
     "warehouse-local-hint": "時刻は各倉庫の現地時間です。"
+  },
+  "putaway": {
+    "pending": "棚入れ待ち：良品 {good} · 破損品 {damaged}",
+    "none": "棚入れ待ちの在庫はありません",
+    "damaged-hint": "破損品は破損品ロケーションへ棚入れしてください",
+    "no-damaged-location": "この倉庫には破損品ロケーションがありません",
+    "create-damaged-location": "破損品ロケーションを作成",
+    "show-damaged-locations": "破損品ロケーションのみ表示",
+    "target-location": "棚入れ先ロケーション",
+    "max": "最大 {max} 個まで棚入れできます"
   }
 }

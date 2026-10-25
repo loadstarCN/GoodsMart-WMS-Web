@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import {removalReasonsOptions}  from '~/data/selectOptions'
 import { countryName } from '~/data/countries'
+import { Modal } from 'bootstrap/dist/js/bootstrap.js'
+import { pendingPutaway, putawayLimit, putawayQuantityError, type PendingPutaway } from '~/composables/inventory/putawayStock'
 
 // 定义页面元数据
 definePageMeta({
@@ -20,6 +22,9 @@ const tabData = ref<any>(null);
 const { t, locale } = useI18n();
 // 上架 / 下架 / 移库失败按业务码显示三语文案（如移库时源库位没有该商品 16120）
 const { bizErrorMessage } = useBizError();
+// 分类 / 标签 / 单位 / 库位类型 / 下架原因存代码或英文原值，显示译名
+const { categoryLabel, tagLabel, unitLabel, locationTypeLabel, removalReasonLabel } = useOptionLabel();
+const warehouseStore = useWarehouseStore();
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -71,11 +76,76 @@ const fetchToLocation = (code: string) =>
   fetchLocationData(code, locationToSelectedOptions);
 
 const nameWithTypeAndWarehouse = (({ code,location_type,warehouse_name }: any) => {
-  return `[${warehouse_name} | ${t('common.locations.'+location_type)}] ${code}`
+  return `[${warehouse_name} | ${locationTypeLabel(location_type)}] ${code}`
 })
+
+// ------------------ 上架：待上架库存（良品 / 破损） ----------------------
+// 本商品在各仓库的库存记录（页头选了仓库时只有该仓库）；读不到（没有库存查看权限等）时不提示、不预校验，以后端为准
+const putawayInventories = ref<any[] | null>(null);
+const loadPutawayInventory = async () => {
+  await httpRequest<PaginationData>('/api/warehouse/inventory/', {
+    method: 'GET',
+    params: { goods_id: productId, all: true },
+    onSuccess: (data) => {
+      putawayInventories.value = Array.isArray(data?.items) ? data.items : [];
+    },
+    onError: () => {
+      putawayInventories.value = null;
+    },
+  });
+};
+
+/** 各仓库的待上架（有待上架的排前面） */
+const putawayPendingRows = computed(() =>
+  (putawayInventories.value || [])
+    .map((inv: any) => ({
+      warehouseId: inv.warehouse_id ?? inv.warehouse?.id,
+      warehouseName: inv.warehouse?.name || '',
+      pending: pendingPutaway(inv) as PendingPutaway,
+    }))
+    .sort((a, b) => b.pending.total - a.pending.total)
+);
+
+/** 上架所在的仓库：选了库位 → 库位的仓库；否则只有一个仓库有待上架时用它；再否则页头选中的仓库 */
+const putawayWarehouseId = computed<number | null>(() => {
+  if (selectedLocation.value?.warehouse_id) return selectedLocation.value.warehouse_id;
+  const withPending = putawayPendingRows.value.filter((row) => row.pending.total > 0);
+  if (withPending.length === 1) return withPending[0]!.warehouseId ?? null;
+  return warehouseStore.currentWarehouse?.id ?? null;
+});
+
+/** 选中库位所在仓库的待上架；库存读不到时 null；该仓库没有库存记录时按 0 */
+const selectedPending = computed<PendingPutaway | null>(() => {
+  if (putawayInventories.value === null || !putawayWarehouseId.value) return null;
+  const row = putawayPendingRows.value.find((r) => String(r.warehouseId) === String(putawayWarehouseId.value));
+  return row ? row.pending : { total: 0, good: 0, damaged: 0 };
+});
+
+/** 选了库位后最多能上多少（破损库位 = 待上架合计；标准 / 退货库位 = 良品） */
+const putawayMax = computed<number | null>(() =>
+  selectedLocation.value && selectedPending.value ? putawayLimit(selectedPending.value, selectedLocation.value.location_type) : null
+);
+
+/** 「只看破损库位」：把本仓库的破损库位放进库位下拉 */
+const pickDamagedLocations = (locations: any[]) => {
+  locationSelectedOptions.value = locations;
+};
 
 const putawayFn = () => {
   selectedLocation.value = null;
+  quantity.value = null;
+  remark.value = null;
+  errors.value.location = null;
+  errors.value.quantity = null;
+  loadPutawayInventory();
+}
+
+/** 深链 ?putaway=open（库存页「待上架」的「上架」按钮）：打开上架弹窗 */
+const openPutawayModal = () => {
+  const el = document.getElementById('putawayModal');
+  if (!el) return;
+  putawayFn();
+  Modal.getOrCreateInstance(el).show();
 }
 
 const createPutaway = async () => {
@@ -91,6 +161,12 @@ const createPutaway = async () => {
     errors.value.quantity = t('goods.validation.quantity-required');
     return;
   }
+  // 预校验待上架数量（后端同样会拦：超出待上架 15007；标准 / 退货库位超出良品 15016）
+  const quantityError = putawayQuantityError(selectedPending.value, selectedLocation.value.location_type, Number(quantity.value));
+  if (quantityError) {
+    errors.value.quantity = bizErrorMessage(quantityError);
+    return;
+  }
   loading.value = true;
   const data = await httpRequest('/api/warehouse/putaway/', {
       method: 'POST',
@@ -101,9 +177,15 @@ const createPutaway = async () => {
         quantity.value = null;
         remark.value = null;
         showToast(t('action-results.op-success',{operation:t('goods.operations.create-putaway'),entity:itemData.value?.code ?? ''}), 'success')
-        await fetchTabData();      
+        loadPutawayInventory();
+        await fetchTabData();
       },
       onError: (error) => {
+          // 15016 破损品不能上到标准 / 退货库位、15007 待上架不足：标在数量下，并刷新待上架
+          if (error.code === 15016 || error.code === 15007) {
+            errors.value.quantity = bizErrorMessage(error);
+            loadPutawayInventory();
+          }
           showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
@@ -313,6 +395,10 @@ watch(() => route.query, async () => {
 onMounted(async() => {
   await fetchData();
   await fetchTabData();
+  if (route.query.putaway === 'open') {
+    await nextTick();
+    openPutawayModal();
+  }
 });
 
 
@@ -346,11 +432,10 @@ onMounted(async() => {
                     <p class="fs-18 fw-semibold mb-2">{{ itemData?.name}}</p>
                     <p class="mb-2">
                       <span v-for="(tag, index) in itemData?.tags" :key="index"
-                        class="badge bg-light text-default me-2">{{ tag }}</span>
+                        class="badge bg-light text-default me-2" :title="tag">{{ tagLabel(tag) }}</span>
                     </p>
                     <p class="fs-18 mb-4">
-                      <span class="text-info fw-semibold text-muted ms-1" v-if="itemData?.category">{{ itemData?.category
-                        }}</span>
+                      <span class="text-info fw-semibold text-muted ms-1" v-if="itemData?.category">{{ categoryLabel(itemData?.category) }}</span>
                     </p>
                     <div class="row mb-4">
                       <div class="col-xxl-4 col-xl-12" v-if="itemData?.price">
@@ -388,7 +473,7 @@ onMounted(async() => {
                         <div class="col-xl-6">
                           <ul class="mb-0">
                             <li class="text-muted mb-2" v-if="itemData?.unit">
-                              {{ t('goods.fields.unit') }}: {{ itemData.unit }}
+                              {{ t('goods.fields.unit') }}: {{ unitLabel(itemData.unit) }}
                             </li>
                             <li class="text-muted mb-2" v-if="itemData?.weight">
                               {{ t('goods.fields.weight') }}: {{ itemData.weight }} kg
@@ -634,7 +719,7 @@ onMounted(async() => {
                       </NuxtLink>
                     </td>
                     <td>↓{{ item?.quantity }}</td>
-                    <td class="d-none d-xl-table-cell">{{ item?.reason }}</td>
+                    <td class="d-none d-xl-table-cell">{{ removalReasonLabel(item?.reason) }}</td>
                     <td class="d-none d-lg-table-cell">{{ item?.operator_name }}</td>
                     <td class="d-none d-md-table-cell">{{ $dayjs(item?.removal_time, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                     <td class="d-none d-xl-table-cell">{{ item?.remark }}</td>
@@ -721,13 +806,26 @@ onMounted(async() => {
                 :options-limit="100" @search-change="fetchLocation" />
             </div>
             <div v-if="errors.location" class="invalid-feedback d-block">{{ errors.location }}</div>
+            <!-- 待上架：良品 N · 破损 M；有破损待上架时提示上到破损库位 -->
+            <div class="mt-2" v-if="putawayInventories !== null">
+              <PutawayPendingNotice v-if="selectedLocation || putawayPendingRows.length <= 1" :pending="selectedPending"
+                :location-type="selectedLocation?.location_type" :warehouse-id="putawayWarehouseId" can-pick-damaged
+                @pick-damaged="pickDamagedLocations" />
+              <template v-else>
+                <PutawayPendingNotice v-for="row in putawayPendingRows" :key="row.warehouseId" class="mb-1"
+                  :pending="row.pending" :warehouse-id="row.warehouseId" :warehouse-name="row.warehouseName"
+                  can-pick-damaged @pick-damaged="pickDamagedLocations" />
+              </template>
+            </div>
           </div>
           <div class="mb-3">
             <label class="form-label">{{ t('common.fields.quantity')}} <abbr title="required" aria-hidden="true"
                 class="text-danger">*</abbr></label>
             <div class="flex-nowrap input-group-custom">
-              <input type="number" class="form-control" v-model="quantity" :placeholder="t('common.placeholders.quantity')" />
+              <input type="number" class="form-control" v-model="quantity" :placeholder="t('common.placeholders.quantity')"
+                min="1" :max="putawayMax ?? undefined" />
               <div v-if="errors.quantity" class="invalid-feedback d-block">{{ errors.quantity }}</div>
+              <div v-else-if="putawayMax !== null" class="form-text">{{ t('putaway.max', { max: putawayMax }) }}</div>
             </div>
           </div>
           <div class="mb-3">
@@ -773,7 +871,7 @@ onMounted(async() => {
             <label for="removal-reason" class="form-label">{{ t('common.fields.reason')}} <abbr title="required" aria-hidden="true"
                 class="text-danger">*</abbr></label>
             <VueMultiselect id="removal-reason" :show-labels="false" :options="removalReasonsOptions" :multiple="false"
-              v-model="reason">
+              :custom-label="removalReasonLabel" v-model="reason">
             </VueMultiselect>
             <div v-if="errors.reason" class="invalid-feedback d-block">{{ errors.reason }}</div>
           </div>

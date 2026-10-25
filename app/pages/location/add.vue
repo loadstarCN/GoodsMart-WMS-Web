@@ -12,6 +12,8 @@ import { locationTypesOptions } from '~/data/selectOptions'
 
 // 获取国际化方法
 const { t } = useI18n()
+// 库位类型存代码（standard / damaged / return），下拉显示「标准库位 / 破损库位 / 退货库位」
+const { locationTypeLabel } = useOptionLabel()
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -21,6 +23,7 @@ const dataToPass = computed(() => ({
 
 const warehouseStore = useWarehouseStore()
 const router = useRouter()
+const route = useRoute()
 
 const itemData = ref<Record<string, any>>({
   code: null,
@@ -141,6 +144,17 @@ onMounted(async () => {
   
   // 完全移除所有 asnItem.value.warehouse_id 的手动设置
   // 因为 watch 监听器会自动处理这个同步
+
+  // 从上架弹窗「新建破损库位」进来：?location_type=damaged&warehouse_id=…（仓库须在可选范围内）
+  const presetType = String(route.query.location_type || '')
+  if ((locationTypesOptions as string[]).includes(presetType)) {
+    itemData.value.location_type = presetType
+  }
+  const presetWarehouseId = route.query.warehouse_id ? String(route.query.warehouse_id) : ''
+  if (presetWarehouseId && !warehouseStore.currentWarehouse) {
+    const preset = selectOptions.warehouses.find((w: any) => String(w?.id) === presetWarehouseId)
+    if (preset) selectWareshouse.value = preset
+  }
 });
 </script>
 
@@ -168,7 +182,7 @@ onMounted(async () => {
                       <div class="col-xl-6">
                         <label for="location_type" class="form-label">{{t('location.fields.location-type')}}</label>
                         <VueMultiselect id="location_type" :show-labels="false" :options="selectOptions.location_type"
-                          :multiple="false" v-model="itemData.location_type">
+                          :custom-label="locationTypeLabel" :multiple="false" v-model="itemData.location_type">
                         </VueMultiselect>
                         <div v-if="errors.location_type" class="invalid-feedback d-block">{{ errors.location_type
                           }}</div>

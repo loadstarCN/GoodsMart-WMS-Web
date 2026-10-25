@@ -4,7 +4,8 @@
 definePageMeta({})
 
 // 获取国际化方法
-const { t } = useI18n()
+const { t, te } = useI18n()
+const staffStore = useStaffStore()
 
 // 面包屑
 const dataToPass = computed(() => ({
@@ -49,8 +50,32 @@ onMounted(async () => {
   keyword.value = (route.query.keyword as string) || ''
   eventTypeFilter.value = (route.query.event_type as string) || ''
   statusFilter.value = (route.query.status as string) || ''
-  await fetchData()
+  await Promise.all([fetchData(), fetchApiKeys()])
 })
+
+// ==================== 目标系统（API Key 的系统名） ====================
+// 推送日志只带 api_key_id：按本公司的 API Key 列表换成系统名（含已停用的）；没有 API 密钥查看权限 / 读不到时显示 #ID
+const apiKeyNames = ref<Record<string, string>>({})
+const fetchApiKeys = async () => {
+  if (!staffStore.staffInfo) {
+    await staffStore.getCurrentStaffInfo()
+  }
+  const companyId = staffStore.staffInfo?.company_id
+  if (!companyId) return
+  await httpRequest<PaginationData>('/api/system/third-party/api-keys', {
+    method: 'GET',
+    params: { company_id: companyId, per_page: 100 },
+    onSuccess: (data) => {
+      const names: Record<string, string> = {}
+      for (const key of data?.items || []) {
+        if (key?.id !== undefined && key?.system_name) names[String(key.id)] = key.system_name
+      }
+      apiKeyNames.value = names
+    },
+  })
+}
+const targetSystemName = (apiKeyId: number | null | undefined) =>
+  apiKeyId === null || apiKeyId === undefined ? '—' : apiKeyNames.value[String(apiKeyId)] || `#${apiKeyId}`
 
 // ==================== 状态 Tab ====================
 const statusTabs = ['all', 'pending', 'sending', 'sent', 'failed', 'superseded'] as const
@@ -89,6 +114,13 @@ const eventTypes = [
   'goods.spec_updated',
 ]
 
+/** 事件类型的译名（dn.packed → 已打包）；没有译名时显示代码 */
+const eventLabel = (eventType: string | null | undefined) => {
+  if (!eventType) return '—'
+  const key = `webhook-logs.events.${eventType.replace(/\./g, '_')}`
+  return te(key) ? t(key) : eventType
+}
+
 const setEventTypeFilter = () => {
   const query: Record<string, any> = { ...route.query }
   if (!eventTypeFilter.value) {
@@ -114,6 +146,19 @@ async function search() {
 
 // ==================== 手动重试 ====================
 const retrying = ref<number | null>(null)
+
+/**
+ * 能否手动重推（与后端 system/webhook/views.py 一致）：已发送的不行；推送中且租约未到期的不行（409）；
+ * 其余（推送失败 / 待发送 / 已作废 / 推送中但租约已过期）都可以——重推会把尝试次数清零后立即推一次。
+ */
+const canRetry = (item: any) => {
+  if (!item || item.status === 'sent') return false
+  if (item.status === 'sending') {
+    const lease = item.lease_expires_at ? parseDateTime(item.lease_expires_at, 'UTC') : null
+    return !!lease && lease.getTime() <= Date.now()
+  }
+  return true
+}
 
 const retryEvent = async (eventId: number) => {
   retrying.value = eventId
@@ -187,10 +232,10 @@ const truncateError = (error: string | null, maxLen = 60) => {
           </div>
           <div class="d-flex flex-wrap gap-2">
             <!-- 事件类型筛选 -->
-            <select class="form-select form-select-sm" style="width: 190px;" v-model="eventTypeFilter"
+            <select class="form-select form-select-sm" style="width: 240px;" v-model="eventTypeFilter"
               @change="setEventTypeFilter">
               <option value="">{{ t('webhook-logs.filters.all-types') }}</option>
-              <option v-for="et in eventTypes" :key="et" :value="et">{{ et }}</option>
+              <option v-for="et in eventTypes" :key="et" :value="et">{{ eventLabel(et) }} ({{ et }})</option>
             </select>
             <!-- 关键词搜索 -->
             <div class="d-flex" role="search">
@@ -220,7 +265,7 @@ const truncateError = (error: string | null, maxLen = 60) => {
                 <tr>
                   <th scope="col">{{ t('common.fields.id') }}</th>
                   <th scope="col">{{ t('webhook-logs.fields.event-type') }}</th>
-                  <th scope="col">{{ t('webhook-logs.fields.api-key') }}</th>
+                  <th scope="col">{{ t('webhook-logs.fields.target-system') }}</th>
                   <th scope="col">{{ t('common.fields.status') }}</th>
                   <th scope="col">{{ t('webhook-logs.fields.attempts') }}</th>
                   <th scope="col" class="d-none d-xxl-table-cell">{{ t('webhook-logs.fields.last-error') }}</th>
@@ -232,9 +277,10 @@ const truncateError = (error: string | null, maxLen = 60) => {
                 <tr v-for="item in pageData?.items" :key="item.id">
                   <td>{{ item.id }}</td>
                   <td>
-                    <span class="badge bg-primary-transparent">{{ item.event_type }}</span>
+                    <span class="badge bg-primary-transparent">{{ eventLabel(item.event_type) }}</span>
+                    <div class="fs-11 text-muted font-monospace">{{ item.event_type }}</div>
                   </td>
-                  <td>{{ item.api_key_id }}</td>
+                  <td :title="item.api_key_id !== null && item.api_key_id !== undefined ? `API Key #${item.api_key_id}` : undefined">{{ targetSystemName(item.api_key_id) }}</td>
                   <td>
                     <span class="badge" :class="statusBadgeClass(item.status)">
                       {{ t(`webhook-logs.status.${item.status}`) }}
@@ -257,7 +303,7 @@ const truncateError = (error: string | null, maxLen = 60) => {
                         <i class="ri-eye-line"></i>
                       </button>
                       <!-- 重试 -->
-                      <button v-if="item.status === 'failed'" @click="retryEvent(item.id)"
+                      <button v-if="canRetry(item)" @click="retryEvent(item.id)"
                         class="btn btn-icon btn-sm btn-warning-light product-btn"
                         :disabled="retrying === item.id"
                         :title="t('webhook-logs.operations.retry')">
@@ -304,7 +350,10 @@ const truncateError = (error: string | null, maxLen = 60) => {
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-semibold">{{ t('webhook-logs.fields.event-type') }}</label>
-                <p><span class="badge bg-primary-transparent">{{ detailItem.event_type }}</span></p>
+                <p>
+                  <span class="badge bg-primary-transparent">{{ eventLabel(detailItem.event_type) }}</span>
+                  <code class="fs-11 ms-1">{{ detailItem.event_type }}</code>
+                </p>
               </div>
             </div>
             <div class="row mb-3">
@@ -318,7 +367,7 @@ const truncateError = (error: string | null, maxLen = 60) => {
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-semibold">{{ t('webhook-logs.fields.attempts') }}</label>
-                <p>{{ detailItem.attempts }} / 10</p>
+                <p>{{ detailItem.attempts }}</p>
               </div>
             </div>
             <div class="row mb-3">
@@ -347,7 +396,7 @@ const truncateError = (error: string | null, maxLen = 60) => {
             </div>
           </div>
           <div class="modal-footer">
-            <button v-if="detailItem && detailItem.status === 'failed'" type="button" class="btn btn-warning"
+            <button v-if="canRetry(detailItem)" type="button" class="btn btn-warning"
               @click="retryEvent(detailItem.id)" :disabled="retrying === detailItem?.id">
               <span v-if="retrying === detailItem?.id" class="spinner-border spinner-border-sm me-1"></span>
               <i v-else class="ri-refresh-line me-1"></i>{{ t('webhook-logs.operations.retry') }}

@@ -21,14 +21,18 @@ const carrierRecordVariant = (status: unknown): string => {
   return ''
 }
 
-/** 文案插值参数：details 的字段，加上业务错误顶层的 field（如 16115）；null / undefined 显示成「—」 */
+/** 文案插值参数：details 的字段，加上业务错误顶层的 field（如 16115）；null / undefined 显示成「—」，数组用「、」连起来（如 16101 的 rows） */
 const messageParams = (error: BizErrorLike): Record<string, any> => {
   const params: Record<string, any> = { field: error?.field ?? '', ...detailsOf(error) }
   for (const key of Object.keys(params)) {
     if (params[key] === null || params[key] === undefined) params[key] = '—'
+    else if (Array.isArray(params[key])) params[key] = params[key].join(', ')
   }
   return params
 }
+
+/** 商品导入（CSV）里按行报的错：details 带 row（或 16101 的 rows）时用「第 N 行」的细分文案 -row */
+const ROW_DETAIL_CODES = new Set([10006, 10012, 10014, 16100, 16101])
 
 /**
  * 同一业务码按 details 细分的文案（key 后缀）；没有对应文案时回落到基础 key。
@@ -51,10 +55,15 @@ const messageParams = (error: BizErrorLike): Record<string, any> => {
  * - 16076：details.reason = SHIPPING_OPTIONS_LOCKED（建运单 / 导出后改服务选项）→ code-16076-options-locked；
  *   SHIP_TO_LOCKED（建运单 / 导出后改收件地址）→ code-16076-ship-to-locked
  * - 16075：作废导出时没有已导出的文件运单（details 带 waybill 键）→ code-16075-discard
+ * - 10006 / 10012 / 10014 / 16100 / 16101（商品 CSV 导入）：details 带 row（16101 带 rows）→ code-<码>-row（第 N 行）
+ * - 10005（CSV 缺少必需列）：details 带 columns → code-10005-columns
  */
 export const bizErrorVariant = (error: BizErrorLike): string => {
   if (!error) return ''
   const details = detailsOf(error)
+  if (typeof error.code === 'number' && ROW_DETAIL_CODES.has(error.code)
+    && ((details.row !== undefined && details.row !== null) || Array.isArray(details.rows))) return 'row'
+  if (error.code === 10005 && (Array.isArray(details.columns) || typeof details.columns === 'string')) return 'columns'
   if (error.code === 16063 && details.max_decimal_places !== undefined && details.max_decimal_places !== null) return 'decimal-places'
   if (error.code === 16076) {
     if (details.reason === 'SHIPPING_OPTIONS_LOCKED') return 'options-locked'

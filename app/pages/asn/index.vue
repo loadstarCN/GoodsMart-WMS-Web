@@ -327,8 +327,8 @@ onMounted(async() => {
                                     </td>
                                     <td class="d-none d-md-table-cell">{{ asn?.supplier?.name }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('asn.type.'+asn?.asn_type) }}</td>
-                                    <td class="d-none d-xl-table-cell">{{ $n(asn?.detail_count) }} SKUs<br>{{
-                                        $n(asn?.total_quantity) }} PCS</td>
+                                    <td class="d-none d-xl-table-cell">{{ t('common.units.sku-count', { n: $n(asn?.detail_count ?? 0) }, Number(asn?.detail_count) || 0) }}<br>{{
+                                        t('common.units.pcs-count', { n: $n(asn?.total_quantity ?? 0) }, Number(asn?.total_quantity) || 0) }}</td>
                                     <td class="d-none d-xl-table-cell">{{ t('common.status.'+asn?.status.replace('_',"-")) }}</td>
                                     <td><InboundStageBadge :stage="asn?.inbound_stage" /></td>
                                     <td class="d-none d-lg-table-cell">

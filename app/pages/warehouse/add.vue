@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { currenciesOptions } from '~/data/selectOptions'
 import { hasNonLatin } from '~/composables/customs/customsDocuments'
-import { addressFieldLabel } from '~/composables/address/structuredAddress'
+import { addressFieldLabel, ADDRESS_ERROR_FIELD } from '~/composables/address/structuredAddress'
 
 // 定义页面元数据
 definePageMeta({
@@ -144,9 +144,6 @@ const addWarehouse = async () => {
     }
   })
 }
-
-/** 14019 里属于结构化地址的 field（其余如出口资料的字段用业务码的文案） */
-const ADDRESS_ERROR_FIELD = /^(postal_code|zip_code|admin_area|locality|address_line1|address_line2|latin(\..+)?)$/
 
 
 
