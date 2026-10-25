@@ -62,7 +62,8 @@ const onKeydown = (event: KeyboardEvent) => {
   }
 }
 
-const onScroll = () => { if (visible.value) close() }
+// 页面或表格滚动时浮层跟着按钮走（浮层是 fixed 定位）
+const onScroll = () => { if (visible.value) place() }
 onMounted(() => window.addEventListener('scroll', onScroll, true))
 onBeforeUnmount(() => window.removeEventListener('scroll', onScroll, true))
 </script>
