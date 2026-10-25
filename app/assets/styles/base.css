@@ -1,0 +1,58 @@
+/*
+ * 新界面的基础样式与少量工具类（取值都来自 tokens.css）。
+ * 组件自己的样式写在各组件里（components/w、components/shell）；这里只放跨组件共用的。
+ */
+
+.w-shell,
+.w-scope {
+  font-family: var(--w-font);
+  font-size: var(--w-fs-14);
+  line-height: var(--w-lh-14);
+  color: var(--w-text-1);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 只给读屏软件读的文字 */
+.w-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 字号 7 级（字号与行高成对使用） */
+.w-text-28 { font-size: var(--w-fs-28); line-height: var(--w-lh-28); font-weight: var(--w-fw-semibold); }
+.w-text-24 { font-size: var(--w-fs-24); line-height: var(--w-lh-24); font-weight: var(--w-fw-semibold); }
+.w-text-20 { font-size: var(--w-fs-20); line-height: var(--w-lh-20); font-weight: var(--w-fw-semibold); }
+.w-text-16 { font-size: var(--w-fs-16); line-height: var(--w-lh-16); font-weight: var(--w-fw-semibold); }
+.w-text-14 { font-size: var(--w-fs-14); line-height: var(--w-lh-14); }
+.w-text-13 { font-size: var(--w-fs-13); line-height: var(--w-lh-13); }
+.w-text-12 { font-size: var(--w-fs-12); line-height: var(--w-lh-12); }
+
+/* 文字颜色：次要 / 弱化 */
+.w-muted { color: var(--w-text-2); }
+.w-faint { color: var(--w-text-3); }
+.w-num { font-variant-numeric: tabular-nums; }
+
+/* 页面标题行：H1 24 / 32，右侧放主操作 */
+.w-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--w-sp-16);
+  flex-wrap: wrap;
+  margin-bottom: var(--w-sp-24);
+}
+.w-page-head h1 {
+  margin: 0;
+  font-size: var(--w-fs-24);
+  line-height: var(--w-lh-24);
+  font-weight: var(--w-fw-semibold);
+  color: var(--w-text-1);
+}

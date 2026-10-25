@@ -69,6 +69,10 @@ export default defineNuxtConfig({
    '@/assets/css/icons.css',
    '@/assets/css/bootstrap.css',
    '@/assets/css/styles.css',
+   // 设计令牌（v2A）→ 旧页面映射 → 新界面基础样式；顺序不能换（后者覆盖前者）
+   '@/assets/styles/tokens.css',
+   '@/assets/styles/legacy-bridge.css',
+   '@/assets/styles/base.css',
  ],
 
  vite: {
@@ -124,6 +128,14 @@ export default defineNuxtConfig({
     apiBase: process.env.API_BASE_URL || 'http://127.0.0.1:5002',
     public: {
       clientEncryptionKey: process.env.NUXT_PUBLIC_ENCRYPTION_KEY || 'default_dev_key',
+      // 品牌（开源部署可改）：产品名与 Logo。运行时可用环境变量覆盖，
+      // 如 NUXT_PUBLIC_BRAND_PRODUCT_NAME、NUXT_PUBLIC_BRAND_LOGO_ON_DARK（路径或完整 URL）
+      brand: {
+        productName: 'GoodsMart WMS',
+        logoOnDark: '/images/brand-logos/desktop-dark.svg',  // 白色版：侧栏、深色底
+        logoOnLight: '/images/brand-logos/desktop-logo.svg', // 紫色版：浅色底（登录页、打印页）
+        logoMark: '/images/brand-logos/toggle-dark.svg',     // 折叠图标：侧栏收起时
+      },
     }
   },
 

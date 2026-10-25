@@ -1,0 +1,283 @@
+/*
+ * 设计令牌（设计语言 v2A，依据设计稿 Tokens.dc.html）
+ *
+ * - 只放 CSS 变量，不写选择器样式；组件、外壳、旧页面映射（legacy-bridge.css）都从这里取值。
+ * - 浅色是默认值；深色按「深色模式映射」表取值（按语义取，不是反色），写在 [data-theme="dark"] 下，
+ *   可以加在 <html> 上（整站）也可以加在任意容器上（局部预览，如 /dev/ui）。
+ * - 显示密度：舒适（默认）/ 紧凑，[data-density="compact"] 同样可以加在 <html> 或局部容器上。
+ * - 颜色不要在别处新写色值：需要新颜色时先补到这里，并与设计稿 Tokens 保持一致。
+ */
+
+:root {
+  /* ---------- 中性色 10 级（数字是对白色的对比度；≥ 4.5 才能做文字，即 500 起） ---------- */
+  --w-neutral-50: #F6F7FA;   /* 页面底 */
+  --w-neutral-100: #EDEFF3;  /* 次级底 / 行分隔线 */
+  --w-neutral-200: #E1E4EA;  /* 卡片描边 */
+  --w-neutral-300: #CDD1DA;  /* 控件描边 */
+  --w-neutral-400: #A0A4B0;  /* 非文字图形（图标、圆点、描边），不做文字 */
+  --w-neutral-500: #656C7A;  /* 弱化文字 */
+  --w-neutral-600: #4C5261;  /* 次要文字 */
+  --w-neutral-700: #373D4B;
+  --w-neutral-800: #252A35;
+  --w-neutral-900: #151923;  /* 正文 */
+
+  /* ---------- 品牌紫（600 = Logo 紫） ---------- */
+  --w-brand-50: #F5F4FF;     /* 选中底 */
+  --w-brand-100: #ECEAFF;
+  --w-brand-200: #DAD6FF;    /* 选中描边、焦点环 */
+  --w-brand-300: #BFB9FE;
+  --w-brand-400: #998BFF;
+  --w-brand-500: #7855FE;    /* 状态点「进行中」、图表第 1 色 */
+  --w-brand-600: #5F1FE6;    /* 主色：主按钮、链接、选中线 */
+  --w-brand-700: #4E1DBC;    /* 强调文字、主按钮悬停 */
+  --w-brand-800: #3B1B90;
+  --w-brand-900: #281464;
+
+  /* ---------- 语义色：每种 4 个值（点 / 字 / 描边 / 浅底）；只表示状态，不做装饰 ---------- */
+  --w-ok-dot: #369E4E;
+  --w-ok-text: #206B38;
+  --w-ok-border: #BCE3C3;
+  --w-ok-bg: #EBFBED;
+  --w-warn-dot: #E99B1A;     /* 需处理：仓库要动手 */
+  --w-warn-text: #92500B;
+  --w-warn-border: #F8D399;
+  --w-warn-bg: #FFF6E9;
+  --w-bad-dot: #DB2C2B;      /* 错误 / 阻断 */
+  --w-bad-text: #B32322;
+  --w-bad-border: #FCCBCA;
+  --w-bad-bg: #FEF3F2;
+  --w-info-dot: #7855FE;     /* 信息 / 进行中（= 品牌紫） */
+  --w-info-text: #4E1DBC;
+  --w-info-border: #DAD6FF;
+  --w-info-bg: #F5F4FF;
+  --w-none-dot: #A0A4B0;     /* 未开始 / 中性状态点 */
+
+  /* ---------- 语义映射（页面、组件只用这一组；深色模式只改这一组） ---------- */
+  --w-bg: var(--w-neutral-50);              /* 页面底 */
+  --w-surface: #FFFFFF;                     /* 卡片 */
+  --w-surface-2: var(--w-neutral-100);      /* 次级底 / 悬停 */
+  --w-raised: #FFFFFF;                      /* 浮层：菜单、下拉、弹窗 */
+  --w-line: var(--w-neutral-100);           /* 行分隔线 */
+  --w-border: var(--w-neutral-200);         /* 卡片描边、表头下分隔 */
+  --w-border-strong: var(--w-neutral-300);  /* 控件描边 */
+  --w-nontext: var(--w-neutral-400);        /* 非文字图形 */
+  --w-text-1: var(--w-neutral-900);         /* 正文 */
+  --w-text-2: var(--w-neutral-600);         /* 次要文字 */
+  --w-text-3: var(--w-neutral-500);         /* 弱化文字（最浅可用文字） */
+  --w-on-pri: #FFFFFF;                      /* 主色 / 实色上的文字 */
+  --w-pri: var(--w-brand-600);              /* 主按钮 */
+  --w-pri-hover: var(--w-brand-700);
+  --w-link: var(--w-brand-600);
+  --w-link-hover: var(--w-brand-700);
+  --w-sel: var(--w-brand-600);              /* 选中线 / 焦点描边 */
+  --w-sel-text: var(--w-brand-700);         /* 强调文字 */
+  --w-sel-soft: var(--w-brand-50);          /* 选中底 */
+  --w-sel-line: var(--w-brand-200);         /* 选中描边 */
+  --w-focus: var(--w-brand-200);            /* 焦点环 */
+  --w-danger: var(--w-bad-dot);             /* 危险确认按钮（只在确认弹窗里） */
+  --w-disabled-bg: var(--w-neutral-100);
+  --w-disabled-border: var(--w-neutral-200);
+  --w-disabled-text: var(--w-neutral-500);
+  --w-backdrop: rgba(16, 18, 27, 0.45);     /* 弹窗 / 抽屉遮罩 */
+  --w-skeleton: var(--w-neutral-100);       /* 加载骨架 */
+
+  /* ---------- 侧栏（浅色、深色模式下都是深底） ---------- */
+  --w-sb-bg: #171729;
+  --w-sb-active: #30295E;
+  --w-sb-text: #D2D3DE;
+  --w-sb-text-active: #FFFFFF;
+  --w-sb-label: #9597A8;        /* 分组名、未选中图标 */
+  --w-sb-line: #29293A;
+  --w-sb-active-icon: #BFB9FE;
+  --w-sb-hover: rgba(255, 255, 255, 0.06);
+
+  /* ---------- 图表：分类色 8 色（按系列依次取，不循环）、顺序色阶、发散色阶 ---------- */
+  --w-chart-1: #7855FE;  /* 紫 */
+  --w-chart-2: #059488;  /* 青绿 */
+  --w-chart-3: #DD6F23;  /* 橙 */
+  --w-chart-4: #1A7ACB;  /* 蓝 */
+  --w-chart-5: #3D8F35;  /* 绿 */
+  --w-chart-6: #D64992;  /* 粉 */
+  --w-chart-7: #B18E15;  /* 赭黄 */
+  --w-chart-8: #BE2E31;  /* 砖红 */
+  --w-chart-1-soft: #BFB9FE;  /* 单系列里「进行中的一段」（如今天）用同色浅一档 */
+  --w-chart-seq-1: #DAD6FF;   /* 顺序色阶（热力图），分档只取 3–7 */
+  --w-chart-seq-2: #BFB9FE;
+  --w-chart-seq-3: #998BFF;
+  --w-chart-seq-4: #7855FE;
+  --w-chart-seq-5: #5F1FE6;
+  --w-chart-seq-6: #4E1DBC;
+  --w-chart-seq-7: #281464;
+  --w-chart-div-n3: #4E1DBC;  /* 发散色阶：冷 = 低于基准，暖 = 高于基准，中点灰 = 持平 */
+  --w-chart-div-n2: #7855FE;
+  --w-chart-div-n1: #BFB9FE;
+  --w-chart-div-0: #E1E4EA;
+  --w-chart-div-p1: #EFB78D;
+  --w-chart-div-p2: #DF7A32;
+  --w-chart-div-p3: #A44C1D;
+  --w-chart-grid: var(--w-neutral-100);
+  --w-chart-axis: var(--w-neutral-300);
+  --w-chart-tick: var(--w-neutral-500);
+
+  /* ---------- 字体与字号（7 级；字重只用 400 / 500 / 600，700 只留给 PDA 大字） ---------- */
+  --w-font: Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --w-font-ja: Inter, "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+  --w-font-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --w-fs-28: 28px; --w-lh-28: 36px;  /* 关键数字 L：每块区域最重要的那个数 */
+  --w-fs-24: 24px; --w-lh-24: 32px;  /* 页面标题（每页一个 H1） */
+  --w-fs-20: 20px; --w-lh-20: 28px;  /* 关键数字 S：指标卡、当前步骤标题、运单号 */
+  --w-fs-16: 16px; --w-lh-16: 24px;  /* 区块标题（卡片标题） */
+  --w-fs-14: 14px; --w-lh-14: 22px;  /* 正文：列表主行、按钮、表单值、侧栏菜单 */
+  --w-fs-13: 13px; --w-lh-13: 20px;  /* 表格 / 次要：单元格、筛选、行内按钮、说明行 */
+  --w-fs-12: 12px; --w-lh-12: 18px;  /* 辅助 / 表头：表头、标签、时间戳、单位、眉题 */
+  --w-fw-regular: 400;
+  --w-fw-medium: 500;
+  --w-fw-semibold: 600;
+
+  /* ---------- 间距 7 档 ---------- */
+  --w-sp-4: 4px;    /* 标签与值、图标与文字 */
+  --w-sp-8: 8px;    /* 按钮之间、筛选项之间、行内元素 */
+  --w-sp-12: 12px;  /* 列表行上下内边距、表单行间 */
+  --w-sp-16: 16px;  /* 卡片之间、紧凑卡片内边距 */
+  --w-sp-24: 24px;  /* 舒适卡片内边距、区块之间 */
+  --w-sp-32: 32px;  /* 页面左右边距 */
+  --w-sp-48: 48px;  /* 页面底部留白、空状态上下 */
+
+  /* ---------- 圆角 3 种 ---------- */
+  --w-radius-control: 6px;  /* 按钮、输入框、下拉、标签、分页、菜单项 */
+  --w-radius-card: 10px;    /* 卡片、浮层、弹窗、警示条外框 */
+  --w-radius-pill: 999px;   /* 状态胶囊、计数、头像 */
+
+  /* ---------- 阴影：卡片不加阴影；浮层 = 描边 + 阴影；焦点 = 强调描边 + 3px 焦点环 ---------- */
+  --w-shadow-raised: 0 8px 24px rgba(16, 18, 27, 0.12), 0 1px 2px rgba(16, 18, 27, 0.06);
+  --w-shadow-modal: 0 16px 48px rgba(16, 18, 27, 0.18);
+  --w-shadow-thumb: 0 1px 2px rgba(16, 18, 27, 0.10);  /* 分段控件选中块、开关滑块 */
+  --w-focus-ring: 0 0 0 3px var(--w-focus);
+
+  /* ---------- 显示密度：舒适（默认） ---------- */
+  --w-row-h: 48px;            /* 表格行高 */
+  --w-th-h: 36px;             /* 表头高 */
+  --w-control-h: 36px;        /* 控件高（页面按钮、输入框） */
+  --w-control-h-inline: 28px; /* 行内控件高（表格里的按钮） */
+  --w-card-pad: 24px;         /* 卡片内边距 */
+  --w-card-gap: 16px;         /* 卡片间距 */
+  --w-list-pad-y: 12px;       /* 列表行内边距 */
+  --w-list-pad-x: 24px;
+
+  /* ---------- 外壳与布局 ---------- */
+  --w-topbar-h: 56px;
+  --w-sidebar-w: 232px;
+  --w-sidebar-w-collapsed: 72px;
+  --w-page-pad-x: 32px;
+  --w-page-pad-top: 24px;
+  --w-page-pad-bottom: 48px;
+  --w-form-title-w: 200px;    /* 表单分区标题列 */
+  --w-form-max: 960px;        /* 表单字段区最大宽度 */
+  --w-z-sticky: 1020;         /* 顶栏、粘性表头（低于 Bootstrap 弹窗 1050） */
+  --w-z-sidebar: 1030;
+  --w-z-dropdown: 1060;
+  --w-z-modal: 1070;
+  --w-z-tooltip: 1090;
+}
+
+/* 紧凑：表格行 36、控件 32；字号不变（表格仍 13） */
+[data-density="compact"] {
+  --w-row-h: 36px;
+  --w-th-h: 32px;
+  --w-control-h: 32px;
+  --w-control-h-inline: 24px;
+  --w-card-pad: 16px;
+  --w-card-gap: 12px;
+  --w-list-pad-y: 8px;
+  --w-list-pad-x: 16px;
+}
+
+/* 日文界面用日文字形（汉字字形与简中不同） */
+:lang(ja) {
+  --w-font: var(--w-font-ja);
+}
+
+/* ---------- 深色模式映射：按语义取值，状态色各提亮一档 ---------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --w-bg: #111218;
+  --w-surface: #1A1B22;
+  --w-surface-2: #23242D;
+  --w-raised: #23242D;
+  --w-line: #26272F;
+  --w-border: #31323B;
+  --w-border-strong: #454752;
+  --w-nontext: #696B78;
+  --w-text-1: #EDEEF4;
+  --w-text-2: #C5C6D2;
+  --w-text-3: #A2A3B1;
+  --w-pri: #7855FE;
+  --w-pri-hover: #998BFF;
+  --w-link: #BFB9FE;
+  --w-link-hover: #DAD6FF;
+  --w-sel: #998BFF;
+  --w-sel-text: #BFB9FE;
+  --w-sel-soft: #2B2653;
+  --w-sel-line: #443A84;
+  --w-focus: #4E1DBC;
+  --w-danger: #F05653;
+  --w-disabled-bg: #23242D;
+  --w-disabled-border: #31323B;
+  --w-disabled-text: #A2A3B1;
+  --w-backdrop: rgba(0, 0, 0, 0.6);
+  --w-skeleton: #23242D;
+
+  --w-ok-dot: #52B766;
+  --w-ok-text: #83D494;
+  --w-ok-bg: #172C1C;
+  --w-warn-dot: #F5AE39;
+  --w-warn-text: #F6C16B;
+  --w-warn-bg: #36250D;
+  --w-bad-dot: #F05653;
+  --w-bad-text: #F98E8B;
+  --w-bad-bg: #3B1C1A;
+  --w-bad-border: #632D2A;
+  --w-info-dot: #998BFF;
+  --w-info-text: #BFB9FE;
+  --w-info-bg: #2B2653;
+  --w-info-border: #443A84;
+  --w-none-dot: #696B78;
+  /* 设计稿没有给深色的成功 / 需处理描边：暂按点色混入卡片底取（深色开关还没开放） */
+  --w-ok-border: color-mix(in srgb, #52B766 40%, #1A1B22);
+  --w-warn-border: color-mix(in srgb, #F5AE39 40%, #1A1B22);
+
+  --w-sb-bg: #0B0B15;
+  --w-sb-active: #242047;
+  --w-sb-line: #1E1E29;
+
+  --w-chart-1: #8572EE;
+  --w-chart-3: #D26C28;
+  --w-chart-4: #3284D0;
+  --w-chart-5: #438E3C;
+  --w-chart-6: #D24E91;
+  --w-chart-7: #B68F1B;
+  --w-chart-8: #C13C3B;
+  --w-chart-seq-1: #281464;
+  --w-chart-seq-2: #3B1B90;
+  --w-chart-seq-3: #4E1DBC;
+  --w-chart-seq-4: #5F1FE6;
+  --w-chart-seq-5: #7855FE;
+  --w-chart-seq-6: #998BFF;
+  --w-chart-seq-7: #BFB9FE;
+  --w-chart-div-n3: #BFB9FE;
+  --w-chart-div-n2: #7855FE;
+  --w-chart-div-n1: #3B1B90;
+  --w-chart-div-0: #3B3C46;
+  --w-chart-div-p1: #8F4622;
+  --w-chart-div-p2: #D47636;
+  --w-chart-div-p3: #EAB084;
+  --w-chart-grid: #26272F;
+  --w-chart-axis: #454752;
+  --w-chart-tick: #A2A3B1;
+
+  --w-shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --w-shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --w-shadow-thumb: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /* 引用了其他变量的复合值要在这里重新声明，否则沿用 :root 上按浅色算好的值 */
+  --w-focus-ring: 0 0 0 3px var(--w-focus);
+}
