@@ -12,6 +12,9 @@ const allowAll = computed(() => warehouseStore.canSelectAll)
 const label = computed(() =>
   current.value?.name || (allowAll.value ? t('common.all-warehouse') : t('common.validation.warehouse-required')))
 const zoneAbbr = computed(() => (current.value?.timezone ? timeZoneAbbr(current.value.timezone) : ''))
+/** 悬停时的完整时区（同原来页头的时区小标签：「时间按 Asia/Tokyo (UTC+09:00) 显示」） */
+const zoneTitle = computed(() =>
+  (current.value?.timezone ? t('timezone.shown-in', { zone: timeZoneDescription(current.value.timezone) }) : undefined))
 const zoneOf = (warehouse: WarehouseSimple) => (warehouse.timezone ? timeZoneDescription(warehouse.timezone) : '')
 
 const select = (warehouse: WarehouseSimple | null) => {
@@ -27,7 +30,7 @@ const select = (warehouse: WarehouseSimple | null) => {
       <button v-bind="attrs" type="button" class="w-wh-btn" :aria-label="t('shell.warehouse.label', { name: label })">
         <WIcon name="warehouse" :size="16" class="w-wh-btn__icon" :class="{ 'is-all': !current }" />
         <span class="w-wh-btn__name">{{ label }}</span>
-        <span v-if="zoneAbbr" class="w-wh-btn__zone">{{ zoneAbbr }}</span>
+        <span v-if="zoneAbbr" class="w-wh-btn__zone" :title="zoneTitle">{{ zoneAbbr }}</span>
         <WIcon name="chevron-down" :size="14" :stroke-width="2" class="w-wh-btn__chevron" />
       </button>
     </template>

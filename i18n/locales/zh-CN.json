@@ -2933,6 +2933,7 @@
   },
   "shell": {
     "skip-to-content": "跳到主要内容",
+    "back-to-top": "回到顶部",
     "nav-label": "主导航",
     "admin-nav-label": "平台管理导航",
     "home-link": "{name} 首页",

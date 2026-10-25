@@ -2933,6 +2933,7 @@
   },
   "shell": {
     "skip-to-content": "Skip to main content",
+    "back-to-top": "Back to top",
     "nav-label": "Main navigation",
     "admin-nav-label": "Platform admin navigation",
     "home-link": "{name} home",

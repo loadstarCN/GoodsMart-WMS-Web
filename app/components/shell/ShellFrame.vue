@@ -5,6 +5,7 @@
  * - 内容区 .w-page：旧页面直接放进来，样式靠 assets/styles/legacy-bridge.css 向新规范靠拢
  * - <html> 上的 lang、data-density（显示密度）、data-theme（深色模式，开关暂未开放）在这里设置
  * - 打开页面时刷新员工信息、校验当前仓库（原来在 common/Header 里，逻辑不变）
+ * - 内容区底部的版权行、右下角的回到顶部：沿用原来外壳的 common/Footer、common/BackToTop
  */
 import { ADMIN_NAV, SHELL_FEATURES, WMS_NAV } from '~/data/navigation'
 
@@ -15,6 +16,7 @@ const props = withDefaults(defineProps<{
 })
 
 const { t, localeProperties } = useI18n()
+const year = new Date().getFullYear()
 const route = useRoute()
 const authStore = useAuthStore()
 const staffStore = useStaffStore()
@@ -98,8 +100,12 @@ onBeforeUnmount(() => {
         <div class="w-page">
           <slot />
         </div>
+        <footer class="w-shell__footer">
+          {{ t('footer.copyright', { year, company: t('footer.company'), developer: t('footer.developer') }) }}
+        </footer>
       </main>
     </div>
+    <ShellBackToTop />
   </div>
 </template>
 
@@ -149,11 +155,22 @@ onBeforeUnmount(() => {
   z-index: var(--w-z-sticky);
 }
 .w-main {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
-  padding: var(--w-page-pad-top) var(--w-page-pad-x) var(--w-page-pad-bottom);
+  padding: var(--w-page-pad-top) var(--w-page-pad-x) var(--w-sp-24);
 }
+.w-page { flex: 1 0 auto; min-width: 0; }
 .w-main:focus { outline: none; }
+/* 版权行：内容区最下面，弱化小字 */
+.w-shell__footer {
+  margin-top: var(--w-sp-48);
+  font-size: var(--w-fs-12);
+  line-height: var(--w-lh-12);
+  color: var(--w-text-3);
+  text-align: center;
+}
 
 /* 窄屏：侧栏变抽屉 */
 .w-shell.is-mobile .w-shell__sidebar {
@@ -176,13 +193,13 @@ onBeforeUnmount(() => {
   background: var(--w-backdrop);
 }
 @media (max-width: 991.98px) {
-  .w-main { padding: 16px 16px var(--w-page-pad-bottom); }
+  .w-main { padding: 16px 16px var(--w-sp-24); }
 }
 @media (prefers-reduced-motion: reduce) {
   .w-shell__sidebar { transition: none !important; }
 }
 @media print {
-  .w-shell__sidebar, .w-shell__topbar, .w-shell__skip { display: none !important; }
+  .w-shell__sidebar, .w-shell__topbar, .w-shell__skip, .w-shell__footer { display: none !important; }
   .w-main { padding: 0; }
 }
 </style>

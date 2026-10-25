@@ -2933,6 +2933,7 @@
   },
   "shell": {
     "skip-to-content": "メインコンテンツへ移動",
+    "back-to-top": "ページの先頭へ",
     "nav-label": "メインナビゲーション",
     "admin-nav-label": "プラットフォーム管理ナビゲーション",
     "home-link": "{name} ホーム",
