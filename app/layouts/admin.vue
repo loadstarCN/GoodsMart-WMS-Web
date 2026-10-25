@@ -1,25 +1,11 @@
 <template>
-  <template v-if="authenticated">
-    <Switcher />
-    <div class="page">
-      <Header />
-      <Sidebar :menuItems="adminMenuData" />
-
-          <!-- Start::app-content -->
-          <div class="main-content app-content">
-              <div class="container-fluid">
-                <slot></slot>
-              </div>
-          </div>
-          <!-- End::app-content -->
-        <Footer />
-    </div>
-    <BackToTop />
-  </template>
+  <ShellFrame v-if="authenticated" variant="admin">
+    <slot />
+  </ShellFrame>
 </template>
 <script lang="ts" setup>
+// 平台管理端外壳（与员工端同一套侧栏 / 顶栏样式，没有仓库和搜索）；菜单在 data/navigation.ts 的 ADMIN_NAV 里维护
 import { useAuthStore } from '~/stores/auth';
-import { adminMenuData } from '~/data/adminMenuData.js';
 
 const { authenticated } = storeToRefs(useAuthStore());
 </script>
