@@ -11,8 +11,11 @@ const props = withDefaults(defineProps<{
   /** 右上角关闭按钮、Esc、点遮罩是否能关闭（提交中可临时关掉） */
   closable?: boolean
   closeOnBackdrop?: boolean
+  /** 盖在其它弹窗上面（确认框：从弹窗里再弹出时不被压住） */
+  top?: boolean
 }>(), {
   size: 'md',
+  top: false,
   closable: true,
   closeOnBackdrop: true,
 })
@@ -39,7 +42,7 @@ useWOverlay(open, panel, close)
 <template>
   <Teleport to="body">
     <Transition name="w-modal">
-      <div v-if="open" class="w-modal w-scope" @mousedown.self="onBackdrop">
+      <div v-if="open" class="w-modal w-scope" :class="{ 'is-top': top }" @mousedown.self="onBackdrop">
         <div ref="panel" class="w-modal__panel" :class="`w-modal__panel--${size}`" role="dialog" aria-modal="true"
           :aria-labelledby="titleId" tabindex="-1">
           <header class="w-modal__header">
@@ -67,6 +70,7 @@ useWOverlay(open, panel, close)
   background: var(--w-backdrop);
   overflow-y: auto;
 }
+.w-modal.is-top { z-index: calc(var(--w-z-modal) + 5); }
 .w-modal__panel {
   width: 100%;
   max-width: 560px;

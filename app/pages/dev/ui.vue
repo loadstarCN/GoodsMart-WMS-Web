@@ -4,6 +4,7 @@
  * 只在开发环境，或平台管理员可以打开（正式环境的员工、未登录都会被带走）。
  * 顶部可以切换深色 / 紧凑：只作用在本页的预览区（data-theme / data-density 加在预览容器上）。
  */
+import type { WComboboxOption } from '~/components/w/WCombobox.vue'
 import type { WSelectOption } from '~/components/w/WSelect.vue'
 import type { WSegmentedOption } from '~/components/w/WSegmented.vue'
 import type { WStepItem } from '~/components/w/WSteps.vue'
@@ -72,6 +73,47 @@ const onScan = () => {
   lastScan.value = goodsCode.value.trim()
   goodsCode.value = ''
 }
+
+// ---- 日期、可搜索下拉、多行文本 ----
+const shipDate = ref<string | null>('2026-10-26')
+const handoverAt = ref<string | null>('2026-10-23T04:03:00+00:00')
+const handoverLa = ref<string | null>('2026-10-23T04:03:00+00:00')
+const comboCarrier = ref<string | null>('sagawa')
+const comboCarrierOptions: WComboboxOption<string>[] = [
+  { value: 'fedex', label: 'FedEx', keywords: 'fedex' },
+  { value: 'yamato', label: 'ヤマト運輸', keywords: 'yamato kuroneko' },
+  { value: 'yamato_b2', label: 'ヤマト運輸（B2クラウド）', keywords: 'yamato b2' },
+  { value: 'sagawa', label: '佐川急便', keywords: 'sagawa' },
+  { value: 'ups', label: 'UPS', keywords: 'ups', disabled: true },
+]
+const comboRecipient = ref<number | null>(null)
+const demoRecipients: WComboboxOption<number>[] = [
+  { value: 1, label: '山田商店 · 山田 太郎', description: '〒530-0001 大阪府大阪市北区梅田 1-1-1 · 06-0000-0000' },
+  { value: 2, label: '中村商会', description: '〒220-0011 神奈川県横浜市西区高島 2-2' },
+  { value: 3, label: 'Example Pty Ltd · Alex Taylor', description: '1 Example St, Adelaide SA 5000, Australia' },
+  { value: 4, label: 'Beispiel GmbH', description: 'Musterstraße 12, 10115 Berlin, Germany' },
+]
+/** 假的远程搜索：等 400ms 再按名称筛 */
+const searchRecipients = (q: string) => new Promise<WComboboxOption<number>[]>((resolve) => {
+  setTimeout(() => resolve(demoRecipients.filter((r) => !q || r.label.toLowerCase().includes(q.toLowerCase()))), 400)
+})
+const remark = ref('')
+const handling = ref('易碎品，加缓冲材。')
+
+// ---- 提示消息、确认框、下拉菜单 ----
+const dialogResult = ref('')
+const toastSuccess = () => wToast(t('dev-ui.toast.success-text'), 'success', {
+  action: { label: t('dev-ui.toast.undo'), onClick: () => wToast(t('dev-ui.toast.undone'), 'info') },
+})
+const askCancel = async () => {
+  const ok = await wConfirm({ title: t('dev-ui.modal.title'), message: t('dev-ui.modal.body'), confirmText: t('dev-ui.buttons.cancel-waybill'),
+    cancelText: t('dev-ui.modal.keep'), danger: true })
+  dialogResult.value = t('dev-ui.dialog.result', { value: ok ? t('dev-ui.buttons.cancel-waybill') : t('dev-ui.modal.keep') })
+}
+const toastWarning = () => wToast(t('dev-ui.toast.warning-text'), 'warning')
+const toastError = () => wToast(t('dev-ui.toast.error-text'), 'error')
+const toastInfo = (text: string) => wToast(text, 'info')
+const showBlocked = () => wAlert({ title: t('dev-ui.dialog.alert-title'), message: t('dev-ui.dialog.alert-text'), tone: 'error' })
 
 // ---- 勾选、开关、单选卡片、分段 ----
 const byLot = ref(true)
@@ -267,6 +309,62 @@ const typeScale = [
             <span class="dev-ui__caption">{{ t('dev-ui.inline') }}</span>
             <WInput size="sm" class="dev-ui__w160" :placeholder="t('dev-ui.inputs.filter')" clearable />
             <WSelect size="sm" class="dev-ui__w160" :model-value="'fedex'" :options="carrierOptions" />
+          </div>
+        </WCard>
+
+        <!-- 日期 · 可搜索下拉 · 多行文本 -->
+        <WCard :title="t('dev-ui.sections.new-inputs')">
+          <WFormGrid>
+            <WField :label="t('dev-ui.date.ship-date')" :hint="t('dev-ui.date.ship-date-hint')" :span="4">
+              <WDatePicker v-model="shipDate" weekday />
+            </WField>
+            <WField :label="t('dev-ui.date.handover')" :hint="t('dev-ui.date.handover-hint', { value: handoverAt || '—' })" :span="4">
+              <WDatePicker v-model="handoverAt" mode="datetime" time-zone="Asia/Tokyo" :max="new Date()" />
+            </WField>
+            <WField :label="t('dev-ui.date.handover-la')" :hint="handoverLa || ''" :span="4">
+              <WDatePicker v-model="handoverLa" mode="datetime" time-zone="America/Los_Angeles" />
+            </WField>
+            <WField :label="t('dev-ui.combo.carrier')" :span="4">
+              <WCombobox v-model="comboCarrier" :options="comboCarrierOptions" clearable />
+            </WField>
+            <WField :label="t('dev-ui.combo.recipient')" :span="8">
+              <WCombobox v-model="comboRecipient" :search="searchRecipients" two-line clearable
+                :placeholder="t('dev-ui.combo.placeholder')" />
+            </WField>
+            <WField :label="t('dev-ui.textarea.remark')" optional :span="6">
+              <WTextarea v-model="remark" :rows="2" />
+            </WField>
+            <WField :label="t('dev-ui.textarea.handling')" optional :span="6">
+              <WTextarea v-model="handling" autosize :rows="2" :max-rows="5" show-count :maxlength="200" />
+            </WField>
+          </WFormGrid>
+        </WCard>
+
+        <!-- 提示消息 · 确认框 · 下拉菜单 -->
+        <WCard :title="t('dev-ui.sections.feedback')">
+          <div class="dev-ui__stack">
+            <div class="dev-ui__row">
+              <WButton @click="toastSuccess">{{ t('dev-ui.toast.success') }}</WButton>
+              <WButton @click="toastWarning">{{ t('dev-ui.toast.warning') }}</WButton>
+              <WButton @click="toastError">{{ t('dev-ui.toast.error') }}</WButton>
+              <WButton variant="danger" @click="askCancel">{{ t('dev-ui.dialog.confirm') }}</WButton>
+              <WButton @click="showBlocked">{{ t('dev-ui.dialog.alert') }}</WButton>
+              <WDropdown :label="t('dev-ui.menu.label')" placement="bottom-start" width="260px">
+                <template #trigger="{ attrs }">
+                  <WButton v-bind="attrs" icon="more" icon-only :aria-label="t('w.menu.more')" />
+                </template>
+                <button type="button" class="w-menu-item w-menu-item--stacked" role="menuitem" aria-disabled="true">
+                  <span class="w-menu-item__label">{{ t('dev-ui.menu.edit') }}</span>
+                  <span class="w-menu-item__desc">{{ t('dev-ui.menu.edit-reason') }}</span>
+                </button>
+                <button type="button" class="w-menu-item" role="menuitem" @click="toastInfo(t('dev-ui.menu.close'))">
+                  {{ t('dev-ui.menu.close') }}
+                </button>
+                <div class="w-menu-divider" role="separator" />
+                <button type="button" class="w-menu-item is-danger" role="menuitem" @click="askCancel">{{ t('dev-ui.menu.delete') }}</button>
+              </WDropdown>
+            </div>
+            <span v-if="dialogResult" class="dev-ui__caption">{{ dialogResult }}</span>
           </div>
         </WCard>
 

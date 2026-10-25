@@ -2929,6 +2929,20 @@
       "warn": "needs action",
       "todo": "not started",
       "sr-state": " ({state})"
+    },
+    "combobox": {
+      "empty": "No matches",
+      "loading": "Searching…",
+      "type-more": "Type at least {n} characters"
+    },
+    "toast": {
+      "close": "Dismiss"
+    },
+    "dialog": {
+      "ok": "OK"
+    },
+    "menu": {
+      "more": "More actions"
     }
   },
   "shell": {
@@ -3100,7 +3114,9 @@
       "overlays": "Modal · drawer · help",
       "steps": "Progress steps",
       "form": "Form layout",
-      "tokens": "Design tokens"
+      "tokens": "Design tokens",
+      "new-inputs": "Date · Combobox · Textarea",
+      "feedback": "Toast · Confirm · Menu"
     },
     "buttons": {
       "complete-shipping": "Complete shipping",
@@ -3288,6 +3304,46 @@
       "type-body": "Body · Picked up by FedEx, on the way",
       "type-table": "Table · Booked 10/23 13:00–17:00",
       "type-caption": "Caption · Now · step 8 of 9"
+    },
+    "date": {
+      "ship-date": "Planned ship date",
+      "ship-date-hint": "Local date of the warehouse, with weekday",
+      "handover": "Actual handover time",
+      "handover-hint": "Entered in Tokyo time: {value}",
+      "handover-la": "Time at the Los Angeles warehouse"
+    },
+    "combo": {
+      "carrier": "Carrier (local filter)",
+      "recipient": "Recipient (remote search, two lines)",
+      "placeholder": "Type to search"
+    },
+    "textarea": {
+      "remark": "Remark",
+      "handling": "Special handling (auto height, counter)"
+    },
+    "toast": {
+      "success": "Success toast",
+      "success-text": "Tracking number 3601-2345-6789 saved",
+      "undo": "Undo",
+      "undone": "Undone",
+      "error": "Error toast",
+      "error-text": "FedEx rejected the shipment: the recipient address has no state / province",
+      "warning": "Warning toast",
+      "warning-text": "2 documents were voided; issue them again"
+    },
+    "dialog": {
+      "confirm": "Danger confirm",
+      "alert": "Alert",
+      "alert-title": "Cannot complete shipping",
+      "alert-text": "The tracking number differs from the commercial invoice: issue the documents again before completing shipping.",
+      "result": "Chosen: {value}"
+    },
+    "menu": {
+      "label": "DN actions",
+      "edit": "Edit",
+      "edit-reason": "Only pending DNs can be edited",
+      "close": "Close",
+      "delete": "Delete"
     }
   }
 }

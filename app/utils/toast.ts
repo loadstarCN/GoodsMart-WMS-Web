@@ -1,16 +1,8 @@
 /********************
- * Toast工具
+ * Toast工具：旧页面的 showToast(message, type) 保留原来的写法，显示改用新界面的提示消息（utils/wToast、components/w/WToastHost）
  ​********************/
- // 工具库
-import { toast } from 'vue3-toastify';
-import 'vue3-toastify/dist/index.css';
+import { wToast } from './wToast'
 
 export const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-  toast[type](message, {
-    theme: 'auto',
-    icon: true,
-    hideProgressBar: true,
-    autoClose: true,
-    position: 'top-right'
-  });
+  wToast(message, type);
 };

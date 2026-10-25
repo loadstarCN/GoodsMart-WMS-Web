@@ -6,6 +6,9 @@
  *   + aria-checked；分组线 <div class="w-menu-divider" role="separator" />
  * - 键盘：上下方向键 / Home / End 移动，Esc 关闭并回到触发按钮，Tab 关闭；点菜单项后自动关闭
  *   （项上加 data-keep-open 时不关）；点菜单外关闭
+ * - 现在不能做的项写 aria-disabled="true"（不用 disabled：仍能聚焦、读屏能读到原因），点了不关、不执行；
+ *   原因写在第二行：<button class="w-menu-item w-menu-item--stacked" role="menuitem" aria-disabled="true">
+ *   <span class="w-menu-item__label">编辑</span><span class="w-menu-item__desc">只有待处理的可以编辑</span></button>
  */
 const props = withDefaults(defineProps<{
   /** 菜单的无障碍名称 */
@@ -71,7 +74,13 @@ const onMenuKeydown = (event: KeyboardEvent) => {
 }
 const onMenuClick = (event: MouseEvent) => {
   const item = (event.target as HTMLElement).closest<HTMLElement>('[role^="menuitem"]')
-  if (item && !item.hasAttribute('data-keep-open')) hide(true)
+  if (!item) return
+  if (item.getAttribute('aria-disabled') === 'true') {
+    event.preventDefault()
+    event.stopPropagation()
+    return
+  }
+  if (!item.hasAttribute('data-keep-open')) hide(true)
 }
 
 const onDocumentPointer = (event: PointerEvent) => {
@@ -96,7 +105,7 @@ defineExpose({ show, hide })
     <slot name="trigger" :attrs="triggerAttrs" :open="open" />
     <Transition name="w-dropdown">
       <div v-if="open" :id="menuId" ref="menu" class="w-dropdown__menu w-scope" :class="`is-${placement}`"
-        :style="{ width: props.width }" role="menu" :aria-label="label" @keydown="onMenuKeydown" @click="onMenuClick">
+        :style="{ width: props.width }" role="menu" :aria-label="label" @keydown="onMenuKeydown" @click.capture="onMenuClick">
         <slot :close="hide" />
       </div>
     </Transition>
@@ -167,6 +176,23 @@ defineExpose({ show, hide })
 .w-menu-item[aria-checked="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--w-focus); }
 .w-menu-item.is-danger,
 .w-menu-item.is-danger:hover { color: var(--w-bad-text); }
+.w-menu-item[aria-disabled="true"],
+.w-menu-item[aria-disabled="true"]:hover { color: var(--w-text-3); background: transparent; cursor: not-allowed; }
+.w-menu-item[aria-disabled="true"]:focus-visible { background: var(--w-surface-2); }
+/* 两行：名称 + 灰字说明（不能做的原因） */
+.w-menu-item--stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.w-menu-item__desc {
+  font-size: var(--w-fs-12);
+  line-height: var(--w-lh-12);
+  color: var(--w-text-3);
+}
 .w-menu-item__label { flex: 1; min-width: 0; }
 .w-menu-item__sub { font-size: var(--w-fs-12); color: var(--w-text-3); white-space: nowrap; }
 .w-menu-divider {

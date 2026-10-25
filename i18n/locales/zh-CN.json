@@ -2929,6 +2929,20 @@
       "warn": "需处理",
       "todo": "未开始",
       "sr-state": "（{state}）"
+    },
+    "combobox": {
+      "empty": "没有匹配的项",
+      "loading": "搜索中…",
+      "type-more": "输入 {n} 个字以上开始搜索"
+    },
+    "toast": {
+      "close": "关闭提示"
+    },
+    "dialog": {
+      "ok": "知道了"
+    },
+    "menu": {
+      "more": "更多操作"
     }
   },
   "shell": {
@@ -3100,7 +3114,9 @@
       "overlays": "弹窗 · 抽屉 · 说明",
       "steps": "流程进度",
       "form": "表单布局",
-      "tokens": "设计令牌"
+      "tokens": "设计令牌",
+      "new-inputs": "日期 · 可搜索下拉 · 多行文本",
+      "feedback": "提示消息 · 确认框 · 下拉菜单"
     },
     "buttons": {
       "complete-shipping": "完成发货",
@@ -3288,6 +3304,46 @@
       "type-body": "正文 · FedEx 已揽收，包裹正在运往目的地",
       "type-table": "表格 · 已预约 10/23 13:00–17:00",
       "type-caption": "辅助 · 现在 · 第 8 步，共 9 步"
+    },
+    "date": {
+      "ship-date": "计划发货日",
+      "ship-date-hint": "仓库当地的日期，后面带星期",
+      "handover": "实际交承运商时间",
+      "handover-hint": "按东京时间输入：{value}",
+      "handover-la": "洛杉矶仓库的时刻"
+    },
+    "combo": {
+      "carrier": "承运商（本地筛选）",
+      "recipient": "收货方（远程搜索、两行）",
+      "placeholder": "输入名称搜索"
+    },
+    "textarea": {
+      "remark": "备注",
+      "handling": "特殊处理要求（自动长高、字数）"
+    },
+    "toast": {
+      "success": "成功提示",
+      "success-text": "已保存运单号 3601-2345-6789",
+      "undo": "撤销",
+      "undone": "已撤销",
+      "error": "出错提示",
+      "error-text": "FedEx 没有接受这次建单：收件人地址缺少州 / 省",
+      "warning": "需处理提示",
+      "warning-text": "单证已作废 2 份，请重新签发"
+    },
+    "dialog": {
+      "confirm": "危险确认",
+      "alert": "提示框",
+      "alert-title": "不能完成发货",
+      "alert-text": "运单号与商业发票上的不一致：请重新签发单证后再完成发货。",
+      "result": "选择了：{value}"
+    },
+    "menu": {
+      "label": "发货单操作",
+      "edit": "编辑发货单",
+      "edit-reason": "只有待处理的发货单可以编辑",
+      "close": "关闭发货单",
+      "delete": "删除发货单"
     }
   }
 }

@@ -2929,6 +2929,20 @@
       "warn": "要対応",
       "todo": "未着手",
       "sr-state": "（{state}）"
+    },
+    "combobox": {
+      "empty": "該当する項目はありません",
+      "loading": "検索中…",
+      "type-more": "{n} 文字以上入力してください"
+    },
+    "toast": {
+      "close": "閉じる"
+    },
+    "dialog": {
+      "ok": "OK"
+    },
+    "menu": {
+      "more": "その他の操作"
     }
   },
   "shell": {
@@ -3100,7 +3114,9 @@
       "overlays": "ダイアログ · ドロワー · 説明",
       "steps": "進捗ステップ",
       "form": "フォームレイアウト",
-      "tokens": "デザイントークン"
+      "tokens": "デザイントークン",
+      "new-inputs": "日付・検索付きプルダウン・複数行テキスト",
+      "feedback": "トースト・確認・メニュー"
     },
     "buttons": {
       "complete-shipping": "出荷完了",
@@ -3288,6 +3304,46 @@
       "type-body": "本文 · FedEx が集荷、配送先へ輸送中",
       "type-table": "テーブル · 予約済み 10/23 13:00–17:00",
       "type-caption": "補助 · 現在 · 全 9 ステップ中 8"
+    },
+    "date": {
+      "ship-date": "出荷予定日",
+      "ship-date-hint": "倉庫の現地日付（曜日付き）",
+      "handover": "実際の引渡し日時",
+      "handover-hint": "東京時間で入力：{value}",
+      "handover-la": "ロサンゼルス倉庫の日時"
+    },
+    "combo": {
+      "carrier": "運送業者（ローカル絞り込み）",
+      "recipient": "受取人（リモート検索・2 行）",
+      "placeholder": "名前で検索"
+    },
+    "textarea": {
+      "remark": "備考",
+      "handling": "特別取扱い（自動拡張・文字数）"
+    },
+    "toast": {
+      "success": "成功トースト",
+      "success-text": "追跡番号 3601-2345-6789 を保存しました",
+      "undo": "元に戻す",
+      "undone": "元に戻しました",
+      "error": "エラートースト",
+      "error-text": "FedEx が出荷を受け付けませんでした：受取人住所に州・都道府県がありません",
+      "warning": "要対応トースト",
+      "warning-text": "書類 2 件が無効になりました。再発行してください"
+    },
+    "dialog": {
+      "confirm": "危険操作の確認",
+      "alert": "アラート",
+      "alert-title": "出荷を完了できません",
+      "alert-text": "追跡番号がインボイスと一致しません。書類を再発行してから出荷を完了してください。",
+      "result": "選択：{value}"
+    },
+    "menu": {
+      "label": "DN の操作",
+      "edit": "編集",
+      "edit-reason": "未処理の DN のみ編集できます",
+      "close": "クローズ",
+      "delete": "削除"
     }
   }
 }

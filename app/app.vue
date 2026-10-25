@@ -4,6 +4,9 @@
     <!-- here -->
     <NuxtPage />
   </NuxtLayout>
+  <!-- 全站共用：提示消息（wToast / showToast）、确认框（wConfirm / wAlert） -->
+  <WToastHost />
+  <WDialogHost />
 </template>
 <script setup lang="ts">
 import { startTokenRefreshMonitor } from '~/utils/auth';
