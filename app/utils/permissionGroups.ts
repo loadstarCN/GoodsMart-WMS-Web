@@ -69,7 +69,8 @@ export const PERMISSION_CATEGORIES: PermissionCategoryDef[] = [
   {
     label: 'admin.permissions.categories.inbound',
     modules: [
-      { label: 'admin.permissions.modules.asn', prefix: 'asn' },
+      // asn_receive = 收货、刷新到货跟踪（作业员用；不能新建 / 修改 / 关闭 / 取消收货通知）
+      { label: 'admin.permissions.modules.asn', prefix: 'asn', ops: ['read', 'edit', 'receive', 'delete'] },
       { label: 'admin.permissions.modules.putaway', prefix: 'putaway', ops: ['read', 'edit'] },
     ]
   },
@@ -88,7 +89,8 @@ export const PERMISSION_CATEGORIES: PermissionCategoryDef[] = [
     label: 'admin.permissions.categories.inventory-ops',
     modules: [
       { label: 'admin.permissions.modules.adjustment', prefix: 'adjustment', ops: ['read', 'edit', 'approve', 'delete'] },
-      { label: 'admin.permissions.modules.cycle-count', prefix: 'cycle_count' },
+      // cycle_count_execute = 开始盘点、录入实盘数、完成明细 / 盘点单（作业员用；不能新建 / 修改盘点单）
+      { label: 'admin.permissions.modules.cycle-count', prefix: 'cycle_count', ops: ['read', 'edit', 'execute', 'delete'], opLabels: { execute: 'admin.permissions.ops.count' } },
       { label: 'admin.permissions.modules.transfer', prefix: 'transfer', ops: ['read', 'edit'] },
       { label: 'admin.permissions.modules.removal', prefix: 'removal', ops: ['read', 'edit'] },
     ]
@@ -105,6 +107,7 @@ export const PERMISSION_OP_LABELS: Record<string, string> = {
   execute: 'admin.permissions.ops.execute',
   approve: 'admin.permissions.ops.approve',
   retry: 'admin.permissions.ops.retry',
+  receive: 'admin.permissions.ops.receive',
 }
 
 /** 模块里某个操作的 i18n key（模块自己的说法优先） */

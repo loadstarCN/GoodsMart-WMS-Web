@@ -266,7 +266,7 @@ const cancelASN = async () => {
                                 <NuxtLink :to="`/asn/edit/${itemData?.id}`" class="btn btn-secondary btn-wave btn-sm"
                                     v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"><i
                                         class="ri-edit-line me-1 align-middle"></i>{{t('button.edit')}}</NuxtLink>
-                                <button class="btn btn-warning btn-wave btn-sm" v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"
+                                <button class="btn btn-warning btn-wave btn-sm" v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_receive', 'asn_edit')"
                                     title="Received" @click="receivedASN()"><i
                                         class="ri-checkbox-line me-1 align-middle"></i>{{t('asn.operations.receive')}}</button>
                                 <NuxtLink :to="`/sorting/?asn_id=${asnId}`" class="btn btn-warning btn-wave btn-sm"

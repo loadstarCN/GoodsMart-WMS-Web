@@ -34,6 +34,7 @@ const errors = ref<Record<string, any>>({
   location: null,
   quantity: null,
   reason: null,
+  transfer_reason: null,
 });
 
 // 处理库位选择
@@ -47,6 +48,12 @@ const reason = ref<any>(null);
 
 const selectedLocation = ref<any>(null);
 const locationSelectedOptions = ref<any[]>([]);
+// 移库原因：从破损 / 退货库位（本库位）移回标准库位（货重新变成可售）必填，否则后端 400 15018；被后端以 15018 拦下时也显示
+const transferReason = ref<any>(null);
+const transferReasonRequired = computed(() =>
+  ['damaged', 'return'].includes(itemData.value?.location_type)
+  && selectedLocation.value?.location_type === 'standard');
+const showTransferReason = computed(() => transferReasonRequired.value || !!errors.value.transfer_reason);
 
 const fetchLocationData = async (code: string) => {
   if (!code) return;
@@ -230,13 +237,18 @@ const transferFn = (item: any) => {
   activePutaway.value = false;
   selectedGoods.value = item.goods;
   maxQuantity.value = item.quantity;
+  transferReason.value = null;
+  errors.value.transfer_reason = null;
 }
 
 const createTransfer = async () => {
+  // 原因输入显示着时才带上 reason
+  const reasonText = showTransferReason.value ? String(transferReason.value ?? '').trim() : '';
   errors.value = {
     location: null,
     goods: null,
     quantity: null,
+    transfer_reason: null,
   };
   if (!selectedGoods.value) {
     errors.value.goods = t('location.validation.goods.required');
@@ -258,22 +270,31 @@ const createTransfer = async () => {
     errors.value.quantity = t('location.validation.quantity-required');
     return;
   }
+  if (transferReasonRequired.value && !reasonText) {
+    errors.value.transfer_reason = t('location.validation.reason-required');
+    return;
+  }
   loading.value = true;
   const data = await httpRequest('/api/warehouse/transfer/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: {from_location_id: locationId, to_location_id:selectedLocation.value.id, goods_id: selectedGoods.value.id, quantity: quantity.value, remark: remark.value},
+      body: {from_location_id: locationId, to_location_id:selectedLocation.value.id, goods_id: selectedGoods.value.id, quantity: quantity.value, remark: remark.value, reason: reasonText || undefined},
       onSuccess: async() => {        
         selectedGoods.value = null;
         selectedLocation.value = null;
         quantity.value = null;
         remark.value = null;
+        transferReason.value = null;
         // 调用公共方法关闭模态框
         // closeModal('transferModal');
         showToast(t('action-results.success'), 'success')
         await fetchTabData();      
       },
       onError: (error) => {
+          // 15018 移回标准库位没填原因：标在原因下
+          if (error.code === 15018) {
+            errors.value.transfer_reason = bizErrorMessage(error);
+          }
           showToast(bizErrorMessage(error), 'error')
       },
       onFinally: () => {
@@ -954,6 +975,15 @@ onMounted(async() => {
             <div class="flex-nowrap input-group-custom">
               <input type="number" class="form-control" v-model="quantity" :placeholder="t('common.placeholders.quantity')" />
               <div v-if="errors.quantity" class="invalid-feedback d-block">{{ errors.quantity }}</div>
+            </div>
+          </div>
+          <div class="mb-3" v-if="showTransferReason">
+            <label for="transfer-reason" class="form-label">{{ t('common.fields.reason')}} <abbr title="required" aria-hidden="true"
+                class="text-danger">*</abbr></label>
+            <div class="flex-nowrap input-group-custom">
+              <input type="text" id="transfer-reason" class="form-control" v-model="transferReason" maxlength="255" :placeholder="t('common.placeholders.reason')" />
+              <div class="form-text">{{ t('common.tips.transfer-restore-reason') }}</div>
+              <div v-if="errors.transfer_reason" class="invalid-feedback d-block">{{ errors.transfer_reason }}</div>
             </div>
           </div>
           <div class="mb-3">

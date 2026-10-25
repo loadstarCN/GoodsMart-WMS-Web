@@ -352,7 +352,8 @@
       "country": "Two uppercase letters (e.g., CN/JP/US)",
       "readonly": "Read-only",
       "non-latin": "Contains non-Latin characters (e.g. Chinese or Japanese). Export documents accept English / Latin letters only; issuing documents will be blocked",
-      "required": "Required"
+      "required": "Required",
+      "transfer-restore-reason": "Moving stock from a damaged goods or returns location back to a standard location requires a reason, which is recorded in the stock ledger"
     },
     "validation": {
       "name-required": "{entity} name cannot be empty",
@@ -1124,6 +1125,19 @@
       "edit": "Edit Sorting Task",
       "delete": "Delete Sorting Task",
       "back-to-list": "Back to Sorting List"
+    },
+    "spec-pending": {
+      "title": "Specs to capture",
+      "warn": "Sorting is complete. Specs have not been captured yet for the following goods; please capture them soon: {items}",
+      "blocked-title": "Cannot complete sorting",
+      "blocked": "This warehouse requires specs to be captured before sorting is completed. Specs are still missing, with no skip reason, for: {items}",
+      "line": "{goods} ({fields})",
+      "separator": "; ",
+      "fields": {
+        "weight": "Weight",
+        "dimensions": "Dimensions",
+        "origin-country": "Country of Origin"
+      }
     }
   },
   "dn": {
@@ -1768,7 +1782,9 @@
         "create": "Create",
         "execute": "Execute",
         "approve": "Approve",
-        "retry": "Resend"
+        "retry": "Resend",
+        "receive": "Receive",
+        "count": "Perform Count"
       }
     },
     "logs": {
@@ -2486,7 +2502,15 @@
     "code-10012-row": "Row {row}: invalid number (the price must not be negative, and the discount price must not exceed the price)",
     "code-10014-row": "Row {row}: invalid country of origin (ISO 3166-1 alpha-2 code required)",
     "code-16100-row": "Row {row}: invalid goods value ({field}): weight must be greater than 0 and at most 99999.999 kg, dimensions must be positive millimetres, and prices must be between 0 and 9999999999.99",
-    "code-16101-row": "Goods code {code} appears more than once in the CSV (rows {rows}). Merge them and import again"
+    "code-16101-row": "Goods code {code} appears more than once in the CSV (rows {rows}). Merge them and import again",
+    "code-15017": "The batch threshold update has errors, so nothing was changed. Correct the errors listed and submit again",
+    "code-15018": "A reason (up to 255 characters) is required to move stock from a damaged goods or returns location back to a standard location",
+    "code-15019": "Invalid stock query parameter ({field}). Check the dates (not in the future, at most 400 days apart), stock category, grouping / status / sort options, and select a warehouse",
+    "code-15020": "The export exceeds the limit of 50,000 rows. Narrow the filters and try again",
+    "code-17020": "Invalid spec capture settings: items can only be weight, dimensions and country of origin; the mode must be \"missing only\" or \"remeasure all\"; handling of uncaptured specs must be \"warn\" or \"block\"",
+    "code-17021": "This warehouse requires specs to be captured before sorting is completed: some sorted goods still have specs to capture and no skip reason",
+    "code-17022": "Invalid spec capture: enter spec values or a skip reason; length, width and height must be entered together; in \"remeasure all\" mode every requested spec is required; the skip reason can be at most 255 characters",
+    "code-17023": "Specs can only be captured on an ASN that has been received or completed"
   },
   "shipping": {
     "title": "Shipping flow",

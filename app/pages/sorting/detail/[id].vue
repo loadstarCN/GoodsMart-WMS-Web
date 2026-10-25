@@ -10,7 +10,7 @@ const taskId = route.params.id;
 
 const itemData = ref<any>(null);
 const activeTab = ref('details');
-const { t } = useI18n();
+const { t, te } = useI18n();
 // 商品分类存英文原值，显示译名
 const { categoryLabel } = useOptionLabel();
 const { bizErrorMessage } = useBizError();
@@ -196,6 +196,23 @@ const processTask = async () => {
 
 
 
+// 规格采集（后端 warehouse/asn/spec_capture.py）：完成分拣时仓库规则为提示（warn）照常完成，响应的 spec_pending 列出
+// 本单分拣到、还没采集规格的行；为拦截（block）时 409 17021，details.lines 同一结构。采集界面以后做，这里只列出商品和待采集项
+// 行：{asn_detail_id, goods_id, goods_code, goods_name, spec_pending: [weight | dimensions | origin_country]}
+const specPendingText = (lines: unknown): string => {
+  if (!Array.isArray(lines)) return '';
+  return lines.filter((line: any) => line && typeof line === 'object').map((line: any) => {
+    const goods = [line.goods_code, line.goods_name].filter(Boolean).join(' ') || `#${line.goods_id ?? line.asn_detail_id}`;
+    const fields = (Array.isArray(line.spec_pending) ? line.spec_pending : [])
+      .map((field: string) => {
+        const key = `sorting.spec-pending.fields.${String(field).replace(/_/g, '-')}`;
+        return te(key) ? t(key) : String(field);
+      })
+      .join(t('shipping.list-separator'));
+    return fields ? t('sorting.spec-pending.line', { goods, fields }) : goods;
+  }).join(t('sorting.spec-pending.separator'));
+};
+
 const completeTask = async () => {
   // 检查是否存在未保存的有效分拣数据
     const data = await httpRequest(`/api/warehouse/sorting/${taskId}/complete/`, {
@@ -203,9 +220,19 @@ const completeTask = async () => {
         onSuccess: (data) => {
             itemData.value = data;
             showToast(t('action-results.task-complete'), 'success')
+            const pending = specPendingText(data?.spec_pending);
+            if (pending) {
+              showAlert(t('sorting.spec-pending.title'), t('sorting.spec-pending.warn', { items: pending }), 'warning');
+            }
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            // 17021：仓库要求先采集规格，列出待采集的商品和项
+            const pending = error.code === 17021 ? specPendingText(error.details?.lines) : '';
+            if (pending) {
+              showAlert(t('sorting.spec-pending.blocked-title'), t('sorting.spec-pending.blocked', { items: pending }), 'error');
+              return;
+            }
+            showToast(bizErrorMessage(error), 'error')
         }
     })
     return data;   

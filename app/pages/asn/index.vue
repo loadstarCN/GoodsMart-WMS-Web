@@ -342,7 +342,7 @@ onMounted(async() => {
                                     <td>
                                         <div class="hstack gap-2 fs-15">
                                             <NuxtLink :to="`/asn/edit/${asn?.id}`" class="btn btn-icon btn-sm btn-success-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_edit')"><i class="ri-edit-line"></i></NuxtLink>
-                                            <NuxtLink  href="javascript:void(0);" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_edit')" :title="t('asn.operations.receive')" @click="receiveItem(asn.id)"><i  class="ri-checkbox-line"></i></NuxtLink>
+                                            <NuxtLink  href="javascript:void(0);" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_receive', 'asn_edit')" :title="t('asn.operations.receive')" @click="receiveItem(asn.id)"><i  class="ri-checkbox-line"></i></NuxtLink>
                                             <NuxtLink :to="`/sorting/?asn_id=${asn.id}`" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="asn.status==='received'" :title="t('asn.operations.sorting')"><i class="ri-list-check-3"></i></NuxtLink>
                                             <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(asn.status==='received') && staffStore.hasPermission('asn_edit')"
                                                 :title="t('asn.operations.cancel')" :disabled="cancelingId !== null" @click="cancelItem(asn.id)">

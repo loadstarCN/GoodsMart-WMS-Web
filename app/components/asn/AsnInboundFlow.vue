@@ -7,7 +7,7 @@
  * ShippingFlowStep / FlowTransitDetail）：
  * - 在途：FlowTransitDetail（跟踪状态、扫描记录；refresh_tracking → POST /asn/<id>/track，open_tracking → 承运商查询页）。
  *   跟踪只用来显示，承运商说已送达也不会自动收货
- * - 收货：receive → PUT /asn/<id>/receive/（要 asn_edit）
+ * - 收货：receive → PUT /asn/<id>/receive/（要 asn_receive 或 asn_edit；刷新跟踪同样）
  * - 分拣：分拣任务的入口（summary.task_ids → /sorting/detail/<id>）
  * - 上架：逐商品的待上架（按待上架库存估算，上架记录不带入库单），商品详情里可以上架
  * 状态不在界面推算，按后端给的。做了操作整体重读，并 emit changed 让页面刷新自己的数据。
@@ -47,7 +47,8 @@ const locale = computed(() => String(localeProperties.value?.iso || '') || undef
 /** ASN 所属仓库的时区（共用的步骤组件、在途详情都用它） */
 const flowTimeZone = provideTimeZone(() => flow.value?.timezone, () => flow.value?.warehouse_id)
 const carrierName = computed(() => flow.value?.carrier?.name || t('customs.carrier.carrier-fallback'))
-const canEdit = computed(() => staffStore.hasPermission('asn_edit'))
+// 收货、刷新跟踪：作业员的 asn_receive 或 asn_edit 任一（新建 / 修改 / 关闭 / 取消收货通知仍只认 asn_edit）
+const canReceive = computed(() => staffStore.hasPermission('asn_receive', 'asn_edit'))
 
 const load = async () => {
   loading.value = true
@@ -238,10 +239,10 @@ const ACTION_ICONS: Record<string, string> = {
   refresh_tracking: 'ri-refresh-line',
   open_tracking: 'ri-external-link-line',
 }
-/** 要 asn_edit 的操作 */
-const EDIT_ACTIONS = ['receive', 'refresh_tracking']
+/** 要 asn_receive / asn_edit 的操作 */
+const RECEIVE_ACTIONS = ['receive', 'refresh_tracking']
 const headerActions = (step: InboundStep): FlowAction[] => step.actions.filter((a: FlowAction) => a.enabled
-  && Object.keys(ACTION_ICONS).includes(a.key) && (!EDIT_ACTIONS.includes(a.key) || canEdit.value)
+  && Object.keys(ACTION_ICONS).includes(a.key) && (!RECEIVE_ACTIONS.includes(a.key) || canReceive.value)
   // 在途展开后由详细内容提供刷新 / 查询页
   && !(step.key === 'in_transit' && isExpanded(step.key)))
 
@@ -278,8 +279,8 @@ const onHeaderAction = async (step: InboundStep, key: string) => {
   }
 }
 
-/** 在途一步给 FlowTransitDetail 的：没有 asn_edit 时刷新按不能做（不带原因，不列说明） */
-const transitStep = (step: InboundStep): InboundStep => (canEdit.value ? step : {
+/** 在途一步给 FlowTransitDetail 的：没有 asn_receive / asn_edit 时刷新按不能做（不带原因，不列说明） */
+const transitStep = (step: InboundStep): InboundStep => (canReceive.value ? step : {
   ...step,
   actions: step.actions.map((a: FlowAction) => (a.key === 'refresh_tracking'
     ? { ...a, enabled: false, reason: null, reason_code: null } : a)),
