@@ -31,6 +31,7 @@ export const W_ICONS = {
   'printer': 'M7 9V4h10v5 M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2 M7 14h10v6H7z',
   'more': 'M5 12h.01 M12 12h.01 M19 12h.01',
   'box': 'M4 7l8-4 8 4v10l-8 4-8-4V7z M4 7l8 4 8-4 M12 11v10',
+  'clock': 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3 2',
 
   // ---- 主导航（Sidebar.dc.html） ----
   'home': 'M3 10.5L12 4l9 6.5V20h-6v-6H9v6H3v-9.5z',

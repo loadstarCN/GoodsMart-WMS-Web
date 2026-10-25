@@ -2999,6 +2999,85 @@
       "settings": "システム設定"
     }
   },
+  "search": {
+    "dialog": "検索",
+    "input-label": "検索キーワード",
+    "placeholder": "伝票番号・注文番号・追跡番号・商品・ロケーション",
+    "clear": "検索キーワードをクリア",
+    "results-label": "検索結果",
+    "help": "伝票番号（DN- / ASN- / SORT- / PICK- / PACK- / DEL- / CC- / ADJ-）、注文番号、追跡番号、商品コード・商品名、ロケーションコード、受取先名で検索できます。伝票と作業は明細の商品コード・商品名でも一致します。通常は選択中の倉庫だけを検索し、「すべての倉庫」を選ぶと会社の全倉庫を検索します。閲覧権限のある種類だけが表示されます。",
+    "best": "最も一致 · {type}",
+    "exact": "完全一致 · {field}",
+    "contains": "含む: ",
+    "view-all": "すべて表示（{count} 件）→",
+    "all-results": "すべての結果（{count} 件）→",
+    "keys": {
+      "select": "↑ ↓ 選択",
+      "open": "Enter 開く",
+      "close": "Esc 閉じる"
+    },
+    "recent": {
+      "title": "最近の検索",
+      "clear": "クリア",
+      "remove": "最近の検索から {q} を削除",
+      "count": "{count} 件"
+    },
+    "empty": {
+      "warehouse": "{warehouse} に「{q}」は見つかりませんでした",
+      "all": "すべての倉庫で「{q}」は見つかりませんでした",
+      "search-all": "すべての倉庫で検索"
+    },
+    "idle": "伝票番号・注文番号・追跡番号・商品・ロケーション・受取先を入力",
+    "loading": "検索中…",
+    "failed": "検索できませんでした",
+    "retry": "再試行",
+    "title": "「{q}」の検索結果",
+    "page-title": "検索",
+    "result-count": "{count} 件",
+    "tabs-label": "種類別",
+    "tab-all": "すべて",
+    "table-caption": "{type}の検索結果",
+    "no-items": "この種類の結果はありません",
+    "scope": {
+      "label": "検索範囲",
+      "warehouse": "現在の倉庫 {name}"
+    },
+    "fields": {
+      "number": "伝票番号",
+      "tracking_number": "追跡番号"
+    },
+    "open": "{type}を開く",
+    "open-related": "{code} を開く",
+    "stock": "在庫",
+    "today": "今日",
+    "unit-pcs": "点",
+    "unit-kinds": "種",
+    "kinds": "{count} 種",
+    "columns": {
+      "dn-main": "受取先 · DN",
+      "asn-main": "サプライヤー · ASN",
+      "task": "作業",
+      "related": "関連伝票",
+      "carrier": "運送業者 · 追跡番号",
+      "carrier-name": "運送業者",
+      "tracking": "追跡番号",
+      "shipping-date": "出荷予定",
+      "arrival-date": "入荷予定",
+      "status": "ステータス",
+      "warehouse": "倉庫",
+      "goods": "商品",
+      "available": "販売可能",
+      "onhand": "在庫",
+      "location-code": "ロケーションコード",
+      "location-type": "種類",
+      "goods-count": "商品",
+      "quantity": "数量",
+      "recipient": "受取先",
+      "locality": "市区町村",
+      "admin-area": "都道府県・州",
+      "country": "国・地域"
+    }
+  },
   "dev-ui": {
     "title": "コンポーネント一覧",
     "theme": "プレビューの配色",

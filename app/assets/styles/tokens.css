@@ -80,6 +80,7 @@
   --w-disabled-text: var(--w-neutral-500);
   --w-backdrop: rgba(16, 18, 27, 0.45);     /* 弹窗 / 抽屉遮罩 */
   --w-skeleton: var(--w-neutral-100);       /* 加载骨架 */
+  --w-mark: var(--w-brand-200);             /* 搜索命中的底色（文字用正文色） */
 
   /* ---------- 侧栏（浅色、深色模式下都是深底） ---------- */
   --w-sb-bg: #171729;
@@ -226,6 +227,7 @@
   --w-disabled-text: #A2A3B1;
   --w-backdrop: rgba(0, 0, 0, 0.6);
   --w-skeleton: #23242D;
+  --w-mark: #443A84;
 
   --w-ok-dot: #52B766;
   --w-ok-text: #83D494;

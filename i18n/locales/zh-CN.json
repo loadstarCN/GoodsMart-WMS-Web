@@ -2999,6 +2999,85 @@
       "settings": "系统设置"
     }
   },
+  "search": {
+    "dialog": "搜索",
+    "input-label": "搜索内容",
+    "placeholder": "单号、订单号、运单号、商品、库位",
+    "clear": "清空搜索内容",
+    "results-label": "搜索结果",
+    "help": "可搜单号（DN- / ASN- / SORT- / PICK- / PACK- / DEL- / CC- / ADJ-）、订单号、运单号、商品编码和名称、库位码、收货方名称；单据和作业任务也按其中的商品编码、名称匹配。默认只搜当前仓库，选「全部仓库」时搜公司的全部仓库；只显示有查看权限的类型。",
+    "best": "最佳匹配 · {type}",
+    "exact": "精确 · {field}",
+    "contains": "含 ",
+    "view-all": "查看全部 {count} 条 →",
+    "all-results": "全部结果 {count} 条 →",
+    "keys": {
+      "select": "↑ ↓ 选择",
+      "open": "Enter 打开",
+      "close": "Esc 关闭"
+    },
+    "recent": {
+      "title": "最近搜索",
+      "clear": "清除",
+      "remove": "从最近搜索中删除 {q}",
+      "count": "{count} 条"
+    },
+    "empty": {
+      "warehouse": "在 {warehouse} 没有找到「{q}」",
+      "all": "在全部仓库中没有找到「{q}」",
+      "search-all": "在全部仓库中搜索"
+    },
+    "idle": "输入单号、订单号、运单号、商品、库位或收货方",
+    "loading": "搜索中…",
+    "failed": "搜索失败",
+    "retry": "重试",
+    "title": "搜索「{q}」",
+    "page-title": "搜索",
+    "result-count": "{count} 条结果",
+    "tabs-label": "按类型",
+    "tab-all": "全部",
+    "table-caption": "{type}的搜索结果",
+    "no-items": "这一类没有结果",
+    "scope": {
+      "label": "搜索范围",
+      "warehouse": "当前仓库 {name}"
+    },
+    "fields": {
+      "number": "单号",
+      "tracking_number": "运单号"
+    },
+    "open": "打开{type}",
+    "open-related": "打开 {code}",
+    "stock": "库存",
+    "today": "今天",
+    "unit-pcs": "件",
+    "unit-kinds": "种",
+    "kinds": "{count} 种",
+    "columns": {
+      "dn-main": "收货方 · 发货单",
+      "asn-main": "供应商 · 收货通知",
+      "task": "任务",
+      "related": "关联单据",
+      "carrier": "承运商 · 运单号",
+      "carrier-name": "承运商",
+      "tracking": "运单号",
+      "shipping-date": "计划发货",
+      "arrival-date": "预计到货",
+      "status": "状态",
+      "warehouse": "仓库",
+      "goods": "商品",
+      "available": "可售",
+      "onhand": "在库",
+      "location-code": "库位码",
+      "location-type": "类型",
+      "goods-count": "商品",
+      "quantity": "件数",
+      "recipient": "收货方",
+      "locality": "城市",
+      "admin-area": "州 / 省",
+      "country": "国家 / 地区"
+    }
+  },
   "dev-ui": {
     "title": "组件展示",
     "theme": "预览配色",

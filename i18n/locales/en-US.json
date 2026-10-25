@@ -2999,6 +2999,85 @@
       "settings": "System Settings"
     }
   },
+  "search": {
+    "dialog": "Search",
+    "input-label": "Search for",
+    "placeholder": "Document no., order no., tracking no., goods, location",
+    "clear": "Clear search",
+    "results-label": "Search results",
+    "help": "Search by document number (DN- / ASN- / SORT- / PICK- / PACK- / DEL- / CC- / ADJ-), order number, tracking number, goods code or name, location code or recipient name. Documents and tasks also match the goods on their lines. Only the current warehouse is searched unless you choose All Warehouses, and only the types you may view are shown.",
+    "best": "Best match · {type}",
+    "exact": "Exact · {field}",
+    "contains": "Contains ",
+    "view-all": "View all {count} →",
+    "all-results": "All results ({count}) →",
+    "keys": {
+      "select": "↑ ↓ Select",
+      "open": "Enter Open",
+      "close": "Esc Close"
+    },
+    "recent": {
+      "title": "Recent searches",
+      "clear": "Clear",
+      "remove": "Remove {q} from recent searches",
+      "count": "{count} result | {count} results"
+    },
+    "empty": {
+      "warehouse": "No results for “{q}” in {warehouse}",
+      "all": "No results for “{q}” in any warehouse",
+      "search-all": "Search all warehouses"
+    },
+    "idle": "Type a document no., order no., tracking no., goods, location or recipient",
+    "loading": "Searching…",
+    "failed": "Search failed",
+    "retry": "Retry",
+    "title": "Results for “{q}”",
+    "page-title": "Search",
+    "result-count": "{count} result | {count} results",
+    "tabs-label": "By type",
+    "tab-all": "All",
+    "table-caption": "{type} search results",
+    "no-items": "No results of this type",
+    "scope": {
+      "label": "Search scope",
+      "warehouse": "Current warehouse {name}"
+    },
+    "fields": {
+      "number": "Document no.",
+      "tracking_number": "Tracking no."
+    },
+    "open": "Open {type}",
+    "open-related": "Open {code}",
+    "stock": "Inventory",
+    "today": "Today",
+    "unit-pcs": "items",
+    "unit-kinds": "kinds",
+    "kinds": "{count} kind | {count} kinds",
+    "columns": {
+      "dn-main": "Recipient · DN",
+      "asn-main": "Supplier · ASN",
+      "task": "Task",
+      "related": "Related document",
+      "carrier": "Carrier · Tracking no.",
+      "carrier-name": "Carrier",
+      "tracking": "Tracking no.",
+      "shipping-date": "Planned shipping",
+      "arrival-date": "Expected arrival",
+      "status": "Status",
+      "warehouse": "Warehouse",
+      "goods": "Goods",
+      "available": "Available",
+      "onhand": "On hand",
+      "location-code": "Location code",
+      "location-type": "Type",
+      "goods-count": "Goods",
+      "quantity": "Quantity",
+      "recipient": "Recipient",
+      "locality": "City",
+      "admin-area": "State / Province",
+      "country": "Country / Region"
+    }
+  },
   "dev-ui": {
     "title": "Component Gallery",
     "theme": "Preview theme",
