@@ -85,39 +85,73 @@ const exporterLinks = (p: CustomsProblem) => {
 </script>
 
 <template>
-  <div>
-    <div class="mb-2" v-for="group in groups" :key="group.level">
-      <div class="fw-semibold fs-13 mb-1" :class="group.cls">
-        <i class="me-1" :class="group.icon"></i>{{ group.title }}（{{ group.items.length }}）
-      </div>
-      <ul class="mb-0 fs-13 ps-3">
-        <li v-for="(p, i) in group.items" :key="`${group.level}-${i}`" :title="p.message || ''">
+  <ul class="w-cproblems">
+    <template v-for="group in groups" :key="group.level">
+      <li v-for="(p, i) in group.items" :key="`${group.level}-${i}`" class="w-cproblems__item" :title="p.message || ''">
+        <span class="w-cproblems__dot" :class="`is-${group.level}`" aria-hidden="true" />
+        <span class="w-sr-only">{{ group.title }}</span>
+        <span class="w-cproblems__text">
           {{ problemText(p) }}
-          <span class="badge bg-light text-default ms-1" v-if="p.goods_code">{{ p.goods_code }}</span>
-          <span class="text-muted fs-11 ms-1" v-if="fieldText(p)">({{ fieldText(p) }})</span>
-
-          <a href="#" class="fs-12 ms-2" v-if="isSnapshotProblem(p) && canEditCustoms"
-            @click.prevent="emit('edit-customs')">
-            <i class="ri-edit-line me-1"></i>{{ t('customs.operations.fix') }}
-          </a>
+          <WTag v-if="p.goods_code">{{ p.goods_code }}</WTag>
+          <span v-if="fieldText(p)" class="w-faint">（{{ fieldText(p) }}）</span>
+        </span>
+        <span class="w-cproblems__links">
+          <button v-if="isSnapshotProblem(p) && canEditCustoms" type="button" class="w-cproblems__link" @click="emit('edit-customs')">
+            {{ t('customs.operations.fix') }}
+          </button>
           <template v-else-if="exporterLinks(p)">
-            <NuxtLink to="/company" class="fs-12 ms-2" v-if="exporterLinks(p)?.company">
-              {{ t('customs.operations.edit-exporter') }}
-            </NuxtLink>
-            <NuxtLink :to="`/warehouse/edit/${warehouseId}`" class="fs-12 ms-2" v-if="exporterLinks(p)?.warehouse && warehouseId">
+            <NuxtLink v-if="exporterLinks(p)?.company" to="/company" class="w-cproblems__link">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
+            <NuxtLink v-if="exporterLinks(p)?.warehouse && warehouseId" :to="`/warehouse/edit/${warehouseId}`" class="w-cproblems__link">
               {{ t('customs.operations.edit-warehouse') }}
             </NuxtLink>
           </template>
-          <NuxtLink to="/carrier/" class="fs-12 ms-2" v-else-if="p.code === 'CARRIER_NON_LATIN_TEXT'">
-            {{ t('customs.operations.edit-carrier') }}
-          </NuxtLink>
-          <span class="fs-12 ms-2" v-else-if="p.code === 'NET_WEIGHT_UNKNOWN' && weightMissingLines.length > 0">
-            {{ t('customs.operations.edit-weight') }}:
-            <NuxtLink v-for="line in weightMissingLines" :key="line.goods_code" :to="`/goods/edit/${line.goods_id}`"
-              class="font-monospace ms-1">{{ line.goods_code }}</NuxtLink>
-          </span>
-        </li>
-      </ul>
-    </div>
-  </div>
+          <NuxtLink v-else-if="p.code === 'CARRIER_NON_LATIN_TEXT'" to="/carrier/" class="w-cproblems__link">{{ t('customs.operations.edit-carrier') }}</NuxtLink>
+          <template v-else-if="p.code === 'NET_WEIGHT_UNKNOWN' && weightMissingLines.length > 0">
+            <span class="w-faint">{{ t('customs.operations.edit-weight') }}</span>
+            <NuxtLink v-for="line in weightMissingLines" :key="line.goods_code" :to="`/goods/edit/${line.goods_id}`" class="w-cproblems__link">
+              {{ line.goods_code }}
+            </NuxtLink>
+          </template>
+        </span>
+      </li>
+    </template>
+  </ul>
 </template>
+
+<style scoped>
+.w-cproblems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
+}
+.w-cproblems__item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.w-cproblems__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--w-radius-pill);
+  background: var(--w-warn-dot);
+  transform: translateY(-2px);
+}
+.w-cproblems__dot.is-error { background: var(--w-bad-dot); }
+.w-cproblems__text { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+.w-cproblems__links { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.w-cproblems__link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--w-link);
+  font: inherit;
+  font-weight: var(--w-fw-medium);
+  text-decoration: none;
+  cursor: pointer;
+}
+.w-cproblems__link:hover { color: var(--w-link-hover); }
+</style>

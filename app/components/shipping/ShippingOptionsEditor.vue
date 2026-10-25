@@ -35,6 +35,7 @@ const { t, te, localeProperties } = useI18n()
 const { bizErrorMessage } = useBizError()
 const staffStore = useStaffStore()
 const iso = computed(() => String(localeProperties.value?.iso || 'en-US'))
+const idBase = useId()
 const text = (value: any) => localizedText(value, iso.value)
 
 // 权限以后端为准；出库单 / 打包 / 配送的编辑权限都给改
@@ -131,46 +132,59 @@ const save = async () => {
 </script>
 
 <template>
-  <div class="shipping-options mt-3">
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-      <span class="fw-semibold fs-13"><i class="ri-settings-3-line me-1"></i>{{ t('shipping.options.title') }}</span>
-      <span class="badge bg-light text-default fw-normal" v-if="options.locked">
-        <i class="ri-lock-line me-1"></i>{{ t('shipping.options.locked') }}
-      </span>
-      <span class="fs-12 text-muted" v-if="options.locked && lockedText">{{ lockedText }}</span>
+  <section class="w-flow-options" :aria-labelledby="`${idBase}-title`">
+    <div class="w-flow-options__head">
+      <h4 :id="`${idBase}-title`" class="w-flow-options__title">{{ t('shipping.options.title') }}</h4>
+      <WHelp v-if="!readonly" :text="t('shipping.options.hint')" />
+      <WTag v-if="options.locked">{{ t('shipping.options.locked') }}</WTag>
+      <span v-if="options.locked && lockedText" class="w-flow-options__reason">{{ lockedText }}</span>
     </div>
 
     <!-- 只读：列出填了的项 -->
     <template v-if="readonly">
-      <dl class="row fs-13 mb-0" v-if="filled.length">
-        <template v-for="o in filled" :key="o.key">
-          <dt class="col-sm-4 fw-normal text-muted">{{ text(o.label) || o.key }}</dt>
-          <dd class="col-sm-8 mb-1">{{ displayValue(o) }}</dd>
-        </template>
-      </dl>
-      <p class="fs-12 text-muted mb-0" v-else>{{ t('shipping.options.none') }}</p>
+      <p v-if="filled.length" class="w-flow-options__values">
+        <span v-for="o in filled" :key="o.key" class="w-flow-options__value">
+          <span class="w-faint">{{ text(o.label) || o.key }}</span> {{ displayValue(o) }}
+        </span>
+      </p>
+      <p v-else class="w-flow-options__values w-faint">{{ t('shipping.options.none') }}</p>
     </template>
 
     <!-- 可编辑 -->
-    <form v-else @submit.prevent="save">
-      <p class="fs-12 text-muted mb-2">{{ t('shipping.options.hint') }}</p>
+    <form v-else class="w-flow-options__form" @submit.prevent="save">
       <ShippingOptionsFields v-model="form" :schema="options.schema" :id-prefix="`shipping-option-${dnId}`"
-        :disabled="saving" :errors="errors" col-class="col-md-6 col-xxl-4" />
-      <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-        <button type="submit" class="btn btn-sm btn-primary-light" :disabled="saving || !dirty">
-          <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>{{ t('button.save') }}
-        </button>
-        <button type="button" class="btn btn-sm btn-light" v-if="dirty" :disabled="saving" @click="reset">{{ t('button.cancel') }}</button>
-        <span class="fs-12 text-muted">{{ t('shipping.options.lock-hint') }}</span>
+        :disabled="saving" :errors="errors" :span="4" />
+      <div class="w-flow-options__actions">
+        <WButton type="submit" size="sm" :loading="saving" :disabled="!dirty">{{ t('button.save') }}</WButton>
+        <WButton v-if="dirty" size="sm" variant="text" :disabled="saving" @click="reset">{{ t('button.cancel') }}</WButton>
+        <span class="w-flow-options__reason">{{ t('shipping.options.lock-hint') }}</span>
       </div>
-      <div class="alert alert-danger-transparent fs-13 mt-2 mb-0" v-if="failure">{{ failure }}</div>
+      <WAlert v-if="failure" tone="block" :title="failure" />
     </form>
-  </div>
+  </section>
 </template>
 
 <style scoped>
-.shipping-options {
-  border-top: 1px dashed var(--default-border);
-  padding-top: 0.75rem;
+.w-flow-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--w-line);
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
 }
+.w-flow-options__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.w-flow-options__title {
+  margin: 0;
+  font-size: var(--w-fs-14);
+  line-height: var(--w-lh-14);
+  font-weight: var(--w-fw-semibold);
+}
+.w-flow-options__reason { font-size: var(--w-fs-12); color: var(--w-text-3); }
+.w-flow-options__values { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; }
+.w-flow-options__form { display: flex; flex-direction: column; gap: 10px; }
+.w-flow-options__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 </style>

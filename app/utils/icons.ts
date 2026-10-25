@@ -32,6 +32,11 @@ export const W_ICONS = {
   'more': 'M5 12h.01 M12 12h.01 M19 12h.01',
   'box': 'M4 7l8-4 8 4v10l-8 4-8-4V7z M4 7l8 4 8-4 M12 11v10',
   'clock': 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3 2',
+  'copy': 'M9 9h11v11H9z M5 15H4V4h11v1',
+  'download': 'M12 3v12 M7 10l5 5 5-5 M4 16v4h16v-4',
+  'upload': 'M12 15V3 M7 8l5-5 5 5 M4 16v4h16v-4',
+  'trash': 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6',
+  'file': 'M6 3h9l4 4v14H6V3z M14 3v5h5',
 
   // ---- 主导航（Sidebar.dc.html） ----
   'home': 'M3 10.5L12 4l9 6.5V20h-6v-6H9v6H3v-9.5z',

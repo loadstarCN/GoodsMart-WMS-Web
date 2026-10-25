@@ -10,7 +10,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview --dotenv .env.prod",
     "postinstall": "nuxt prepare",
-    "typecheck": "nuxi typecheck"
+    "typecheck": "nuxi typecheck",
+    "test:dn": "node --test tests/dn-regressions.test.cjs"
   },
   "devDependencies": {
     "@nuxt/devtools": "^1.4.1",

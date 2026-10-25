@@ -7,7 +7,7 @@
  */
 const props = withDefaults(defineProps<{
   title: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   /** 右上角关闭按钮、Esc、点遮罩是否能关闭（提交中可临时关掉） */
   closable?: boolean
   closeOnBackdrop?: boolean
@@ -87,6 +87,8 @@ useWOverlay(open, panel, close)
 .w-modal__panel:focus { outline: none; }
 .w-modal__panel--sm { max-width: 420px; }
 .w-modal__panel--lg { max-width: 800px; }
+/* 宽表格（导入预览）：最多 1040，内容区自己滚动 */
+.w-modal__panel--xl { max-width: 1040px; }
 .w-modal__header {
   display: flex;
   align-items: flex-start;

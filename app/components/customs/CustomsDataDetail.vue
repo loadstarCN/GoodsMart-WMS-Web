@@ -50,190 +50,181 @@ const exportReasonText = (reason: string | null | undefined) => {
 </script>
 
 <template>
-  <div class="row gy-3 customs-data-detail">
-    <!-- ===== 报关概要 ===== -->
-    <div class="col-xxl-5 col-xl-6">
-      <h6 class="fw-semibold fs-13 mb-2">{{ t('customs.sections.summary') }}</h6>
-      <dl class="row mb-0 fs-13 customs-dl">
-        <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.invoice-number') }}</dt>
-        <dd class="col-7">{{ invoiceNumber || '—' }}</dd>
-        <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.incoterm') }}</dt>
-        <dd class="col-7">
-          <span v-if="customs.incoterm">{{ customs.incoterm }}<template v-if="recipientCountry"> {{ recipientCountry.toUpperCase() }}</template></span>
-          <span class="text-danger" v-else>—</span>
-        </dd>
-        <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.currency') }}</dt>
-        <dd class="col-7">{{ customs.currency || '—' }}</dd>
-        <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.export-reason') }}</dt>
-        <dd class="col-7">
-          <span v-if="customs.export_reason">{{ exportReasonText(customs.export_reason) }}</span>
-          <span class="text-danger" v-else>—</span>
-        </dd>
-        <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.recipient-country') }}</dt>
-        <dd class="col-7">
-          <span v-if="recipientCountry">{{ countryText(recipientCountry) }}</span>
-          <span class="text-danger" v-else>—</span>
-        </dd>
-        <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.recipient-tax-id') }}</dt>
-        <dd class="col-7">
-          <template v-if="customs.recipient_tax_id">
-            <span class="badge bg-light text-default me-1" v-if="customs.recipient_tax_id_type">{{ customs.recipient_tax_id_type }}</span>
-            <span class="font-monospace">{{ customs.recipient_tax_id }}</span>
-          </template>
-          <span class="text-muted" v-else>—</span>
-        </dd>
-        <dt class="col-5 text-muted fw-normal">{{ t('customs.fields.consignee') }}</dt>
-        <dd class="col-7">
-          <template v-if="consignee && (consignee.name || consignee.company)">
-            <div v-if="consignee.company">{{ consignee.company }}</div>
-            <div v-if="consignee.name">{{ consignee.name }}</div>
-            <div class="text-muted fs-12">
-              <div v-if="consignee.address_line1">{{ consignee.address_line1 }}</div>
-              <div v-if="consignee.address_line2">{{ consignee.address_line2 }}</div>
-              <div>{{ [consignee.city, consignee.state, consignee.postal_code].filter(Boolean).join(', ') }}</div>
-              <div v-if="consignee.country">{{ countryText(consignee.country) }}</div>
-              <div v-if="consignee.phone">{{ consignee.phone }}</div>
-            </div>
-          </template>
-          <span class="text-muted" v-else>—</span>
-        </dd>
-      </dl>
-    </div>
+  <div class="w-cdata">
+    <div class="w-cdata__top">
+      <!-- ===== 报关概要 ===== -->
+      <section class="w-cdata__section">
+        <h4 class="w-cdata__title">{{ t('customs.sections.summary') }}</h4>
+        <dl class="w-cdata__dl">
+          <dt>{{ t('customs.fields.invoice-number') }}</dt>
+          <dd :class="{ 'is-empty': !invoiceNumber }">{{ invoiceNumber || '—' }}</dd>
+          <dt>{{ t('customs.fields.incoterm') }}</dt>
+          <dd :class="{ 'is-empty': !customs.incoterm }">
+            <template v-if="customs.incoterm">{{ customs.incoterm }}<template v-if="recipientCountry"> {{ recipientCountry.toUpperCase() }}</template></template>
+            <template v-else>—</template>
+          </dd>
+          <dt>{{ t('customs.fields.currency') }}</dt>
+          <dd :class="{ 'is-empty': !customs.currency }">{{ customs.currency || '—' }}</dd>
+          <dt>{{ t('customs.fields.export-reason') }}</dt>
+          <dd :class="{ 'is-empty': !customs.export_reason }">{{ customs.export_reason ? exportReasonText(customs.export_reason) : '—' }}</dd>
+          <dt>{{ t('customs.fields.recipient-country') }}</dt>
+          <dd :class="{ 'is-empty': !recipientCountry }">{{ recipientCountry ? countryText(recipientCountry) : '—' }}</dd>
+          <dt>{{ t('customs.fields.recipient-tax-id') }}</dt>
+          <dd :class="{ 'is-empty': !customs.recipient_tax_id }">
+            <template v-if="customs.recipient_tax_id">
+              <WTag v-if="customs.recipient_tax_id_type">{{ customs.recipient_tax_id_type }}</WTag> {{ customs.recipient_tax_id }}
+            </template>
+            <template v-else>—</template>
+          </dd>
+          <dt>{{ t('customs.fields.consignee') }}</dt>
+          <dd :class="{ 'is-empty': !(consignee && (consignee.name || consignee.company)) }">
+            <template v-if="consignee && (consignee.name || consignee.company)">
+              <span v-if="consignee.company" class="w-cdata__line">{{ consignee.company }}</span>
+              <span v-if="consignee.name" class="w-cdata__line">{{ consignee.name }}</span>
+              <span class="w-cdata__line w-cdata__sub">
+                {{ [consignee.address_line1, consignee.address_line2, [consignee.city, consignee.state, consignee.postal_code].filter(Boolean).join(', ')].filter(Boolean).join(' · ') }}
+              </span>
+              <span v-if="consignee.country || consignee.phone" class="w-cdata__line w-cdata__sub">
+                {{ [consignee.country ? countryText(consignee.country) : '', consignee.phone].filter(Boolean).join(' · ') }}
+              </span>
+            </template>
+            <template v-else>—</template>
+          </dd>
+        </dl>
+      </section>
 
-    <!-- ===== 出口方 + 合计 ===== -->
-    <div class="col-xxl-7 col-xl-6">
-      <h6 class="fw-semibold fs-13 mb-2">{{ t('customs.sections.exporter') }}</h6>
-      <div class="fs-13" v-if="exporter && (exporter.legal_name_en || exporter.address_en)">
-        <div class="fw-semibold">{{ exporter.legal_name_en }}</div>
-        <div class="text-muted fs-12">{{ exporter.address_en }}</div>
-        <div class="text-muted fs-12" v-if="exporter.phone">{{ exporter.phone }}</div>
-      </div>
-      <div class="fs-12 text-muted" v-else>—</div>
-      <div class="fs-12 text-muted mt-1">{{ t('customs.tips.exporter-source') }}</div>
-      <NuxtLink to="/company" class="fs-12"><i class="ri-edit-line me-1"></i>{{ t('customs.operations.edit-exporter') }}</NuxtLink>
-      <NuxtLink :to="`/warehouse/edit/${warehouseId}`" class="fs-12 ms-2" v-if="warehouseId">
-        <i class="ri-edit-line me-1"></i>{{ t('customs.operations.edit-warehouse') }}
-      </NuxtLink>
-
-      <table class="table table-sm mb-0 mt-3 fs-13 customs-totals">
-        <tbody>
-          <tr>
-            <td class="text-muted">{{ t('customs.fields.total-qty') }}</td>
-            <td class="text-end">{{ totals?.quantity ?? '—' }}</td>
-          </tr>
-          <tr>
-            <td class="text-muted">{{ t('customs.fields.goods-value') }}</td>
-            <td class="text-end">{{ money(totals?.goods_value) }}</td>
-          </tr>
-          <tr>
-            <td class="text-muted">{{ t('customs.fields.freight') }}</td>
-            <td class="text-end">{{ money(totals?.freight ?? customs.freight_charge) }}</td>
-          </tr>
-          <tr>
-            <td class="text-muted">{{ t('customs.fields.insurance') }}</td>
-            <td class="text-end">
-              <span v-if="customs.insurance_charge !== null && customs.insurance_charge !== undefined">{{ money(totals?.insurance ?? customs.insurance_charge) }}</span>
-              <span class="text-muted" v-else>—</span>
-            </td>
-          </tr>
-          <tr class="fw-semibold">
-            <td>{{ t('customs.fields.invoice-total') }}</td>
-            <td class="text-end">{{ money(totals?.invoice_total) }}</td>
-          </tr>
-          <tr>
-            <td class="text-muted">{{ t('customs.fields.package-count') }}</td>
-            <td class="text-end">{{ totals?.package_count ?? '—' }}</td>
-          </tr>
-          <tr>
-            <td class="text-muted">{{ t('customs.fields.gross-weight') }}</td>
-            <td class="text-end">{{ weight(totals?.gross_weight_kg) }}</td>
-          </tr>
-          <tr>
-            <td class="text-muted">{{ t('customs.fields.net-weight') }}</td>
-            <td class="text-end">{{ weight(totals?.net_weight_kg) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- ===== 出口方 + 合计 ===== -->
+      <section class="w-cdata__section">
+        <h4 class="w-cdata__title">{{ t('customs.sections.exporter') }} <WHelp :text="t('customs.tips.exporter-source')" /></h4>
+        <div v-if="exporter && (exporter.legal_name_en || exporter.address_en)" class="w-cdata__exporter">
+          <span class="w-cdata__line">{{ exporter.legal_name_en }}</span>
+          <span class="w-cdata__line w-cdata__sub">{{ exporter.address_en }}</span>
+          <span v-if="exporter.phone" class="w-cdata__line w-cdata__sub">{{ exporter.phone }}</span>
+        </div>
+        <span v-else class="w-faint">—</span>
+        <div class="w-cdata__links">
+          <NuxtLink to="/company" class="w-cdata__link">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
+          <NuxtLink v-if="warehouseId" :to="`/warehouse/edit/${warehouseId}`" class="w-cdata__link">{{ t('customs.operations.edit-warehouse') }}</NuxtLink>
+        </div>
+        <dl class="w-cdata__dl is-totals">
+          <dt>{{ t('customs.fields.total-qty') }}</dt><dd>{{ totals?.quantity ?? '—' }}</dd>
+          <dt>{{ t('customs.fields.goods-value') }}</dt><dd>{{ money(totals?.goods_value) }}</dd>
+          <dt>{{ t('customs.fields.freight') }}</dt><dd>{{ money(totals?.freight ?? customs.freight_charge) }}</dd>
+          <dt>{{ t('customs.fields.insurance') }}</dt>
+          <dd :class="{ 'is-empty': customs.insurance_charge === null || customs.insurance_charge === undefined }">
+            {{ customs.insurance_charge !== null && customs.insurance_charge !== undefined ? money(totals?.insurance ?? customs.insurance_charge) : '—' }}
+          </dd>
+          <dt class="is-strong">{{ t('customs.fields.invoice-total') }}</dt><dd class="is-strong">{{ money(totals?.invoice_total) }}</dd>
+          <dt>{{ t('customs.fields.package-count') }}</dt><dd>{{ totals?.package_count ?? '—' }}</dd>
+          <dt>{{ t('customs.fields.gross-weight') }}</dt><dd>{{ weight(totals?.gross_weight_kg) }}</dd>
+          <dt>{{ t('customs.fields.net-weight') }}</dt><dd>{{ weight(totals?.net_weight_kg) }}</dd>
+        </dl>
+      </section>
     </div>
 
     <!-- ===== 明细 ===== -->
-    <div class="col-12">
-      <h6 class="fw-semibold fs-13 mb-2">{{ t('customs.sections.lines') }}</h6>
-      <div class="table-responsive">
-        <table class="table table-sm table-bordered align-middle mb-0 fs-13">
+    <section class="w-cdata__section">
+      <h4 class="w-cdata__title">{{ t('customs.sections.lines') }}</h4>
+      <div class="w-cdata__table">
+        <table class="w-cdata__grid">
           <thead>
             <tr>
               <th scope="col">{{ t('customs.fields.jan') }}</th>
-              <th scope="col">{{ t('customs.fields.goods-name') }}</th>
               <th scope="col">{{ t('customs.fields.description-en') }}</th>
               <th scope="col">{{ t('customs.fields.hs-code') }}</th>
-              <th scope="col" :title="t('customs.tips.jp-export-code')">{{ t('customs.fields.jp-export-code') }}</th>
+              <th scope="col">{{ t('customs.fields.jp-export-code') }} <WHelp :text="t('customs.tips.jp-export-code')" /></th>
               <th scope="col">{{ t('customs.fields.origin') }}</th>
-              <th scope="col" class="text-end">{{ t('customs.fields.packed-qty') }}</th>
-              <th scope="col" class="text-end">{{ t('customs.fields.unit-value') }}</th>
-              <th scope="col" class="text-end">{{ t('customs.fields.amount') }}</th>
+              <th scope="col" class="is-num">{{ t('customs.fields.packed-qty') }}</th>
+              <th scope="col" class="is-num">{{ t('customs.fields.unit-value') }}</th>
+              <th scope="col" class="is-num">{{ t('customs.fields.amount') }}</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="line in lines" :key="line.goods_code" :class="{ 'text-muted': !Number(line.packed_quantity) }">
-              <td class="font-monospace">
-                <NuxtLink v-if="line.goods_id" :to="`/goods/detail/${line.goods_id}`">{{ line.goods_code }}</NuxtLink>
+            <tr v-for="line in lines" :key="line.goods_code" :class="{ 'is-off': !Number(line.packed_quantity) }">
+              <td>
+                <NuxtLink v-if="line.goods_id" :to="`/goods/detail/${line.goods_id}`" class="w-cdata__link">{{ line.goods_code }}</NuxtLink>
                 <span v-else>{{ line.goods_code }}</span>
-              </td>
-              <td class="text-wrap" style="min-width: 160px;">{{ line.goods_name }}</td>
-              <td class="text-wrap" style="min-width: 160px;">
-                <template v-if="line.description_en">
-                  {{ line.description_en }}
-                  <i class="ri-error-warning-line text-warning ms-1" v-if="hasNonAscii(line.description_en)"
-                    :title="t('customs.problems.DESCRIPTION_NOT_ASCII')"></i>
-                </template>
-                <span class="text-danger" v-else>—</span>
-              </td>
-              <td class="font-monospace">
-                <span v-if="line.hs_code">{{ line.hs_code_formatted || formatHsCode(line.hs_code) }}</span>
-                <span class="text-danger" v-else>—</span>
-              </td>
-              <td class="font-monospace text-nowrap">
-                <span v-if="line.jp_export_code">{{ line.jp_export_code }}</span>
-                <span class="text-muted" v-else>—</span>
-                <i class="ri-error-warning-line text-warning ms-1" v-if="jpExportWarned(line)"
-                  :title="t('customs.problems.JP_EXPORT_CODE_MISMATCH')"></i>
+                <span class="w-cdata__line w-cdata__sub">{{ line.goods_name }}</span>
               </td>
               <td>
-                <template v-if="line.origin_country">
-                  <span class="fw-semibold">{{ String(line.origin_country).toUpperCase() }}</span>
-                  <span class="text-muted fs-12 ms-1">{{ countryName(line.origin_country, locale) }}</span>
+                <template v-if="line.description_en">
+                  {{ line.description_en }}
+                  <WTag v-if="hasNonAscii(line.description_en)" tone="warn" :title="t('customs.problems.DESCRIPTION_NOT_ASCII')">!</WTag>
                 </template>
-                <span class="badge bg-danger-transparent" v-else>{{ t('goods.tips.origin-missing') }}</span>
               </td>
-              <td class="text-end text-nowrap">
-                <span class="fw-semibold">{{ line.packed_quantity ?? 0 }}</span>
-                <span class="text-muted"> / {{ line.planned_quantity ?? '—' }}</span>
-                <div class="fs-11 text-muted" v-if="!Number(line.packed_quantity)">{{ t('customs.tips.not-on-invoice') }}</div>
+              <td class="is-mono">{{ line.hs_code ? (line.hs_code_formatted || formatHsCode(line.hs_code)) : '' }}</td>
+              <td class="is-mono">
+                {{ line.jp_export_code || '' }}
+                <WTag v-if="jpExportWarned(line)" tone="warn" :title="t('customs.problems.JP_EXPORT_CODE_MISMATCH')">!</WTag>
               </td>
-              <td class="text-end text-nowrap">
-                <span v-if="line.unit_value !== null && line.unit_value !== undefined">{{ money(line.unit_value) }}</span>
-                <span class="text-danger" v-else>—</span>
+              <td>
+                <template v-if="line.origin_country">{{ String(line.origin_country).toUpperCase() }} <span class="w-faint">{{ countryName(line.origin_country, locale) }}</span></template>
+                <WTag v-else tone="warn">{{ t('goods.tips.origin-missing') }}</WTag>
               </td>
-              <td class="text-end text-nowrap">{{ Number(line.packed_quantity) ? money(line.amount) : '—' }}</td>
+              <td class="is-num">
+                <b>{{ line.packed_quantity ?? 0 }}</b><span class="w-faint"> / {{ line.planned_quantity ?? '—' }}</span>
+                <span v-if="!Number(line.packed_quantity)" class="w-cdata__line w-cdata__sub">{{ t('customs.tips.not-on-invoice') }}</span>
+              </td>
+              <td class="is-num">{{ line.unit_value !== null && line.unit_value !== undefined ? money(line.unit_value) : '' }}</td>
+              <td class="is-num">{{ Number(line.packed_quantity) ? money(line.amount) : '' }}</td>
             </tr>
-            <tr v-if="lines.length === 0">
-              <td colspan="9" class="text-center text-muted py-3">{{ t('common.status.nothing-show') }}</td>
-            </tr>
+            <tr v-if="lines.length === 0"><td colspan="8" class="w-cdata__empty">{{ t('w.table.empty') }}</td></tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.customs-dl dt,
-.customs-dl dd {
-  margin-bottom: 0.35rem;
+.w-cdata {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
 }
-
-.customs-totals {
-  max-width: 24rem;
+.w-cdata__top { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px 32px; }
+.w-cdata__section { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.w-cdata__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--w-fs-14);
+  line-height: var(--w-lh-14);
+  font-weight: var(--w-fw-semibold);
 }
+.w-cdata__dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; }
+.w-cdata__dl dt { color: var(--w-text-2); font-weight: var(--w-fw-regular); }
+.w-cdata__dl dd { margin: 0; overflow-wrap: anywhere; }
+.w-cdata__dl dd.is-empty { color: var(--w-text-3); }
+.w-cdata__dl.is-totals { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--w-line); }
+.w-cdata__dl.is-totals dd { text-align: right; font-variant-numeric: tabular-nums; }
+.w-cdata__dl .is-strong { color: var(--w-text-1); font-weight: var(--w-fw-semibold); }
+.w-cdata__line { display: block; }
+.w-cdata__sub { font-size: var(--w-fs-12); line-height: var(--w-lh-12); color: var(--w-text-3); }
+.w-cdata__exporter { display: flex; flex-direction: column; }
+.w-cdata__links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.w-cdata__link { color: var(--w-link); font-weight: var(--w-fw-medium); text-decoration: none; }
+.w-cdata__link:hover { color: var(--w-link-hover); }
+.w-cdata__table { overflow-x: auto; border: 1px solid var(--w-border); border-radius: var(--w-radius-card); }
+.w-cdata__grid { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.w-cdata__grid th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--w-border);
+  color: var(--w-text-3);
+  font-size: var(--w-fs-12);
+  font-weight: var(--w-fw-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+.w-cdata__grid td { padding: 8px 10px; border-top: 1px solid var(--w-line); vertical-align: top; }
+.w-cdata__grid tbody tr:first-child td { border-top: 0; }
+.w-cdata__grid tr.is-off td { color: var(--w-text-3); }
+.w-cdata__grid .is-num { text-align: right; white-space: nowrap; }
+.w-cdata__grid .is-mono { font-family: var(--w-font-mono); font-size: var(--w-fs-12); white-space: nowrap; }
+.w-cdata__empty { padding: 20px; text-align: center; color: var(--w-text-3); }
 </style>

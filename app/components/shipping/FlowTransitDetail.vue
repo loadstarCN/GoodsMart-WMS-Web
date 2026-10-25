@@ -51,12 +51,13 @@ const statusText = computed(() => {
   const text = t(`customs.carrier.tracking.status.${tr.status}`, { carrier: carrier.value })
   return tr.status_text ? `${text}（${tr.status_text}）` : text
 })
-const statusClass = computed(() => {
+/** 跟踪状态的语义：异常 / 查不到 → 异常红；送达 → 完成绿；在途 → 进行中紫 */
+const statusTone = computed<'bad' | 'ok' | 'info' | 'none'>(() => {
   const s = tracking.value?.status
-  if (s === 'exception' || s === 'unknown') return 'text-danger'
-  if (s === 'delivered') return 'text-success'
-  if (s === 'in_transit' || s === 'out_for_delivery') return 'text-primary'
-  return 'text-muted'
+  if (s === 'exception' || s === 'unknown') return 'bad'
+  if (s === 'delivered') return 'ok'
+  if (s === 'in_transit' || s === 'out_for_delivery') return 'info'
+  return 'none'
 })
 
 const canRefresh = computed(() => flowActionEnabled(props.step, 'refresh_tracking',
@@ -110,69 +111,122 @@ defineExpose({ run })
 </script>
 
 <template>
-  <div class="flow-transit fs-13">
+  <div class="w-flow-transit">
     <template v-if="tracking">
-      <div class="d-flex flex-wrap align-items-baseline gap-2">
-        <span class="fw-semibold" :class="statusClass" v-if="statusText">{{ statusText }}</span>
-        <span class="text-muted" v-if="tracking.estimated_delivery && tracking.status !== 'delivered'">
+      <div class="w-flow-transit__status">
+        <WStatus v-if="statusText" :tone="statusTone" :variant="statusTone === 'bad' ? 'text' : 'dot'">{{ statusText }}</WStatus>
+        <span v-if="tracking.estimated_delivery && tracking.status !== 'delivered'">
           {{ t('customs.carrier.tracking.eta', { date: tracking.estimated_delivery }) }}
         </span>
-        <span class="text-muted" v-if="tracking.delivered_at">
-          {{ t('customs.carrier.tracking.delivered-at', { time: time(tracking.delivered_at) }) }}
-        </span>
-        <span class="fs-12 text-muted" v-if="tracking.synced_at">
-          · {{ t('customs.carrier.tracking.synced', { time: time(tracking.synced_at) }) }}
-        </span>
+        <span v-if="tracking.delivered_at">{{ t('customs.carrier.tracking.delivered-at', { time: time(tracking.delivered_at) }) }}</span>
+        <span v-if="tracking.synced_at" class="w-faint">{{ t('customs.carrier.tracking.synced', { time: time(tracking.synced_at) }) }}</span>
       </div>
-      <div class="fs-12 mt-1 text-danger" v-if="tracking.problem">
-        <i class="ri-error-warning-line me-1"></i>{{ t('customs.carrier.tracking.problem', { reason: tracking.problem }) }}
-      </div>
-      <div class="fs-12 mt-1 text-warning" v-if="tracking.error">
+      <WAlert v-if="tracking.problem" tone="warn" :title="t('shipping.states.warning')">
+        {{ t('customs.carrier.tracking.problem', { reason: tracking.problem }) }}
+      </WAlert>
+      <WAlert v-if="tracking.error" tone="warn" :title="t('shipping.states.warning')">
         {{ t('customs.carrier.tracking.error', { reason: tracking.error }) }}
-      </div>
+      </WAlert>
 
-      <div class="table-responsive mt-2" v-if="events.length">
-        <table class="table table-sm align-middle mb-0 fs-12 flow-transit-events">
-          <thead>
-            <tr>
-              <th scope="col">{{ t('shipping.transit.time') }}</th>
-              <th scope="col">{{ t('shipping.transit.event') }}</th>
-              <th scope="col">{{ t('shipping.transit.location') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(e, i) in events" :key="`ev-${i}`" :class="{ 'fw-semibold': i === 0 }">
-              <td class="text-nowrap">{{ time(e.time) || '—' }}</td>
-              <td class="text-wrap">
-                {{ e.description || '—' }}<code class="ms-1 fs-11" v-if="e.code">{{ e.code }}</code>
-              </td>
-              <td class="text-wrap">{{ e.location || '' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="fs-12 text-muted mb-0 mt-1" v-else>{{ t('shipping.transit.no-events') }}</p>
+      <!-- 扫描记录：新的在前，第一条加粗、实心紫点 -->
+      <ol v-if="events.length" class="w-flow-transit__events" :aria-label="t('shipping.transit.event')">
+        <li v-for="(e, i) in events" :key="`ev-${i}`" class="w-flow-transit__event" :class="{ 'is-latest': i === 0 }">
+          <span class="w-flow-transit__time">{{ time(e.time) }}</span>
+          <span class="w-flow-transit__rail" aria-hidden="true"><span class="w-flow-transit__dot" /></span>
+          <span class="w-flow-transit__text">
+            <span class="w-flow-transit__desc">{{ e.description || e.code || '' }}<span v-if="e.code && e.description" class="w-flow-transit__code"> {{ e.code }}</span></span>
+            <span v-if="e.location" class="w-flow-transit__place">{{ e.location }}</span>
+          </span>
+        </li>
+      </ol>
+      <p v-else class="w-flow-transit__note">{{ t('shipping.transit.no-events') }}</p>
     </template>
     <!-- 经 API 跟踪、还没查到第一条 -->
-    <p class="text-muted mb-0" v-else-if="step.summary?.tracked_by_api">{{ waitingText || t('shipping.transit.waiting', { carrier }) }}</p>
-    <p class="text-muted mb-0" v-else-if="url">{{ t('shipping.transit.link-only', { carrier }) }}</p>
-    <p class="text-muted mb-0" v-else>{{ t('shipping.transit.none') }}</p>
+    <p v-else-if="step.summary?.tracked_by_api" class="w-flow-transit__note">{{ waitingText || t('shipping.transit.waiting', { carrier }) }}</p>
+    <p v-else-if="url" class="w-flow-transit__note">{{ t('shipping.transit.link-only', { carrier }) }}</p>
+    <p v-else class="w-flow-transit__note">{{ t('shipping.transit.none') }}</p>
 
-    <div class="d-flex flex-wrap align-items-center gap-2 mt-2" v-if="canRefresh || canOpen">
-      <button type="button" class="btn btn-sm btn-light" v-if="canRefresh" :disabled="refreshing" @click="refresh">
-        <span v-if="refreshing" class="spinner-border spinner-border-sm me-1"></span>
-        <i v-else class="ri-refresh-line me-1"></i>{{ t('shipping.actions.refresh_tracking') }}
-      </button>
-      <a :href="url" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" v-if="canOpen">
-        <i class="ri-external-link-line me-1"></i>{{ t('shipping.actions.open_tracking') }}
+    <div v-if="canRefresh || canOpen || $slots.actions" class="w-flow-transit__actions">
+      <WButton v-if="canRefresh" icon="refresh" :loading="refreshing" @click="refresh">{{ t('shipping.actions.refresh_tracking') }}</WButton>
+      <a v-if="canOpen" :href="url" target="_blank" rel="noopener" class="w-flow-transit__link">
+        {{ t('shipping.transit.carrier-page', { carrier }) }}<WIcon name="external" :size="13" />
       </a>
+      <span class="w-flow-transit__spacer" />
+      <slot name="actions" />
     </div>
     <ShippingFlowActionNotes :actions="step.actions" :carrier-name="carrier" />
   </div>
 </template>
 
 <style scoped>
-.flow-transit-events {
-  max-width: 48rem;
+.w-flow-transit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
 }
+.w-flow-transit__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  color: var(--w-text-2);
+}
+.w-flow-transit__events {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.w-flow-transit__event {
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) 16px minmax(0, 1fr);
+  gap: 0 12px;
+  position: relative;
+  padding-bottom: 14px;
+}
+.w-flow-transit__event:last-child { padding-bottom: 0; }
+/* 点与点之间的竖线：画在点所在的格子里，伸到下一条 */
+.w-flow-transit__rail { position: relative; align-self: stretch; }
+.w-flow-transit__event:not(:last-child) .w-flow-transit__rail::after {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: -12px;
+  left: 50%;
+  width: 1px;
+  background: var(--w-line);
+}
+.w-flow-transit__time { color: var(--w-text-3); font-size: var(--w-fs-12); white-space: nowrap; padding-top: 1px; }
+.w-flow-transit__dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin: 5px auto 0;
+  border: 1.5px solid var(--w-border-strong);
+  border-radius: var(--w-radius-pill);
+  background: var(--w-surface);
+}
+.w-flow-transit__event.is-latest .w-flow-transit__dot { border-color: var(--w-sel); background: var(--w-sel); }
+.w-flow-transit__text { display: flex; flex-direction: column; min-width: 0; }
+.w-flow-transit__desc { overflow-wrap: anywhere; }
+.w-flow-transit__event.is-latest .w-flow-transit__desc { font-weight: var(--w-fw-semibold); }
+.w-flow-transit__code { color: var(--w-text-3); font-weight: var(--w-fw-regular); font-size: var(--w-fs-12); }
+.w-flow-transit__place { color: var(--w-text-3); font-size: var(--w-fs-12); line-height: var(--w-lh-12); }
+.w-flow-transit__note { margin: 0; color: var(--w-text-2); }
+.w-flow-transit__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.w-flow-transit__spacer { flex: 1; }
+.w-flow-transit__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--w-link);
+  font-weight: var(--w-fw-medium);
+  text-decoration: none;
+}
+.w-flow-transit__link:hover { color: var(--w-link-hover); }
 </style>

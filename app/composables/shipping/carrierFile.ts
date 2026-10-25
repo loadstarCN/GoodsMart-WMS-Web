@@ -447,6 +447,8 @@ export interface FileExportInfo {
   exported_at: string | null
   batch_id: number | null
   file_name: string | null
+  /** 第几次导出（重新导出会加一）；旧后端没有 */
+  export_count: number | null
   exported_by: any
 }
 
@@ -463,6 +465,7 @@ export const fileExportInfoOf = (summary: Record<string, any> | null | undefined
       exported_at: exp.exported_at || null,
       batch_id: toNumberOrNull(exp.batch_id),
       file_name: exp.file_name ? String(exp.file_name) : null,
+      export_count: toNumberOrNull(exp.export_count),
       exported_by: exp.exported_by ?? null,
     }
   }
@@ -472,6 +475,7 @@ export const fileExportInfoOf = (summary: Record<string, any> | null | undefined
     exported_at: shipment.file?.exported_at || shipment.updated_at || shipment.created_at || null,
     batch_id: toNumberOrNull(shipment.file_batch_id),
     file_name: null,
+    export_count: toNumberOrNull(shipment.file?.export_count),
     exported_by: shipment.created_by_user ?? null,
   }
 }

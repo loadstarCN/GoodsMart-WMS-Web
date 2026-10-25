@@ -98,12 +98,13 @@ const onImported = (result: ImportResult) => {
 const discarding = ref(false)
 const discard = async () => {
   if (!canDiscard.value || discarding.value) return
-  const confirmed = await showConfirm(
-    t('shipping.file.discard-confirm-title'),
-    t('shipping.file.discard-confirm', { carrier: carrierName.value }),
-    t('shipping.actions.discard_export'),
-    t('button.cancel'),
-  )
+  const confirmed = await wConfirm({
+    title: t('shipping.file.discard-confirm-title'),
+    message: t('shipping.file.discard-confirm', { carrier: carrierName.value }),
+    confirmText: t('shipping.actions.discard_export'),
+    cancelText: t('shipping.file.keep-export'),
+    danger: true,
+  })
   if (!confirmed) return
   discarding.value = true
   await httpRequest<any>(discardExportUrl(props.dnId), {
@@ -136,48 +137,45 @@ defineExpose({ run })
 </script>
 
 <template>
-  <div class="flow-waybill-file">
+  <div class="w-flow-file">
     <!-- 已导出、等导回运单号 -->
-    <div class="waybill-file-notice" v-if="exportInfo && !hasTracking">
-      <div class="fw-semibold fs-13 d-flex align-items-center gap-2">
-        <i class="ri-file-upload-line text-warning fs-16"></i>{{ t('shipping.file.exported-title') }}
+    <template v-if="exportInfo && !hasTracking">
+      <div class="w-flow-file__head">
+        <WStatus tone="warn">{{ t('shipping.file.exported-title') }}</WStatus>
+        <WHelp :text="t('shipping.file.exported-next', { carrier: carrierName })" />
       </div>
-      <div class="fs-12 text-muted mt-1 d-flex flex-wrap gap-2">
+      <div class="w-flow-file__meta">
         <span v-if="exportedAtText">{{ t('shipping.file.exported-at', { time: exportedAtText }) }}</span>
+        <span v-if="exportInfo.export_count">{{ t('shipping.file.export-count', { count: exportInfo.export_count }) }}</span>
         <span v-if="exportInfo.batch_id">{{ t('shipping.file.batch', { id: exportInfo.batch_id }) }}</span>
-        <span class="font-monospace text-break" v-if="exportInfo.file_name">{{ exportInfo.file_name }}</span>
+        <span v-if="exportInfo.file_name" class="w-flow-file__name">{{ exportInfo.file_name }}</span>
         <span v-if="exportedByText">{{ exportedByText }}</span>
       </div>
-      <p class="fs-13 mb-0 mt-1">{{ t('shipping.file.exported-next', { carrier: carrierName }) }}</p>
-      <div class="d-flex flex-wrap align-items-center gap-2 mt-2" v-if="!locked">
-        <button type="button" class="btn btn-sm btn-primary" :disabled="!canImport || busy" @click="importOpen = true">
-          <i class="ri-file-upload-line me-1"></i>{{ t('shipping.actions.import_numbers') }}
-        </button>
-        <button type="button" class="btn btn-sm btn-light" :disabled="!canExport || busy" @click="exportFile">
-          <span v-if="exporting" class="spinner-border spinner-border-sm me-1"></span>
-          <i v-else class="ri-file-download-line me-1"></i>{{ t('shipping.file.export-again') }}
-        </button>
-        <button type="button" class="btn btn-sm btn-link text-danger ms-auto px-0" v-if="canDiscard" :disabled="busy" @click="discard">
-          <span v-if="discarding" class="spinner-border spinner-border-sm me-1"></span>{{ t('shipping.actions.discard_export') }}
-        </button>
-      </div>
-    </div>
-
-    <!-- 还没导出 -->
-    <template v-else-if="!hasTracking && !locked">
-      <p class="fs-13 mb-2">{{ t('shipping.file.intro', { carrier: carrierName }) }}</p>
-      <div class="d-flex flex-wrap align-items-center gap-2">
-        <button type="button" class="btn btn-sm btn-primary" :disabled="!canExport || busy" @click="exportFile">
-          <span v-if="exporting" class="spinner-border spinner-border-sm me-1"></span>
-          <i v-else class="ri-file-download-line me-1"></i>{{ t('shipping.file.export-csv') }}
-        </button>
-        <button type="button" class="btn btn-sm btn-light" :disabled="!canImport || busy" @click="importOpen = true">
-          <i class="ri-file-upload-line me-1"></i>{{ t('shipping.actions.import_numbers') }}
-        </button>
+      <div v-if="!locked" class="w-flow-file__actions">
+        <WButton v-if="canDiscard" variant="danger" :loading="discarding" :disabled="busy && !discarding" @click="discard">
+          {{ t('shipping.actions.discard_export') }}
+        </WButton>
+        <span class="w-flow-file__spacer" />
+        <WButton :loading="exporting" :disabled="!canExport || (busy && !exporting)" @click="exportFile">{{ t('shipping.file.export-again') }}</WButton>
+        <WButton variant="primary" :disabled="!canImport || busy" @click="importOpen = true">{{ t('shipping.actions.import_numbers') }}</WButton>
       </div>
     </template>
 
-    <CarrierExportProblems class="mt-2" :rows="problems" closable v-if="problems.length" @close="problems = []" />
+    <!-- 还没导出 -->
+    <template v-else-if="!hasTracking && !locked">
+      <div class="w-flow-file__head">
+        <span class="w-flow-file__intro">{{ t('shipping.file.intro-short', { carrier: carrierName }) }}</span>
+        <WHelp :text="t('shipping.file.intro', { carrier: carrierName })" />
+      </div>
+      <div class="w-flow-file__actions">
+        <WButton variant="primary" icon="asn" :loading="exporting" :disabled="!canExport || (busy && !exporting)" @click="exportFile">
+          {{ t('shipping.file.export-csv') }}
+        </WButton>
+        <WButton :disabled="!canImport || busy" @click="importOpen = true">{{ t('shipping.actions.import_numbers') }}</WButton>
+      </div>
+    </template>
+
+    <CarrierExportProblems v-if="problems.length" :rows="problems" closable @close="problems = []" />
 
     <CarrierImportModal v-model:open="importOpen" :carrier-id="carrier?.id ?? null" :carrier-name="carrier?.name ?? null"
       :warehouse-id="warehouseId" :highlight-dn-id="dnId" @imported="onImported" />
@@ -185,10 +183,27 @@ defineExpose({ run })
 </template>
 
 <style scoped>
-.waybill-file-notice {
-  border-radius: 0.375rem;
-  padding: 0.75rem 0.875rem;
-  background: rgba(var(--warning-rgb), 0.08);
-  border: 1px solid rgba(var(--warning-rgb), 0.3);
+.w-flow-file {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
 }
+.w-flow-file__head { display: flex; align-items: center; gap: 6px; }
+.w-flow-file__intro { color: var(--w-text-2); }
+.w-flow-file__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: -6px;
+  font-size: var(--w-fs-12);
+  line-height: var(--w-lh-12);
+  color: var(--w-text-3);
+}
+.w-flow-file__name { overflow-wrap: anywhere; font-family: var(--w-font-mono); }
+.w-flow-file__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.w-flow-file__spacer { flex: 1; }
 </style>

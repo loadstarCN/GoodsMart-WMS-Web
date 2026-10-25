@@ -1,21 +1,17 @@
 <script lang="ts" setup>
 /**
- * 发货流程 ·「报关单证」一步的内容（跨境、要报关的出库单）：
- * - 当前 CI / PL（打印、查看、下载）、签发 / 重新签发（issue_documents）、历史版本
+ * 发货流程 ·「报关单证」一步的内容（跨境、要报关的发货单；设计稿 DeliveryCustoms）：
+ * - 报关数据的问题（「要处理 N」）：快照里的点「补录」（需 dn_edit），缺原产国就地补录（写入商品主数据），
+ *   重量 / 出口资料 / 承运商名给对应编辑页（打包完成前不列「还没打包完 / 还没录箱子」，那是流程状态）
+ * - 当前 CI / PL（打印）、签发 / 重新签发（issue_documents）、历史版本（CustomsDocumentHistory）
  * - 运送申告价额提示（DeclaredValueNotice）
- * - 报关数据的问题：快照里的点「补录」（需 dn_edit），缺原产国就地补录（写入商品主数据），重量 / 出口资料 / 承运商名给对应编辑页
- *   （打包完成前不列「还没打包完 / 还没录箱子」，那是流程状态）
- * - 报关数据明细（概要、出口方、逐行、合计）折叠在最下面
+ * - 报关数据明细（CustomsDataDetail，展开看）、修改报关数据（CustomsSnapshotEditor，由流程组件打开）
  * 报关视图（GET /dn/<id>/customs）由流程组件读，这里只显示；做了操作 emit changed，流程组件整体刷新。
  */
 import {
   CUSTOMS_SNAPSHOT_PROBLEMS,
   CUSTOMS_WORKFLOW_PROBLEMS,
   DN_LOCKED_STATUSES,
-  formatBytes,
-  formatUserRef,
-  isPdfDocument,
-  normalizeDocumentList,
   pickCurrentDocument,
   useCustomsPdfActions,
   type CustomsDocumentMeta,
@@ -53,11 +49,8 @@ const emit = defineEmits<{
 
 const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
-/** 签发时刻按流程提供的时区（DN 所属仓库）显示；流程卡片标题旁已标出时区 */
-const { format: formatZoned } = useTimeZone()
-const zonedTime = (value: unknown, pattern: string) => formatZoned(value, pattern, { withZone: false })
 const staffStore = useStaffStore()
-const { busyDocId, printDoc, viewDoc, downloadDoc, downloadRawDoc } = useCustomsPdfActions()
+const { busyDocId, printDoc } = useCustomsPdfActions()
 
 const locked = computed(() => !!props.view?.locked || DN_LOCKED_STATUSES.includes(String(props.dnStatus || '')))
 const isPacked = computed(() => props.dnStatus === 'packed')
@@ -91,12 +84,16 @@ const issueHint = computed(() => {
   if (props.packagesDirty) return t('customs.tips.packages-unsaved-before-issue')
   return ''
 })
+const issueText = computed(() => (outdated.value ? t('customs.operations.reissue')
+  : (ci.value && pl.value ? t('customs.operations.issue-again') : t('customs.operations.issue'))))
+/** 还没签发 / 要重新签发时签发是主操作；已经签发过时是次按钮 */
+const issuePrimary = computed(() => outdated.value || !(ci.value && pl.value))
 const issuing = ref(false)
 
 const issue = async () => {
   if (!canIssue.value || issuing.value) return
   if (props.packagesDirty) {
-    showAlert(t('customs.operations.issue'), t('customs.tips.packages-unsaved-before-issue'), 'warning')
+    wAlert({ title: t('customs.operations.issue'), message: t('customs.tips.packages-unsaved-before-issue'), tone: 'warning' })
     return
   }
   const prevVersion = Math.max(0, ...(props.view?.current_documents || []).map((d: CustomsDocumentMeta) => Number(d.version) || 0))
@@ -116,53 +113,18 @@ const issue = async () => {
       issuing.value = false
     },
   })
-  if (historyOpen.value) await loadHistory()
   emit('changed')
 }
 
 // ------------------ 历史版本 ----------------------
 const historyOpen = ref(false)
-const historyLoading = ref(false)
-const history = ref<CustomsDocumentMeta[]>([])
-
-const loadHistory = async () => {
-  historyLoading.value = true
-  await httpRequest<any>(`/api/warehouse/dn/${props.dnId}/customs-documents/`, {
-    method: 'GET',
-    onSuccess: (data) => {
-      history.value = normalizeDocumentList(data)
-        .slice()
-        .sort((a, b) => (Number(b.version) - Number(a.version)) || String(a.doc_type).localeCompare(String(b.doc_type)))
-    },
-    onError: (error) => {
-      showToast(bizErrorMessage(error), 'error')
-    },
-    onFinally: () => {
-      historyLoading.value = false
-    },
-  })
-}
-
-const toggleHistory = async () => {
-  historyOpen.value = !historyOpen.value
-  if (historyOpen.value) await loadHistory()
-}
-
-// 单证变了（别处签发 / 改箱子作废）：打开着的历史跟着刷新
-watch(() => (props.view?.current_documents || []).map((d: CustomsDocumentMeta) => d.id).join(','), () => {
-  if (historyOpen.value) loadHistory()
-})
+/** 单证变了（别处签发 / 改箱子作废）：打开着的历史跟着刷新 */
+const historyKey = computed(() => (props.view?.current_documents || []).map((d: CustomsDocumentMeta) => d.id).join(','))
 
 const docTypeText = (type: string) => {
   const key = `customs.doc-types.${type}`
   return te(key) ? t(key) : type
 }
-const voidReasonText = (reason: string | null | undefined) => {
-  if (!reason) return ''
-  const key = `customs.void-reasons.${reason}`
-  return te(key) ? t(key) : reason
-}
-const userText = (u: any) => formatUserRef(u, t)
 
 // ------------------ 缺原产国：就地补录（写入商品主数据） ----------------------
 const originDraft = reactive<Record<string, string | null>>({})
@@ -196,177 +158,122 @@ const saveOrigin = async (line: CustomsLine) => {
 
 /** 报关数据明细：默认收起 */
 const dataOpen = ref(false)
+
+const run = (key: string) => {
+  if (key === 'issue_documents') issue()
+}
+defineExpose({ run })
 </script>
 
 <template>
-  <div class="flow-documents">
-    <div class="py-1" v-if="loading && !view">
-      <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
-    </div>
-    <div class="alert alert-danger-transparent fs-13 mb-0" v-else-if="loadError && !view">{{ loadError }}</div>
+  <div class="w-flow-docs">
+    <div v-if="loading && !view" class="w-flow-docs__loading" aria-busy="true"><span /><span /></div>
+    <WAlert v-else-if="loadError && !view" tone="block" :title="loadError" />
 
     <template v-else-if="view">
-      <div class="alert alert-warning-transparent fs-13 mb-2" v-if="!view.customs">{{ t('customs.tips.no-snapshot') }}</div>
-      <div class="alert alert-danger-transparent fs-13 py-2 mb-2" role="alert" v-if="outdated">
-        <i class="ri-error-warning-line me-1"></i>{{ t('customs.tips.documents-outdated') }}
-      </div>
+      <WAlert v-if="!view.customs" tone="warn" :title="t('shipping.states.warning')">{{ t('customs.tips.no-snapshot') }}</WAlert>
+      <WAlert v-if="outdated" tone="warn" :title="t('shipping.states.warning')">{{ t('customs.tips.documents-outdated') }}</WAlert>
 
-      <!-- 当前单证 + 签发 -->
-      <div class="d-flex flex-wrap align-items-center gap-2">
-        <span class="fs-13" v-if="ci || pl">
-          <span v-if="ci" class="me-2">{{ docTypeText('commercial_invoice') }} v{{ ci.version }}</span>
-          <span v-if="pl">{{ docTypeText('packing_list') }} v{{ pl.version }}</span>
-        </span>
-        <span class="fs-13 text-muted" v-else>{{ t('customs.tips.no-documents') }}</span>
-        <template v-if="shippingStage">
-          <button type="button" class="btn btn-sm" :class="outdated ? 'btn-warning' : (ci && pl ? 'btn-light' : 'btn-primary')"
-            v-if="!locked" :disabled="!canIssue || issuing || packagesDirty" :title="issueHint" @click="issue">
-            <span v-if="issuing" class="spinner-border spinner-border-sm me-1"></span>
-            {{ outdated ? t('customs.operations.reissue') : (ci && pl ? t('customs.operations.issue-again') : t('customs.operations.issue')) }}
-          </button>
-          <button type="button" class="btn btn-sm btn-primary-light" :disabled="busyDocId !== null" v-if="ci"
-            @click="printDoc(dnId, ci)">
-            <span v-if="busyDocId === ci.id" class="spinner-border spinner-border-sm me-1"></span>
-            <i v-else class="ri-printer-line me-1"></i>{{ t('customs.operations.print-ci') }}
-          </button>
-          <button type="button" class="btn btn-sm btn-primary-light" :disabled="busyDocId !== null" v-if="pl"
-            @click="printDoc(dnId, pl)">
-            <span v-if="busyDocId === pl.id" class="spinner-border spinner-border-sm me-1"></span>
-            <i v-else class="ri-printer-line me-1"></i>{{ t('customs.operations.print-pl') }}
-          </button>
-          <button type="button" class="btn btn-sm btn-link px-0 ms-1" @click="toggleHistory">
-            {{ t('customs.operations.history') }}<i class="ms-1" :class="historyOpen ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'"></i>
-          </button>
-        </template>
-      </div>
-      <p class="fs-12 text-muted mb-0 mt-1" v-if="!locked && issueHint">{{ issueHint }}</p>
-
-      <!-- 历史版本 -->
-      <div class="mt-2" v-if="historyOpen">
-        <div class="py-2" v-if="historyLoading">
-          <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
-        </div>
-        <div class="table-responsive" v-else-if="history.length > 0">
-          <table class="table table-sm align-middle mb-0 fs-12">
-            <thead>
-              <tr>
-                <th scope="col">{{ t('customs.fields.doc-type') }}</th>
-                <th scope="col">{{ t('customs.fields.version') }}</th>
-                <th scope="col">{{ t('customs.fields.document-number') }}</th>
-                <th scope="col">{{ t('customs.fields.issued-at') }}</th>
-                <th scope="col">{{ t('customs.fields.status') }}</th>
-                <th scope="col">{{ t('customs.fields.size') }}</th>
-                <th scope="col"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="doc in history" :key="doc.id" :class="{ 'text-muted': doc.status === 'void' }">
-                <td>{{ docTypeText(doc.doc_type) }}</td>
-                <td>v{{ doc.version }}</td>
-                <td class="font-monospace" :title="doc.sha256 ? `SHA-256 ${doc.sha256}` : ''">{{ doc.document_number }}</td>
-                <td>
-                  {{ zonedTime(doc.issued_at, 'YYYY-MM-DD HH:mm') }}
-                  <span class="text-muted ms-1" v-if="doc.issued_by">{{ userText(doc.issued_by_user ?? doc.issued_by) }}</span>
-                </td>
-                <td>
-                  <template v-if="doc.status === 'void'">
-                    {{ t('customs.doc-status.void') }}<template v-if="doc.void_reason"> · {{ voidReasonText(doc.void_reason) }}</template>
-                  </template>
-                  <template v-else>{{ t('customs.doc-status.issued') }}</template>
-                </td>
-                <td>{{ formatBytes(doc.size_bytes) }}</td>
-                <td class="text-end">
-                  <!-- PDF（CI / PL / PDF 面单）：查看、下载；ZPL / EPL 指令文件面单：只能按原格式下载 -->
-                  <div class="hstack gap-1 justify-content-end" v-if="isPdfDocument(doc)">
-                    <button type="button" class="btn btn-icon btn-sm btn-light" :title="t('customs.operations.view')"
-                      :disabled="busyDocId !== null" @click="viewDoc(dnId, doc)"><i class="ri-eye-line"></i></button>
-                    <button type="button" class="btn btn-icon btn-sm btn-light" :title="t('customs.operations.download')"
-                      :disabled="busyDocId !== null" @click="downloadDoc(dnId, doc)"><i class="ri-download-line"></i></button>
-                  </div>
-                  <button type="button" class="btn btn-icon btn-sm btn-light" :title="t('customs.operations.download')" v-else
-                    :disabled="busyDocId !== null" @click="downloadRawDoc(dnId, doc)"><i class="ri-download-line"></i></button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="text-muted fs-13 mb-0" v-else>{{ t('customs.tips.no-documents') }}</p>
-      </div>
-
-      <div class="mt-2" v-if="view.customs">
-        <DeclaredValueNotice compact :customs="view.customs" :mode="declaredMode" />
-      </div>
-
-      <!-- 先处理 / 请留意：报关数据的问题 -->
-      <div class="flow-documents-problems mt-2" :class="errorCount > 0 ? 'is-error' : 'is-warning'" v-if="problems.length > 0">
-        <div class="fw-semibold fs-13 mb-2">
-          <i class="me-1" :class="errorCount > 0 ? 'ri-error-warning-line' : 'ri-information-line'"></i>
+      <!-- 要处理 / 请留意：报关数据的问题 -->
+      <div v-if="problems.length > 0" class="w-flow-docs__problems" :class="{ 'is-error': errorCount > 0 }">
+        <div class="w-flow-docs__problems-title">
           {{ errorCount > 0 ? t('shipping.documents.problems-title', { count: errorCount }) : t('shipping.documents.warnings-title', { count: problems.length }) }}
         </div>
         <CustomsProblemList :problems="problems" :lines="view.lines" :warehouse-id="warehouseId"
           :can-edit-customs="canEditCustoms" @edit-customs="emit('edit-customs')" />
 
         <!-- 缺原产国：就地补录到商品主数据 -->
-        <div class="mt-2" v-if="!locked && originMissingLines.length > 0">
-          <div class="d-flex flex-wrap align-items-center gap-2 mb-2" v-for="line in originMissingLines" :key="line.goods_code">
-            <div class="fs-13" style="min-width: 220px;">
-              <span class="font-monospace me-1">{{ line.goods_code }}</span>
-              <span class="text-muted">{{ line.goods_name }}</span>
-            </div>
-            <div style="min-width: 240px;">
-              <CountrySelect v-model="originDraft[String(line.goods_id)]" size="sm" :clearable="false" />
-            </div>
-            <button type="button" class="btn btn-sm btn-primary"
-              :disabled="!originDraft[String(line.goods_id)] || originSaving[String(line.goods_id)]"
-              @click="saveOrigin(line)">
-              <span v-if="originSaving[String(line.goods_id)]" class="spinner-border spinner-border-sm"></span>
-              <span v-else>{{ t('button.save') }}</span>
-            </button>
+        <div v-if="!locked && originMissingLines.length > 0" class="w-flow-docs__origins">
+          <div v-for="line in originMissingLines" :key="line.goods_code" class="w-flow-docs__origin">
+            <span class="w-flow-docs__origin-goods">
+              <span class="w-flow-docs__mono">{{ line.goods_code }}</span>
+              <span class="w-faint">{{ line.goods_name }}</span>
+            </span>
+            <CountryCombobox v-model="originDraft[String(line.goods_id)]" size="sm" :clearable="false" class="w-flow-docs__origin-select"
+              :aria-label="t('customs.fields.origin')" />
+            <WButton size="sm" variant="primary" :loading="originSaving[String(line.goods_id)]"
+              :disabled="!originDraft[String(line.goods_id)]" @click="saveOrigin(line)">{{ t('button.save') }}</WButton>
           </div>
-          <div class="fs-11 text-muted">{{ t('customs.tips.origin-master') }}</div>
+          <span class="w-flow-docs__hint">{{ t('customs.tips.origin-master') }}</span>
         </div>
 
-        <div class="d-flex flex-wrap align-items-center gap-2 mt-2" v-if="hasSnapshotProblems">
-          <button type="button" class="btn btn-sm btn-primary-light" v-if="canEditCustoms" @click="emit('edit-customs')">
-            <i class="ri-edit-line me-1"></i>{{ t('customs.operations.edit-customs') }}
-          </button>
-          <span class="fs-12 text-muted" v-else-if="!locked">{{ t('customs.tips.data-need-dn-edit') }}</span>
+        <div v-if="hasSnapshotProblems" class="w-flow-docs__fix">
+          <WButton v-if="canEditCustoms" size="sm" @click="emit('edit-customs')">{{ t('customs.operations.edit-customs') }}</WButton>
+          <span v-else-if="!locked" class="w-flow-docs__hint">{{ t('customs.tips.data-need-dn-edit') }}</span>
         </div>
       </div>
-      <div class="fs-13 text-success mt-2" v-else-if="view.customs">
-        <i class="ri-checkbox-circle-line me-1"></i>{{ t('customs.tips.no-problems') }}
-      </div>
+      <WStatus v-else-if="view.customs" tone="ok" class="w-flow-docs__ok">{{ t('customs.tips.no-problems') }}</WStatus>
 
-      <!-- 报关数据明细 -->
-      <div class="mt-2" v-if="view.customs">
-        <button type="button" class="btn btn-sm btn-link px-0" @click="dataOpen = !dataOpen">
-          <i class="ri-file-list-3-line me-1"></i>{{ t('shipping.documents.customs-data') }}
-          <i class="ms-1" :class="dataOpen ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-link px-0 ms-3" v-if="canEditCustoms" @click="emit('edit-customs')">
-          <i class="ri-edit-line me-1"></i>{{ t('customs.operations.edit-customs') }}
-        </button>
-        <div class="mt-2" v-if="dataOpen">
-          <CustomsDataDetail :view="view" :warehouse-id="warehouseId" />
+      <!-- 当前单证 + 签发 -->
+      <div class="w-flow-docs__docs">
+        <div class="w-flow-docs__current">
+          <template v-if="ci || pl">
+            <span v-if="ci">{{ docTypeText('commercial_invoice') }} <b>v{{ ci.version }}</b></span>
+            <span v-if="pl">{{ docTypeText('packing_list') }} <b>v{{ pl.version }}</b></span>
+          </template>
+          <span v-else class="w-faint">{{ t('customs.tips.no-documents') }}</span>
+        </div>
+        <div v-if="shippingStage" class="w-flow-docs__actions">
+          <WButton v-if="ci" icon="printer" :loading="busyDocId === ci.id" :disabled="busyDocId !== null && busyDocId !== ci.id"
+            @click="printDoc(dnId, ci)">{{ t('customs.operations.print-ci') }}</WButton>
+          <WButton v-if="pl" icon="printer" :loading="busyDocId === pl.id" :disabled="busyDocId !== null && busyDocId !== pl.id"
+            @click="printDoc(dnId, pl)">{{ t('customs.operations.print-pl') }}</WButton>
+          <WButton v-if="!locked" :variant="issuePrimary ? 'primary' : 'secondary'" :loading="issuing"
+            :disabled="!canIssue || packagesDirty" :title="issueHint" @click="issue">{{ issueText }}</WButton>
         </div>
       </div>
+      <p v-if="!locked && issueHint" class="w-flow-docs__hint">{{ issueHint }}</p>
+
+      <DeclaredValueNotice v-if="view.customs" compact :customs="view.customs" :mode="declaredMode" />
+
+      <div class="w-flow-docs__links">
+        <WButton v-if="shippingStage" size="sm" variant="text" :aria-expanded="historyOpen" @click="historyOpen = !historyOpen">
+          {{ t('customs.operations.history') }}<WIcon :name="historyOpen ? 'chevron-up' : 'chevron-down'" :size="14" />
+        </WButton>
+        <WButton v-if="view.customs" size="sm" variant="text" :aria-expanded="dataOpen" @click="dataOpen = !dataOpen">
+          {{ t('shipping.documents.customs-data') }}<WIcon :name="dataOpen ? 'chevron-up' : 'chevron-down'" :size="14" />
+        </WButton>
+        <WButton v-if="canEditCustoms" size="sm" variant="text" @click="emit('edit-customs')">{{ t('customs.operations.edit-customs') }}</WButton>
+      </div>
+      <CustomsDocumentHistory v-if="historyOpen" :dn-id="dnId" :active="historyOpen" :reload-key="historyKey" />
+      <CustomsDataDetail v-if="dataOpen && view.customs" :view="view" :warehouse-id="warehouseId" />
     </template>
   </div>
 </template>
 
 <style scoped>
-.flow-documents-problems {
-  border-radius: 0.375rem;
-  padding: 0.75rem 0.875rem;
+.w-flow-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
 }
-
-.flow-documents-problems.is-error {
-  background: rgba(var(--danger-rgb), 0.05);
-  border: 1px solid rgba(var(--danger-rgb), 0.25);
+.w-flow-docs__loading { display: flex; flex-direction: column; gap: 8px; }
+.w-flow-docs__loading span { display: block; width: 60%; height: 14px; border-radius: 4px; background: var(--w-skeleton); }
+/* 「要处理」：白底 + 左侧琥珀条（阻断级的错误也只用琥珀，设计稿：一个问题一种颜色） */
+.w-flow-docs__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--w-border);
+  border-left: 3px solid var(--w-warn-dot);
+  border-radius: var(--w-radius-control);
 }
-
-.flow-documents-problems.is-warning {
-  background: rgba(var(--warning-rgb), 0.06);
-  border: 1px solid rgba(var(--warning-rgb), 0.25);
-}
+.w-flow-docs__problems-title { font-weight: var(--w-fw-semibold); color: var(--w-warn-text); }
+.w-flow-docs__origins { display: flex; flex-direction: column; gap: 6px; }
+.w-flow-docs__origin { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.w-flow-docs__origin-goods { display: inline-flex; flex-direction: column; min-width: 200px; }
+.w-flow-docs__origin-select { width: 240px; }
+.w-flow-docs__mono { font-family: var(--w-font-mono); font-size: var(--w-fs-12); }
+.w-flow-docs__fix { display: flex; align-items: center; gap: 8px; }
+.w-flow-docs__ok { font-size: var(--w-fs-13); }
+.w-flow-docs__docs { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.w-flow-docs__current { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.w-flow-docs__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.w-flow-docs__hint { margin: 0; font-size: var(--w-fs-12); line-height: var(--w-lh-12); color: var(--w-text-3); }
+.w-flow-docs__links { display: flex; flex-wrap: wrap; gap: 4px; margin-left: -8px; }
 </style>

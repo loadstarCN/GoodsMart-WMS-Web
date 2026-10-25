@@ -8,7 +8,8 @@
  * - strong：关键列（可售、数量）600 字重，表头也 600；muted：次要列用次要文字色
  * - value(row) 取值、format(value, row) 自己格式化（空值规则先于 format）；复杂内容用插槽 #cell-{key}
  *
- * 其他：selectable + v-model:selected（行键数组）带勾选列，选中行浅紫底；loading 显示骨架行；没有数据时显示空状态
+ * 其他：selectable + v-model:selected（行键数组）带勾选列，选中行浅紫底（rowSelectable 返回 false 的行勾选框禁用、不参与全选）；
+ * loading 显示骨架行；没有数据时显示空状态
  * （#empty 插槽可换成带操作的 WEmptyState）。粘性表头：给 maxHeight 时表格自己滚动、表头固定；
  * 只给 stickyHeader 时表头贴在顶栏下面随页面滚动（此时表格不横向滚动，列多的表请给 maxHeight）。
  * 密度跟随页面（<html data-density>），也可以用 density 单独指定这张表。
@@ -40,6 +41,8 @@ const props = withDefaults(defineProps<{
   rows: R[]
   rowKey?: string | ((row: R) => RowKey)
   selectable?: boolean
+  /** 哪些行能勾选（不给 = 都能） */
+  rowSelectable?: ((row: R) => boolean) | null
   /** 行可点（整行悬停变色，点击发 row-click） */
   clickable?: boolean
   density?: 'comfortable' | 'compact'
@@ -52,9 +55,13 @@ const props = withDefaults(defineProps<{
   emptyTitle?: string
   /** 表格贴着卡片边放（WCard flush）时，首尾列留出卡片内边距 */
   inset?: boolean
+  /** 单元格竖直对齐：多行内容（单号 + 订单号、进度条）的列表用 top */
+  valign?: 'middle' | 'top'
 }>(), {
+  valign: 'middle',
   rowKey: 'id',
   selectable: false,
+  rowSelectable: null,
   clickable: false,
   stickyHeader: false,
   loading: false,
@@ -83,7 +90,10 @@ const cellOf = (row: R, col: WTableColumn<R>) => {
   return { text: col.format(raw, row), muted: false, raw }
 }
 
+const canSelect = (row: R) => !props.rowSelectable || props.rowSelectable(row)
 const rowKeys = computed(() => props.rows.map((row, index) => keyOf(row, index)))
+/** 能勾选的行（全选只管这些） */
+const selectableKeys = computed(() => props.rows.flatMap((row, index) => (canSelect(row) ? [keyOf(row, index)] : [])))
 const selectedSet = computed(() => new Set(selected.value))
 /** 每行先算好各单元格的显示（键、是否选中、每列的文字 / 弱化） */
 const bodyRows = computed(() => props.rows.map((row, index) => {
@@ -92,16 +102,17 @@ const bodyRows = computed(() => props.rows.map((row, index) => {
     row,
     key,
     selected: selectedSet.value.has(key),
+    selectable: canSelect(row),
     cells: props.columns.map((col) => ({ col, ...cellOf(row, col) })),
   }
 }))
-const allSelected = computed(() => rowKeys.value.length > 0 && rowKeys.value.every((key) => selectedSet.value.has(key)))
-const someSelected = computed(() => !allSelected.value && rowKeys.value.some((key) => selectedSet.value.has(key)))
+const allSelected = computed(() => selectableKeys.value.length > 0 && selectableKeys.value.every((key) => selectedSet.value.has(key)))
+const someSelected = computed(() => !allSelected.value && selectableKeys.value.some((key) => selectedSet.value.has(key)))
 
 const toggleAll = (value: boolean | unknown[] | undefined) => {
   const keys = new Set(rowKeys.value)
   const others = selected.value.filter((key) => !keys.has(key))
-  selected.value = value ? [...others, ...rowKeys.value] : others
+  selected.value = value ? [...others, ...selectableKeys.value] : others
 }
 const toggleRow = (key: RowKey, value: boolean | unknown[] | undefined) => {
   selected.value = value ? [...selected.value.filter((k) => k !== key), key] : selected.value.filter((k) => k !== key)
@@ -124,7 +135,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
   <div class="w-table-wrap" :style="wrapStyle"
     :class="{ 'is-scroll': !!maxHeight, 'is-sticky': sticky, 'is-page-sticky': stickyHeader && !maxHeight, 'is-inset': inset }">
     <!-- 密度加在 <table> 上：行高跟这张表，首尾列的内边距（inset）仍跟外面的卡片 -->
-    <table class="w-table" :data-density="density" :aria-busy="loading || undefined">
+    <table class="w-table" :class="{ 'is-valign-top': valign === 'top' }" :data-density="density" :aria-busy="loading || undefined">
       <caption v-if="caption" class="w-sr-only">{{ caption }}</caption>
       <colgroup>
         <col v-if="selectable" class="w-table__select-col">
@@ -133,7 +144,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
       <thead>
         <tr>
           <th v-if="selectable" class="w-table__select" scope="col">
-            <WCheckbox :model-value="allSelected" :indeterminate="someSelected" :disabled="loading || rows.length === 0"
+            <WCheckbox :model-value="allSelected" :indeterminate="someSelected" :disabled="loading || selectableKeys.length === 0"
               :aria-label="t('w.table.select-all')" @update:model-value="toggleAll" />
           </th>
           <th v-for="col in columns" :key="col.key" scope="col"
@@ -166,7 +177,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
         <tr v-for="item in bodyRows" :key="item.key" :class="{ 'is-selected': item.selected, 'is-clickable': clickable }"
           @click="onRowClick(item.row, $event)">
           <td v-if="selectable" class="w-table__select">
-            <WCheckbox :model-value="item.selected" :aria-label="t('w.table.select-row')"
+            <WCheckbox :model-value="item.selected" :aria-label="t('w.table.select-row')" :disabled="!item.selectable"
               @update:model-value="toggleRow(item.key, $event)" />
           </td>
           <td v-for="cell in item.cells" :key="cell.col.key"
@@ -243,6 +254,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
   border-bottom: 1px solid var(--w-line);
 }
 .w-table tbody tr:last-child td { border-bottom: 0; }
+.w-table.is-valign-top tbody td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
 .w-table td.is-strong { font-weight: var(--w-fw-semibold); }
 .w-table td.is-muted { color: var(--w-text-2); }
 .w-table td.is-wrap { white-space: normal; }

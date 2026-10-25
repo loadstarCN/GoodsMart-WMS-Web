@@ -72,6 +72,12 @@ watch(() => props.open, (open: boolean) => {
 const close = () => {
   if (!saving.value) emit('update:open', false)
 }
+const visible = computed({
+  get: () => props.open,
+  set: (value: boolean) => {
+    if (!value) close()
+  },
+})
 
 /** 锁定原因（按原因码翻译，没有文案时用后端原文） */
 const lockedText = computed(() => {
@@ -124,37 +130,37 @@ const save = async () => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="modal fade" :class="{ show: open }" :style="{ display: open ? 'block' : 'none' }" tabindex="-1" role="dialog">
-      <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h6 class="modal-title">{{ t('dn.ship-to.edit-title') }} · DN-{{ dnId }}</h6>
-            <button type="button" class="btn-close" :disabled="saving" @click="close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="text-center py-4" v-if="loading && !state">
-              <span class="spinner-border spinner-border-sm"></span>
-            </div>
-            <template v-else-if="state">
-              <div class="alert alert-warning-transparent fs-13" v-if="state.locked">
-                <i class="ri-lock-line me-1"></i>{{ lockedText }}
-              </div>
-              <p class="fs-13 text-muted" v-else>{{ t('dn.ship-to.edit-hint') }}</p>
-              <p class="fs-12 text-muted" v-if="!state.ship_to && !state.locked">{{ t('dn.ship-to.edit-from-effective') }}</p>
-              <DnShipToFields v-model="form" id-prefix="dn-ship-to-edit" :editable="editable" :country-error="countryError" />
-            </template>
-            <div class="alert alert-danger-transparent fs-13 mt-3 mb-0" v-if="failure">{{ failure }}</div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-light" :disabled="saving" @click="close">{{ t('button.cancel') }}</button>
-            <button type="button" class="btn btn-primary" :disabled="!editable" @click="save" v-if="state && !state.locked">
-              <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>{{ t('button.save') }}
-            </button>
-          </div>
-        </div>
-      </div>
+  <WDrawer v-model:open="visible" :title="`${t('dn.ship-to.edit-title')} · DN-${dnId}`" width="760px" :closable="!saving">
+    <div class="w-shipto-edit">
+      <div v-if="loading && !state" class="w-shipto-edit__loading" aria-busy="true"><span /><span /><span /></div>
+      <template v-else-if="state">
+        <WAlert v-if="state.locked" tone="warn" :title="t('shipping.options.locked')">{{ lockedText }}</WAlert>
+        <p v-else class="w-shipto-edit__hint">
+          {{ t(state.ship_to ? 'dn.ship-to.edit-hint-short' : 'dn.ship-to.edit-from-effective-short') }}
+          <WHelp :text="state.ship_to ? t('dn.ship-to.edit-hint') : t('dn.ship-to.edit-from-effective')" />
+        </p>
+        <DnShipToFields v-model="form" id-prefix="dn-ship-to-edit" :editable="editable" :country-error="countryError" />
+      </template>
+      <WAlert v-if="failure" tone="block" :title="failure" />
     </div>
-    <div class="modal-backdrop fade show" v-if="open" @click="close"></div>
-  </Teleport>
+    <template #footer>
+      <WButton :disabled="saving" @click="close">{{ t('button.cancel') }}</WButton>
+      <WButton v-if="state && !state.locked" variant="primary" :loading="saving" :disabled="!editable" @click="save">{{ t('button.save') }}</WButton>
+    </template>
+  </WDrawer>
 </template>
+
+<style scoped>
+.w-shipto-edit { display: flex; flex-direction: column; gap: 16px; font-family: var(--w-font); }
+.w-shipto-edit__loading { display: flex; flex-direction: column; gap: 10px; }
+.w-shipto-edit__loading span { display: block; height: 32px; border-radius: var(--w-radius-control); background: var(--w-skeleton); }
+.w-shipto-edit__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-2);
+}
+</style>

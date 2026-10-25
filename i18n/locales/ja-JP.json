@@ -1212,12 +1212,175 @@
         "WAYBILL_EXISTS": "送り状は現在の住所で作成・出力済みのため変更できません。変更するには出荷フローの「送り状」ステップで送り状を取り消して（ファイル方式は出力を取り消して）ください。",
         "DN_SHIPPED": "出荷済みのため、お届け先は変更できません。",
         "DN_CLOSED": "出荷指示はクローズされているため、お届け先は変更できません。"
-      }
+      },
+      "latin": "ラテン文字表記"
     },
     "shipping-options": {
       "title": "送り状のサービスオプション",
       "hint": "配達日・時間帯など、送り状と一緒に運送会社へ渡すオプションです。空欄の項目は既定値になります。送り状の作成・ファイル出力後は変更できません。",
       "no-carrier": "運送会社を選ぶと配達日・時間帯などのサービスオプションを設定できます。あとで出荷フローの「送り状」ステップで設定することもできます。"
+    },
+    "status": {
+      "pending": "未処理",
+      "in_progress": "処理中",
+      "picked": "ピッキング済み",
+      "packed": "梱包済み",
+      "delivered": "出荷済み",
+      "completed": "完了",
+      "closed": "クローズ"
+    },
+    "list": {
+      "label": "DN 一覧",
+      "count": "{count} 件",
+      "new": "DN を作成",
+      "tabs-label": "出荷段階別",
+      "search-placeholder": "DN 番号・注文番号・商品コード・追跡番号",
+      "search-label": "DN を検索",
+      "more-filters": "その他の条件",
+      "fewer-filters": "条件を閉じる",
+      "clear-filters": "条件をクリア",
+      "recipient-placeholder": "受取人：名前で検索",
+      "batch-label": "一括操作",
+      "clear-selection": "選択を解除",
+      "export-help": "同じ運送業者・同じ倉庫の DN を選んでまとめて出力します。問題のある行があると全体を出力せず、行ごとの問題を表示します。伝票を印刷したら「番号取込待ち」タブで追跡番号を取り込みます。",
+      "retry": "再試行",
+      "empty": "DN はまだありません",
+      "empty-filtered": "条件に合う DN はありません",
+      "range": "{total} 件中 {from}–{to} 件",
+      "goods": "{kinds} 種 · {qty} 点",
+      "doc-status": "伝票 {status}",
+      "today": "今日 {date}",
+      "columns": {
+        "dn": "DN",
+        "recipient": "受取人",
+        "goods": "商品",
+        "progress": "進捗",
+        "carrier": "運送業者 · 追跡番号",
+        "date": "出荷予定",
+        "next": "次の作業"
+      },
+      "next": {
+        "start": "作業開始",
+        "picking": "ピッキング中",
+        "packing": "梱包待ち",
+        "choose-carrier": "運送業者を選択",
+        "export": "ファイル出力",
+        "create-waybill": "送り状を作成",
+        "enter-tracking": "追跡番号を入力",
+        "import": "追跡番号を取込",
+        "book-pickup": "集荷を予約",
+        "record-pickup": "集荷を記録",
+        "complete": "出荷完了",
+        "tracking-page": "運送業者の追跡ページ",
+        "resolve": "異常を処理",
+        "signed": "{date} 受領"
+      }
+    },
+    "actions": {
+      "menu": "{dn} のその他の操作",
+      "ship-to": "届け先住所を変更",
+      "edit": "DN を編集",
+      "start": "作業開始",
+      "close": "DN をクローズ",
+      "cancel": "DN を取消",
+      "delete": "DN を削除",
+      "print": "DN を印刷",
+      "reasons": {
+        "pending-only-edit": "未処理の DN のみ編集できます",
+        "pending-only-start": "未処理の DN のみ作業を開始できます",
+        "pending-only-close": "未処理の DN のみクローズできます",
+        "pending-only-delete": "未処理の DN のみ削除できます",
+        "cancel-shipped": "出荷済みのため取消できません",
+        "cancel-pending": "未着手のため「クローズ」を使います",
+        "closed": "クローズ済み",
+        "ship-to-shipped": "出荷済みのためロック"
+      },
+      "started": "{dn} の作業を開始しました",
+      "closed": "{dn} をクローズしました",
+      "cancelled": "{dn} を取り消しました",
+      "deleted": "{dn} を削除しました",
+      "close-confirm-title": "{dn} をクローズしますか？",
+      "close-confirm": "この DN で引当てた在庫を解放します。元に戻せません。",
+      "keep-open": "クローズしない",
+      "delete-confirm-title": "{dn} を削除しますか？",
+      "keep": "削除しない"
+    },
+    "detail": {
+      "breadcrumb": "出荷指示のナビゲーション",
+      "cross-border": "海外配送",
+      "source": "作成元",
+      "source-manual": "手動作成",
+      "back-to-list": "出荷指示一覧に戻る",
+      "not-found": "出荷指示が見つかりません",
+      "phases": {
+        "warehouse": "倉庫内作業",
+        "prepare": "出荷準備",
+        "handover": "引渡し・配送"
+      },
+      "phase-states": {
+        "done": "完了",
+        "current": "進行中",
+        "todo": "未開始",
+        "warn": "要対応",
+        "skipped": "対象外"
+      },
+      "problems": "要対応 {count} 件",
+      "go-handle": "対応する",
+      "step-of": "ステップ {index} / {total}",
+      "now": "現在 · {position}",
+      "eta": "{carrier} 配達予定",
+      "eta-short": "予定 {date}",
+      "synced": "更新 {time}",
+      "closed-title": "出荷指示はクローズ済みです",
+      "closed-at": "クローズ日時 {time}",
+      "ordered-hint": "出荷指示を作成しました。以降の作業記録がここに表示されます。",
+      "not-started": "倉庫内作業は未開始です",
+      "picking-hint": "ピッキングタスクで作業を完了してください。",
+      "also": "現在できる操作",
+      "back-to-current": "現在のステップに戻る",
+      "history": "処理履歴",
+      "history-empty": "処理履歴はありません",
+      "times-in": "時刻は {zone} で表示",
+      "task-links": {
+        "picking": "ピッキングタスク {code} を表示",
+        "packing": "梱包タスク {code} を表示",
+        "handover": "配送タスク {code} を表示",
+        "delivered": "配送タスク {code} を表示"
+      },
+      "goods": {
+        "title": "商品明細",
+        "goods": "商品",
+        "quantity": "指示数量",
+        "shipped": "出荷済み",
+        "diffs": "{count} 商品に数量差異あり",
+        "no-diff": "数量一致",
+        "more": "残り {count} 商品を表示"
+      },
+      "aside": {
+        "ship-to": "配送先住所",
+        "edit": "変更",
+        "from-recipient": "荷受人の住所を使用",
+        "ship-to-locked": "有効な送り状または出力履歴を取り消してから住所を変更してください。",
+        "waybill": "送り状・荷物",
+        "copy": "追跡番号をコピー",
+        "created-at": "作成 {time}",
+        "cancel-disabled": "取消不可：{reason}",
+        "packages": "{count} 箱",
+        "gross": "総重量 {weight} kg",
+        "box": "{no} 箱目",
+        "freight": "送料",
+        "estimate": "概算料金",
+        "estimate-source": "送り状作成時の {carrier} 見積額です。実際の請求額と異なる場合があります。",
+        "customs": "通関書類",
+        "docs-version": "第 {version} 版",
+        "declared": "申告価格",
+        "doc-ci": "コマーシャルインボイス（CI）",
+        "doc-pl": "パッキングリスト（PL）",
+        "info": "伝票情報",
+        "tasks": "作業タスク",
+        "created": "作成",
+        "updated": "更新"
+      }
     }
   },
   "picking": {
@@ -1442,7 +1605,21 @@
         "NOT_ACTIVE": "送り状 {tracking} は取消済みか、有効ではありません",
         "DN_SHIPPED": "送り状 {tracking} の出荷指示は出荷済みです",
         "ALREADY_SCHEDULED": "送り状 {tracking} はすでに集荷を依頼済みです"
-      }
+      },
+      "form": {
+        "address": "集荷先住所：{address}",
+        "available": "予約可能",
+        "batch": "今回集荷する送り状",
+        "ready-time": "荷物準備完了時刻",
+        "close-time": "集荷締切時刻",
+        "remarks": "集荷備考",
+        "submit-summary": "{count} 件 · {day} {window}",
+        "today": "今日 {date}",
+        "tomorrow": "明日 {date}",
+        "until": "{time} まで",
+        "day": "集荷日"
+      },
+      "keep": "予約を維持"
     }
   },
   "action-results": {
@@ -2580,7 +2757,11 @@
       "record-submit": "記録する",
       "recorded-toast": "集荷を記録しました",
       "page-intro-manual": "{carrier} の集荷は電話や Web サイトで依頼します。ドライバーに渡す送り状を選び、約束した日時を記録してください。",
-      "remarks": "備考"
+      "remarks": "備考",
+      "book-submit": "{carrier} に集荷依頼 · {summary}",
+      "dropoff-hint": "配送業者の営業所に荷物を持ち込んでから、出荷完了を確認してください。",
+      "next": "次回集荷：{date}（{weekday}）",
+      "record-instead": "予約済みの集荷を記録"
     },
     "handover": {
       "shipped-at": "引き渡し日時",
@@ -2601,7 +2782,8 @@
       "link-only": "{carrier} の追跡は WMS では確認しません。追跡ページで確認してください。",
       "none": "この運送会社は追跡しません",
       "refreshed": "追跡を更新しました",
-      "waiting": "{carrier} の追跡情報はまだありません。WMS が定期的に確認します。「追跡を更新」ですぐに確認することもできます。"
+      "waiting": "{carrier} の追跡情報はまだありません。WMS が定期的に確認します。「追跡を更新」ですぐに確認することもできます。",
+      "carrier-page": "配送業者の追跡ページ"
     },
     "delivered": {
       "signed-at": "受領日時",
@@ -2764,7 +2946,10 @@
         "ALREADY_SAVED": "配送タスクに同じ送り状番号が登録済みです（{number}）",
         "HAS_OTHER_NUMBER": "この出荷指示にはすでに送り状番号 {number} があります",
         "another-carrier": "別の運送会社"
-      }
+      },
+      "export-count": "出力 {count} 回",
+      "intro-short": "ファイルを出力し、{carrier} で送り状を作成後、追跡番号を取り込んでください。",
+      "keep-export": "出力履歴を維持"
     },
     "options": {
       "title": "サービスオプション",
@@ -2943,6 +3128,14 @@
     },
     "menu": {
       "more": "その他の操作"
+    },
+    "filter": {
+      "all": "すべて",
+      "search": "絞り込み"
+    },
+    "file": {
+      "choose": "ファイルを選択",
+      "change": "ファイルを変更"
     }
   },
   "shell": {

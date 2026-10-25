@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 /**
- * 发货流程 ·「揽收」一步的内容，按承运商的揽收方式（summary.method，没有时用承运商的 methods.pickup）：
- * - api：在线预约（book_pickup）——先读这家承运商在本仓库的待揽收运单，前置条件不满足就列出来；否则打开预约弹窗
- *   （本单默认勾上，同仓库其它等揽收的运单可以一起带；今天已经约过一次时提示快递员来时可以一起交）
- * - manual：电话 / 网站约好后记一笔（record_pickup，ManualPickupModal），显示约揽收的联系方式；
- *   api 的承运商也可以手工记一笔（承运商系统故障、电话约的），后端列出 record_pickup 时给次要按钮
+ * 发货流程 ·「揽收」一步的内容（设计稿 CarrierSteps「揽收」、DeliveryPrint「预约揽收」），按承运商的揽收方式
+ * （summary.method，没有时用承运商的 methods.pickup）：
+ * - api：在线预约（book_pickup）——点「预约揽收」先读这家承运商在本仓库的待揽收运单，前置条件不满足就列出来；
+ *   否则在这里展开预约表单 CarrierPickupForm（本单默认勾上，同仓库其它等揽收的运单可以一起带；今天已经约过一次时提示
+ *   快递员来时可以一起交）。不自动展开：展开时要向承运商查可约时间
+ * - manual：电话 / 网站约好后记一笔（record_pickup，ManualPickupForm 直接展开），显示约揽收的联系方式；
+ *   api 的承运商也可以手工记一笔（承运商系统故障、电话约的），后端列出 record_pickup 时给「登记预约」
  * - scheduled：定期集荷，显示星期与时间段，不用逐票约
  * - dropoff：自送网点
  * 已约上的：日期 / 时间段 / 受理号，可取消（cancel_pickup；手工记录只改本地）。做了操作 emit changed。
@@ -102,6 +104,29 @@ const pickupText = computed(() => {
   }
   return t(p.status === 'pending' ? 'customs.carrier.pickup.pending' : 'customs.carrier.pickup.unknown')
 })
+/** 预约状态的圆点：已约上 / 已完成绿；结果不明、揽收日已过琥珀；还没约灰 */
+const pickupTone = computed<'ok' | 'warn' | 'none'>(() => {
+  const p = pickup.value
+  if (props.step.state === 'done' || scheduled.value) return 'ok'
+  if (p?.status === 'unknown' || p?.past || p?.status === 'pending') return 'warn'
+  return 'none'
+})
+/** 定期集荷：下一次揽收的日期（仓库当地的今天起，按星期找） */
+const nextScheduled = computed(() => {
+  const sc = schedule.value
+  if (!sc || !sc.weekdays.length) return ''
+  const today = zonedToday(resolveTimeZone(props.warehouseId))
+  const base = new Date(today + 'T00:00:00Z')
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(base.getTime() + i * 86400000)
+    const iso = ((d.getUTCDay() + 6) % 7) + 1
+    if (sc.weekdays.includes(iso)) {
+      const date = d.toISOString().slice(0, 10)
+      return t('shipping.pickup.next', { date: date.slice(5, 7) + '/' + date.slice(8, 10), weekday: t('shipping.weekdays.' + iso) })
+    }
+  }
+  return ''
+})
 const pageLink = computed(() => ({
   path: '/delivery/pickup',
   query: { carrier_id: props.carrier?.id ?? undefined, warehouse_id: props.warehouseId ?? undefined },
@@ -121,6 +146,7 @@ const preparing = ref(false)
 const blockers = ref<PickupBlocker[]>([])
 const overview = ref<PickupOverview | null>(null)
 const bookOpen = ref(false)
+const bookForm = ref<{ submit: () => Promise<void>; submitting: boolean; canSubmit: boolean; submitSummary: string } | null>(null)
 
 watch(() => activeShipment.value?.id, () => {
   blockers.value = []
@@ -149,6 +175,7 @@ const book = async () => {
         emit('changed')
         return
       }
+      recordOpen.value = false
       bookOpen.value = true
     },
     onError: (error) => {
@@ -180,12 +207,20 @@ const note = computed(() => {
 
 // ------------------ 手工记录 ----------------------
 const recordOpen = ref(false)
+const recordForm = ref<{ submit: () => Promise<void>; submitting: boolean; canSubmit: boolean } | null>(null)
+/** 手工方式、还没约上：表单直接展开（不用逐一点开） */
+const recordInline = computed(() => method.value === 'manual' && canRecord.value && !scheduled.value && !props.locked)
 const manualShipments = computed<ManualPickupShipment[]>(() => (activeShipment.value?.id
   ? [{ shipment_id: activeShipment.value.id, tracking_number: activeShipment.value.tracking_number, dn_id: Number(props.dnId) }]
   : []))
 const record = () => {
   if (!canRecord.value || !activeShipment.value?.id) return
+  bookOpen.value = false
   recordOpen.value = true
+}
+const onPickupDone = () => {
+  bookOpen.value = false
+  recordOpen.value = false
 }
 
 // ------------------ 取消 ----------------------
@@ -193,12 +228,13 @@ const cancelling = ref(false)
 const cancel = async () => {
   const p = pickup.value
   if (!p?.id || cancelling.value) return
-  const confirmed = await showConfirm(
-    t('delivery.pickup.cancel-confirm-title'),
-    t('delivery.pickup.cancel-confirm', { date: p.pickup_date, window: pickupTimeWindow(p), code: p.confirmation_code || '—' }),
-    t('button.confirm'),
-    t('button.cancel'),
-  )
+  const confirmed = await wConfirm({
+    title: t('delivery.pickup.cancel-confirm-title'),
+    message: t('delivery.pickup.cancel-confirm', { date: p.pickup_date, window: pickupTimeWindow(p), code: p.confirmation_code || '—' }),
+    confirmText: t('shipping.actions.cancel_pickup'),
+    cancelText: t('delivery.pickup.keep'),
+    danger: true,
+  })
   if (!confirmed) return
   cancelling.value = true
   await httpRequest(pickupUrl(p.id, 'cancel'), {
@@ -228,68 +264,128 @@ defineExpose({ run })
 </script>
 
 <template>
-  <div class="flow-pickup fs-13">
+  <div class="w-flow-pickup">
     <!-- 定期集荷 / 自送网点：不用逐票约 -->
     <template v-if="method === 'scheduled'">
-      <div>
-        <i class="ri-calendar-check-line me-1 text-success"></i>
+      <div class="w-flow-pickup__big">
         <template v-if="schedule && schedule.weekdays.length">
           {{ t('shipping.pickup.schedule', { days: weekdayText(schedule.weekdays), window: pickupTimeWindow(schedule) }) }}
         </template>
         <template v-else>{{ t('shipping.pickup.schedule-unset') }}</template>
       </div>
-      <div class="fs-12 text-muted mt-1">{{ t('shipping.pickup.schedule-hint', { carrier: carrierName }) }}</div>
+      <p class="w-flow-pickup__note">
+        {{ nextScheduled }}<WHelp :text="t('shipping.pickup.schedule-hint', { carrier: carrierName })" />
+      </p>
     </template>
     <template v-else-if="method === 'dropoff'">
-      <div><i class="ri-store-2-line me-1"></i>{{ t('shipping.pickup.dropoff', { carrier: carrierName }) }}</div>
+      <div class="w-flow-pickup__big">{{ t('shipping.pickup.dropoff', { carrier: carrierName }) }}</div>
+      <p class="w-flow-pickup__note">{{ t('shipping.pickup.dropoff-hint') }}</p>
     </template>
 
     <!-- 在线预约 / 手工记录 -->
     <template v-else-if="method === 'api' || method === 'manual'">
-      <!-- 概要行已经写了「还没约」：有预约记录时才在这里列出（带来源） -->
-      <div :class="scheduled || step.state === 'done' ? 'text-success' : (pickup?.status === 'unknown' || pickup?.past ? 'text-warning' : '')" v-if="pickup">
-        <i class="ri-truck-line me-1"></i>{{ pickupText }}
-        <span class="badge bg-light text-default ms-1" v-if="pickup && pickup.source === 'manual'">{{ t('shipping.pickup.manual-badge') }}</span>
+      <div v-if="pickup" class="w-flow-pickup__status">
+        <WStatus :tone="pickupTone">{{ pickupText }}</WStatus>
+        <WTag v-if="pickup.source === 'manual'">{{ t('shipping.pickup.manual-badge') }}</WTag>
       </div>
-      <div class="mt-1" v-if="method === 'manual' && contact">
-        <i class="ri-phone-line me-1 text-muted"></i>{{ t('shipping.pickup.contact') }}
-        <a :href="contact" target="_blank" rel="noopener" v-if="contactIsUrl">{{ contact }}</a>
-        <span class="text-break" v-else>{{ contact }}</span>
+      <div v-if="method === 'manual' && contact && !recordInline" class="w-flow-pickup__contact">
+        <span class="w-faint">{{ t('shipping.pickup.contact') }}</span>
+        <a v-if="contactIsUrl" :href="contact" target="_blank" rel="noopener" class="w-flow-pickup__link">{{ contact }}<WIcon name="external" :size="12" /></a>
+        <span v-else>{{ contact }}</span>
       </div>
-      <div class="fs-12 text-muted mt-1" v-if="!activeShipment && !locked">{{ t('shipping.pickup.after-waybill') }}</div>
-
-      <div class="d-flex flex-wrap align-items-center gap-2 mt-2" v-if="!locked">
-        <button type="button" class="btn btn-sm btn-primary" v-if="method === 'api' && canBook" :disabled="preparing" @click="book">
-          <span v-if="preparing" class="spinner-border spinner-border-sm me-1"></span>
-          <i v-else class="ri-truck-line me-1"></i>{{ actionText('book_pickup') }}
-        </button>
-        <button type="button" class="btn btn-sm" :class="method === 'manual' ? 'btn-primary' : 'btn-light'" v-if="canRecord"
-          @click="record">
-          <i class="ri-edit-box-line me-1"></i>{{ actionText('record_pickup') }}
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-danger" v-if="canCancel && pickup?.id" :disabled="cancelling" @click="cancel">
-          <span v-if="cancelling" class="spinner-border spinner-border-sm me-1"></span>{{ actionText('cancel_pickup') }}
-        </button>
-        <NuxtLink :to="pageLink" class="btn btn-sm btn-link px-0">{{ t('customs.carrier.pickup.page') }}</NuxtLink>
-      </div>
+      <p v-if="!activeShipment && !locked" class="w-flow-pickup__plain">{{ t('shipping.pickup.after-waybill') }}</p>
 
       <!-- 不能约的原因（点「预约揽收」时读到的） -->
-      <div class="alert alert-warning-transparent fs-13 mt-2 mb-0" v-if="blockers.length">
-        <div class="fw-semibold mb-1">{{ t('delivery.pickup.blockers.title') }}</div>
-        <ul class="mb-0 ps-3">
-          <li v-for="(b, i) in blockers" :key="`pb-${i}`">{{ blockerText(b) }}</li>
-        </ul>
+      <WAlert v-if="blockers.length" tone="warn" :title="t('delivery.pickup.blockers.title')">
+        <span v-for="(b, i) in blockers" :key="`pb-${i}`" class="w-flow-pickup__line">{{ blockerText(b) }}</span>
+      </WAlert>
+
+      <!-- 在线预约的表单：点了「预约揽收」后展开 -->
+      <div v-if="bookOpen && !locked" class="w-flow-pickup__form">
+        <CarrierPickupForm ref="bookForm" :active="bookOpen" :carrier-id="carrier?.id ?? null" :carrier-name="carrierName"
+          :warehouse-id="warehouseId" :shipments="modalShipments" selectable :initial-selected="initialSelected"
+          :location="overview?.pickup_location" :max-remarks="overview?.max_remarks" :today="overview?.today" :note="note"
+          @booked="onPickupDone" @submitted="emit('changed')">
+          <template #batch-footer>
+            <NuxtLink :to="pageLink" class="w-flow-pickup__link">{{ t('customs.carrier.pickup.page') }} →</NuxtLink>
+          </template>
+        </CarrierPickupForm>
+        <div class="w-flow-pickup__actions">
+          <WButton v-if="canRecord" variant="text" @click="record">{{ t('shipping.pickup.record-instead') }}</WButton>
+          <span class="w-flow-pickup__spacer" />
+          <WButton :disabled="bookForm?.submitting" @click="bookOpen = false">{{ t('button.cancel') }}</WButton>
+          <WButton variant="primary" :loading="bookForm?.submitting" :disabled="!bookForm?.canSubmit" @click="bookForm?.submit()">
+            {{ t('shipping.pickup.book-submit', { carrier: carrierName, summary: bookForm?.submitSummary || '' }) }}
+          </WButton>
+        </div>
+      </div>
+
+      <!-- 手工登记：手工方式直接展开；在线方式点「登记预约」后展开 -->
+      <div v-else-if="(recordInline || recordOpen) && !locked" class="w-flow-pickup__form">
+        <ManualPickupForm ref="recordForm" :active="recordInline || recordOpen" :carrier-id="carrier?.id ?? null"
+          :carrier-name="carrierName" :warehouse-id="warehouseId" :shipments="manualShipments" :contact="contact || null"
+          @recorded="onPickupDone" @submitted="emit('changed')" />
+        <div class="w-flow-pickup__actions">
+          <NuxtLink :to="pageLink" class="w-flow-pickup__link">{{ t('customs.carrier.pickup.page') }} →</NuxtLink>
+          <span class="w-flow-pickup__spacer" />
+          <WButton v-if="recordOpen && !recordInline" :disabled="recordForm?.submitting" @click="recordOpen = false">{{ t('button.cancel') }}</WButton>
+          <WButton variant="primary" :loading="recordForm?.submitting" :disabled="!recordForm?.canSubmit" @click="recordForm?.submit()">
+            {{ t('shipping.pickup.record-submit') }}
+          </WButton>
+        </div>
+      </div>
+
+      <div v-else-if="!locked" class="w-flow-pickup__actions">
+        <WButton v-if="method === 'api' && canBook" variant="primary" icon="pickup" :loading="preparing" @click="book">
+          {{ actionText('book_pickup') }}
+        </WButton>
+        <WButton v-if="canRecord" :variant="method === 'manual' ? 'primary' : 'text'" @click="record">{{ t('shipping.pickup.record-instead') }}</WButton>
+        <WButton v-if="canCancel && pickup?.id" variant="danger" :loading="cancelling" @click="cancel">{{ actionText('cancel_pickup') }}</WButton>
+        <span class="w-flow-pickup__spacer" />
+        <NuxtLink :to="pageLink" class="w-flow-pickup__link">{{ t('customs.carrier.pickup.page') }} →</NuxtLink>
       </div>
     </template>
 
-    <ShippingFlowActionNotes :actions="step.actions" :carrier-name="carrierName" v-if="!locked" />
-
-    <CarrierPickupModal v-model:open="bookOpen" :carrier-id="carrier?.id ?? null" :carrier-name="carrierName"
-      :warehouse-id="warehouseId" :shipments="modalShipments" selectable :initial-selected="initialSelected"
-      :location="overview?.pickup_location" :max-remarks="overview?.max_remarks" :today="overview?.today" :note="note"
-      @submitted="emit('changed')" />
-    <ManualPickupModal v-model:open="recordOpen" :carrier-id="carrier?.id ?? null" :carrier-name="carrierName"
-      :warehouse-id="warehouseId" :shipments="manualShipments" :contact="contact || null"
-      @submitted="emit('changed')" />
+    <ShippingFlowActionNotes v-if="!locked" :actions="step.actions" :carrier-name="carrierName" />
   </div>
 </template>
+
+<style scoped>
+.w-flow-pickup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
+}
+.w-flow-pickup__big {
+  font-size: var(--w-fs-20);
+  line-height: var(--w-lh-20);
+  font-weight: var(--w-fw-semibold);
+}
+.w-flow-pickup__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -8px 0 0;
+  color: var(--w-text-2);
+}
+.w-flow-pickup__plain { margin: 0; color: var(--w-text-2); }
+.w-flow-pickup__status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.w-flow-pickup__contact { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.w-flow-pickup__line { display: block; }
+.w-flow-pickup__form { display: flex; flex-direction: column; gap: 16px; }
+.w-flow-pickup__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.w-flow-pickup__spacer { flex: 1; }
+.w-flow-pickup__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--w-link);
+  font-weight: var(--w-fw-medium);
+  text-decoration: none;
+}
+.w-flow-pickup__link:hover { color: var(--w-link-hover); }
+</style>

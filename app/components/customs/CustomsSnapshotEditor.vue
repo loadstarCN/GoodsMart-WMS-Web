@@ -130,6 +130,13 @@ watch(() => props.open, (open: boolean) => {
 const close = () => {
   if (!saving.value) emit('update:open', false)
 }
+const visible = computed({
+  get: () => props.open,
+  set: (value: boolean) => {
+    if (!value) close()
+  },
+})
+const formId = useId()
 
 /** 下拉里没有的现值（下单系统传来的其它写法）也要能保留 */
 const withCurrent = (options: string[], current: string) =>
@@ -139,6 +146,11 @@ const exportReasonText = (code: string) => {
   return te(key) ? `${code}（${t(key)}）` : code
 }
 const taxIdTypeText = (code: string) => (code === 'OTHER' ? t('customs.editor.tax-id-other') : code)
+/** 下拉选项：第一项「—」（不填） */
+const withBlank = (codes: string[], label: (code: string) => string) => [{ value: '', label: '—' }, ...codes.map((code) => ({ value: code, label: label(code) }))]
+const incotermOptions = computed(() => withBlank(withCurrent(INCOTERMS, form.incoterm), (code) => code))
+const exportReasonOptions = computed(() => withBlank(withCurrent(EXPORT_REASONS, form.export_reason), exportReasonText))
+const taxIdTypeOptions = computed(() => withBlank(withCurrent(TAX_ID_TYPES, form.recipient_tax_id_type), taxIdTypeText))
 const fallback = (key: string) => {
   const value = props.fallbackConsignee?.[key]
   if (!value) return ''
@@ -215,160 +227,153 @@ const save = async () => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="modal fade" :class="{ show: open }" :style="{ display: open ? 'block' : 'none' }" tabindex="-1" role="dialog">
-      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h6 class="modal-title">{{ t('customs.editor.title') }}</h6>
-            <button type="button" class="btn-close" :disabled="saving" @click="close"></button>
-          </div>
-          <div class="modal-body" v-if="open">
-            <p class="fs-12 text-muted">
-              <i class="ri-information-line me-1"></i>{{ t('customs.editor.tips.source') }}
-            </p>
+  <WDrawer v-model:open="visible" :title="t('customs.editor.title')" width="920px" :closable="!saving">
+    <form v-if="open" :id="formId" class="w-csnap" @submit.prevent="save">
+      <!-- ===== 单据信息 ===== -->
+      <section class="w-csnap__section">
+        <h3 class="w-csnap__title">{{ t('customs.editor.sections.basic') }} <WHelp :text="t('customs.editor.tips.source')" /></h3>
+        <WFormGrid>
+          <WField :label="t('customs.fields.invoice-number')" optional :span="4">
+            <WInput v-model="form.invoice_number" maxlength="50" :placeholder="t('customs.editor.tips.invoice-fallback')" />
+          </WField>
+          <WField :label="t('customs.fields.currency')" optional :span="2">
+            <WInput v-model="form.currency" maxlength="3" placeholder="JPY" class="w-csnap__upper" />
+          </WField>
+          <WField :label="t('customs.fields.incoterm')" optional :span="3">
+            <WSelect v-model="form.incoterm" :options="incotermOptions" />
+          </WField>
+          <WField :label="t('customs.fields.export-reason')" optional :span="3">
+            <WSelect v-model="form.export_reason" :options="exportReasonOptions" />
+          </WField>
+          <WField :label="t('customs.fields.recipient-country')" optional :span="4">
+            <CountryCombobox v-model="form.recipient_country" />
+          </WField>
+          <WField :label="t('customs.fields.tax-id-type')" optional :span="3">
+            <WSelect v-model="form.recipient_tax_id_type" :options="taxIdTypeOptions" />
+          </WField>
+          <WField :label="t('customs.fields.recipient-tax-id')" optional :span="5">
+            <WInput v-model="form.recipient_tax_id" maxlength="100" />
+          </WField>
+          <WField :label="t('customs.fields.freight')" optional :span="4">
+            <WInput v-model="form.freight_charge" inputmode="decimal" align="right" :suffix="form.currency || undefined" />
+          </WField>
+          <WField :label="t('customs.fields.insurance')" optional :span="4">
+            <WInput v-model="form.insurance_charge" inputmode="decimal" align="right" :suffix="form.currency || undefined" />
+          </WField>
+          <WField :label="t('customs.fields.declared-value-carriage')" optional :span="4">
+            <WInput v-model="form.declared_value_carriage" inputmode="decimal" align="right" :suffix="form.currency || undefined" />
+          </WField>
+        </WFormGrid>
+      </section>
 
-            <!-- ===== 单据信息 ===== -->
-            <h6 class="fw-semibold mb-2">{{ t('customs.editor.sections.basic') }}</h6>
-            <div class="row g-3 mb-4">
-              <div class="col-md-4">
-                <label class="form-label">{{ t('customs.fields.invoice-number') }}</label>
-                <input type="text" class="form-control form-control-sm" v-model="form.invoice_number" maxlength="50"
-                  :placeholder="t('customs.editor.tips.invoice-fallback')">
-              </div>
-              <div class="col-md-2">
-                <label class="form-label">{{ t('customs.fields.currency') }}</label>
-                <input type="text" class="form-control form-control-sm text-uppercase" v-model="form.currency" maxlength="3"
-                  placeholder="JPY">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">{{ t('customs.fields.incoterm') }}</label>
-                <select class="form-select form-select-sm" v-model="form.incoterm">
-                  <option value="">—</option>
-                  <option v-for="code in withCurrent(INCOTERMS, form.incoterm)" :key="code" :value="code">{{ code }}</option>
-                </select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">{{ t('customs.fields.export-reason') }}</label>
-                <select class="form-select form-select-sm" v-model="form.export_reason">
-                  <option value="">—</option>
-                  <option v-for="code in withCurrent(EXPORT_REASONS, form.export_reason)" :key="code" :value="code">
-                    {{ exportReasonText(code) }}
-                  </option>
-                </select>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">{{ t('customs.fields.recipient-country') }}</label>
-                <CountrySelect v-model="form.recipient_country" size="sm" />
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">{{ t('customs.fields.tax-id-type') }}</label>
-                <select class="form-select form-select-sm" v-model="form.recipient_tax_id_type">
-                  <option value="">—</option>
-                  <option v-for="code in withCurrent(TAX_ID_TYPES, form.recipient_tax_id_type)" :key="code" :value="code">
-                    {{ taxIdTypeText(code) }}
-                  </option>
-                </select>
-              </div>
-              <div class="col-md-5">
-                <label class="form-label">{{ t('customs.fields.recipient-tax-id') }}</label>
-                <input type="text" class="form-control form-control-sm font-monospace" v-model="form.recipient_tax_id" maxlength="100">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">{{ t('customs.fields.freight') }}</label>
-                <input type="number" min="0" step="1" class="form-control form-control-sm" v-model="form.freight_charge">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">{{ t('customs.fields.insurance') }}</label>
-                <input type="number" min="0" step="1" class="form-control form-control-sm" v-model="form.insurance_charge">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">{{ t('customs.fields.declared-value-carriage') }}</label>
-                <input type="number" min="0" step="1" class="form-control form-control-sm" v-model="form.declared_value_carriage">
-              </div>
-            </div>
+      <!-- ===== 收货人 ===== -->
+      <section class="w-csnap__section">
+        <h3 class="w-csnap__title">
+          {{ t('customs.editor.sections.consignee') }}
+          <WHelp v-if="usingFallbackConsignee" :text="t('customs.editor.tips.consignee-fallback')" />
+        </h3>
+        <WFormGrid>
+          <WField v-for="key in ['company', 'name']" :key="key" :label="t(`customs.consignee-fields.${key}`)" optional :span="6">
+            <WInput v-model="form.consignee[key]" maxlength="255" :placeholder="fallback(key)" />
+          </WField>
+          <WField v-for="key in ['address_line1', 'address_line2']" :key="key" :label="t(`customs.consignee-fields.${key.replace(/_/g, '-')}`)"
+            optional :span="6">
+            <WInput v-model="form.consignee[key]" maxlength="255" :placeholder="fallback(key)" />
+          </WField>
+          <WField v-for="key in ['city', 'state', 'postal_code']" :key="key" :label="t(`customs.consignee-fields.${key.replace(/_/g, '-')}`)"
+            optional :span="3">
+            <WInput v-model="form.consignee[key]" maxlength="255" :placeholder="fallback(key)" />
+          </WField>
+          <WField :label="t('customs.consignee-fields.phone')" optional :span="3">
+            <WInput v-model="form.consignee.phone" maxlength="255" :placeholder="fallback('phone')" />
+          </WField>
+          <WField :label="t('customs.consignee-fields.country')" optional :span="6">
+            <CountryCombobox v-model="form.consignee.country" :placeholder="fallback('country') || undefined" />
+          </WField>
+        </WFormGrid>
+      </section>
 
-            <!-- ===== 收货人 ===== -->
-            <h6 class="fw-semibold mb-1">{{ t('customs.editor.sections.consignee') }}</h6>
-            <p class="fs-12 text-muted mb-2" v-if="usingFallbackConsignee">{{ t('customs.editor.tips.consignee-fallback') }}</p>
-            <div class="row g-3 mb-4">
-              <div class="col-md-6" v-for="key in ['company', 'name']" :key="key">
-                <label class="form-label">{{ t(`customs.consignee-fields.${key}`) }}</label>
-                <input type="text" class="form-control form-control-sm" v-model="form.consignee[key]" maxlength="255"
-                  :placeholder="fallback(key)">
-              </div>
-              <div class="col-md-6" v-for="key in ['address_line1', 'address_line2']" :key="key">
-                <label class="form-label">{{ t(`customs.consignee-fields.${key.replace(/_/g, '-')}`) }}</label>
-                <input type="text" class="form-control form-control-sm" v-model="form.consignee[key]" maxlength="255"
-                  :placeholder="fallback(key)">
-              </div>
-              <div class="col-md-3" v-for="key in ['city', 'state', 'postal_code']" :key="key">
-                <label class="form-label">{{ t(`customs.consignee-fields.${key.replace(/_/g, '-')}`) }}</label>
-                <input type="text" class="form-control form-control-sm" v-model="form.consignee[key]" maxlength="255"
-                  :placeholder="fallback(key)">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">{{ t('customs.consignee-fields.phone') }}</label>
-                <input type="text" class="form-control form-control-sm" v-model="form.consignee.phone" maxlength="255"
-                  :placeholder="fallback('phone')">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">{{ t('customs.consignee-fields.country') }}</label>
-                <CountrySelect v-model="form.consignee.country" size="sm" :placeholder="fallback('country') || undefined" />
-              </div>
-            </div>
-
-            <!-- ===== 明细 ===== -->
-            <h6 class="fw-semibold mb-2">{{ t('customs.editor.sections.lines') }}</h6>
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered align-middle mb-0 fs-13">
-                <thead>
-                  <tr>
-                    <th scope="col">{{ t('customs.fields.jan') }}</th>
-                    <th scope="col" class="text-end">{{ t('customs.fields.packed-qty') }}</th>
-                    <th scope="col" style="min-width: 220px;">{{ t('customs.fields.description-en') }}</th>
-                    <th scope="col" style="min-width: 130px;">{{ t('customs.fields.hs-code') }}</th>
-                    <th scope="col" style="min-width: 130px;" :title="t('customs.tips.jp-export-code')">{{ t('customs.fields.jp-export-code') }}</th>
-                    <th scope="col" style="min-width: 120px;">{{ t('customs.fields.unit-value') }}</th>
-                    <th scope="col">{{ t('customs.fields.origin') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="line in lineDrafts" :key="line.goods_code">
-                    <td>
-                      <div class="font-monospace">{{ line.goods_code }}</div>
-                      <div class="fs-12 text-muted text-wrap" style="max-width: 220px;">{{ line.goods_name }}</div>
-                    </td>
-                    <td class="text-end text-nowrap">{{ line.packed_quantity ?? 0 }} / {{ line.planned_quantity ?? '—' }}</td>
-                    <td><input type="text" class="form-control form-control-sm" v-model="line.description_en" maxlength="500"></td>
-                    <td><input type="text" class="form-control form-control-sm font-monospace" v-model="line.hs_code" maxlength="20"
-                        placeholder="9503.00"></td>
-                    <td><input type="text" class="form-control form-control-sm font-monospace" v-model="line.jp_export_code" maxlength="20"></td>
-                    <td><input type="text" inputmode="decimal" class="form-control form-control-sm text-end" v-model="line.unit_value"
-                        maxlength="20"></td>
-                    <td class="text-nowrap">
-                      <span v-if="line.origin_country" class="fw-semibold">{{ String(line.origin_country).toUpperCase() }}</span>
-                      <span class="badge bg-danger-transparent" v-else :title="t('customs.editor.tips.origin-on-goods')">
-                        {{ t('goods.tips.origin-missing') }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p class="fs-12 text-muted mt-2 mb-0">{{ t('customs.editor.tips.origin-on-goods') }}</p>
-
-            <div class="alert alert-danger-transparent mt-3 mb-0" role="alert" v-if="errorText">{{ errorText }}</div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-light" :disabled="saving" @click="close">{{ t('button.cancel') }}</button>
-            <button type="button" class="btn btn-primary" :disabled="saving" @click="save">
-              <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>{{ t('button.save') }}
-            </button>
-          </div>
+      <!-- ===== 明细 ===== -->
+      <section class="w-csnap__section">
+        <h3 class="w-csnap__title">{{ t('customs.editor.sections.lines') }} <WHelp :text="t('customs.editor.tips.origin-on-goods')" /></h3>
+        <div class="w-csnap__table">
+          <table class="w-csnap__grid">
+            <thead>
+              <tr>
+                <th scope="col">{{ t('customs.fields.jan') }}</th>
+                <th scope="col" class="is-num">{{ t('customs.fields.packed-qty') }}</th>
+                <th scope="col">{{ t('customs.fields.description-en') }}</th>
+                <th scope="col">{{ t('customs.fields.hs-code') }}</th>
+                <th scope="col">{{ t('customs.fields.jp-export-code') }} <WHelp :text="t('customs.tips.jp-export-code')" /></th>
+                <th scope="col">{{ t('customs.fields.unit-value') }}</th>
+                <th scope="col">{{ t('customs.fields.origin') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="line in lineDrafts" :key="line.goods_code">
+                <td>
+                  <span class="w-csnap__code">{{ line.goods_code }}</span>
+                  <span class="w-csnap__name">{{ line.goods_name }}</span>
+                </td>
+                <td class="is-num">{{ line.packed_quantity ?? 0 }} / {{ line.planned_quantity ?? '—' }}</td>
+                <td class="is-wide"><WInput v-model="line.description_en" size="sm" maxlength="500" :aria-label="t('customs.fields.description-en')" /></td>
+                <td><WInput v-model="line.hs_code" size="sm" maxlength="20" placeholder="9503.00" :aria-label="t('customs.fields.hs-code')" /></td>
+                <td><WInput v-model="line.jp_export_code" size="sm" maxlength="20" :aria-label="t('customs.fields.jp-export-code')" /></td>
+                <td><WInput v-model="line.unit_value" size="sm" inputmode="decimal" align="right" maxlength="20" :aria-label="t('customs.fields.unit-value')" /></td>
+                <td>
+                  <b v-if="line.origin_country">{{ String(line.origin_country).toUpperCase() }}</b>
+                  <WTag v-else tone="warn" :title="t('customs.editor.tips.origin-on-goods')">{{ t('goods.tips.origin-missing') }}</WTag>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
-    </div>
-    <div class="modal-backdrop fade show" v-if="open" @click="close"></div>
-  </Teleport>
+      </section>
+
+      <WAlert v-if="errorText" tone="block" :title="errorText" />
+    </form>
+    <template #footer>
+      <WButton :disabled="saving" @click="close">{{ t('button.cancel') }}</WButton>
+      <WButton type="submit" :form="formId" variant="primary" :loading="saving">{{ t('button.save') }}</WButton>
+    </template>
+  </WDrawer>
 </template>
+
+<style scoped>
+.w-csnap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: var(--w-font);
+  color: var(--w-text-1);
+}
+.w-csnap__section { display: flex; flex-direction: column; gap: 12px; }
+.w-csnap__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--w-fs-16);
+  line-height: var(--w-lh-16);
+  font-weight: var(--w-fw-semibold);
+}
+.w-csnap__upper :deep(input) { text-transform: uppercase; }
+.w-csnap__table { overflow-x: auto; border: 1px solid var(--w-border); border-radius: var(--w-radius-card); }
+.w-csnap__grid { width: 100%; border-collapse: collapse; font-size: var(--w-fs-13); line-height: var(--w-lh-13); }
+.w-csnap__grid th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--w-border);
+  color: var(--w-text-3);
+  font-size: var(--w-fs-12);
+  font-weight: var(--w-fw-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+.w-csnap__grid td { padding: 6px 10px; border-top: 1px solid var(--w-line); vertical-align: middle; }
+.w-csnap__grid tbody tr:first-child td { border-top: 0; }
+.w-csnap__grid .is-num { text-align: right; white-space: nowrap; }
+.w-csnap__grid .is-wide { min-width: 200px; }
+.w-csnap__grid td :deep(.w-input) { min-width: 96px; }
+.w-csnap__code { display: block; font-family: var(--w-font-mono); font-size: var(--w-fs-12); }
+.w-csnap__name { display: block; max-width: 200px; font-size: var(--w-fs-12); color: var(--w-text-3); }
+</style>

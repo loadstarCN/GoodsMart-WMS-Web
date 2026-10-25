@@ -318,12 +318,13 @@ const trackingText = computed(() => {
   }
   return parts.join(' · ')
 })
-const trackingClass = computed(() => {
+/** 跟踪状态的圆点：异常 / 查不到红、送达绿、在途紫 */
+const trackingTone = computed<'bad' | 'ok' | 'info' | 'none'>(() => {
   const s = tracking.value?.status
-  if (s === 'exception' || s === 'unknown') return 'text-danger'
-  if (s === 'delivered') return 'text-success'
-  if (s === 'in_transit' || s === 'out_for_delivery') return 'text-primary'
-  return 'text-muted'
+  if (s === 'exception' || s === 'unknown') return 'bad'
+  if (s === 'delivered') return 'ok'
+  if (s === 'in_transit' || s === 'out_for_delivery') return 'info'
+  return 'none'
 })
 const trackingRefreshing = ref(false)
 const canRefreshTracking = computed(() => props.trackingRefresh && trackingVisible.value)
@@ -513,6 +514,7 @@ const chooseLabelFormat = (format: LabelFormat) => {
   labelFormatChosen = true
   saveLabelFormat(format)
 }
+const labelFormatSelect = computed(() => labelFormatOptions.value.map((f) => ({ value: f, label: labelFormatText(f) })))
 const labelFormatText = (format: string | null | undefined) => {
   const key = `customs.carrier.label-formats.${String(format || '').toUpperCase()}`
   return format && te(key) ? t(key) : (format || '')
@@ -645,7 +647,7 @@ const saveTracking = async () => {
     },
     onError: (error) => {
       if (TRACKING_BLOCK_CODES.includes(Number(error.code))) {
-        showAlert(t('delivery.tips.tracking-blocked-title'), bizErrorMessage(error), 'error')
+        wAlert({ title: t('delivery.tips.tracking-blocked-title'), message: bizErrorMessage(error), tone: 'error' })
         return
       }
       showToast(bizErrorMessage(error), 'error')
@@ -705,17 +707,17 @@ const create = async () => {
   if (!canCreate.value || busy.value) return
   // 箱子有未保存的修改：建单会用已保存的旧箱子（之后再保存箱子会 16076，只能取消重建），先保存
   if (props.packagesDirty) {
-    showAlert(t('customs.carrier.create-confirm-title'), t('customs.carrier.tips.packages-unsaved'), 'warning')
+    wAlert({ title: t('customs.carrier.create-confirm-title'), message: t('customs.carrier.tips.packages-unsaved'), tone: 'warning' })
     return
   }
   const format = labelFormat.value
   const params = { carrier: carrierName.value, format: labelFormatText(format), count: props.packageCount ?? '' }
-  const confirmed = await showConfirm(
-    t('customs.carrier.create-confirm-title'),
-    t(props.packageCount ? 'customs.carrier.create-confirm-packages' : 'customs.carrier.create-confirm', params),
-    t('customs.carrier.operations.create'),
-    t('customs.carrier.operations.back'),
-  )
+  const confirmed = await wConfirm({
+    title: t('customs.carrier.create-confirm-title'),
+    message: t(props.packageCount ? 'customs.carrier.create-confirm-packages' : 'customs.carrier.create-confirm', params),
+    confirmText: t('customs.carrier.operations.create'),
+    cancelText: t('customs.carrier.operations.back'),
+  })
   if (!confirmed) return
 
   creating.value = true
@@ -803,12 +805,13 @@ const cancel = async () => {
   // 有效运单用原确认文案；重试取消（取消结果不明 / 结果不明记录）说明是再次请求取消
   const retry = !activeShipment.value
   const params = { tracking: tracking || '—', carrier: carrierName.value }
-  const confirmed = await showConfirm(
-    t('customs.carrier.cancel-confirm-title', params),
-    t(retry ? 'customs.carrier.cancel-retry-confirm' : 'customs.carrier.cancel-confirm', params),
-    t(retry ? 'customs.carrier.operations.retry-cancel' : 'customs.carrier.operations.cancel'),
-    t('customs.carrier.operations.keep'),
-  )
+  const confirmed = await wConfirm({
+    title: t('customs.carrier.cancel-confirm-title', params),
+    message: t(retry ? 'customs.carrier.cancel-retry-confirm' : 'customs.carrier.cancel-confirm', params),
+    confirmText: t(retry ? 'customs.carrier.operations.retry-cancel' : 'customs.carrier.operations.cancel'),
+    cancelText: t('customs.carrier.operations.keep'),
+    danger: true,
+  })
   if (!confirmed || busy.value) return
 
   cancelling.value = true
@@ -849,8 +852,8 @@ const cancel = async () => {
     //（运单变了时 load() 会通知父组件刷新单证）
     await load()
     if (isCancelOutcomeUnknown(failedWith)) {
-      showAlert(t('customs.carrier.unresolved.cancel-unknown-title'),
-        t('customs.carrier.tips.cancel-unknown', { portal: portalName.value }), 'warning')
+      wAlert({ title: t('customs.carrier.unresolved.cancel-unknown-title'),
+        message: t('customs.carrier.tips.cancel-unknown', { portal: portalName.value }), tone: 'warning' })
     }
   }
   cancelling.value = false
@@ -870,17 +873,18 @@ const dismiss = async () => {
     showToast(t('customs.carrier.tips.target-changed'), 'warning')
     return
   }
-  const confirmed = await showConfirm(
-    t('customs.carrier.unresolved.dismiss-confirm-title'),
+  const confirmed = await wConfirm({
+    title: t('customs.carrier.unresolved.dismiss-confirm-title'),
     // 有运单号：后端会先请承运商取消，承运商确认已取消 / 查无此运单才作废（否则 16094）
-    t(u.tracking_number ? 'customs.carrier.unresolved.dismiss-confirm-tracking' : 'customs.carrier.unresolved.dismiss-confirm', {
+    message: t(u.tracking_number ? 'customs.carrier.unresolved.dismiss-confirm-tracking' : 'customs.carrier.unresolved.dismiss-confirm', {
       portal: portalName.value,
       carrier: carrierName.value,
       tracking: u.tracking_number || '—',
     }),
-    t('customs.carrier.operations.dismiss'),
-    t('customs.carrier.operations.back'),
-  )
+    confirmText: t('customs.carrier.operations.dismiss'),
+    cancelText: t('customs.carrier.operations.back'),
+    danger: true,
+  })
   if (!confirmed || busy.value) return
 
   dismissing.value = true
@@ -898,7 +902,7 @@ const dismiss = async () => {
     onError: (error) => {
       // 16094：承运商没确认已取消，不能作废——要先在承运商后台取消，用弹窗说明
       if (error.code === CARRIER_BIZ_CODES.DISMISS_NOT_CONFIRMED) {
-        showAlert(t('customs.carrier.unresolved.dismiss-confirm-title'), bizErrorMessage(error), 'warning')
+        wAlert({ title: t('customs.carrier.unresolved.dismiss-confirm-title'), message: bizErrorMessage(error), tone: 'warning' })
         return
       }
       showToast(bizErrorMessage(error), isTargetMismatch(error) ? 'warning' : 'error')
@@ -936,24 +940,24 @@ const sendToPrinter = async () => {
   }
 }
 
-defineExpose({ reload: async () => { await load() } })
+/** 发货单详情右栏「运单与包裹」的「取消运单」经这里（与这一步里的按钮同一个流程） */
+defineExpose({ reload: async () => { await load() }, cancel })
 </script>
 
 <template>
-  <div class="carrier-shipment" v-if="!unsupported">
-    <div class="py-1" v-if="loading && !status">
-      <span class="spinner-border spinner-border-sm text-primary" role="status">
-        <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-      </span>
+  <div v-if="!unsupported" class="w-cship">
+    <div v-if="loading && !status" class="w-cship__loading" aria-busy="true">
+      <span class="w-cship__skeleton" /><span class="w-cship__skeleton is-short" />
     </div>
-    <div class="alert alert-danger-transparent fs-13 mb-0" v-else-if="loadError && !status">{{ loadError }}</div>
+    <WAlert v-else-if="loadError && !status" tone="block" :title="loadError" />
 
     <template v-else-if="status">
       <!-- ===== 结果不明 / 进行中 ===== -->
-      <div class="carrier-notice" :class="unresolvedInProgress ? 'is-progress' : 'is-danger'" role="alert" v-if="unresolved">
-        <div class="fw-semibold d-flex align-items-center gap-2">
-          <span class="spinner-border spinner-border-sm" role="status" v-if="unresolvedInProgress"></span>
-          <i class="ri-error-warning-line fs-16" v-else></i>
+      <div v-if="unresolved" class="w-cship__notice" :class="unresolvedInProgress ? 'is-progress' : 'is-bad'"
+        :role="unresolvedInProgress ? 'status' : 'alert'">
+        <div class="w-cship__notice-title">
+          <span v-if="unresolvedInProgress" class="w-cship__spinner" aria-hidden="true" />
+          <span v-else class="w-cship__mark" aria-hidden="true">!</span>
           <template v-if="unresolvedInProgress">
             {{ t(unresolvedCancelling ? 'customs.carrier.unresolved.cancelling-title' : 'customs.carrier.unresolved.in-progress-title') }}
           </template>
@@ -961,7 +965,7 @@ defineExpose({ reload: async () => { await load() } })
             {{ t(unresolvedCancelUnknown ? 'customs.carrier.unresolved.cancel-unknown-title' : 'customs.carrier.unresolved.title') }}
           </template>
         </div>
-        <p class="fs-13 mb-0 mt-1">
+        <p class="w-cship__notice-text">
           <template v-if="unresolvedInProgress && pollExhausted">{{ t('customs.carrier.unresolved.stalled') }}</template>
           <template v-else-if="unresolvedInProgress">
             {{ t(unresolvedCancelling ? 'customs.carrier.unresolved.cancelling' : 'customs.carrier.unresolved.in-progress') }}
@@ -971,360 +975,417 @@ defineExpose({ reload: async () => { await load() } })
           </template>
           <template v-else>{{ t('customs.carrier.unresolved.description', { carrier: carrierName, portal: portalName }) }}</template>
         </p>
-        <div class="fs-12 text-muted mt-1 d-flex flex-wrap gap-3">
-          <span v-if="unresolved.tracking_number">
-            {{ t('customs.carrier.fields.tracking-number') }} <span class="font-monospace">{{ unresolved.tracking_number }}</span>
-          </span>
-          <span v-if="unresolved.transaction_id">
-            {{ t('customs.carrier.fields.transaction-id') }} <span class="font-monospace text-break">{{ unresolved.transaction_id }}</span>
-          </span>
-          <span v-if="unresolved.created_at">{{ zonedTime(unresolved.created_at, 'MM-DD HH:mm') }}</span>
+        <div class="w-cship__meta">
+          <span v-if="unresolved.tracking_number">{{ t('customs.carrier.fields.tracking-number') }} <b class="w-cship__mono">{{ unresolved.tracking_number }}</b></span>
+          <span v-if="unresolved.transaction_id">{{ t('customs.carrier.fields.transaction-id') }} <span class="w-cship__mono">{{ unresolved.transaction_id }}</span></span>
+          <span v-if="unresolved.created_at">{{ zonedTime(unresolved.created_at, 'MM/DD HH:mm') }}</span>
           <span v-if="unresolvedReasonText" :title="unresolved.reason || ''">{{ unresolvedReasonText }}</span>
         </div>
-        <details class="fs-13 mt-2" v-if="!unresolvedInProgress && !locked">
-          <summary class="text-primary">{{ t('customs.carrier.unresolved.how') }}</summary>
-          <ol class="mb-0 mt-1 ps-3">
+        <details v-if="!unresolvedInProgress && !locked" class="w-cship__how">
+          <summary>{{ t('customs.carrier.unresolved.how') }}</summary>
+          <ol>
             <li>
               {{ t(unresolved.tracking_number ? 'customs.carrier.unresolved.step1' : 'customs.carrier.unresolved.step1-no-tracking', { portal: portalName, tracking: unresolved.tracking_number || '' }) }}
-              <a :href="integration.portal_url" target="_blank" rel="noopener" class="ms-1" v-if="integration?.portal_url">
-                <i class="ri-external-link-line"></i>
+              <a v-if="integration?.portal_url" :href="integration.portal_url" target="_blank" rel="noopener" class="w-cship__link">
+                {{ portalName }}<WIcon name="external" :size="12" />
               </a>
             </li>
             <li>{{ t('customs.carrier.unresolved.step2') }}</li>
             <li>{{ t('customs.carrier.unresolved.step3') }}</li>
           </ol>
         </details>
-        <div class="btn-list mt-2" v-if="!locked">
-          <button type="button" class="btn btn-sm btn-light" v-if="canRetryCancel" :disabled="busy" @click="cancel">
-            <span v-if="cancelling" class="spinner-border spinner-border-sm me-1"></span>
+        <div v-if="!locked" class="w-cship__actions">
+          <WButton v-if="canRetryCancel" variant="danger" :loading="cancelling" :disabled="busy && !cancelling" @click="cancel">
             {{ t('customs.carrier.operations.retry-cancel') }}
-          </button>
-          <button type="button" class="btn btn-sm btn-light" v-if="canDismiss" :disabled="busy" @click="dismiss">
-            <span v-if="dismissing" class="spinner-border spinner-border-sm me-1"></span>
+          </WButton>
+          <WButton v-if="canDismiss" :loading="dismissing" :disabled="busy && !dismissing" @click="dismiss">
             {{ t('customs.carrier.operations.dismiss') }}
-          </button>
-          <button type="button" class="btn btn-sm btn-outline-light" :disabled="loading || busy" @click="refresh">
-            <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
-            <i v-else class="ri-refresh-line me-1"></i>{{ t('customs.carrier.operations.refresh') }}
-          </button>
+          </WButton>
+          <WButton variant="text" icon="refresh" :loading="loading" :disabled="busy" @click="refresh">{{ t('customs.carrier.operations.refresh') }}</WButton>
         </div>
       </div>
 
       <!-- ===== 已建运单 ===== -->
-      <div class="carrier-shipment-card" v-if="activeShipment">
-        <div class="d-flex flex-wrap align-items-baseline gap-2">
-          <span class="fs-16 fw-semibold font-monospace">{{ activeShipment.tracking_number || '—' }}</span>
-          <span class="fs-13 text-muted">{{ shipmentFacts.join(' · ') }}</span>
+      <div v-if="activeShipment" class="w-cship__card">
+        <div class="w-cship__headline">
+          <span class="w-cship__tracking">{{ activeShipment.tracking_number || '—' }}</span>
+          <span class="w-cship__facts">{{ shipmentFacts.join(' · ') }}</span>
         </div>
-        <div class="fs-12 text-muted mt-1" v-if="packageTrackingNumbers.length > 1">
-          {{ t('customs.carrier.fields.package-tracking-numbers') }}
-          <span class="font-monospace">{{ packageTrackingNumbers.join(', ') }}</span>
+        <div v-if="packageTrackingNumbers.length > 1" class="w-cship__meta">
+          {{ t('customs.carrier.fields.package-tracking-numbers') }} <span class="w-cship__mono">{{ packageTrackingNumbers.join(', ') }}</span>
         </div>
-        <div class="fs-12 text-muted mt-1">
-          {{ t('customs.carrier.fields.created') }} {{ zonedTime(activeShipment.created_at, 'YYYY-MM-DD HH:mm') || '—' }}
-          <template v-if="activeShipment.created_by">· {{ userText(activeShipment.created_by_user ?? activeShipment.created_by) }}</template>
-          <template v-if="declaredValueText"> · {{ declaredValueText }}</template>
-          <template v-if="activeShipment.etd_document_id"> · {{ t('customs.carrier.tips.etd-submitted') }}</template>
+        <div class="w-cship__meta">
+          <span>{{ t('customs.carrier.fields.created') }} {{ zonedTime(activeShipment.created_at, 'YYYY-MM-DD HH:mm') || '—' }}</span>
+          <span v-if="activeShipment.created_by">{{ userText(activeShipment.created_by_user ?? activeShipment.created_by) }}</span>
+          <span v-if="declaredValueText">{{ declaredValueText }}</span>
+          <span v-if="activeShipment.etd_document_id">{{ t('customs.carrier.tips.etd-submitted') }}</span>
         </div>
-        <div class="alert alert-warning py-2 mt-2 mb-1 fs-12" v-if="electronicWithOriginals || paperDocuments.length || regulatoryPaperDocuments.length">
-          <strong>{{ t('customs.carrier.tips.paper-required') }}</strong>
-          <span v-for="(item, i) in paperDocuments" :key="`paper-${item.type}-${i}`" class="d-block">
+        <WAlert v-if="electronicWithOriginals || paperDocuments.length || regulatoryPaperDocuments.length" tone="warn"
+          :title="t('customs.carrier.tips.paper-required')">
+          <span v-for="(item, i) in paperDocuments" :key="`paper-${item.type}-${i}`" class="w-cship__line">
             {{ t('customs.carrier.tips.paper-copies', { document: fedexDocumentName(item.type), copies: item.minimum_copies_required }) }}
           </span>
-          <span v-for="item in regulatoryPaperDocuments" :key="`${item.document_type}-${item.name}`" class="d-block">
+          <span v-for="item in regulatoryPaperDocuments" :key="`${item.document_type}-${item.name}`" class="w-cship__line">
             {{ t('customs.carrier.tips.trade-paper-document', { document: item.name }) }}
           </span>
-          <span v-if="!paperDocuments.length && !regulatoryPaperDocuments.length" class="d-block">{{ t('customs.carrier.tips.paper-check-label') }}</span>
+          <span v-if="!paperDocuments.length && !regulatoryPaperDocuments.length" class="w-cship__line">{{ t('customs.carrier.tips.paper-check-label') }}</span>
+        </WAlert>
+        <div v-if="tradeDocuments?.required_documents?.length" class="w-cship__meta">
+          {{ t('customs.carrier.tips.fedex-required-documents') }} {{ tradeDocuments.required_documents.map(fedexDocumentName).join(', ') }}
         </div>
-        <div class="fs-12 text-muted mt-1" v-if="tradeDocuments?.required_documents?.length">
-          {{ t('customs.carrier.tips.fedex-required-documents') }}
-          {{ tradeDocuments.required_documents.map(fedexDocumentName).join(', ') }}
-        </div>
-        <div class="fs-12 text-warning mt-1" v-for="(message, i) in tradeDocuments?.regulatory_requirements?.messages || []" :key="`fedex-advice-${i}`">
+        <div v-for="(message, i) in tradeDocuments?.regulatory_requirements?.messages || []" :key="`fedex-advice-${i}`" class="w-cship__meta is-warn">
           {{ message }}
         </div>
-        <!-- 上门揽收：没有定期集荷的承运商，运单建好后要在「上门揽收」页另约 -->
-        <div class="fs-12 mt-1" :class="pickupScheduled ? 'text-success' : 'text-warning'" v-if="pickupVisible">
-          <i class="ri-truck-line me-1"></i>{{ pickupText }}
-          <NuxtLink :to="pickupLink" class="ms-1">
+        <!-- 上门揽收：没有定期集荷的承运商，运单建好后要另约 -->
+        <div v-if="pickupVisible" class="w-cship__meta">
+          <WStatus :tone="pickupScheduled ? 'ok' : 'warn'">{{ pickupText }}</WStatus>
+          <NuxtLink :to="pickupLink" class="w-cship__link">
             {{ pickupScheduled ? t('customs.carrier.pickup.view') : t('customs.carrier.pickup.manage') }}
           </NuxtLink>
         </div>
         <!-- 承运商跟踪：揽收后自动完成发货、送达后自动签收（定时查，也可以手动刷新） -->
-        <div class="fs-12 mt-1" v-if="trackingVisible">
-          <i class="ri-route-line me-1"></i><span :class="trackingClass">{{ trackingText }}</span>
-          <span class="text-muted ms-1" v-if="tracking?.synced_at">
-            · {{ t('customs.carrier.tracking.synced', { time: zonedTime(tracking.synced_at, 'MM-DD HH:mm') }) }}
-          </span>
-          <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline fs-12" v-if="canRefreshTracking"
-            :disabled="busy" @click="refreshTracking">
-            <span v-if="trackingRefreshing" class="spinner-border spinner-border-sm me-1"></span>{{ t('customs.carrier.tracking.refresh') }}
-          </button>
+        <div v-if="trackingVisible" class="w-cship__meta">
+          <WStatus :tone="trackingTone" muted>{{ trackingText }}</WStatus>
+          <span v-if="tracking?.synced_at">{{ t('customs.carrier.tracking.synced', { time: zonedTime(tracking.synced_at, 'MM/DD HH:mm') }) }}</span>
+          <WButton v-if="canRefreshTracking" size="sm" variant="text" :loading="trackingRefreshing" :disabled="busy && !trackingRefreshing"
+            @click="refreshTracking">{{ t('customs.carrier.tracking.refresh') }}</WButton>
         </div>
-        <div class="fs-12 mt-1 text-danger" v-if="tracking?.problem">
-          <i class="ri-error-warning-line me-1"></i>{{ t('customs.carrier.tracking.problem', { reason: tracking.problem }) }}
-        </div>
-        <div class="fs-12 mt-1 text-warning" v-if="tracking?.error">
-          {{ t('customs.carrier.tracking.error', { reason: tracking.error }) }}
-        </div>
+        <div v-if="tracking?.problem" class="w-cship__meta is-warn">{{ t('customs.carrier.tracking.problem', { reason: tracking.problem }) }}</div>
+        <div v-if="tracking?.error" class="w-cship__meta is-warn">{{ t('customs.carrier.tracking.error', { reason: tracking.error }) }}</div>
 
-        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+        <div class="w-cship__actions">
           <!-- 手工 / 文件来源的运单：面单在承运商网站或软件里打，WMS 里没有面单文件，不给打印按钮 -->
-          <span class="fs-12 text-muted" v-if="labelElsewhere">
+          <span v-if="labelElsewhere" class="w-cship__hint">
             {{ t(activeShipment.source === 'file' ? 'shipping.file.label-elsewhere' : 'customs.carrier.tips.no-label', { carrier: carrierName }) }}
           </span>
           <template v-else-if="pdfLabel">
-            <button type="button" class="btn btn-sm btn-primary" :disabled="!labelDoc || busyDocId !== null"
-              @click="viewDoc(dnId, labelDoc)">
-              <span v-if="labelDoc && busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.print-label') }}
-            </button>
-            <button type="button" class="btn btn-sm btn-light" :disabled="!labelDoc || busyDocId !== null"
-              @click="downloadDoc(dnId, labelDoc)">
-              <i class="ri-download-line me-1"></i>{{ t('customs.carrier.operations.download-label') }}
-            </button>
+            <WButton icon="printer" :loading="!!labelDoc && busyDocId === labelDoc.id" :disabled="!labelDoc || busyDocId !== null"
+              @click="viewDoc(dnId, labelDoc)">{{ t('customs.carrier.operations.print-label') }}</WButton>
+            <WButton variant="text" :disabled="!labelDoc || busyDocId !== null" @click="downloadDoc(dnId, labelDoc)">
+              {{ t('customs.carrier.operations.download-label') }}
+            </WButton>
           </template>
           <!-- 指令文件面单（对接设置成 ZPLII / EPL2 时）：下载文件；直接发送到标签机是扩展点 -->
           <template v-else>
-            <button type="button" class="btn btn-sm btn-primary" :disabled="!labelDoc || busyDocId !== null"
-              @click="downloadRawDoc(dnId, labelDoc)">
-              <span v-if="labelDoc && busyDocId === labelDoc.id" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="ri-download-line me-1"></i>{{ t('customs.carrier.operations.download-label-file', { ext: labelFileExtension(labelImageType) }) }}
-            </button>
-            <button type="button" class="btn btn-sm btn-light" v-if="labelPrinterBridge.available"
+            <WButton icon="printer" :loading="!!labelDoc && busyDocId === labelDoc.id" :disabled="!labelDoc || busyDocId !== null"
+              @click="downloadRawDoc(dnId, labelDoc)">{{ t('customs.carrier.operations.download-label-file', { ext: labelFileExtension(labelImageType) }) }}</WButton>
+            <WButton v-if="labelPrinterBridge.available" variant="text" :loading="sendingToPrinter"
               :disabled="!labelDoc || sendingToPrinter || busyDocId !== null" @click="sendToPrinter">
-              <span v-if="sendingToPrinter" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="ri-printer-line me-1"></i>{{ t('customs.carrier.operations.send-to-printer') }}
-            </button>
+              {{ t('customs.carrier.operations.send-to-printer') }}
+            </WButton>
           </template>
-          <span class="fs-12 text-muted" v-if="labelDoc && activePrintHint" :title="activePrintHint.help">
+          <span v-if="labelDoc && activePrintHint" class="w-cship__hint">
             {{ activePrintHint.text }}<template v-if="pdfLabel && auxiliaryLabel"> · {{ t('customs.carrier.tips.print-copies') }}</template>
-            <i class="ri-question-line ms-1" v-if="activePrintHint.help"></i>
+            <WHelp v-if="activePrintHint.help" :text="activePrintHint.help" />
           </span>
-          <span class="fs-12 text-muted" v-else-if="!labelDoc && !labelElsewhere">{{ t('customs.carrier.tips.no-label') }}</span>
-          <button type="button" class="btn btn-sm btn-link text-danger ms-auto px-0" v-if="canCancel" :disabled="busy" @click="cancel">
-            <span v-if="cancelling" class="spinner-border spinner-border-sm me-1"></span>{{ t('customs.carrier.operations.cancel') }}
-          </button>
+          <span v-else-if="!labelDoc && !labelElsewhere" class="w-cship__hint">{{ t('customs.carrier.tips.no-label') }}</span>
+          <span class="w-cship__spacer" />
+          <WButton v-if="canCancel" variant="danger" :loading="cancelling" :disabled="busy && !cancelling" @click="cancel">
+            {{ t('customs.carrier.operations.cancel') }}
+          </WButton>
         </div>
 
         <!-- 建单时承运商返回的提示 -->
-        <details class="fs-12 mt-2" v-if="alerts.length > 0">
-          <summary class="text-muted">{{ t('customs.carrier.tips.alerts', { carrier: carrierName, count: alerts.length }) }}</summary>
-          <ul class="mb-0 mt-1 ps-3">
-            <li v-for="(a, i) in alerts" :key="`al-${i}`" class="text-break">
-              <code class="me-1" v-if="a.code">{{ a.code }}</code>{{ a.message }}
-            </li>
+        <details v-if="alerts.length > 0" class="w-cship__how">
+          <summary>{{ t('customs.carrier.tips.alerts', { carrier: carrierName, count: alerts.length }) }}</summary>
+          <ul>
+            <li v-for="(a, i) in alerts" :key="`al-${i}`"><span v-if="a.code" class="w-cship__mono">{{ a.code }} </span>{{ a.message }}</li>
           </ul>
         </details>
       </div>
 
       <!-- ===== 运单取消中（cancelling）且没有对应的结果不明记录（旧后端）：按进行中处理 ===== -->
-      <div class="carrier-notice is-progress" role="status" v-else-if="cancellingShipment && !unresolved">
-        <div class="fw-semibold d-flex align-items-center gap-2">
-          <span class="spinner-border spinner-border-sm"></span>{{ t('customs.carrier.unresolved.cancelling-title') }}
-          <span class="font-monospace fw-normal">{{ cancellingShipment.tracking_number }}</span>
+      <div v-else-if="cancellingShipment && !unresolved" class="w-cship__notice is-progress" role="status">
+        <div class="w-cship__notice-title">
+          <span class="w-cship__spinner" aria-hidden="true" />{{ t('customs.carrier.unresolved.cancelling-title') }}
+          <span class="w-cship__mono">{{ cancellingShipment.tracking_number }}</span>
         </div>
-        <p class="fs-13 mb-0 mt-1">{{ t(pollExhausted ? 'customs.carrier.unresolved.stalled' : 'customs.carrier.unresolved.cancelling') }}</p>
-        <button type="button" class="btn btn-sm btn-outline-light mt-2" :disabled="loading || busy" @click="refresh">
-          <i class="ri-refresh-line me-1"></i>{{ t('customs.carrier.operations.refresh') }}
-        </button>
+        <p class="w-cship__notice-text">{{ t(pollExhausted ? 'customs.carrier.unresolved.stalled' : 'customs.carrier.unresolved.cancelling') }}</p>
+        <div class="w-cship__actions">
+          <WButton variant="text" icon="refresh" :loading="loading" :disabled="busy" @click="refresh">{{ t('customs.carrier.operations.refresh') }}</WButton>
+        </div>
       </div>
 
       <!-- ===== 还没有有效运单 ===== -->
       <template v-else-if="!unresolved">
-        <p class="fs-12 text-muted mb-2" v-if="lastCancelled">
+        <p v-if="lastCancelled" class="w-cship__hint">
           {{ t('customs.carrier.tips.last-cancelled', {
             tracking: lastCancelled.tracking_number || '—',
-            time: zonedTime(lastCancelled.cancelled_at, 'MM-DD HH:mm') || '—',
+            time: zonedTime(lastCancelled.cancelled_at, 'MM/DD HH:mm') || '—',
           }) }}
         </p>
 
         <!-- 还没选承运商 -->
-        <p class="fs-13 text-muted mb-0" v-if="!status.carrier">
+        <p v-if="!status.carrier" class="w-cship__text">
           {{ t(taskId ? 'customs.carrier.tips.no-carrier' : 'customs.carrier.tips.no-carrier-elsewhere') }}
         </p>
 
         <!-- 有在线对接（运单方式 api）：创建运单 -->
         <template v-else-if="integration && !manualOnly">
-          <div class="alert alert-warning fs-12 mt-2 mb-2" v-if="!locked && status.etd_enabled">
-            {{ t('customs.carrier.tips.trade-signature-warning') }}
-          </div>
-          <div class="alert alert-light fs-12 mt-2 mb-2" v-if="!locked && status.regulatory_check_enabled && status.can_create">
-            <span v-if="tradeLoading">{{ t('customs.carrier.tips.trade-checking') }}</span>
-            <span class="text-danger" v-else-if="tradeError">{{ tradeError }}</span>
+          <WAlert v-if="!locked && status.etd_enabled" tone="warn">{{ t('customs.carrier.tips.trade-signature-warning') }}</WAlert>
+          <div v-if="!locked && status.regulatory_check_enabled && status.can_create" class="w-cship__trade">
+            <span v-if="tradeLoading" class="w-cship__hint">{{ t('customs.carrier.tips.trade-checking') }}</span>
+            <WAlert v-else-if="tradeError" tone="block" :title="tradeError" />
             <template v-else-if="tradeRequirements">
-              <strong>{{ t('customs.carrier.tips.trade-requirements') }}</strong>
-              <span class="d-block" v-if="!tradeRequirements.documents.length">{{ t('customs.carrier.tips.trade-no-documents') }}</span>
-              <span class="d-block" v-for="(doc, i) in tradeRequirements.documents" :key="`trade-${i}`">
+              <span class="w-cship__trade-title">{{ t('customs.carrier.tips.trade-requirements') }}</span>
+              <span v-if="!tradeRequirements.documents.length" class="w-cship__line">{{ t('customs.carrier.tips.trade-no-documents') }}</span>
+              <span v-for="(doc, i) in tradeRequirements.documents" :key="`trade-${i}`" class="w-cship__line">
                 {{ doc.name }} · {{ t(doc.required ? 'customs.carrier.tips.trade-required' : 'customs.carrier.tips.trade-optional') }}
                 <template v-if="doc.required && doc.document_type === 'COMMERCIAL_INVOICE'"> · {{ t('customs.carrier.tips.trade-ci-ready') }}</template>
                 <template v-if="doc.required && tradeRequirements.upload_packing_list && (doc.document_type === 'PACKING_LIST' || (doc.document_type === 'OTHER' && doc.name.toUpperCase().includes('PACKING LIST')))"> · {{ t('customs.carrier.tips.trade-pl-upload') }}</template>
                 <template v-if="tradeRequirements.missing_documents.includes(doc)"> · {{ t('customs.carrier.tips.trade-missing') }}</template>
-                <a v-if="doc.document_url" :href="doc.document_url" target="_blank" rel="noopener" class="ms-1">{{ t('customs.carrier.tips.trade-source') }}</a>
+                <a v-if="doc.document_url" :href="doc.document_url" target="_blank" rel="noopener" class="w-cship__link">{{ t('customs.carrier.tips.trade-source') }}</a>
               </span>
-              <span class="d-block text-warning" v-for="(doc, i) in tradeRequirements.paper_documents" :key="`trade-paper-${i}`">
+              <span v-for="(doc, i) in tradeRequirements.paper_documents" :key="`trade-paper-${i}`" class="w-cship__line is-warn">
                 {{ t('customs.carrier.tips.trade-paper-document', { document: doc.name }) }}
               </span>
-              <span class="d-block text-warning" v-for="(message, i) in tradeRequirements.messages || []" :key="`trade-advice-${i}`">
-                {{ message }}
-              </span>
-              <span class="d-block text-danger mt-1" v-if="tradeRequirements.missing_documents.length">{{ t('customs.carrier.tips.trade-blocked') }}</span>
-              <label class="d-block mt-1" v-for="(doc, i) in tradeRequirements.missing_documents" :key="`upload-${i}`">
-                {{ doc.name }} <input type="file" accept="application/pdf,.pdf" class="form-control form-control-sm mt-1"
-                  @change="chooseTradeFile(doc, $event)">
+              <span v-for="(message, i) in tradeRequirements.messages || []" :key="`trade-advice-${i}`" class="w-cship__line is-warn">{{ message }}</span>
+              <span v-if="tradeRequirements.missing_documents.length" class="w-cship__line is-bad">{{ t('customs.carrier.tips.trade-blocked') }}</span>
+              <label v-for="(doc, i) in tradeRequirements.missing_documents" :key="`upload-${i}`" class="w-cship__upload">
+                <span>{{ doc.name }}</span>
+                <input type="file" accept="application/pdf,.pdf" @change="chooseTradeFile(doc, $event)">
               </label>
             </template>
-            <button type="button" class="btn btn-link btn-sm p-0 mt-1" :disabled="tradeLoading" @click="loadTradeRequirements">
-              {{ t('customs.carrier.tips.trade-refresh') }}
-            </button>
+            <WButton size="sm" variant="text" :disabled="tradeLoading" @click="loadTradeRequirements">{{ t('customs.carrier.tips.trade-refresh') }}</WButton>
           </div>
-          <div class="d-flex flex-wrap align-items-center gap-2" v-if="!locked">
-            <button type="button" class="btn btn-primary" :disabled="!canCreate || busy || packagesDirty" @click="create">
-              <span v-if="creating" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="ri-truck-line me-1"></i>{{ t('customs.carrier.operations.create') }}
-            </button>
-            <label class="fs-13 text-muted ms-1 mb-0" :for="`label-format-${dnId}`">{{ t('customs.carrier.fields.label-format') }}</label>
-            <select class="form-select form-select-sm w-auto" :id="`label-format-${dnId}`" :value="labelFormat" :disabled="busy"
-              @change="chooseLabelFormat(($event.target as HTMLSelectElement).value as LabelFormat)">
-              <option v-for="f in labelFormatOptions" :key="f" :value="f">{{ labelFormatText(f) }}</option>
-            </select>
-            <span class="fs-12 text-muted" :title="selectedPrintHint.help">
-              {{ selectedPrintHint.text }}<i class="ri-question-line ms-1" v-if="selectedPrintHint.help"></i>
+          <div v-if="!locked" class="w-cship__create">
+            <WButton variant="primary" icon="delivery" :loading="creating" :disabled="!canCreate || (busy && !creating) || packagesDirty" @click="create">
+              {{ t('customs.carrier.operations.create') }}
+            </WButton>
+            <WField :label="t('customs.carrier.fields.label-format')" class="w-cship__format">
+              <WSelect :model-value="labelFormat" :options="labelFormatSelect" size="sm" :disabled="busy"
+                @update:model-value="chooseLabelFormat($event as LabelFormat)" />
+            </WField>
+            <span class="w-cship__hint">
+              {{ selectedPrintHint.text }}<WHelp v-if="selectedPrintHint.help" :text="selectedPrintHint.help" />
             </span>
           </div>
-          <p class="fs-12 text-muted mb-0 mt-2" v-if="creating">
-            {{ t('customs.carrier.tips.creating', { carrier: carrierName }) }}
-          </p>
-          <p class="fs-12 text-danger mb-0 mt-2" v-if="!locked && packagesDirty">{{ t('customs.carrier.tips.packages-unsaved') }}</p>
-          <ul class="fs-13 mb-0 mt-2 ps-3" v-if="!locked && warnings.length > 0">
-            <li v-for="(w, i) in warnings" :key="`w-${i}`" class="text-warning" :title="w.message || ''">{{ warningText(w) }}</li>
+          <p v-if="creating" class="w-cship__hint">{{ t('customs.carrier.tips.creating', { carrier: carrierName }) }}</p>
+          <p v-if="!locked && packagesDirty" class="w-cship__hint is-bad">{{ t('customs.carrier.tips.packages-unsaved') }}</p>
+          <ul v-if="!locked && warnings.length > 0" class="w-cship__list is-warn">
+            <li v-for="(w, i) in warnings" :key="`w-${i}`" :title="w.message || ''">{{ warningText(w) }}</li>
           </ul>
 
           <!-- 不能建单的原因（报关问题在外层清单里，这里只列运单本身的） -->
-          <ul class="carrier-blockers fs-13 mb-0 mt-2" v-if="!locked && !status.can_create && blockers.length > 0">
+          <ul v-if="!locked && !status.can_create && blockers.length > 0" class="w-cship__list">
             <li v-for="(b, i) in blockers" :key="`b-${i}`" :title="b.message || ''">
-              {{ blockerText(b) }}
-              <span class="badge bg-light text-default ms-1" v-if="b.goods_code">{{ b.goods_code }}</span>
-              <NuxtLink :to="carrierSettingsUrl" class="ms-2" v-if="SETTINGS_BLOCKERS.includes(b.code) && canEditCarrier">
+              <span class="w-cship__dot" aria-hidden="true" />{{ blockerText(b) }}
+              <WTag v-if="b.goods_code">{{ b.goods_code }}</WTag>
+              <NuxtLink v-if="SETTINGS_BLOCKERS.includes(b.code) && canEditCarrier" :to="carrierSettingsUrl" class="w-cship__link">
                 {{ t('customs.carrier.operations.open-settings') }}
               </NuxtLink>
               <template v-else-if="EXPORTER_BLOCKERS.includes(b.code)">
-                <NuxtLink to="/company" class="ms-2">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
-                <NuxtLink :to="`/warehouse/edit/${warehouseId}`" class="ms-2" v-if="warehouseId">
-                  {{ t('customs.operations.edit-warehouse') }}
-                </NuxtLink>
+                <NuxtLink to="/company" class="w-cship__link">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
+                <NuxtLink v-if="warehouseId" :to="`/warehouse/edit/${warehouseId}`" class="w-cship__link">{{ t('customs.operations.edit-warehouse') }}</NuxtLink>
               </template>
-              <a href="#" class="ms-2" v-else-if="CONSIGNEE_BLOCKERS.includes(b.code) && canEditCustoms"
-                @click.prevent="emit('edit-customs')">{{ t('customs.operations.fix') }}</a>
-              <a href="#" class="ms-2" v-else-if="b.code === 'TRACKING_NUMBER_EXISTS' && canEnterTracking"
-                @click.prevent="manualOpen = true">{{ t('customs.carrier.operations.edit-tracking') }}</a>
+              <button v-else-if="CONSIGNEE_BLOCKERS.includes(b.code) && canEditCustoms" type="button" class="w-cship__textbtn"
+                @click="emit('edit-customs')">{{ t('customs.operations.fix') }}</button>
+              <button v-else-if="b.code === 'TRACKING_NUMBER_EXISTS' && canEnterTracking" type="button" class="w-cship__textbtn"
+                @click="manualOpen = true">{{ t('customs.carrier.operations.edit-tracking') }}</button>
             </li>
           </ul>
 
           <!-- 对接临时不可用时的退路：手工填运单号 -->
-          <div class="mt-2" v-if="canEnterTracking">
-            <a href="#" class="fs-12 text-muted" v-if="!manualOpen && !savedTracking" @click.prevent="manualOpen = true">
-              {{ t('customs.carrier.operations.manual') }}
-            </a>
+          <div v-if="canEnterTracking && !manualOpen && !savedTracking">
+            <WButton size="sm" variant="text" @click="manualOpen = true">{{ t('customs.carrier.operations.manual') }}</WButton>
           </div>
         </template>
 
         <!-- 文件方式：导出 / 导回在外层；对接临时不可用等时的退路：手工填运单号 -->
-        <div class="mt-1" v-else-if="fileMode">
-          <a href="#" class="fs-12 text-muted" v-if="canEnterTracking && !manualOpen && !savedTracking" @click.prevent="manualOpen = true">
+        <div v-else-if="fileMode">
+          <WButton v-if="canEnterTracking && !manualOpen && !savedTracking" size="sm" variant="text" @click="manualOpen = true">
             {{ t('shipping.file.manual-fallback') }}
-          </a>
+          </WButton>
         </div>
 
         <!-- 没有在线对接 / 运单方式是手工：在承运商网站或软件建运单 -->
-        <p class="fs-13 mb-2" v-else-if="!locked">
+        <p v-else-if="!locked" class="w-cship__text">
           {{ t(integration
             ? (canEnterTracking ? 'customs.carrier.tips.manual-method' : 'customs.carrier.tips.manual-method-elsewhere')
             : (canEnterTracking ? 'customs.carrier.tips.manual' : 'customs.carrier.tips.manual-elsewhere'), { carrier: carrierName }) }}
-          <NuxtLink :to="`/delivery/detail/${status.delivery_task_id}`" class="ms-1"
-            v-if="!canEnterTracking && !locked && status.delivery_task_id">{{ t('customs.carrier.operations.open-delivery') }}</NuxtLink>
+          <NuxtLink v-if="!canEnterTracking && !locked && status.delivery_task_id" :to="`/delivery/detail/${status.delivery_task_id}`"
+            class="w-cship__link">{{ t('customs.carrier.operations.open-delivery') }}</NuxtLink>
         </p>
 
         <!-- 手工运单号：没有对接时一直显示；有对接时点开或已经填过才显示 -->
-        <form class="d-flex flex-wrap align-items-center gap-2" @submit.prevent="saveTracking"
-          v-if="status.carrier && canEnterTracking && (fileMode ? (manualOpen || savedTracking) : (!integration || manualOnly || manualOpen || savedTracking))">
-          <div class="input-group input-group-sm carrier-tracking-input">
-            <span class="input-group-text">{{ t('customs.carrier.fields.tracking-number') }}</span>
-            <input type="text" class="form-control font-monospace" v-model="manualTracking" :maxlength="TRACKING_MAX_LENGTH"
-              :placeholder="t(trackingPlaceholder)" :disabled="busy">
-            <button type="submit" class="btn btn-primary" :disabled="busy || !trackingChanged">
-              <span v-if="savingTracking" class="spinner-border spinner-border-sm me-1"></span>{{ t('button.save') }}
-            </button>
-          </div>
+        <form v-if="status.carrier && canEnterTracking && (fileMode ? (manualOpen || savedTracking) : (!integration || manualOnly || manualOpen || savedTracking))"
+          class="w-cship__manual" @submit.prevent="saveTracking">
+          <WField :label="t('customs.carrier.fields.tracking-number')" class="w-cship__manual-field">
+            <WInput v-model="manualTracking" :maxlength="TRACKING_MAX_LENGTH" :placeholder="t(trackingPlaceholder)" :disabled="busy"
+              autocomplete="off" class="w-cship__mono-input" />
+          </WField>
+          <WButton type="submit" variant="primary" :loading="savingTracking" :disabled="(busy && !savingTracking) || !trackingChanged">
+            {{ t('button.save') }}
+          </WButton>
         </form>
-        <p class="fs-13 mb-0" v-else-if="status.carrier && savedTracking">
-          {{ t('customs.carrier.fields.tracking-number') }} <span class="font-monospace fw-semibold">{{ savedTracking }}</span>
+        <p v-else-if="status.carrier && savedTracking" class="w-cship__text">
+          {{ t('customs.carrier.fields.tracking-number') }} <b class="w-cship__mono">{{ savedTracking }}</b>
         </p>
       </template>
 
       <!-- ===== 失败：承运商的原话收在折叠里 ===== -->
-      <div class="alert alert-danger-transparent fs-13 mt-2 mb-0" role="alert" v-if="failure">
-        <div class="d-flex justify-content-between align-items-start gap-2">
-          <div class="fw-semibold">{{ failure.summary }}</div>
-          <button type="button" class="btn-close btn-sm" :aria-label="t('button.close')" @click="failure = null"></button>
-        </div>
-        <div class="mt-1" v-if="failure.timeout">{{ t('customs.carrier.tips.timeout', { carrier: carrierName, portal: portalName }) }}</div>
-        <div class="mt-1" v-if="failure.permissionDenied">{{ t('customs.carrier.tips.permission-denied', { carrier: carrierName }) }}</div>
-        <details class="fs-12 mt-1" v-if="failure.errors.length > 0 || failure.transactionId">
+      <WAlert v-if="failure" tone="block" :title="failure.summary" dismissible @close="failure = null">
+        <span v-if="failure.timeout" class="w-cship__line">{{ t('customs.carrier.tips.timeout', { carrier: carrierName, portal: portalName }) }}</span>
+        <span v-if="failure.permissionDenied" class="w-cship__line">{{ t('customs.carrier.tips.permission-denied', { carrier: carrierName }) }}</span>
+        <details v-if="failure.errors.length > 0 || failure.transactionId" class="w-cship__how">
           <summary>{{ t('customs.carrier.tips.carrier-errors', { carrier: carrierName }) }}</summary>
-          <ul class="mb-0 mt-1 ps-3" v-if="failure.errors.length > 0">
-            <li v-for="(e, i) in failure.errors" :key="`fe-${i}`" class="text-break">
-              <code class="me-1" v-if="e.code">{{ e.code }}</code>{{ e.message }}
-            </li>
+          <ul v-if="failure.errors.length > 0">
+            <li v-for="(e, i) in failure.errors" :key="`fe-${i}`"><span v-if="e.code" class="w-cship__mono">{{ e.code }} </span>{{ e.message }}</li>
           </ul>
-          <div class="text-muted font-monospace mt-1" v-if="failure.action || failure.transactionId">
+          <div v-if="failure.action || failure.transactionId" class="w-cship__mono">
             <span v-if="failure.action">{{ actionText(failure.action) }}</span>
-            <span class="ms-2" v-if="failure.transactionId">{{ t('customs.carrier.fields.transaction-id') }} {{ failure.transactionId }}</span>
+            <span v-if="failure.transactionId"> · {{ t('customs.carrier.fields.transaction-id') }} {{ failure.transactionId }}</span>
           </div>
         </details>
-      </div>
+      </WAlert>
     </template>
   </div>
 </template>
 
 <style scoped>
-.carrier-notice {
-  border-radius: 0.375rem;
-  padding: 0.75rem 0.875rem;
-  margin-bottom: 0.5rem;
+.w-cship {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
 }
-
-.carrier-notice.is-progress {
-  background: rgba(var(--warning-rgb), 0.08);
-  border: 1px solid rgba(var(--warning-rgb), 0.3);
+.w-cship__loading { display: flex; flex-direction: column; gap: 8px; }
+.w-cship__skeleton { display: block; width: 60%; height: 14px; border-radius: 4px; background: var(--w-skeleton); }
+.w-cship__skeleton.is-short { width: 35%; }
+.w-cship__text { margin: 0; color: var(--w-text-2); }
+.w-cship__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--w-fs-12);
+  line-height: var(--w-lh-12);
+  color: var(--w-text-3);
 }
-
-.carrier-notice.is-danger {
-  background: rgba(var(--danger-rgb), 0.06);
-  border: 1px solid rgba(var(--danger-rgb), 0.35);
+.w-cship__hint.is-bad { color: var(--w-bad-text); }
+.w-cship__line { display: block; }
+.w-cship__line.is-warn, .w-cship__meta.is-warn { color: var(--w-warn-text); }
+.w-cship__line.is-bad { color: var(--w-bad-text); }
+.w-cship__mono { font-family: var(--w-font-mono); font-size: var(--w-fs-12); overflow-wrap: anywhere; }
+.w-cship__mono-input :deep(input) { font-family: var(--w-font-mono); }
+.w-cship__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  color: var(--w-link);
+  font-weight: var(--w-fw-medium);
+  text-decoration: none;
 }
-
-.carrier-notice details summary,
-.carrier-shipment-card details summary {
+.w-cship__link:hover { color: var(--w-link-hover); }
+.w-cship__textbtn {
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--w-link);
+  font: inherit;
+  font-weight: var(--w-fw-medium);
   cursor: pointer;
 }
+.w-cship__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.w-cship__spacer { flex: 1; }
 
-.carrier-shipment-card {
-  border: 1px solid var(--default-border);
-  border-radius: 0.375rem;
-  padding: 0.75rem 0.875rem;
+/* 结果不明（阻断，浅红底）/ 进行中（白底 + 左侧紫条） */
+.w-cship__notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--w-radius-card);
 }
-
-.carrier-blockers {
-  padding-left: 1rem;
-  color: rgb(var(--danger-rgb));
+.w-cship__notice.is-bad { border: 1px solid var(--w-bad-border); background: var(--w-bad-bg); }
+.w-cship__notice.is-progress { border: 1px solid var(--w-border); border-left: 3px solid var(--w-info-dot); background: var(--w-surface); }
+.w-cship__notice-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--w-fs-14);
+  line-height: var(--w-lh-14);
+  font-weight: var(--w-fw-semibold);
 }
-
-.carrier-blockers a {
-  font-size: 0.75rem;
+.w-cship__notice.is-bad .w-cship__notice-title { color: var(--w-bad-text); }
+.w-cship__notice-text { margin: 0; color: var(--w-text-2); }
+.w-cship__mark {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--w-radius-pill);
+  background: var(--w-bad-dot);
+  color: #FFFFFF;
+  font-size: 11px;
+  line-height: 1;
 }
+.w-cship__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--w-radius-pill);
+  border: 2px solid var(--w-info-dot);
+  border-right-color: transparent;
+  animation: w-cship-spin 0.7s linear infinite;
+}
+@keyframes w-cship-spin { to { transform: rotate(360deg); } }
+.w-cship__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: var(--w-fs-12);
+  line-height: var(--w-lh-12);
+  color: var(--w-text-3);
+}
+.w-cship__how { font-size: var(--w-fs-13); color: var(--w-text-2); }
+.w-cship__how summary { color: var(--w-link); font-weight: var(--w-fw-medium); cursor: pointer; }
+.w-cship__how ol, .w-cship__how ul { margin: 6px 0 0; padding-left: 18px; }
 
-.carrier-tracking-input {
-  max-width: 26rem;
+/* 已建运单 */
+.w-cship__card { display: flex; flex-direction: column; gap: 8px; }
+.w-cship__headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.w-cship__tracking {
+  font-size: var(--w-fs-20);
+  line-height: var(--w-lh-20);
+  font-weight: var(--w-fw-semibold);
+  letter-spacing: 0.02em;
+}
+.w-cship__facts { color: var(--w-text-2); }
+
+/* 建运单 */
+.w-cship__trade {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--w-border);
+  border-radius: var(--w-radius-card);
+}
+.w-cship__trade-title { font-weight: var(--w-fw-semibold); }
+.w-cship__upload { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 0; }
+.w-cship__create { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; }
+.w-cship__format { width: 200px; }
+.w-cship__list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.w-cship__list.is-warn { color: var(--w-warn-text); }
+.w-cship__dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: var(--w-radius-pill);
+  background: var(--w-warn-dot);
+  vertical-align: 2px;
+}
+.w-cship__manual { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.w-cship__manual-field { flex: 0 1 360px; }
+@media (prefers-reduced-motion: reduce) {
+  .w-cship__spinner { animation-duration: 2s; }
 }
 </style>

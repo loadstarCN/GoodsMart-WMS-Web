@@ -1212,12 +1212,175 @@
         "WAYBILL_EXISTS": "The waybill has been created or exported with the current address, so it can't be changed. Cancel the waybill (or discard the export) in the Waybill step of the shipping flow first.",
         "DN_SHIPPED": "Already shipped; the ship-to address can't be changed.",
         "DN_CLOSED": "The DN is closed; the ship-to address can't be changed."
-      }
+      },
+      "latin": "Latin-script address"
     },
     "shipping-options": {
       "title": "Shipping service options",
       "hint": "Delivery date, time slot and other options sent to the carrier with the waybill; empty ones use the default. They can't be changed once the waybill is created or exported.",
       "no-carrier": "Choose a carrier to set service options such as the delivery date and time slot, or set them later in the Waybill step of the shipping flow."
+    },
+    "status": {
+      "pending": "Pending",
+      "in_progress": "In progress",
+      "picked": "Picked",
+      "packed": "Packed",
+      "delivered": "Shipped",
+      "completed": "Completed",
+      "closed": "Closed"
+    },
+    "list": {
+      "label": "DN list",
+      "count": "{count} DN | {count} DNs",
+      "new": "New DN",
+      "tabs-label": "By shipping stage",
+      "search-placeholder": "DN no., order no., goods code, tracking no.",
+      "search-label": "Search DNs",
+      "more-filters": "More filters",
+      "fewer-filters": "Fewer filters",
+      "clear-filters": "Clear filters",
+      "recipient-placeholder": "Recipient: type to search",
+      "batch-label": "Bulk actions",
+      "clear-selection": "Clear selection",
+      "export-help": "Select DNs of the same carrier and warehouse to export them together. If any row has a problem, nothing is exported and the problems are listed row by row. After printing the labels, import the tracking numbers on the “Awaiting tracking no.” tab.",
+      "retry": "Retry",
+      "empty": "No DNs yet",
+      "empty-filtered": "No DNs match the filters",
+      "range": "{from}–{to} of {total}",
+      "goods": "{kinds} SKU · {qty} pcs",
+      "doc-status": "Document: {status}",
+      "today": "Today {date}",
+      "columns": {
+        "dn": "DN",
+        "recipient": "Recipient",
+        "goods": "Goods",
+        "progress": "Progress",
+        "carrier": "Carrier · Tracking no.",
+        "date": "Planned ship",
+        "next": "Next step"
+      },
+      "next": {
+        "start": "Start work",
+        "picking": "Picking",
+        "packing": "To pack",
+        "choose-carrier": "Choose carrier",
+        "export": "Export file",
+        "create-waybill": "Create waybill",
+        "enter-tracking": "Enter tracking no.",
+        "import": "Import tracking no.",
+        "book-pickup": "Book pickup",
+        "record-pickup": "Record pickup",
+        "complete": "Complete shipping",
+        "tracking-page": "Carrier tracking page",
+        "resolve": "Resolve",
+        "signed": "Delivered {date}"
+      }
+    },
+    "actions": {
+      "menu": "More actions for {dn}",
+      "ship-to": "Change ship-to address",
+      "edit": "Edit DN",
+      "start": "Start work",
+      "close": "Close DN",
+      "cancel": "Cancel DN",
+      "delete": "Delete DN",
+      "print": "Print DN",
+      "reasons": {
+        "pending-only-edit": "Only pending DNs can be edited",
+        "pending-only-start": "Work can start only on pending DNs",
+        "pending-only-close": "Only pending DNs can be closed",
+        "pending-only-delete": "Only pending DNs can be deleted",
+        "cancel-shipped": "Already shipped; cannot be cancelled",
+        "cancel-pending": "Not started yet; close it instead",
+        "closed": "Closed",
+        "ship-to-shipped": "Shipped; locked"
+      },
+      "started": "{dn}: work started",
+      "closed": "{dn} closed",
+      "cancelled": "{dn} cancelled",
+      "deleted": "{dn} deleted",
+      "close-confirm-title": "Close {dn}?",
+      "close-confirm": "The stock reserved for this DN is released. This cannot be undone.",
+      "keep-open": "Keep it",
+      "delete-confirm-title": "Delete {dn}?",
+      "keep": "Keep it"
+    },
+    "detail": {
+      "breadcrumb": "Delivery note navigation",
+      "cross-border": "International",
+      "source": "Source",
+      "source-manual": "Created manually",
+      "back-to-list": "Back to delivery notes",
+      "not-found": "Delivery note not found",
+      "phases": {
+        "warehouse": "Warehouse operations",
+        "prepare": "Shipping preparation",
+        "handover": "Handover and transit"
+      },
+      "phase-states": {
+        "done": "Completed",
+        "current": "In progress",
+        "todo": "Not started",
+        "warn": "Needs attention",
+        "skipped": "Not applicable"
+      },
+      "problems": "{count} issues to resolve",
+      "go-handle": "Resolve",
+      "step-of": "Step {index} of {total}",
+      "now": "Now · {position}",
+      "eta": "{carrier} estimated delivery",
+      "eta-short": "Est. {date}",
+      "synced": "Updated {time}",
+      "closed-title": "Delivery note closed",
+      "closed-at": "Closed {time}",
+      "ordered-hint": "The delivery note has been created. Subsequent operations appear here.",
+      "not-started": "Warehouse operations have not started",
+      "picking-hint": "Complete picking in the picking task.",
+      "also": "Also available now",
+      "back-to-current": "Back to current step",
+      "history": "Activity history",
+      "history-empty": "No activity yet",
+      "times-in": "Times shown in {zone}",
+      "task-links": {
+        "picking": "View picking task {code}",
+        "packing": "View packing task {code}",
+        "handover": "View delivery task {code}",
+        "delivered": "View delivery task {code}"
+      },
+      "goods": {
+        "title": "Items",
+        "goods": "Item",
+        "quantity": "Ordered",
+        "shipped": "Shipped",
+        "diffs": "Quantity differences in {count} items",
+        "no-diff": "Quantities match",
+        "more": "Show {count} more items"
+      },
+      "aside": {
+        "ship-to": "Ship to",
+        "edit": "Edit",
+        "from-recipient": "Using recipient address",
+        "ship-to-locked": "Cancel the active waybill or export before changing the address.",
+        "waybill": "Waybill and packages",
+        "copy": "Copy tracking number",
+        "created-at": "Created {time}",
+        "cancel-disabled": "Cannot cancel: {reason}",
+        "packages": "{count} packages",
+        "gross": "Gross weight {weight} kg",
+        "box": "Package {no}",
+        "freight": "Freight",
+        "estimate": "Estimated charge",
+        "estimate-source": "Quoted by {carrier} when the waybill was created. The final invoice may differ.",
+        "customs": "Customs documents",
+        "docs-version": "Version {version}",
+        "declared": "Declared value",
+        "doc-ci": "Commercial invoice (CI)",
+        "doc-pl": "Packing list (PL)",
+        "info": "Document information",
+        "tasks": "Tasks",
+        "created": "Created",
+        "updated": "Updated"
+      }
     }
   },
   "picking": {
@@ -1442,7 +1605,21 @@
         "NOT_ACTIVE": "Waybill {tracking} is cancelled or not active",
         "DN_SHIPPED": "The DN of waybill {tracking} has been shipped",
         "ALREADY_SCHEDULED": "Waybill {tracking} is already in a pickup"
-      }
+      },
+      "form": {
+        "address": "Pickup address: {address}",
+        "available": "Available",
+        "batch": "Shipments in this pickup",
+        "ready-time": "Ready time",
+        "close-time": "Latest pickup time",
+        "remarks": "Pickup remarks",
+        "submit-summary": "{count} shipments · {day} {window}",
+        "today": "Today {date}",
+        "tomorrow": "Tomorrow {date}",
+        "until": "Until {time}",
+        "day": "Pickup date"
+      },
+      "keep": "Keep booking"
     }
   },
   "action-results": {
@@ -2580,7 +2757,11 @@
       "record-submit": "Record",
       "recorded-toast": "Pickup recorded",
       "page-intro-manual": "Pickups with {carrier} are booked by phone or on its website. Tick the shipments the courier will take, then record the agreed date and time.",
-      "remarks": "Remarks"
+      "remarks": "Remarks",
+      "book-submit": "Book with {carrier} · {summary}",
+      "dropoff-hint": "Confirm shipment after handing the goods to a carrier location.",
+      "next": "Next pickup: {date} ({weekday})",
+      "record-instead": "Record an existing booking"
     },
     "handover": {
       "shipped-at": "Handed over at",
@@ -2601,7 +2782,8 @@
       "link-only": "{carrier} isn't tracked in WMS; check its tracking page.",
       "none": "No tracking for this carrier",
       "refreshed": "Tracking refreshed",
-      "waiting": "No tracking from {carrier} yet. WMS checks it regularly; use \"Refresh tracking\" to check now."
+      "waiting": "No tracking from {carrier} yet. WMS checks it regularly; use \"Refresh tracking\" to check now.",
+      "carrier-page": "Carrier tracking page"
     },
     "delivered": {
       "signed-at": "Delivered at",
@@ -2764,7 +2946,10 @@
         "ALREADY_SAVED": "Already saved on the delivery task ({number})",
         "HAS_OTHER_NUMBER": "The DN already has tracking number {number}",
         "another-carrier": "another carrier"
-      }
+      },
+      "export-count": "Exported {count} times",
+      "intro-short": "Export a file, create waybills in {carrier}, then import the tracking numbers.",
+      "keep-export": "Keep export"
     },
     "options": {
       "title": "Service options",
@@ -2943,6 +3128,14 @@
     },
     "menu": {
       "more": "More actions"
+    },
+    "filter": {
+      "all": "All",
+      "search": "Filter"
+    },
+    "file": {
+      "choose": "Choose a file",
+      "change": "Change file"
     }
   },
   "shell": {

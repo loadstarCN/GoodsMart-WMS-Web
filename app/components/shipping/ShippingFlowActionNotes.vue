@@ -29,9 +29,20 @@ const reasonText = (a: FlowAction): string => flowActionReasonText(a, t, te, {
 </script>
 
 <template>
-  <ul class="list-unstyled fs-12 text-muted mb-0 mt-2" v-if="notes.length">
-    <li v-for="a in notes" :key="a.key">
-      <i class="ri-information-line me-1"></i>{{ t('shipping.action-disabled', { action: actionText(a.key), reason: reasonText(a) }) }}
-    </li>
+  <ul v-if="notes.length" class="w-flow-notes">
+    <li v-for="a in notes" :key="a.key">{{ t('shipping.action-disabled', { action: actionText(a.key), reason: reasonText(a) }) }}</li>
   </ul>
 </template>
+
+<style scoped>
+.w-flow-notes {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-12);
+  line-height: var(--w-lh-12);
+  color: var(--w-text-3);
+}
+.w-flow-notes li + li { margin-top: 2px; }
+</style>

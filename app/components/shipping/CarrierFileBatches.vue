@@ -1,21 +1,22 @@
 <script lang="ts" setup>
 /**
- * 最近的承运商文件（出库单列表「待建运单 / 待导回」的批量操作旁）：GET /dn/carrier-files/batches?carrier_id=&warehouse_id=
- * → 导出 / 导入批次（文件名、行数、导入结果的汇总、时间、操作人）。点按钮弹出，选承运商（文件方式的）后读取。
+ * 最近的承运商文件（发货单列表「最近的文件」）：GET /dn/carrier-files/batches?carrier_id=&warehouse_id=
+ * → 导出 / 导入批次（文件名、行数、导入结果的汇总、时间、操作人）。右侧抽屉（v-model:open），选承运商（文件方式的）后读取；
+ * 每次打开都重读一次（可能刚导出 / 导入过），也可以手动刷新。
  */
 import { formatUserRef } from '~/composables/customs/customsDocuments'
 import {
   CARRIER_FILES_BATCHES_URL,
   IMPORT_RESULTS,
-  importResultColor,
   normalizeFileBatches,
   type CarrierFileBatch,
   type FileCarrierOption,
 } from '~/composables/shipping/carrierFile'
+import type { WSelectOption } from '~/components/w/WSelect.vue'
 
 const props = withDefaults(defineProps<{
   carriers: FileCarrierOption[]
-  /** 默认的承运商（选中的出库单的） */
+  /** 默认的承运商（选中的发货单的） */
   carrierId?: number | null
   warehouseId?: number | string | null
 }>(), {
@@ -23,16 +24,17 @@ const props = withDefaults(defineProps<{
   warehouseId: null,
 })
 
+const open = defineModel<boolean>('open', { default: false })
 const { t, localeProperties } = useI18n()
 const { bizErrorMessage } = useBizError()
 const locale = computed(() => String(localeProperties.value?.iso || '') || undefined)
 
-const open = ref(false)
 const chosen = ref<number | null>(null)
 const batches = ref<CarrierFileBatch[]>([])
 const loading = ref(false)
 const loadError = ref<string | null>(null)
-const root = ref<HTMLElement | null>(null)
+
+const carrierOptions = computed<WSelectOption<number>[]>(() => props.carriers.map((c) => ({ value: c.id, label: c.name })))
 
 const load = async () => {
   if (!chosen.value) {
@@ -59,89 +61,86 @@ const load = async () => {
   })
 }
 
-const toggle = async () => {
-  open.value = !open.value
-  if (!open.value) return
+watch(open, async (value: boolean) => {
+  if (!value) return
   const fallback = props.carriers.length === 1 ? props.carriers[0]!.id : null
   const next = props.carrierId ?? chosen.value ?? fallback
-  // 换了承运商时由下面的 watch 读取；没换时每次打开重读一次（可能刚导出 / 导入过）
+  // 换了承运商时由下面的 watch 读取；没换时每次打开重读一次
   if (next !== chosen.value) chosen.value = next
   else await load()
-}
+})
 watch(chosen, (value: number | null, old: number | null) => {
   if (open.value && value !== old) load()
 })
-
-const onDocumentClick = (event: MouseEvent) => {
-  if (open.value && root.value && !root.value.contains(event.target as Node)) open.value = false
-}
-onMounted(() => document.addEventListener('click', onDocumentClick))
-onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 
 /** 批次时刻按批次的仓库（有 warehouse_id 时）→ 列表的仓库 → 页头 / 浏览器的时区显示 */
 const timeText = (value: string | null, batch?: CarrierFileBatch) =>
   formatLocaleDateTime(value, locale.value, resolveTimeZone(batch as Record<string, any> | undefined, props.warehouseId))
 const userText = (u: any) => formatUserRef(u, t)
-/** 导入批次的结果汇总（matched 3 · not_found 1 …）；导出批次没有 */
-const summaryParts = (b: CarrierFileBatch) => (b.kind === 'import' && b.summary
-  ? IMPORT_RESULTS.filter((r) => Number(b.summary?.[r]) > 0).map((r) => ({ r, n: Number(b.summary?.[r]) }))
-  : [])
+/** 导入批次的结果汇总（匹配 3 · 找不到 1 …）；导出批次没有 */
+const summaryText = (b: CarrierFileBatch) => (b.kind === 'import' && b.summary
+  ? IMPORT_RESULTS.filter((r) => Number(b.summary?.[r]) > 0)
+    .map((r) => `${t(`shipping.file.results.${r}`)} ${Number(b.summary?.[r])}`).join(' · ')
+  : '')
 </script>
 
 <template>
-  <div class="carrier-file-batches position-relative" ref="root">
-    <button type="button" class="btn btn-sm btn-outline-light text-default" :aria-expanded="open" @click.stop="toggle">
-      <i class="ri-history-line me-1"></i>{{ t('shipping.file.recent-files') }}
-    </button>
-    <div class="dropdown-menu dropdown-menu-end show p-0 carrier-file-batches-menu" v-if="open" @click.stop>
-      <div class="p-2 border-bottom d-flex align-items-center gap-2">
-        <select class="form-select form-select-sm" v-model.number="chosen" :aria-label="t('common.entities.carrier')">
-          <option :value="null" disabled>{{ t('shipping.file.choose-carrier') }}</option>
-          <option v-for="c in carriers" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
-        <button type="button" class="btn btn-sm btn-icon btn-light" :disabled="loading || !chosen" :title="t('shipping.refresh')"
-          :aria-label="t('shipping.refresh')" @click="load">
-          <span class="spinner-border spinner-border-sm" v-if="loading"></span>
-          <i class="ri-refresh-line" v-else></i>
-        </button>
+  <WDrawer v-model:open="open" :title="t('shipping.file.recent-files')" width="440px">
+    <div class="w-fbat">
+      <div class="w-fbat__bar">
+        <WSelect v-model="chosen" :options="carrierOptions" :placeholder="t('shipping.file.choose-carrier')"
+          :aria-label="t('common.entities.carrier')" />
+        <WButton icon="refresh" icon-only :loading="loading" :disabled="!chosen" :aria-label="t('shipping.refresh')"
+          @click="load" />
       </div>
-      <div class="carrier-file-batches-list">
-        <div class="p-3 fs-12 text-danger" v-if="loadError">{{ loadError }}</div>
-        <div class="p-3 fs-12 text-muted text-center" v-else-if="!loading && !batches.length">{{ t('shipping.file.no-batches') }}</div>
-        <div class="px-3 py-2 border-bottom fs-12" v-for="b in batches" :key="b.id">
-          <div class="d-flex align-items-center gap-2">
-            <span class="badge" :class="b.kind === 'import' ? 'bg-info-transparent' : 'bg-primary-transparent'">
-              <i class="me-1" :class="b.kind === 'import' ? 'ri-file-upload-line' : 'ri-file-download-line'"></i>{{ t(`shipping.file.batch-kinds.${b.kind}`) }}
-            </span>
-            <span class="text-muted">#{{ b.id }}</span>
-            <span class="text-muted ms-auto">{{ timeText(b.created_at, b) }}</span>
+      <WAlert v-if="loadError" tone="block" :title="loadError" />
+      <WEmptyState v-else-if="!loading && !batches.length" :title="t('shipping.file.no-batches')" icon="dn" compact />
+      <ul v-else class="w-fbat__list">
+        <li v-for="b in batches" :key="b.id" class="w-fbat__item">
+          <div class="w-fbat__head">
+            <span class="w-fbat__kind">{{ t(`shipping.file.batch-kinds.${b.kind}`) }}</span>
+            <span class="w-faint">#{{ b.id }}</span>
+            <span class="w-fbat__time">{{ timeText(b.created_at, b) }}</span>
           </div>
-          <div class="font-monospace text-break mt-1" v-if="b.file_name">{{ b.file_name }}</div>
-          <div class="text-muted mt-1 d-flex flex-wrap gap-1 align-items-center">
+          <div v-if="b.file_name" class="w-fbat__file">{{ b.file_name }}</div>
+          <div class="w-fbat__meta">
             <span v-if="b.row_count !== null">{{ t('shipping.file.batch-rows', { count: b.row_count }) }}</span>
-            <span class="badge" :class="`bg-${importResultColor(p.r)}-transparent`" v-for="p in summaryParts(b)" :key="p.r">
-              {{ t(`shipping.file.results.${p.r}`) }} {{ p.n }}
-            </span>
-            <span class="ms-auto" v-if="b.created_by">{{ userText(b.created_by) }}</span>
+            <span v-if="summaryText(b)">{{ summaryText(b) }}</span>
+            <span v-if="b.created_by" class="w-fbat__user">{{ userText(b.created_by) }}</span>
           </div>
-        </div>
-      </div>
+        </li>
+      </ul>
     </div>
-  </div>
+  </WDrawer>
 </template>
 
 <style scoped>
-.carrier-file-batches-menu {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  width: 22rem;
-  max-width: 90vw;
-  z-index: 1050;
+.w-fbat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--w-sp-16);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
 }
-
-.carrier-file-batches-list {
-  max-height: 22rem;
-  overflow-y: auto;
+.w-fbat__bar { display: flex; gap: 8px; }
+.w-fbat__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--w-border);
+  border-radius: var(--w-radius-card);
 }
+.w-fbat__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+}
+.w-fbat__item + .w-fbat__item { border-top: 1px solid var(--w-line); }
+.w-fbat__head { display: flex; align-items: baseline; gap: 8px; }
+.w-fbat__kind { font-weight: var(--w-fw-semibold); color: var(--w-text-1); }
+.w-fbat__time { margin-left: auto; color: var(--w-text-3); font-size: var(--w-fs-12); }
+.w-fbat__file { color: var(--w-text-1); overflow-wrap: anywhere; font-family: var(--w-font-mono); font-size: var(--w-fs-12); }
+.w-fbat__meta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--w-text-2); font-size: var(--w-fs-12); }
+.w-fbat__user { margin-left: auto; color: var(--w-text-3); }
 </style>

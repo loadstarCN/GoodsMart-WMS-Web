@@ -35,7 +35,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const { bizErrorMessage } = useBizError()
-const { timeZone, differs: zoneDiffers, description: zoneDescription, formatLocale, toInputValue, fromInputValue, toOffsetIso } = useTimeZone()
+const { timeZone, differs: zoneDiffers, description: zoneDescription, formatLocale, toOffsetIso } = useTimeZone()
 
 /** 完成发货时要弹窗说明的业务码：自动运单锁定（16078）/ 结果不明（16079）/ 与 CI 上的运单号或承运商不一致（16080 / 16092）/ 不是当前任务（16091） */
 const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092]
@@ -46,19 +46,22 @@ const canComplete = computed(() => !!props.taskId && flowActionEnabled(props.ste
   !props.locked && (props.step.state === 'current' || props.step.state === 'warning')))
 const autoByTracking = computed(() => props.carrier?.methods.tracking === 'api')
 
-const shippedAt = ref(toInputValue())
+/** 实际交出的时刻（带偏移的 ISO）；没改过时按现在提交（不传） */
+const shippedAt = ref<string | null>(toOffsetIso(new Date()))
 const touched = ref(false)
-const maxValue = ref(toInputValue())
+const maxValue = ref(new Date())
 const resetNow = () => {
-  shippedAt.value = toInputValue()
-  maxValue.value = shippedAt.value
+  const now = new Date()
+  shippedAt.value = toOffsetIso(now)
+  maxValue.value = now
   touched.value = false
 }
 // 读到流程的时区后（或时区变了）没改过的输入框按新时区重填
 watch(timeZone, () => {
   if (!touched.value) resetNow()
 })
-const onInput = () => {
+const onInput = (value: string | null | undefined) => {
+  shippedAt.value = value ?? null
   touched.value = true
 }
 
@@ -83,7 +86,7 @@ const complete = async () => {
   if (!canComplete.value || busy.value || !props.taskId) return
   let at: Date | null = null
   if (touched.value) {
-    at = fromInputValue(shippedAt.value)
+    at = parseDateTime(shippedAt.value, timeZone.value)
     if (!at) {
       showToast(t('shipping.handover.time-invalid'), 'error')
       return
@@ -96,12 +99,12 @@ const complete = async () => {
   }
   const extras = props.completeExtras ? await props.completeExtras() : {}
   if (extras === null) return
-  const confirmed = await showConfirm(
-    t('shipping.handover.confirm-title'),
-    t('shipping.handover.confirm', { time: formatLocale(at || new Date()) }),
-    t('button.confirm'),
-    t('button.cancel'),
-  )
+  const confirmed = await wConfirm({
+    title: t('shipping.handover.confirm-title'),
+    message: t('shipping.handover.confirm', { time: formatLocale(at || new Date()) }),
+    confirmText: t('shipping.actions.complete_shipping'),
+    cancelText: t('button.cancel'),
+  })
   if (!confirmed) return
 
   busy.value = true
@@ -139,7 +142,7 @@ const complete = async () => {
       },
       onError: (error) => {
         if (SHIPPING_BLOCK_CODES.includes(Number(error.code))) {
-          showAlert(t('shipping.handover.blocked-title'), bizErrorMessage(error), 'error')
+          wAlert({ title: t('shipping.handover.blocked-title'), message: bizErrorMessage(error), tone: 'error' })
           return
         }
         showToast(bizErrorMessage(error), 'error')
@@ -159,30 +162,46 @@ defineExpose({ run })
 </script>
 
 <template>
-  <div class="flow-handover fs-13">
+  <div class="w-flow-handover">
     <template v-if="!done">
-      <p class="fs-12 text-muted mb-2" v-if="autoByTracking">
-        <i class="ri-information-line me-1"></i>{{ t('shipping.handover.auto-hint', { carrier: carrier?.name || '' }) }}
-      </p>
-      <div class="d-flex flex-wrap align-items-end gap-2" v-if="canComplete">
-        <div>
-          <label class="form-label fs-12 mb-1" for="flow-shipped-at">{{ t('shipping.handover.shipped-at') }}
-            <TimeZoneBadge class="ms-1" /></label>
-          <div class="input-group input-group-sm">
-            <input type="datetime-local" class="form-control" id="flow-shipped-at" v-model="shippedAt" :max="maxValue"
-              :disabled="busy" @input="onInput">
-            <button type="button" class="btn btn-light" :disabled="busy" @click="resetNow">{{ t('shipping.now') }}</button>
+      <div v-if="canComplete" class="w-flow-handover__form">
+        <WField :label="t('shipping.handover.shipped-at')" :hint="zoneDiffers ? t('timezone.input-hint', { zone: zoneDescription }) : undefined"
+          :help="t('shipping.handover.time-hint')" class="w-flow-handover__field">
+          <div class="w-flow-handover__time">
+            <WDatePicker :model-value="shippedAt" mode="datetime" :max="maxValue" :disabled="busy" @update:model-value="onInput" />
+            <WButton :disabled="busy" @click="resetNow">{{ t('shipping.now') }}</WButton>
           </div>
+        </WField>
+        <div class="w-flow-handover__submit">
+          <WButton variant="primary" icon="delivery" :loading="busy" @click="complete">{{ t('shipping.actions.complete_shipping') }}</WButton>
+          <WHelp v-if="autoByTracking" :text="t('shipping.handover.auto-hint', { carrier: carrier?.name || '' })" />
         </div>
-        <button type="button" class="btn btn-sm btn-primary" :disabled="busy" @click="complete">
-          <span v-if="busy" class="spinner-border spinner-border-sm me-1"></span>
-          <i v-else class="ri-check-double-line me-1"></i>{{ t('shipping.actions.complete_shipping') }}
-        </button>
       </div>
-      <p class="fs-12 text-muted mb-0 mt-1" v-if="canComplete">{{ t('shipping.handover.time-hint') }}
-        <template v-if="zoneDiffers">{{ t('timezone.input-hint', { zone: zoneDescription }) }}</template></p>
+      <p v-else-if="autoByTracking" class="w-flow-handover__note">{{ t('shipping.handover.auto-hint', { carrier: carrier?.name || '' }) }}</p>
     </template>
-    <p class="fs-12 text-muted mb-0" v-else-if="step.source === 'carrier'">{{ t('shipping.handover.by-carrier') }}</p>
-    <ShippingFlowActionNotes :actions="step.actions" :carrier-name="carrier?.name" v-if="!locked" />
+    <p v-else-if="step.source === 'carrier'" class="w-flow-handover__note">{{ t('shipping.handover.by-carrier') }}</p>
+    <ShippingFlowActionNotes v-if="!locked" :actions="step.actions" :carrier-name="carrier?.name" />
   </div>
 </template>
+
+<style scoped>
+.w-flow-handover { font-family: var(--w-font); }
+.w-flow-handover__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+.w-flow-handover__field { flex: 1 1 320px; max-width: 420px; }
+.w-flow-handover__time { display: flex; gap: 8px; }
+.w-flow-handover__time > :first-child { flex: 1; min-width: 0; }
+.w-flow-handover__submit { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+/* 有提示字时按钮与输入框对齐（提示字在输入框下面） */
+.w-flow-handover__form:has(.w-field__hint) .w-flow-handover__submit { margin-bottom: 22px; }
+.w-flow-handover__note {
+  margin: 0;
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-2);
+}
+</style>

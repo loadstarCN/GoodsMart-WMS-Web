@@ -1212,12 +1212,175 @@
         "WAYBILL_EXISTS": "运单已按现在的地址建好或已导出，不能再改；要改请先在发货流程的「运单」一步取消运单（文件方式为作废导出）。",
         "DN_SHIPPED": "已发货，收件地址不能再改。",
         "DN_CLOSED": "出库单已关闭，收件地址不能再改。"
-      }
+      },
+      "latin": "拉丁字母写法"
     },
     "shipping-options": {
       "title": "运单服务选项",
       "hint": "配送日、时间段等随运单交给承运商；空着的项用默认值。建运单 / 导出后不能再改。",
       "no-carrier": "选了承运商后可以设置配送日、时间段等服务选项；也可以稍后在发货流程的「运单」一步设置。"
+    },
+    "status": {
+      "pending": "待处理",
+      "in_progress": "处理中",
+      "picked": "已拣货",
+      "packed": "已打包",
+      "delivered": "已发货",
+      "completed": "已完成",
+      "closed": "已关闭"
+    },
+    "list": {
+      "label": "发货单列表",
+      "count": "{count} 张",
+      "new": "新建发货单",
+      "tabs-label": "按发货阶段",
+      "search-placeholder": "DN 编号、订单号、商品编码、运单号",
+      "search-label": "在发货单中搜索",
+      "more-filters": "更多筛选",
+      "fewer-filters": "收起筛选",
+      "clear-filters": "清除筛选",
+      "recipient-placeholder": "收货方：输入名称搜索",
+      "batch-label": "批量操作",
+      "clear-selection": "取消选择",
+      "export-help": "勾选同一家承运商、同一仓库的发货单一起导出；有问题的行整批不导出，并列出逐行问题。打完单后在「待导回运单号」页签导回运单号。",
+      "retry": "重试",
+      "empty": "还没有发货单",
+      "empty-filtered": "没有符合条件的发货单",
+      "range": "第 {from}–{to} 张，共 {total} 张",
+      "goods": "{kinds} 种 · {qty} 件",
+      "doc-status": "单据 {status}",
+      "today": "今天 {date}",
+      "columns": {
+        "dn": "发货单",
+        "recipient": "收货方",
+        "goods": "商品",
+        "progress": "进度",
+        "carrier": "承运商 · 运单号",
+        "date": "计划发货",
+        "next": "下一步"
+      },
+      "next": {
+        "start": "开始作业",
+        "picking": "拣货中",
+        "packing": "待打包",
+        "choose-carrier": "选择承运商",
+        "export": "导出文件",
+        "create-waybill": "创建运单",
+        "enter-tracking": "填写运单号",
+        "import": "导回运单号",
+        "book-pickup": "预约揽收",
+        "record-pickup": "记录揽收",
+        "complete": "完成发货",
+        "tracking-page": "承运商查询页",
+        "resolve": "处理异常",
+        "signed": "{date} 签收"
+      }
+    },
+    "actions": {
+      "menu": "{dn} 的更多操作",
+      "ship-to": "修改收件地址",
+      "edit": "编辑发货单",
+      "start": "开始作业",
+      "close": "关闭发货单",
+      "cancel": "取消发货单",
+      "delete": "删除发货单",
+      "print": "打印发货单",
+      "reasons": {
+        "pending-only-edit": "只有待处理的发货单可以编辑",
+        "pending-only-start": "只有待处理的发货单可以开始作业",
+        "pending-only-close": "只有待处理的发货单可以关闭",
+        "pending-only-delete": "只有待处理的发货单可以删除",
+        "cancel-shipped": "已发货，不能取消",
+        "cancel-pending": "还没开始作业，用「关闭发货单」",
+        "closed": "已关闭",
+        "ship-to-shipped": "已发货，已锁定"
+      },
+      "started": "{dn} 已开始作业",
+      "closed": "{dn} 已关闭",
+      "cancelled": "{dn} 已取消",
+      "deleted": "{dn} 已删除",
+      "close-confirm-title": "关闭 {dn}？",
+      "close-confirm": "关闭后释放这张发货单预占的库存，不能再恢复。",
+      "keep-open": "先不关闭",
+      "delete-confirm-title": "删除 {dn}？",
+      "keep": "先不删除"
+    },
+    "detail": {
+      "breadcrumb": "发货单导航",
+      "cross-border": "跨境",
+      "source": "来源",
+      "source-manual": "手工创建",
+      "back-to-list": "返回发货单列表",
+      "not-found": "找不到这张发货单",
+      "phases": {
+        "warehouse": "仓内作业",
+        "prepare": "发货准备",
+        "handover": "交接与运输"
+      },
+      "phase-states": {
+        "done": "已完成",
+        "current": "进行中",
+        "todo": "未开始",
+        "warn": "要处理",
+        "skipped": "不适用"
+      },
+      "problems": "要处理 {count} 项",
+      "go-handle": "去处理",
+      "step-of": "第 {index} 步，共 {total} 步",
+      "now": "现在 · {position}",
+      "eta": "{carrier} 预计送达",
+      "eta-short": "预计 {date}",
+      "synced": "更新于 {time}",
+      "closed-title": "发货单已关闭",
+      "closed-at": "关闭于 {time}",
+      "ordered-hint": "发货单已创建，后续作业记录会显示在这里。",
+      "not-started": "尚未开始仓内作业",
+      "picking-hint": "请在拣货任务中完成拣货。",
+      "also": "现在也可以",
+      "back-to-current": "回到当前步骤",
+      "history": "处理记录",
+      "history-empty": "暂无处理记录",
+      "times-in": "时间按 {zone} 显示",
+      "task-links": {
+        "picking": "查看拣货任务 {code}",
+        "packing": "查看打包任务 {code}",
+        "handover": "查看配送任务 {code}",
+        "delivered": "查看配送任务 {code}"
+      },
+      "goods": {
+        "title": "商品明细",
+        "goods": "商品",
+        "quantity": "下单数量",
+        "shipped": "已发货",
+        "diffs": "{count} 种商品有数量差异",
+        "no-diff": "数量一致",
+        "more": "展开其余 {count} 种商品"
+      },
+      "aside": {
+        "ship-to": "收件地址",
+        "edit": "修改",
+        "from-recipient": "使用收货方地址",
+        "ship-to-locked": "已有有效运单或导出记录，请先取消后再修改地址。",
+        "waybill": "运单与包裹",
+        "copy": "复制运单号",
+        "created-at": "创建于 {time}",
+        "cancel-disabled": "无法取消：{reason}",
+        "packages": "{count} 箱",
+        "gross": "总毛重 {weight} kg",
+        "box": "第 {no} 箱",
+        "freight": "运费",
+        "estimate": "预估费用",
+        "estimate-source": "由 {carrier} 在建单时提供，以实际账单为准。",
+        "customs": "报关单证",
+        "docs-version": "第 {version} 版",
+        "declared": "申报价值",
+        "doc-ci": "商业发票（CI）",
+        "doc-pl": "装箱单（PL）",
+        "info": "单据信息",
+        "tasks": "作业任务",
+        "created": "创建",
+        "updated": "更新"
+      }
     }
   },
   "picking": {
@@ -1442,7 +1605,21 @@
         "NOT_ACTIVE": "运单 {tracking} 已取消或不是有效状态",
         "DN_SHIPPED": "运单 {tracking} 的出库单已发货",
         "ALREADY_SCHEDULED": "运单 {tracking} 已经约了揽收"
-      }
+      },
+      "form": {
+        "address": "揽收地址：{address}",
+        "available": "可预约",
+        "batch": "本次揽收的运单",
+        "ready-time": "货物备妥时间",
+        "close-time": "最晚揽收时间",
+        "remarks": "揽收备注",
+        "submit-summary": "{count} 票 · {day} {window}",
+        "today": "今天 {date}",
+        "tomorrow": "明天 {date}",
+        "until": "截至 {time}",
+        "day": "揽收日期"
+      },
+      "keep": "保留预约"
     }
   },
   "action-results": {
@@ -2580,7 +2757,11 @@
       "record-submit": "记录",
       "recorded-toast": "已记录揽收",
       "page-intro-manual": "{carrier} 的揽收要通过电话或网站预约。勾选要交给快递员的运单，再记录约好的日期和时间。",
-      "remarks": "备注"
+      "remarks": "备注",
+      "book-submit": "向 {carrier} 预约 · {summary}",
+      "dropoff-hint": "将货物交到承运商网点后，确认完成发货。",
+      "next": "下次揽收：{date}（{weekday}）",
+      "record-instead": "记录已有预约"
     },
     "handover": {
       "shipped-at": "实际交承运商时间",
@@ -2601,7 +2782,8 @@
       "link-only": "WMS 不查 {carrier} 的跟踪，请到承运商查询页查看。",
       "none": "这家承运商不跟踪",
       "refreshed": "已刷新跟踪",
-      "waiting": "还没有 {carrier} 的跟踪信息。WMS 会定时查询，也可以点「刷新跟踪」马上查。"
+      "waiting": "还没有 {carrier} 的跟踪信息。WMS 会定时查询，也可以点「刷新跟踪」马上查。",
+      "carrier-page": "承运商查询页面"
     },
     "delivered": {
       "signed-at": "签收时间",
@@ -2764,7 +2946,10 @@
         "ALREADY_SAVED": "配送任务上已是这个运单号（{number}）",
         "HAS_OTHER_NUMBER": "出库单已有运单号 {number}",
         "another-carrier": "别的承运商"
-      }
+      },
+      "export-count": "已导出 {count} 次",
+      "intro-short": "导出文件后，在 {carrier} 系统中生成运单，再导回运单号。",
+      "keep-export": "保留导出记录"
     },
     "options": {
       "title": "服务选项",
@@ -2943,6 +3128,14 @@
     },
     "menu": {
       "more": "更多操作"
+    },
+    "filter": {
+      "all": "全部",
+      "search": "筛选"
+    },
+    "file": {
+      "choose": "选择文件",
+      "change": "更换文件"
     }
   },
   "shell": {

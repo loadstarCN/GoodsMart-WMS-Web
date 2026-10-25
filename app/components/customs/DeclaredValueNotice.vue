@@ -52,22 +52,27 @@ const cappedText = computed(() => {
 
 <template>
   <template v-if="customs">
-    <div class="alert d-flex align-items-start gap-2" :class="[submitted ? 'alert-success-transparent' : 'alert-warning', compact ? 'py-2 fs-13 mb-2' : 'mb-3']"
-      role="alert" v-if="declaredValue !== null">
-      <i class="fs-18 lh-1" :class="submitted ? 'ri-checkbox-circle-line' : 'ri-shield-check-line'"></i>
-      <div>
-        <div class="fw-semibold">
-          {{ t('customs.tips.declared-value-carriage-heading') }}：<span class="fs-16 font-monospace">{{ formatMoney(declaredValue, currency) }}</span>
-        </div>
-        <div>{{ t(tipKey) }}</div>
-        <div class="fw-semibold mt-1" v-if="cappedText">{{ cappedText }}</div>
-        <div class="fs-12 mt-1" v-if="insuranceCharge">
-          {{ t('customs.fields.insurance') }}：{{ formatMoney(insuranceCharge, currency) }}
-        </div>
-      </div>
-    </div>
-    <div class="fs-12 text-muted" :class="compact ? 'mb-2' : 'mb-3'" v-else>
-      <i class="ri-shield-line me-1"></i>{{ t('customs.tips.no-declared-value') }}
-    </div>
+    <WAlert v-if="declaredValue !== null" :tone="submitted ? 'ok' : 'warn'" :title="t('customs.tips.declared-value-carriage-heading')"
+      class="w-declared">
+      <span class="w-declared__amount">{{ formatMoney(declaredValue, currency) }}</span>
+      <span class="w-declared__tip">{{ t(tipKey) }}</span>
+      <span v-if="cappedText" class="w-declared__capped">{{ cappedText }}</span>
+      <span v-if="insuranceCharge" class="w-declared__tip">{{ t('customs.fields.insurance') }} {{ formatMoney(insuranceCharge, currency) }}</span>
+    </WAlert>
+    <p v-else class="w-declared__none">{{ t('customs.tips.no-declared-value') }}</p>
   </template>
 </template>
+
+<style scoped>
+.w-declared :deep(.w-alert__text) { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.w-declared__amount { font-weight: var(--w-fw-semibold); font-variant-numeric: tabular-nums; }
+.w-declared__tip { color: var(--w-text-2); }
+.w-declared__capped { font-weight: var(--w-fw-medium); }
+.w-declared__none {
+  margin: 0;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-12);
+  line-height: var(--w-lh-12);
+  color: var(--w-text-3);
+}
+</style>

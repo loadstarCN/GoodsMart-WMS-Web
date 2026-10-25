@@ -1,16 +1,18 @@
 <script lang="ts" setup>
 /**
- * 运单服务选项的输入框（后端 doc/shipping-flow.md §6.4）：只负责按 schema 显示输入。DN 新建 / 编辑页（值的转换与
+ * 运单服务选项的输入框（后端 doc/shipping-flow.md §6.4）：只负责按 schema 显示输入。新建 / 编辑发货单（值的转换与
  * 提交见 composables/dn/shippingOptionsForm.ts）和发货流程「运单」一步的 ShippingOptionsEditor（保存 / 锁定）共用。
  * - schema：承运商声明的选项（GET /carrier/<id> 的 service_options）
  * - v-model：{key: 文字}（select 的 value、YYYY-MM-DD、金额的文字）；空 = 不指定（用选项的 default）
  * - errors：{key: 错误文字}（本地校验或后端 16139 的 field = shipping_options.<key>）
+ * 一项一个 WField（12 栏网格里占 span 栏）；说明（help）收进「?」。
  */
 import {
   localizedText,
   type ServiceOption,
   type ServiceOptionValue,
 } from '~/composables/shipping/carrierFile'
+import type { WSelectOption } from '~/components/w/WSelect.vue'
 
 const model = defineModel<Record<string, string>>({ required: true })
 
@@ -19,12 +21,12 @@ withDefaults(defineProps<{
   idPrefix: string
   disabled?: boolean
   errors?: Record<string, string | null | undefined>
-  /** 每项的列宽（默认一行一项） */
-  colClass?: string
+  /** 每项占几栏（12 栏） */
+  span?: number
 }>(), {
   disabled: false,
   errors: () => ({}),
-  colClass: 'col-12',
+  span: 4,
 })
 
 const { t, localeProperties } = useI18n()
@@ -32,8 +34,8 @@ const iso = computed(() => String(localeProperties.value?.iso || 'en-US'))
 const text = (value: any) => localizedText(value, iso.value)
 
 const valueOf = (key: string): string => String(model.value?.[key] ?? '')
-const setValue = (key: string, value: string) => {
-  model.value = { ...model.value, [key]: value }
+const setValue = (key: string, value: unknown) => {
+  model.value = { ...model.value, [key]: value === null || value === undefined ? '' : String(value) }
 }
 
 /** select 的可选值（空值的那项由「不指定」代替，不重复列） */
@@ -59,29 +61,30 @@ const unknownValue = (o: ServiceOption): string => {
   const value = valueOf(o.key)
   return value && !choices(o).some((v: ServiceOptionValue) => v.value === value) ? value : ''
 }
+const selectOptions = (o: ServiceOption): WSelectOption<string>[] => [
+  { value: '', label: unsetText(o) },
+  ...choices(o).map((v: ServiceOptionValue) => ({ value: v.value, label: text(v.label) || v.value })),
+  ...(unknownValue(o) ? [{ value: unknownValue(o), label: unknownValue(o) }] : []),
+]
+const helpOf = (o: ServiceOption): string | undefined => {
+  const help = text(o.help)
+  if (help) return help
+  return o.kind === 'date' && o.default ? unsetText(o) : undefined
+}
 </script>
 
 <template>
-  <div class="row g-2">
-    <div :class="colClass" v-for="o in schema" :key="o.key">
-      <label class="form-label fs-12 mb-1" :for="`${idPrefix}-${o.key}`">{{ text(o.label) || o.key }}</label>
-      <select class="form-select form-select-sm" :id="`${idPrefix}-${o.key}`" v-if="o.kind === 'select'" :disabled="disabled"
-        :value="valueOf(o.key)" @change="setValue(o.key, ($event.target as HTMLSelectElement).value)">
-        <option value="">{{ unsetText(o) }}</option>
-        <option v-for="v in choices(o)" :key="v.value" :value="v.value">{{ text(v.label) || v.value }}</option>
-        <option v-if="unknownValue(o)" :value="unknownValue(o)">{{ unknownValue(o) }}</option>
-      </select>
-      <input type="date" class="form-control form-control-sm" :id="`${idPrefix}-${o.key}`" v-else-if="o.kind === 'date'"
-        :disabled="disabled" :value="valueOf(o.key)" @input="setValue(o.key, ($event.target as HTMLInputElement).value)">
-      <input type="number" class="form-control form-control-sm" :id="`${idPrefix}-${o.key}`" min="0" step="any"
-        v-else-if="o.kind === 'money'" :placeholder="o.default || ''" :disabled="disabled" :value="valueOf(o.key)"
-        @input="setValue(o.key, ($event.target as HTMLInputElement).value)">
-      <input type="text" class="form-control form-control-sm" :id="`${idPrefix}-${o.key}`" :maxlength="o.max_length || 200"
-        v-else :placeholder="o.default || ''" :disabled="disabled" :value="valueOf(o.key)"
-        @input="setValue(o.key, ($event.target as HTMLInputElement).value)">
-      <div class="form-text fs-11" v-if="text(o.help)">{{ text(o.help) }}</div>
-      <div class="form-text fs-11" v-else-if="o.kind === 'date' && o.default">{{ unsetText(o) }}</div>
-      <div class="invalid-feedback d-block" v-if="errors[o.key]">{{ errors[o.key] }}</div>
-    </div>
-  </div>
+  <WFormGrid>
+    <WField v-for="o in schema" :id="`${idPrefix}-${o.key}`" :key="o.key" :label="text(o.label) || o.key" :span="span"
+      :help="helpOf(o)" :error="errors[o.key] || null">
+      <WSelect v-if="o.kind === 'select'" :model-value="valueOf(o.key)" :options="selectOptions(o)" :disabled="disabled"
+        @update:model-value="setValue(o.key, $event)" />
+      <WDatePicker v-else-if="o.kind === 'date'" :model-value="valueOf(o.key) || null" weekday clearable :disabled="disabled"
+        @update:model-value="setValue(o.key, $event)" />
+      <WInput v-else-if="o.kind === 'money'" :model-value="valueOf(o.key)" inputmode="decimal" align="right"
+        :placeholder="o.default || ''" :disabled="disabled" @update:model-value="setValue(o.key, $event)" />
+      <WInput v-else :model-value="valueOf(o.key)" :maxlength="o.max_length || 200" :placeholder="o.default || ''"
+        :disabled="disabled" @update:model-value="setValue(o.key, $event)" />
+    </WField>
+  </WFormGrid>
 </template>

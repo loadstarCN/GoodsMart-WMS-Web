@@ -218,100 +218,119 @@ defineExpose({ reload: load, dirty })
 </script>
 
 <template>
-  <div class="dn-packages-editor">
-    <div class="d-flex justify-content-center py-3" v-if="loading">
-      <div class="spinner-border spinner-border-sm text-primary" role="status">
-        <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-      </div>
-    </div>
+  <div class="w-pkgs">
+    <div v-if="loading" class="w-pkgs__loading" aria-busy="true"><span /><span /></div>
     <template v-else>
-      <p class="fs-12 text-muted mb-2" v-if="!editable && readonlyReason">
-        <i class="ri-lock-line me-1"></i>{{ readonlyReason }}
-      </p>
+      <p v-if="!editable && readonlyReason" class="w-pkgs__reason">{{ readonlyReason }}</p>
 
-      <div class="table-responsive">
-        <table class="table table-sm table-bordered align-middle mb-2">
+      <div class="w-pkgs__table">
+        <table class="w-pkgs__grid">
           <thead>
             <tr>
-              <th scope="col" style="width: 64px;">{{ t('customs.packages.box-no') }}</th>
-              <th scope="col">{{ t('customs.packages.gross-weight-kg') }}</th>
-              <th scope="col">{{ t('customs.packages.length-cm') }}</th>
-              <th scope="col">{{ t('customs.packages.width-cm') }}</th>
-              <th scope="col">{{ t('customs.packages.height-cm') }}</th>
+              <th scope="col" class="is-no">{{ t('customs.packages.box-no') }}</th>
+              <th scope="col" class="is-num">{{ t('customs.packages.gross-weight-kg') }}</th>
+              <th scope="col" class="is-num">{{ t('customs.packages.length-cm') }}</th>
+              <th scope="col" class="is-num">{{ t('customs.packages.width-cm') }}</th>
+              <th scope="col" class="is-num">{{ t('customs.packages.height-cm') }}</th>
               <th scope="col">{{ t('customs.packages.remark') }}</th>
-              <th scope="col" v-if="editable" style="width: 48px;"></th>
+              <th v-if="editable" scope="col" class="is-del"><span class="w-sr-only">{{ t('customs.packages.remove') }}</span></th>
             </tr>
           </thead>
           <tbody>
             <template v-for="(row, index) in rows" :key="index">
-              <tr>
-                <td class="fw-semibold">{{ Number(index) + 1 }} / {{ rows.length }}</td>
+              <tr :class="{ 'has-error': rowErrors[index]?.length }">
+                <td class="is-no">{{ Number(index) + 1 }} / {{ rows.length }}</td>
                 <template v-if="editable">
-                  <td>
-                    <input type="number" class="form-control form-control-sm" min="0.01" max="999.999" step="0.001"
-                      v-model="row.gross_weight_kg" :aria-label="t('customs.packages.gross-weight-kg')">
-                  </td>
-                  <td>
-                    <input type="number" class="form-control form-control-sm" min="0.1" max="300" step="0.1"
-                      v-model="row.length_cm" :aria-label="t('customs.packages.length-cm')">
-                  </td>
-                  <td>
-                    <input type="number" class="form-control form-control-sm" min="0.1" max="300" step="0.1"
-                      v-model="row.width_cm" :aria-label="t('customs.packages.width-cm')">
-                  </td>
-                  <td>
-                    <input type="number" class="form-control form-control-sm" min="0.1" max="300" step="0.1"
-                      v-model="row.height_cm" :aria-label="t('customs.packages.height-cm')">
-                  </td>
-                  <td>
-                    <input type="text" class="form-control form-control-sm" maxlength="200" v-model="row.remark"
-                      :aria-label="t('customs.packages.remark')">
-                  </td>
-                  <td class="text-center">
-                    <button type="button" class="btn btn-icon btn-sm btn-danger-light" :title="t('customs.packages.remove')"
-                      @click="removeRow(index)">
-                      <i class="ri-delete-bin-line"></i>
-                    </button>
+                  <td><WInput v-model="row.gross_weight_kg" size="sm" type="number" min="0.01" max="999.999" step="0.001" align="right"
+                    :aria-label="t('customs.packages.gross-weight-kg')" /></td>
+                  <td><WInput v-model="row.length_cm" size="sm" type="number" min="0.1" max="300" step="0.1" align="right"
+                    :aria-label="t('customs.packages.length-cm')" /></td>
+                  <td><WInput v-model="row.width_cm" size="sm" type="number" min="0.1" max="300" step="0.1" align="right"
+                    :aria-label="t('customs.packages.width-cm')" /></td>
+                  <td><WInput v-model="row.height_cm" size="sm" type="number" min="0.1" max="300" step="0.1" align="right"
+                    :aria-label="t('customs.packages.height-cm')" /></td>
+                  <td><WInput v-model="row.remark" size="sm" maxlength="200" :aria-label="t('customs.packages.remark')" /></td>
+                  <td class="is-del">
+                    <WButton size="sm" variant="text" icon="close" icon-only :aria-label="t('customs.packages.remove')" @click="removeRow(index)" />
                   </td>
                 </template>
                 <template v-else>
-                  <td>{{ row.gross_weight_kg !== '' ? row.gross_weight_kg : '—' }}</td>
-                  <td>{{ row.length_cm !== '' ? row.length_cm : '—' }}</td>
-                  <td>{{ row.width_cm !== '' ? row.width_cm : '—' }}</td>
-                  <td>{{ row.height_cm !== '' ? row.height_cm : '—' }}</td>
-                  <td>{{ row.remark || '' }}</td>
+                  <td class="is-num">{{ row.gross_weight_kg }}</td>
+                  <td class="is-num">{{ row.length_cm }}</td>
+                  <td class="is-num">{{ row.width_cm }}</td>
+                  <td class="is-num">{{ row.height_cm }}</td>
+                  <td class="w-muted">{{ row.remark || '' }}</td>
                 </template>
               </tr>
-              <tr v-if="rowErrors[index]?.length">
-                <td :colspan="editable ? 7 : 6" class="py-1">
-                  <div class="invalid-feedback d-block mt-0" v-for="(msg, i) in rowErrors[index]" :key="i">{{ msg }}</div>
+              <tr v-if="rowErrors[index]?.length" class="w-pkgs__errors">
+                <td :colspan="editable ? 7 : 6">
+                  <span v-for="(msg, i) in rowErrors[index]" :key="i">{{ msg }}</span>
                 </td>
               </tr>
             </template>
             <tr v-if="rows.length === 0">
-              <td :colspan="editable ? 7 : 6" class="text-center text-muted py-3">{{ t('customs.packages.empty') }}</td>
+              <td :colspan="editable ? 7 : 6" class="w-pkgs__empty">{{ t('customs.packages.empty') }}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="invalid-feedback d-block mb-2" v-if="formError">{{ formError }}</div>
+      <p v-if="formError" class="w-pkgs__error" role="alert">{{ formError }}</p>
 
-      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <span class="fs-12 text-muted">
+      <div class="w-pkgs__foot">
+        <span class="w-pkgs__total">
           {{ t('customs.packages.total', { count: rows.length, weight: totalWeight }) }}
-          <span class="badge bg-warning-transparent ms-2" v-if="editable && dirty">{{ t('customs.packages.unsaved') }}</span>
+          <WTag v-if="editable && dirty" tone="warn">{{ t('customs.packages.unsaved') }}</WTag>
         </span>
-        <div class="btn-list" v-if="editable">
-          <button type="button" class="btn btn-sm btn-light" @click="addRow" :disabled="rows.length >= MAX_PACKAGES">
-            <i class="ri-add-line me-1"></i>{{ t('customs.packages.add') }}
-          </button>
-          <button type="button" class="btn btn-sm btn-primary" @click="save" :disabled="saving || !dirty">
-            <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
-            <i v-else class="ri-save-line me-1"></i>{{ t('customs.packages.save') }}
-          </button>
+        <div v-if="editable" class="w-pkgs__actions">
+          <WButton size="sm" icon="plus" :disabled="rows.length >= MAX_PACKAGES" @click="addRow">{{ t('customs.packages.add') }}</WButton>
+          <WButton size="sm" variant="primary" :loading="saving" :disabled="!dirty" @click="save">{{ t('customs.packages.save') }}</WButton>
         </div>
       </div>
     </template>
   </div>
 </template>
+
+<style scoped>
+.w-pkgs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--w-font);
+  font-size: var(--w-fs-13);
+  line-height: var(--w-lh-13);
+  color: var(--w-text-1);
+}
+.w-pkgs__loading { display: flex; flex-direction: column; gap: 8px; }
+.w-pkgs__loading span { display: block; height: 14px; width: 60%; border-radius: 4px; background: var(--w-skeleton); }
+.w-pkgs__reason { margin: 0; font-size: var(--w-fs-12); color: var(--w-text-3); }
+.w-pkgs__table {
+  overflow-x: auto;
+  border: 1px solid var(--w-border);
+  border-radius: var(--w-radius-card);
+}
+.w-pkgs__grid { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.w-pkgs__grid th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--w-border);
+  color: var(--w-text-3);
+  font-size: var(--w-fs-12);
+  font-weight: var(--w-fw-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+.w-pkgs__grid td { padding: 6px 10px; border-top: 1px solid var(--w-line); vertical-align: middle; }
+.w-pkgs__grid tbody tr:first-child td { border-top: 0; }
+.w-pkgs__grid .is-num { text-align: right; }
+.w-pkgs__grid td.is-num { min-width: 80px; }
+.w-pkgs__grid .is-no { width: 64px; white-space: nowrap; font-weight: var(--w-fw-medium); }
+.w-pkgs__grid .is-del { width: 40px; text-align: right; }
+.w-pkgs__grid td :deep(.w-input) { min-width: 84px; }
+.w-pkgs__errors td { border-top: 0; padding-top: 0; color: var(--w-bad-text); font-size: var(--w-fs-12); }
+.w-pkgs__errors span + span::before { content: ' · '; }
+.w-pkgs__empty { padding: 20px; text-align: center; color: var(--w-text-3); }
+.w-pkgs__error { margin: 0; color: var(--w-bad-text); font-size: var(--w-fs-12); }
+.w-pkgs__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.w-pkgs__total { display: inline-flex; align-items: center; gap: 8px; color: var(--w-text-2); }
+.w-pkgs__actions { display: flex; gap: 8px; }
+</style>
