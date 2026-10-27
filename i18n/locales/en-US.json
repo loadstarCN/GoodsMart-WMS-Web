@@ -4392,7 +4392,7 @@
   "receipt-differences": {
     "title": "Receipt differences",
     "summary": "{units} units · {count} / {received} documents",
-    "help": "Received notices within the scheduled-arrival period. Shortages and overages are calculated per product; damage is separate. Totals cover the whole cohort before pagination. Rejections are not recorded separately and must not be treated as zero.",
+    "help": "Notices with finalized quantities within the scheduled-arrival period. Received notices awaiting sorting completion are excluded from differences. Shortages and overages are calculated per product; damage is separate. Totals cover the whole cohort before pagination. Rejections are not recorded separately and must not be treated as zero.",
     "short": "Short",
     "over": "Over",
     "damage": "Damaged",
@@ -4401,7 +4401,7 @@
     "units": "Units",
     "documents": "{count} notices",
     "rejection-unavailable": "Rejections: separate data unavailable; no rejection breakdown is included.",
-    "empty": "No recorded quantity or damage differences on received notices",
+    "empty": "No quantity or damage differences on notices with finalized quantities",
     "coverage": "Showing {shown} of {total} notices with differences (scheduled-date order; up to 20)"
   }
 }
