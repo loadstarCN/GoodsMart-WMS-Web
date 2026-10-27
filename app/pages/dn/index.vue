@@ -431,7 +431,7 @@ const rangeText = computed(() => {
     </div>
 
     <section class="w-dnl__card" :aria-label="t('dn.list.label')">
-      <WTabs v-model="activeTab" class="w-dnl__tabs" :items="tabs" :label="t('dn.list.tabs-label')" :panel-id="panelId" />
+      <WTabs inset v-model="activeTab" class="w-dnl__tabs" :items="tabs" :label="t('dn.list.tabs-label')" :panel-id="panelId" />
 
       <div class="w-dnl__filters">
         <WInput v-model="keyword" class="w-dnl__search" clearable :placeholder="t('dn.list.search-placeholder')"
@@ -585,13 +585,12 @@ const rangeText = computed(() => {
 .w-dnl__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .w-dnl__card {
+  --w-card-pad: 20px;
   overflow: hidden;
   border: 1px solid var(--w-border);
   border-radius: var(--w-radius-card);
   background: var(--w-surface);
 }
-.w-dnl__tabs { padding: 0 var(--w-card-pad); }
-.w-dnl__tabs :deep(.w-tabs__tab) { height: 48px; }
 .w-dnl__filters {
   display: flex;
   flex-wrap: wrap;
@@ -691,4 +690,8 @@ const rangeText = computed(() => {
 @media (max-width: 767.98px) {
   .w-dnl__search, .w-dnl__recipient { width: 100%; }
 }
+.w-dnl :deep(.w-table) { border-collapse:collapse; }
+.w-dnl :deep(.w-table thead th) { height:auto; padding-top:10px; padding-bottom:8px; line-height:16px; }
+.w-dnl :deep(.w-table__head) { vertical-align:top; }
+.w-dnl__dn { font-size:14px; line-height:20px; }
 </style>

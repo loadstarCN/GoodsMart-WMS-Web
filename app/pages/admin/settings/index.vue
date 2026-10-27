@@ -69,6 +69,7 @@ const fetchSmtpConfig = async () => {
 };
 
 const saveSmtpConfig = async () => {
+  if(saving.value)return;
   saving.value = true;
   // 密码没填（或误填了占位的 ********）就不提交该字段，后端保留原密码
   const { smtp_password: password, ...rest } = smtp.value;
@@ -94,6 +95,7 @@ const saveSmtpConfig = async () => {
 };
 
 const sendTestEmail = async () => {
+  if(testing.value)return;
   if (!testEmail.value.trim()) {
     showToast(t('admin.settings.smtp.test-required'), 'error');
     return;
@@ -117,98 +119,4 @@ const sendTestEmail = async () => {
 onMounted(() => {
   fetchSmtpConfig();
 });
-</script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-    </div>
-  </div>
-
-  <div class="row" v-else>
-    <!-- SMTP Configuration -->
-    <div class="col-xl-8">
-      <div class="card custom-card">
-        <div class="card-header">
-          <div class="card-title">
-            <i class="ri-mail-settings-line me-2"></i>{{ t('admin.settings.smtp.title') }}
-          </div>
-        </div>
-        <div class="card-body">
-          <p class="text-muted mb-4">{{ t('admin.settings.smtp.description') }}</p>
-          <form @submit.prevent="saveSmtpConfig">
-            <div class="row">
-              <div class="col-md-8 mb-3">
-                <label class="form-label">{{ t('admin.settings.smtp.host') }}</label>
-                <input v-model="smtp.smtp_host" type="text" class="form-control" :placeholder="t('admin.settings.smtp.host-placeholder')">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">{{ t('admin.settings.smtp.port') }}</label>
-                <input v-model.number="smtp.smtp_port" type="number" class="form-control" :placeholder="t('admin.settings.smtp.port-placeholder')">
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">{{ t('admin.settings.smtp.username') }}</label>
-                <input v-model="smtp.smtp_username" type="text" class="form-control" :placeholder="t('admin.settings.smtp.username-placeholder')">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">{{ t('admin.settings.smtp.password') }}</label>
-                <SecretInput id="smtp-password" v-model="smtp.smtp_password" autocomplete="new-password"
-                  :placeholder="passwordConfigured ? t('admin.settings.smtp.password-configured') : t('admin.settings.smtp.password-placeholder')" />
-                <small class="text-muted" v-if="passwordConfigured">
-                  <i class="ri-checkbox-circle-line text-success me-1"></i>{{ t('admin.settings.smtp.password-hint') }}
-                </small>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-8 mb-3">
-                <label class="form-label">{{ t('admin.settings.smtp.sender') }}</label>
-                <input v-model="smtp.smtp_sender" type="email" class="form-control" :placeholder="t('admin.settings.smtp.sender-placeholder')">
-              </div>
-              <div class="col-md-4 mb-3 d-flex align-items-end">
-                <div class="form-check form-switch mb-2">
-                  <input v-model="smtp.smtp_use_tls" class="form-check-input" type="checkbox" id="smtpTls">
-                  <label class="form-check-label" for="smtpTls">{{ t('admin.settings.smtp.use-tls') }}</label>
-                </div>
-              </div>
-            </div>
-            <div class="d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary" :disabled="saving">
-                <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
-                <i v-else class="ri-save-line me-1"></i>{{ t('button.save') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Test Email -->
-    <div class="col-xl-4">
-      <div class="card custom-card">
-        <div class="card-header">
-          <div class="card-title">
-            <i class="ri-send-plane-line me-2"></i>{{ t('admin.settings.smtp.test-title') }}
-          </div>
-        </div>
-        <div class="card-body">
-          <p class="text-muted mb-3">{{ t('admin.settings.smtp.test-description') }}</p>
-          <div class="mb-3">
-            <label class="form-label">{{ t('admin.settings.smtp.test-recipient') }}</label>
-            <input v-model="testEmail" type="email" class="form-control" :placeholder="t('admin.settings.smtp.test-recipient-placeholder')">
-          </div>
-          <button class="btn btn-outline-primary w-100" :disabled="testing" @click="sendTestEmail">
-            <span v-if="testing" class="spinner-border spinner-border-sm me-1"></span>
-            <i v-else class="ri-mail-send-line me-1"></i>{{ t('admin.settings.smtp.test-send') }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<style scoped></style>
+</script><template><div class="w-settings w-scope"><h1>{{t('admin.nav.settings')}}</h1><WCard v-if="loading"><WEmptyState :title="t('common.status.loading')"/></WCard><template v-else><WCard flush><div class="section-title"><h2>{{t('admin.settings.smtp.title')}}</h2><p>{{t('admin.settings.smtp.description')}}</p></div><form @submit.prevent="saveSmtpConfig"><fieldset :disabled="saving"><WFormSection :title="t('admin.settings.smtp.host')"><div class="fields"><WField :label="t('admin.settings.smtp.host')"><WInput v-model="smtp.smtp_host" :placeholder="t('admin.settings.smtp.host-placeholder')"/></WField><WField :label="t('admin.settings.smtp.port')"><WInput v-model.number="smtp.smtp_port" type="number" min="1" max="65535"/></WField></div></WFormSection><WFormSection :title="t('admin.settings.smtp.username')"><div class="fields"><WField :label="t('admin.settings.smtp.username')"><WInput v-model="smtp.smtp_username" autocomplete="username"/></WField><WField :label="t('admin.settings.smtp.password')" :hint="passwordConfigured?t('admin.settings.smtp.password-hint'):undefined"><SecretInput v-model="smtp.smtp_password" autocomplete="new-password" :placeholder="passwordConfigured?t('admin.settings.smtp.password-configured'):t('admin.settings.smtp.password-placeholder')"/></WField></div></WFormSection><WFormSection :title="t('admin.settings.smtp.sender')"><div class="fields"><WField :label="t('admin.settings.smtp.sender')"><WInput v-model="smtp.smtp_sender" type="email"/></WField><WField :label="t('admin.settings.smtp.use-tls')"><WSwitch v-model="smtp.smtp_use_tls">{{t('admin.settings.smtp.use-tls')}}</WSwitch></WField></div></WFormSection></fieldset><footer><WButton type="submit" variant="primary" :loading="saving">{{t('button.save')}}</WButton></footer></form></WCard><WCard flush><WFormSection :title="t('admin.settings.smtp.test-title')"><form class="test-form" @submit.prevent="sendTestEmail"><p>{{t('admin.settings.smtp.test-description')}}</p><WField :label="t('admin.settings.smtp.test-recipient')"><WInput v-model="testEmail" type="email" required :placeholder="t('admin.settings.smtp.test-recipient-placeholder')"/></WField><WButton type="submit" :loading="testing">{{t('admin.settings.smtp.test-send')}}</WButton></form></WFormSection></WCard></template></div></template><style scoped>.w-settings{display:flex;flex-direction:column;gap:16px}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}.section-title{padding:16px 24px;border-bottom:1px solid var(--w-line)}h2{font-size:16px;line-height:24px;font-weight:600;margin:0}p{font-size:13px;line-height:20px;color:var(--w-text-3);margin:4px 0 0}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px;max-width:800px}fieldset{border:0;padding:0;margin:0;min-width:0}footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--w-border)}.test-form{max-width:500px;display:flex;flex-direction:column;align-items:start;gap:12px}.test-form>.w-field{width:100%}@media(max-width:700px){.fields{grid-template-columns:minmax(0,1fr)}}</style>

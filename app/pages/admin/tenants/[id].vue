@@ -16,6 +16,7 @@ const dataToPass = computed(() => ({
 }));
 
 let loading = ref(true);
+const loadError=ref('');
 let saving = ref(false);
 
 let itemData = ref({
@@ -33,6 +34,7 @@ let errors = ref<Record<string, string>>({});
 
 const fetchData = async () => {
   loading.value = true;
+  loadError.value='';
   await httpRequest<any>(`/api/warehouse/company/${itemId}`, {
     method: 'GET',
     onSuccess: (data) => {
@@ -50,6 +52,7 @@ const fetchData = async () => {
       };
     },
     onError: (error) => {
+      loadError.value=error.message;
       showToast(error.message, 'error');
     },
     onFinally: () => {
@@ -72,6 +75,7 @@ const validate = () => {
 }
 
 const submitForm = async () => {
+  if(saving.value||loading.value||loadError.value)return;
   if (!validate()) return;
   saving.value = true;
   await httpRequest(`/api/warehouse/company/${itemId}`, {
@@ -95,87 +99,5 @@ onMounted(() => {
   fetchData();
 });
 
-</script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-    </div>
-  </div>
-
-  <div class="row" v-else>
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-header justify-content-between">
-          <div class="card-title">{{ t('admin.tenants.operations.edit') }}</div>
-          <NuxtLink to="/admin/tenants/" class="btn btn-light btn-wave">
-            <i class="ri-arrow-left-line me-1"></i>{{ t('button.cancel') }}
-          </NuxtLink>
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="submitForm">
-            <div class="row gy-3">
-              <!-- Name -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.name') }} <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" v-model="itemData.name" :class="{'is-invalid': errors.name}" :placeholder="t('common.placeholders.name')">
-                <div class="invalid-feedback">{{ errors.name }}</div>
-              </div>
-              <!-- Email -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.email') }} <span class="text-danger">*</span></label>
-                <input type="email" class="form-control" v-model="itemData.email" :class="{'is-invalid': errors.email}" :placeholder="t('common.placeholders.email')">
-                <div class="invalid-feedback">{{ errors.email }}</div>
-              </div>
-              <!-- Phone -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.phone') }}</label>
-                <input type="text" class="form-control" v-model="itemData.phone" :placeholder="t('common.placeholders.phone')">
-              </div>
-              <!-- Address -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.address') }}</label>
-                <input type="text" class="form-control" v-model="itemData.address" :placeholder="t('common.placeholders.address')">
-              </div>
-              <!-- Zip Code -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.zip') }}</label>
-                <input type="text" class="form-control" v-model="itemData.zip_code" :placeholder="t('common.placeholders.zip')">
-              </div>
-              <!-- Currency -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.currency') }}</label>
-                <input type="text" class="form-control" v-model="itemData.default_currency">
-              </div>
-              <!-- Expired At -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('admin.tenants.fields.expired-at') }}</label>
-                <input type="date" class="form-control" v-model="itemData.expired_at">
-              </div>
-              <!-- Status -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.status') }}</label>
-                <div class="form-check form-switch mt-1">
-                  <input class="form-check-input" type="checkbox" v-model="itemData.is_active">
-                  <label class="form-check-label">{{ itemData.is_active ? t('common.status.active') : t('common.status.inactive') }}</label>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <button type="submit" class="btn btn-primary btn-wave" :disabled="saving">
-                <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
-                {{ t('button.save') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<style scoped></style>
+useHead({title:()=>t('admin.tenants.operations.edit')})
+</script><template><div class="w-tenant-form w-scope"><header><h1>{{t('admin.tenants.operations.edit')}}</h1></header><WAlert v-if="loadError" tone="block" :title="loadError"/><WCard flush><form @submit.prevent="submitForm"><fieldset :disabled="saving||loading||!!loadError"><WFormSection :title="t('common.fields.name')"><div class="fields"><WField :label="t('common.fields.name')" :error="errors.name" required><WInput v-model="itemData.name" type="text"/></WField><WField :label="t('common.fields.email')" :error="errors.email" required><WInput v-model="itemData.email" type="email"/></WField><WField :label="t('common.fields.phone')" :error="errors.phone"><WInput v-model="itemData.phone" type="tel"/></WField><WField :label="t('common.fields.zip')" :error="errors.zip_code"><WInput v-model="itemData.zip_code" type="text"/></WField><WField :label="t('common.fields.address')" :error="errors.address"><WInput v-model="itemData.address" type="text"/></WField></div></WFormSection><WFormSection :title="t('admin.tenants.fields.expired-at')"><div class="fields"><WField :label="t('admin.tenants.fields.expired-at')"><WInput v-model="itemData.expired_at" type="date"/></WField><WField :label="t('common.fields.currency')"><WInput v-model="itemData.default_currency" maxlength="3"/></WField><WField :label="t('common.fields.status')"><WSwitch v-model="itemData.is_active">{{t('common.status.'+(itemData.is_active?'active':'inactive'))}}</WSwitch></WField></div></WFormSection></fieldset><footer><WButton to="/admin/tenants">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="saving" :disabled="loading||!!loadError">{{t('button.save')}}</WButton></footer></form></WCard></div></template><style scoped>.w-tenant-form{display:flex;flex-direction:column;gap:16px}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px;max-width:800px}fieldset{border:0;padding:0;margin:0;min-width:0}p{font-size:13px;line-height:20px;color:var(--w-text-3);margin:0 0 12px}footer{display:flex;gap:8px;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--w-border)}@media(max-width:700px){.fields{grid-template-columns:minmax(0,1fr)}}</style>

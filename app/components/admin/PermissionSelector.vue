@@ -3,6 +3,7 @@ const { t } = useI18n();
 
 const props = defineProps({
   allPermissions: { type: Array, required: true },
+  matrix: { type: Boolean, default: false },
   modelValue: { type: Array, required: true },
 });
 
@@ -96,74 +97,11 @@ const isCategoryAllSelected = (cat) => {
   }
   return catPermIds.length > 0 && catPermIds.every(id => selected.value.includes(id));
 };
+
+const otherPermissions=computed(()=>{const known=new Set();for(const cat of groupedData.value)for(const mod of cat.modules)for(const item of mod.items){const p=mod.isSpecial?item:item.perm;if(p)known.add(p.id)}return props.allPermissions.filter(p=>!known.has(p.id))})
 </script>
-
-<template>
-  <div>
-    <div class="mb-2 d-flex gap-2 align-items-center">
-      <button type="button" class="btn btn-sm btn-outline-primary" @click="selectAll">{{ t('admin.roles.select-all') }}</button>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="clearAll">{{ t('admin.roles.clear-all') }}</button>
-      <span class="badge bg-primary-transparent">{{ selected.length }} / {{ allPermissions.length }}</span>
-    </div>
-
-    <div class="accordion accordion-customicon1" id="permAccordion">
-      <div v-for="(cat, catIdx) in groupedData" :key="catIdx" class="accordion-item">
-        <h2 class="accordion-header">
-          <button class="accordion-button" :class="{ collapsed: catIdx > 0 }" type="button"
-            data-bs-toggle="collapse" :data-bs-target="`#permCat${catIdx}`">
-            <div class="d-flex align-items-center gap-2 w-100">
-              <input class="form-check-input me-1" type="checkbox" :checked="isCategoryAllSelected(cat)"
-                @click.stop="toggleCategory(cat)">
-              <span class="fw-semibold">{{ t(cat.label) }}</span>
-            </div>
-          </button>
-        </h2>
-        <div :id="`permCat${catIdx}`" class="accordion-collapse collapse" :class="{ show: catIdx === 0 }">
-          <div class="accordion-body p-0">
-            <table class="table table-bordered mb-0">
-              <tbody>
-                <tr v-for="(mod, modIdx) in cat.modules" :key="modIdx">
-                  <td class="fw-semibold bg-light" style="width: 140px; vertical-align: middle;">{{ t(mod.label) }}</td>
-                  <td>
-                    <template v-if="mod.isSpecial">
-                      <div class="d-flex flex-wrap gap-3">
-                        <div v-for="perm in mod.items" :key="perm.id" class="form-check form-check-inline mb-0">
-                          <input class="form-check-input" type="checkbox" :id="`perm-${perm.id}`"
-                            :checked="selected.includes(perm.id)" @change="toggle(perm.id)">
-                          <label class="form-check-label" :for="`perm-${perm.id}`">{{ perm.name }}</label>
-                        </div>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <div class="d-flex flex-wrap gap-3">
-                        <div v-for="item in mod.items" :key="item.op" class="form-check form-check-inline mb-0">
-                          <template v-if="item.perm">
-                            <input class="form-check-input" type="checkbox" :id="`perm-${item.perm.id}`"
-                              :checked="selected.includes(item.perm.id)" @change="toggle(item.perm.id)">
-                            <label class="form-check-label" :for="`perm-${item.perm.id}`">{{ t(item.opLabel) }}</label>
-                          </template>
-                        </div>
-                      </div>
-                    </template>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
+<template><div class="w-permissions w-scope" :class="{'w-permissions--matrix':matrix}"><div v-if="matrix" class="matrix-scroll"><table><colgroup><col style="width:25%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col></colgroup><thead><tr><th>{{t('admin.roles.fields.permissions')}}</th><th v-for="op in ['read','edit','delete']" :key="op">{{t('admin.permissions.ops.'+op)}}</th><th>{{t('role-review.other')}}</th></tr></thead><tbody v-for="cat in groupedData" :key="cat.label"><tr class="matrix-category"><th colspan="5">{{t(cat.label)}}</th></tr><tr v-for="mod in cat.modules" :key="mod.label"><th scope="row">{{t(mod.label)}}</th><td v-for="op in ['read','edit','delete']" :key="op"><template v-if="!mod.isSpecial"><template v-for="item in mod.items" :key="item.op"><WCheckbox v-if="item.op===op&&item.perm&&item.opLabel==='admin.permissions.ops.'+op" :model-value="selected.includes(item.perm.id)" :aria-label="t(mod.label)+' '+t(item.opLabel)" @update:model-value="toggle(item.perm.id)"/></template></template></td><td class="matrix-extra"><template v-if="mod.isSpecial"><WCheckbox v-for="permission in mod.items" :key="permission.id" :model-value="selected.includes(permission.id)" @update:model-value="toggle(permission.id)">{{permission.name}}</WCheckbox></template><template v-else><template v-for="item in mod.items" :key="item.op"><WCheckbox v-if="item.perm&&(!['read','edit','delete'].includes(item.op)||item.opLabel!=='admin.permissions.ops.'+item.op)" :model-value="selected.includes(item.perm.id)" @update:model-value="toggle(item.perm.id)">{{t(item.opLabel)}}</WCheckbox></template></template></td></tr></tbody><tbody v-if="otherPermissions.length"><tr><th>{{t('role-review.other')}}</th><td colspan="4" class="matrix-extra"><WCheckbox v-for="permission in otherPermissions" :key="permission.id" :model-value="selected.includes(permission.id)" @update:model-value="toggle(permission.id)">{{permission.name}}</WCheckbox></td></tr></tbody></table></div><template v-else><div class="tools"><WButton size="sm" @click="selectAll">{{t('admin.roles.select-all')}}</WButton><WButton size="sm" @click="clearAll">{{t('admin.roles.clear-all')}}</WButton><span>{{selected.length}} / {{allPermissions.length}}</span></div><section v-for="cat in groupedData" :key="cat.label"><div class="category"><WCheckbox :model-value="isCategoryAllSelected(cat)" @update:model-value="toggleCategory(cat)">{{t(cat.label)}}</WCheckbox></div><div v-for="mod in cat.modules" :key="mod.label" class="module"><span>{{t(mod.label)}}</span><div class="choices"><template v-if="mod.isSpecial"><WCheckbox v-for="permission in mod.items" :key="permission.id" :model-value="selected.includes(permission.id)" @update:model-value="toggle(permission.id)">{{permission.name}}</WCheckbox></template><template v-else><template v-for="item in mod.items" :key="item.op"><WCheckbox v-if="item.perm" :model-value="selected.includes(item.perm.id)" @update:model-value="toggle(item.perm.id)">{{t(item.opLabel)}}</WCheckbox></template></template></div></div></section><section v-if="otherPermissions.length" class="other"><WCheckbox v-for="permission in otherPermissions" :key="permission.id" :model-value="selected.includes(permission.id)" @update:model-value="toggle(permission.id)">{{permission.name}}</WCheckbox></section></template></div></template>
 <style scoped>
-.accordion-button {
-  padding: 0.5rem 1rem;
-}
-.accordion-body table td {
-  padding: 0.4rem 0.75rem;
-}
-.form-check-inline {
-  min-width: 70px;
-}
+.w-permissions{display:flex;flex-direction:column;gap:12px}.tools{display:flex;align-items:center;gap:8px}.tools span{margin-left:auto;color:var(--w-text-3);font-size:12px}.w-permissions section{border:1px solid var(--w-border);border-radius:6px;overflow:hidden}.category{padding:10px 12px;background:#F6F7FA;font-size:13px;font-weight:500}.module{display:grid;grid-template-columns:100px minmax(0,1fr);gap:12px;padding:12px;border-top:1px solid var(--w-line);font-size:13px;line-height:20px}.module>span{color:var(--w-text-3)}.choices,.other{display:flex;flex-wrap:wrap;gap:12px 16px}.other{padding:12px}.choices :deep(.w-check){font-size:13px}@media(max-width:400px){.module{grid-template-columns:80px minmax(0,1fr);gap:8px}}
+.matrix-scroll{overflow-x:auto}.matrix-scroll table{table-layout:fixed;width:100%;min-width:620px;border-collapse:collapse;font-size:13px;line-height:20px}.matrix-scroll th,.matrix-scroll td{padding:10px 8px;border-top:1px solid var(--w-line);text-align:center;font-weight:400}.matrix-scroll th:first-child{padding-left:24px;text-align:left}.matrix-scroll th:last-child,.matrix-scroll td:last-child{padding-right:24px;text-align:left}.matrix-scroll thead th{padding-top:10px;padding-bottom:8px;border-bottom:1px solid var(--w-border);color:var(--w-text-3);font-size:12px;line-height:16px;font-weight:500}.matrix-scroll tbody th[scope=row]{font-size:14px;line-height:20px}.matrix-scroll .matrix-category th{padding:16px 24px 4px;font-size:12px;line-height:18px;font-weight:600;color:var(--w-text-2)}.matrix-extra :deep(.w-check){margin:2px 12px 2px 0;font-size:13px}.matrix-scroll td:not(.matrix-extra) :deep(.w-check){display:inline-flex;vertical-align:middle}
 </style>

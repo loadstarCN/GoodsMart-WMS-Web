@@ -65,8 +65,11 @@ const selectOptions = reactive({
 // ------------------ 提交保存 ----------------------
 // 防重复提交：请求期间禁用按钮
 const submitting = ref(false)
+const editable=computed(()=>staffStore.hasPermission('company_edit'))
+const logoUploader=useTemplateRef<{triggerSelect:()=>void}>('logoUploader')
+useHead({title:()=>t('nav.company')})
 const saveCompany = async () => {
-  if (submitting.value) return
+  if (submitting.value||!editable.value) return
   errors.value = {
     name: !itemData.value.name ? t("common.validation.name-required", { entity: t('company.entity') }) : null,
     email: (() => {
@@ -91,7 +94,7 @@ const saveCompany = async () => {
   await httpRequest(`/api/warehouse/company/${companyId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: itemData.value,
+    body: Object.fromEntries(['name','address','phone','zip_code','email','logo','default_currency','country_code',...exportTextFields].map(key=>[key,itemData.value[key]])),
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
       // 公司名称、默认币种等在员工信息里有缓存（页头、各新建页默认值）：重新拉取
@@ -146,150 +149,7 @@ onMounted(async() => {
 
 </script>
 
-<template>
-  <PageHeader :propData="dataToPass" />
-  <!-- Start::row-1 -->
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-    </div>
-  </div>
-  <div class="row" v-else>
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-body add-products p-0">
-          <div class="p-4">
-            <div class="row gx-5">
-              <div class="col-xxl-6 col-xl-12">
-                <div class="card custom-card shadow-none mb-0 border-0">
-                  <div class="card-body p-0">
-                    <div class="row gy-3 mb-3">
-                      <div class="col-xl-12">
-                        <label for="company-name" class="form-label">{{ t('company.fields.name')}} <abbr title="required" aria-hidden="true"
-                            class="text-danger">*</abbr></label>
-                        <input type="text" class="form-control" id="company-name" :placeholder="t('common.placeholders.name')"
-                          v-model="itemData.name">
-                        <label for="company-name" class="form-label mt-1 fs-12 op-5 text-muted mb-0">*{{t('common.tips.name')}}</label>
-                        <div v-if="errors.name" class="invalid-feedback d-block">{{ errors.name }}</div>
-                      </div>
-
-                      <div class="col-xl-12">
-                        <label for="company-address" class="form-label">{{ t('company.fields.address')}}</label>
-                        <input type="text" class="form-control" id="company-address" :placeholder="t('common.placeholders.address')"
-                          v-model="itemData.address">
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="company-zip-code" class="form-label">{{ t('common.fields.zip')}}</label>
-                        <input type="text" class="form-control" id="company-zip-code" :placeholder="t('common.placeholders.zip')"
-                          v-model="itemData.zip_code">
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="company-phone" class="form-label">{{ t('common.fields.phone')}}</label>
-                        <input type="text" class="form-control" id="company-phone" :placeholder="t('common.placeholders.phone')"
-                          v-model="itemData.phone">
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="company-email" class="form-label">{{ t('common.fields.email')}}</label>
-                        <input type="email" class="form-control" id="company-email" :placeholder="t('common.placeholders.email')"
-                          v-model="itemData.email">
-                          <div v-if="errors.email" class="invalid-feedback d-block">{{ errors.email }}</div>
-                      </div>
-                      
-                      <div class="col-xl-6">
-                        <label for="company-currency" class="form-label">{{ t('common.fields.currency')}}</label>
-                        <VueMultiselect id="company-currency" :show-labels="false" :options="selectOptions.currencies"
-                          :multiple="false" v-model="itemData.default_currency">
-                        </VueMultiselect>
-                      </div>
-
-                      <div class="col-xl-12">
-                        <label class="form-label d-block">{{ t('common.fields.logo')}}</label>
-                        <ImageUploader v-model="itemData.logo"
-                          upload-url="/api/warehouse/company/image/upload"
-                          shape="square" :size="120" />
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-
-              <!-- 出口资料 -->
-              <div class="col-xxl-6 col-xl-12">
-                <div class="card custom-card shadow-none mb-0 border-0">
-                  <div class="card-body p-0">
-                    <h6 class="fw-semibold mb-1"><i class="ri-earth-line me-1"></i>{{ t('company.sections.export') }}</h6>
-                    <p class="fs-12 text-muted mb-3">{{ t('company.tips.export') }}</p>
-                    <div class="row gy-3 mb-3">
-                      <div class="col-xl-12">
-                        <label for="company-legal-name-en" class="form-label">{{ t('company.fields.legal-name-en') }}</label>
-                        <input type="text" class="form-control" id="company-legal-name-en" maxlength="255"
-                          :placeholder="t('company.form.placeholders.legal-name-en')" v-model="itemData.legal_name_en">
-                        <div class="form-text text-warning" v-if="nonLatin.legal_name_en">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                      <div class="col-xl-12">
-                        <label for="company-address-en" class="form-label">{{ t('company.fields.address-en') }}</label>
-                        <textarea class="form-control" id="company-address-en" rows="2" maxlength="500"
-                          :placeholder="t('company.form.placeholders.address-en')" v-model="itemData.address_en"></textarea>
-                        <div class="form-text text-warning" v-if="nonLatin.address_en">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="company-country-code" class="form-label">{{ t('company.fields.country-code') }}</label>
-                        <CountrySelect id="company-country-code" v-model="itemData.country_code" />
-                      </div>
-                      <div class="col-xl-6 d-none d-xl-block"></div>
-                      <div class="col-xl-6">
-                        <label for="company-tax-id-label" class="form-label">{{ t('company.fields.tax-id-label') }}</label>
-                        <input type="text" class="form-control" id="company-tax-id-label" maxlength="40"
-                          :placeholder="t('company.form.placeholders.tax-id-label')" v-model="itemData.tax_id_label">
-                        <div class="form-text text-warning" v-if="nonLatin.tax_id_label">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="company-tax-id" class="form-label">{{ t('company.fields.tax-id') }}</label>
-                        <input type="text" class="form-control" id="company-tax-id" maxlength="40"
-                          :placeholder="t('company.form.placeholders.tax-id')" v-model="itemData.tax_id">
-                        <div class="form-text text-warning" v-if="nonLatin.tax_id">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="company-export-contact-name" class="form-label">{{ t('company.fields.export-contact-name') }}</label>
-                        <input type="text" class="form-control" id="company-export-contact-name" maxlength="100"
-                          :placeholder="t('company.form.placeholders.export-contact-name')" v-model="itemData.export_contact_name">
-                        <div class="form-text text-warning" v-if="nonLatin.export_contact_name">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                      <div class="col-xl-6 d-none d-xl-block"></div>
-                      <div class="col-xl-6">
-                        <label for="company-export-signatory-name" class="form-label">{{ t('company.fields.export-signatory-name') }}</label>
-                        <input type="text" class="form-control" id="company-export-signatory-name" maxlength="100"
-                          :placeholder="t('company.form.placeholders.export-signatory-name')" v-model="itemData.export_signatory_name">
-                        <div class="form-text text-warning" v-if="nonLatin.export_signatory_name">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                      <div class="col-xl-6">
-                        <label for="company-export-signatory-title" class="form-label">{{ t('company.fields.export-signatory-title') }}</label>
-                        <input type="text" class="form-control" id="company-export-signatory-title" maxlength="100"
-                          :placeholder="t('company.form.placeholders.export-signatory-title')" v-model="itemData.export_signatory_title">
-                        <div class="form-text text-warning" v-if="nonLatin.export_signatory_title">{{ t('common.tips.non-latin') }}</div>
-                      </div>
-                    </div>
-                    <p class="fs-12 text-muted mb-0">
-                      <i class="ri-information-line me-1"></i>{{ t('company.tips.export-required') }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-          <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
-            <button class="btn btn-primary-light m-1" :disabled="submitting" @click="saveCompany">
-              <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="ri-save-line me-1"></i>{{ t('button.save') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!--End::row-1 -->
-</template>
-
-<style scoped></style>
+<template><div class="w-company w-scope"><header><h1>{{t('company.title')}}</h1></header><WCard v-if="loading"><WEmptyState :title="t('common.status.loading')" /></WCard><WCard v-else flush><form @submit.prevent="saveCompany"><fieldset :disabled="submitting||!editable"><WFormSection :title="t('recipient.ui.basic')"><WFormGrid><WField :label="t('company.fields.name')" :error="errors.name"><WInput v-model="itemData.name" maxlength="255" /></WField><WField :span="6" :label="t('common.fields.phone')" optional><WInput v-model="itemData.phone" type="tel" maxlength="20" /></WField><WField :span="6" :label="t('common.fields.email')" :error="errors.email" optional><WInput v-model="itemData.email" type="email" maxlength="255" /></WField></WFormGrid></WFormSection><WFormSection :title="t('common.fields.address')"><WFormGrid><WField :span="4" :label="t('company.fields.country-code')" optional><CountryCombobox v-model="itemData.country_code" :disabled="submitting||!editable" /></WField><WField :span="4" :label="t('common.fields.zip')" optional><WInput v-model="itemData.zip_code" maxlength="10" /></WField><WField :label="t('company.fields.address')" optional><WInput v-model="itemData.address" maxlength="255" /></WField></WFormGrid></WFormSection><WFormSection :title="t('common.fields.logo')"><div class="w-company-logo"><ImageUploader v-if="editable" ref="logoUploader" v-model="itemData.logo" upload-url="/api/warehouse/company/image/upload" shape="square" :size="64" :show-hint="false" /><img v-else-if="itemData.logo" :src="itemData.logo" alt="" /><WButton v-if="editable" @click="logoUploader?.triggerSelect()">{{t('button.upload')}}</WButton></div></WFormSection><WFormSection :title="t('company.sections.export')" :help="t('company.tips.export')"><WFormGrid><WField v-for="field in exportTextFields" :key="field" :span="['legal_name_en','address_en'].includes(field)?12:6" :label="t('company.fields.'+field.replaceAll('_','-'))" :hint="nonLatin[field]?t('common.tips.non-latin'):undefined" optional><WTextarea v-if="field==='address_en'" v-model="itemData[field]" :rows="2" :maxlength="500" /><WInput v-else v-model="itemData[field]" :maxlength="field==='legal_name_en'?255:field.startsWith('tax')?40:100" /></WField></WFormGrid></WFormSection><WFormSection :title="t('company.ui.defaults')"><WFormGrid><WField :span="4" :label="t('common.fields.currency')"><WSelect v-model="itemData.default_currency" :options="currenciesOptions.map(value=>({value,label:value}))" /></WField></WFormGrid></WFormSection></fieldset><footer><WButton v-if="editable" type="submit" variant="primary" :loading="submitting">{{t('button.save')}}</WButton></footer></form></WCard></div></template>
+<style scoped>
+.w-company{display:flex;flex-direction:column;gap:16px}.w-company h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.w-company fieldset{margin:0;padding:0;border:0;min-width:0}.w-company :deep(.w-form-grid){gap:12px 16px}.w-company-logo{display:flex;align-items:center;gap:16px}.w-company-logo>img{width:64px;height:64px;object-fit:contain}.w-company footer{display:flex;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--w-border)}
+</style>

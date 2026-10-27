@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import PasswordInput from '@/components/UI/passwordInput.vue';
+
 // 工具库
-import { toast } from 'vue3-toastify';
-import 'vue3-toastify/dist/index.css';
+
+
 
 definePageMeta({
   // 平台管理员（type=user）使用 admin 布局，员工使用默认布局
@@ -83,12 +83,15 @@ const validatePasswords = () => {
   return isValid;
 }
 
+const saving = ref(false)
 const handleSubmit = async () => {
+  if (saving.value) return
   // 前端验证
   if (!validatePasswords()) {
     return;
   }
 
+  saving.value = true
   try {
     await httpRequest('/api/system/user/change-password', {
       method: 'PUT',
@@ -118,60 +121,24 @@ const handleSubmit = async () => {
     // 处理网络级错误
     showToast(t('action-results.failed'), 'error')
     console.error('API请求失败:', error);
+  } finally {
+    saving.value = false
   }
 }
 
+useHead({title:()=>t('nav.reset-password')})
 </script>
 
 <template>
-  <PageHeader :propData="dataToPass" />
-  <div class="row">
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-body add-products p-0">
-          <div class="p-4">
-            <div class="row gx-5">
-              <div class="col-xxl-6 col-xl-12">
-                <div class="card custom-card shadow-none mb-0 border-0">
-                  <div class="card-body p-0">
-                    <div class="row gy-3 mb-3">
-                      <div class="col-xl-12">
-                        <label for="reset-password" class="form-label text-default">{{ t('profile.current-password') }}</label>
-                        <div class="input-group">
-                            <PasswordInput initialValue="" name="currentpassword" id="currentpassword" autocomplete="current-password" v-model="formState.currentPassword"
-                                :placeholder="t('profile.current-password')" />
-                        </div>
-                        <div v-if="errors.current_password" class="invalid-feedback d-block">{{ errors.current_password }}</div>
-                      </div>
-                      <div class="col-xl-12">
-                        <label for="reset-newpassword" class="form-label text-default">{{ t('profile.new-password') }}</label>
-                        <div class="input-group">
-                            <PasswordInput initialValue="" name="newpassword" id="newpassword" autocomplete="new-password" v-model="formState.newPassword"
-                                :placeholder="t('profile.new-password') " />
-                        </div>
-                        <div v-if="errors.new_password" class="invalid-feedback d-block">{{ errors.new_password }}</div>
-                      </div>
-                      <div class="col-xl-12 mb-2">
-                        <label for="reset-confirmpassword" class="form-label text-default">{{ t('profile.confirm-password') }}</label>
-                        <div class="input-group">
-                            <PasswordInput initialValue="" name="confirmpassword" id="confirmpassword" autocomplete="new-password"  v-model="formState.confirmPassword" 
-                                :placeholder="t('profile.confirm-password')" />
-                        </div>
-                        <div v-if="errors.confirm_password" class="invalid-feedback d-block">{{ errors.confirm_password }}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="px-4 py-3 border-top border-block-start-dashed d-sm-flex justify-content-end">
-            <button class="btn btn-primary-light m-1" @click.prevent="handleSubmit">{{ t('button.submit') }}</button>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="w-password-page w-scope">
+    <header><h1>{{t('nav.reset-password')}}</h1></header>
+    <WCard flush><form @submit.prevent="handleSubmit"><WFormSection :title="t('nav.reset-password')"><div class="w-password-fields">
+      <WField :label="t('profile.current-password')" required :error="errors.current_password"><WInput v-model="formState.currentPassword" type="password" autocomplete="current-password" :disabled="saving" /></WField>
+      <WField :label="t('profile.new-password')" required :error="errors.new_password" :hint="t('common.validation.password-policy',passwordPolicyParams())"><WInput v-model="formState.newPassword" type="password" autocomplete="new-password" :disabled="saving" /></WField>
+      <WField :label="t('profile.confirm-password')" required :error="errors.confirm_password"><WInput v-model="formState.confirmPassword" type="password" autocomplete="new-password" :disabled="saving" /></WField>
+    </div></WFormSection><footer><WButton type="submit" variant="primary" :loading="saving">{{t('button.submit')}}</WButton></footer></form></WCard>
   </div>
 </template>
-
-<style scoped></style>
+<style scoped>
+.w-password-page{display:flex;flex-direction:column;gap:16px}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}.w-password-fields{display:flex;flex-direction:column;gap:16px;max-width:440px}footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--w-border)}
+</style>

@@ -60,78 +60,8 @@ const fetchStats = async () => {
 onMounted(() => {
   fetchStats();
 });
+useHead({title:()=>t('admin.nav.dashboard')})
 </script>
 
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-    </div>
-  </div>
-
-  <div class="row" v-else>
-    <!-- Tenants Card -->
-    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
-      <div class="card custom-card">
-        <div class="card-body">
-          <div class="d-flex align-items-start justify-content-between mb-3">
-            <div>
-              <span class="d-block mb-1 text-muted">{{ t('admin.dashboard.total-tenants') }}</span>
-              <h3 class="fw-semibold mb-0">{{ stats.tenants.total }}</h3>
-            </div>
-            <div class="avatar avatar-md avatar-rounded bg-primary-transparent">
-              <i class="ri-building-line fs-20 text-primary"></i>
-            </div>
-          </div>
-          <NuxtLink to="/admin/tenants/" class="text-muted fs-12">
-            {{ t('admin.dashboard.view-all') }} <i class="ri-arrow-right-s-line align-middle"></i>
-          </NuxtLink>
-        </div>
-      </div>
-    </div>
-
-    <!-- Users Card -->
-    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
-      <div class="card custom-card">
-        <div class="card-body">
-          <div class="d-flex align-items-start justify-content-between mb-3">
-            <div>
-              <span class="d-block mb-1 text-muted">{{ t('admin.dashboard.total-users') }}</span>
-              <h3 class="fw-semibold mb-0">{{ stats.users.total }}</h3>
-            </div>
-            <div class="avatar avatar-md avatar-rounded bg-success-transparent">
-              <i class="ri-user-settings-line fs-20 text-success"></i>
-            </div>
-          </div>
-          <NuxtLink to="/admin/users/" class="text-muted fs-12">
-            {{ t('admin.dashboard.view-all') }} <i class="ri-arrow-right-s-line align-middle"></i>
-          </NuxtLink>
-        </div>
-      </div>
-    </div>
-
-    <!-- Roles Card -->
-    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
-      <div class="card custom-card">
-        <div class="card-body">
-          <div class="d-flex align-items-start justify-content-between mb-3">
-            <div>
-              <span class="d-block mb-1 text-muted">{{ t('admin.dashboard.total-roles') }}</span>
-              <h3 class="fw-semibold mb-0">{{ stats.roles.total }}</h3>
-            </div>
-            <div class="avatar avatar-md avatar-rounded bg-warning-transparent">
-              <i class="ri-shield-user-line fs-20 text-warning"></i>
-            </div>
-          </div>
-          <NuxtLink to="/admin/roles/" class="text-muted fs-12">
-            {{ t('admin.dashboard.view-all') }} <i class="ri-arrow-right-s-line align-middle"></i>
-          </NuxtLink>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<style scoped></style>
+<template><div class="w-admin-home w-scope"><header><h1>{{t('admin.nav.dashboard')}}</h1></header><div class="metrics"><WCard v-for="key in ['tenants','users','roles'] as const" :key="key"><span>{{t('admin.dashboard.total-'+key)}}</span><strong>{{loading?'—':stats[key].total}}</strong><NuxtLink class="w-metric-link" :to="'/admin/'+key">{{t('admin.dashboard.view-all')}}<WIcon name="chevron-right" :size="14"/></NuxtLink></WCard></div></div></template>
+<style scoped>.w-admin-home{display:flex;flex-direction:column;gap:16px}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.metrics :deep(.w-card__body){display:flex;flex-direction:column;gap:8px}.metrics span{font-size:13px;line-height:20px;color:var(--w-text-2)}.metrics strong{display:block;font-size:28px;line-height:36px;font-weight:600;margin:8px 0 16px}.w-metric-link{display:flex;gap:4px;align-items:center;font-size:13px;line-height:20px;color:var(--w-link);text-decoration:none}@media(max-width:700px){.metrics{grid-template-columns:minmax(0,1fr)}}</style>

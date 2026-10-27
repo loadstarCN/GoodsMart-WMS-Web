@@ -12,23 +12,26 @@ export const useUseGoodsLocationSearch = () => {
     }[]
   });
 
+  let generation = 0;
   const fetchGoodsLocation = async (warehouse_id:number) => {
     if (!state.code.trim()) return;
     
+    const seq = ++generation;
     state.loading = true;
 
     const data = await httpRequest<PaginationData>('/api/warehouse/goods/locations/', {
         method: 'GET',
         params: {goods_code: state.code,all:true ,warehouse_id: warehouse_id},
         onSuccess: async(data) => {
+          if (seq !== generation) return;
           state.results = data.items;
           state.total  = data.total;
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            if (seq === generation) showToast(error.message, 'error')
         },
         onFinally: () => {
-          state.loading = false;
+          if (seq === generation) state.loading = false;
         }
     })
   };
@@ -37,6 +40,7 @@ export const useUseGoodsLocationSearch = () => {
     state.selected = [];
   };
   const resetState = () => {
+    generation++;
     state.code = '';
     state.results = [];
     state.total = 0;

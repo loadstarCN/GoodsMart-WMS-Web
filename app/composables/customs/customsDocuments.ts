@@ -106,6 +106,7 @@ export interface CustomsView {
   documents_outdated?: boolean
   /** 后端解析好的发票号 / 收货国 / 收货人（快照优先，没有则退回 DN） */
   invoice_number?: string | null
+  recipient_tax_defaults?: { tax_id?: string | null; tax_id_type?: string | null } | null
   recipient_country?: string | null
   consignee?: Record<string, any> | null
 }

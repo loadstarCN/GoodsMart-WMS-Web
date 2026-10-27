@@ -1,13 +1,27 @@
-<template>
-  <div>
-    
-  </div>
-</template>
-
-<script lang="ts" setup>
-
+<script setup lang="ts">
+import {useUseGoodsLocationSearch} from '~/composables/goods/useGoodsLocationSearch'
+const {t}=useI18n(), warehouse=useWarehouseStore(), router=useRouter(), {bizErrorMessage}=useBizError()
+const warehouseId=ref<number|null>(warehouse.currentWarehouse?.id||null),reason=ref(''),lines=ref<any[]>([]),saving=ref(false),error=ref('')
+const {state:search,fetchGoodsLocation,resetState}=useUseGoodsLocationSearch()
+const selected=computed({get:()=>search.selected.map((row:any)=>row.id),set:(ids:(number|string)[])=>{search.selected=search.results.filter(row=>ids.includes(row.id))}})
+const columns=computed(()=>[{key:'goods',label:t('nav.goods')},{key:'location',label:t('nav.location')},{key:'quantity',label:t('common.quantities.system'),type:'qty' as const}])
+const lineColumns=computed(()=>[...columns.value,{key:'actual',label:t('common.quantities.actual')},{key:'difference',label:t('operations.ui.variance'),type:'qty' as const},{key:'action',label:t('common.fields.action')}])
+const find=()=>{if(warehouseId.value)fetchGoodsLocation(warehouseId.value)}
+const add=()=>{for(const row of search.selected as any[]){if(!lines.value.some(line=>line.goods_id===row.goods_id&&line.location_id===row.location_id))lines.value.push({...row,actual_quantity:String(row.quantity)})}resetState()}
+watch(warehouseId,()=>{lines.value=[];resetState();error.value=''})
+onMounted(async()=>{await warehouse.fetchWarehouses();if(!warehouseId.value&&warehouse.warehouses.length===1)warehouseId.value=warehouse.warehouses[0]!.id})
+onBeforeUnmount(resetState)
+const save=async()=>{
+ if(saving.value)return
+ error.value=!warehouseId.value?t('common.validation.warehouse-required'):!lines.value.length?t('common.validation.goods-item-required'):''
+ if(error.value)return
+ if(lines.value.some(row=>String(row.actual_quantity).trim()===''||!Number.isSafeInteger(Number(row.actual_quantity))||Number(row.actual_quantity)<0)){error.value=t('common.validation.quantity-invalid');return}
+ saving.value=true
+ try{const result=await httpRequest<any>('/api/warehouse/adjustment/',{method:'POST',headers:warehouseHeaders(warehouseId.value),body:{warehouse_id:warehouseId.value,adjustment_reason:reason.value,details:lines.value.map(row=>({goods_id:Number(row.goods_id),location_id:Number(row.location_id),system_quantity:Number(row.quantity),actual_quantity:Number(row.actual_quantity)}))},onError:e=>error.value=bizErrorMessage(e)});if(result?.id)await router.push('/adjustment/detail/'+result.id)}finally{saving.value=false}
+}
+useHead({title:()=>t('adjustment.operations.add')})
 </script>
-
-<style>
-
+<template><div class="w-adjustment-form w-scope"><header><nav><NuxtLink class="w-back" to="/adjustment">{{t('nav.adjustment')}}</NuxtLink><span>/</span><span>{{t('adjustment.operations.add')}}</span></nav><h1>{{t('adjustment.operations.add')}}</h1></header><WCard flush><form @submit.prevent="save"><fieldset :disabled="saving"><WFormSection :title="t('recipient.ui.basic')"><WFormGrid><WField :span="4" :label="t('nav.warehouse')" required><WSelect v-model="warehouseId" :options="warehouse.warehouses.map(row=>({value:row.id,label:row.name}))" :placeholder="t('common.validation.warehouse-required')"/></WField><WField :label="t('adjustment.fields.reason')" optional><WTextarea v-model="reason" :rows="2"/></WField></WFormGrid></WFormSection><WFormSection :title="t('common.fields.items')"><div class="scope"><div class="results"><div class="search"><WInput v-model="search.code" type="search" :disabled="!warehouseId" :aria-label="t('common.search')" :placeholder="t('goods.fields.code')" @keydown.enter.prevent="find" @change="find"><template #prefix><WIcon name="search" :size="16"/></template></WInput></div><WTable v-model:selected="selected" :rows="search.results" :columns="columns" selectable :loading="search.loading" inset><template #cell-goods="{row}">{{row.goods?.name}}<small>{{row.goods?.code}}</small></template><template #cell-location="{row}">{{row.location?.code}}</template></WTable><div class="selection"><span>{{t('inventory.ui.selected',{count:selected.length})}}</span><WButton :disabled="!selected.length" @click="add">{{t('goods.operations.add')}}</WButton></div></div><WTable v-if="lines.length" :rows="lines" :columns="lineColumns"><template #cell-goods="{row}">{{row.goods?.name}}<small>{{row.goods?.code}}</small></template><template #cell-location="{row}">{{row.location?.code}}</template><template #cell-actual="{row}"><WInput v-model="row.actual_quantity" type="number" min="0" step="1" :aria-label="t('common.quantities.actual')+' '+row.goods?.code" class="quantity"/></template><template #cell-difference="{row}">{{row.actual_quantity!==''?Number(row.actual_quantity)-Number(row.quantity):'—'}}</template><template #cell-action="{row}"><WButton variant="text" size="sm" icon="trash" icon-only :aria-label="t('button.delete')" @click="lines=lines.filter(item=>item!==row)"/></template></WTable><WAlert v-if="error" tone="block" :title="error"/></div></WFormSection></fieldset><footer><WButton to="/adjustment" :disabled="saving">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="saving">{{t('button.save')}}</WButton></footer></form></WCard></div></template>
+<style scoped>
+.w-adjustment-form{display:flex;flex-direction:column;gap:16px}header{display:flex;flex-direction:column;gap:8px}nav{display:flex;gap:8px;font-size:13px;line-height:20px;color:var(--w-text-2)}.w-back{color:var(--w-text-3);text-decoration:none}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}fieldset{border:0;padding:0;margin:0;min-width:0}.scope{display:flex;flex-direction:column;gap:16px}.results{border:1px solid var(--w-border);border-radius:10px;overflow:hidden}.search{padding:12px 16px;border-bottom:1px solid var(--w-line)}small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3)}.scope :deep(.w-table){min-width:520px}.quantity{width:100px}.selection{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:12px 16px;border-top:1px solid var(--w-line)}footer{padding:16px 24px;border-top:1px solid var(--w-border);display:flex;justify-content:flex-end;gap:8px}
 </style>

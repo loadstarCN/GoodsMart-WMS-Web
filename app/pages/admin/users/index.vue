@@ -200,6 +200,7 @@ const validateForm = () => {
 };
 
 const submitForm = async () => {
+    if(saving.value)return;
     if (!validateForm()) return;
     saving.value = true;
     const body: Record<string, any> = {
@@ -229,159 +230,12 @@ const submitForm = async () => {
     });
 };
 
+
+const columns=computed(()=>[{key:'user',label:t('common.entities.user')},{key:'roles',label:t('staff.fields.roles')},{key:'status',label:t('common.fields.status')},{key:'created',label:t('common.dates.created')},{key:'actions',label:t('common.fields.action'),align:'right' as const}])
+const toggleRole=(role:string)=>{form.value.roles=form.value.roles.includes(role)?form.value.roles.filter(value=>value!==role):[...form.value.roles,role]}
+useHead({title:()=>t('admin.nav.users')})
 </script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-        </div>
-  </div>
-  <div class="row" v-else>
-        <div class="col-xl-12">
-            <div class="card custom-card">
-                <div class="card-header justify-content-between">
-                    <div class="card-title">
-                        {{ t('admin.users.title') }} <span class="badge bg-light text-default rounded ms-1 fs-12 align-middle">{{ pageData?.total }}</span>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2">
-                        <div class="d-flex flex-wrap gap-2">
-                            <button class="btn btn-primary btn-wave" @click="openCreateModal"><i class="ri-add-line me-1 fw-semibold align-middle"></i>{{ t('admin.users.operations.add') }}</button>
-                        </div>
-                        <div class="d-flex" role="search">
-                            <input class="form-control me-2" type="search" :placeholder="t('common.search-placeholder')" :aria-label="t('common.search')" v-model="keyword" style="width: auto;" @keyup.enter="search">
-                            <button class="btn btn-light" type="submit" @click="search">{{ t('common.search') }}</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div>
-                        <ul class="nav nav-pills nav-style-3 mb-3" role="tablist">
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'active' }" href="javascript:void(0);" @click="setActiveFilter(true)">{{ t('common.status.active') }}</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'inactive' }" href="javascript:void(0);" @click="setActiveFilter(false)">{{ t('common.status.inactive') }}</a>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table text-nowrap table-bordered table-hover">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.id') }}</th>
-                                    <th scope="col">{{ t('common.fields.name') }}</th>
-                                    <th scope="col">{{ t('common.fields.email') }}</th>
-                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('admin.users.company') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.fields.type') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('staff.fields.roles') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.created') }}</th>
-                                    <th scope="col">{{ t('common.fields.action') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="user in pageData?.items" :key="user?.id" class="invoice-list">
-                                    <td class="d-none d-md-table-cell">{{ user?.id }}</td>
-                                    <td>{{ user?.user_name }}</td>
-                                    <td>{{ user?.email }}</td>
-                                    <td class="d-none d-lg-table-cell">{{ user?.company_name || '-' }}</td>
-                                    <td class="d-none d-xxl-table-cell">
-                                      <span class="badge" :class="user?.type === 'user' ? 'bg-primary-transparent' : 'bg-info-transparent'">
-                                        {{ user?.type === 'user' ? t('admin.users.type-admin') : t('admin.users.type-staff') }}
-                                      </span>
-                                    </td>
-                                    <td class="d-none d-xxl-table-cell">
-                                      <span v-for="role in user?.roles" :key="role" class="badge bg-light text-default me-1" :title="role">{{ roleLabel(role) }}</span>
-                                    </td>
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(user?.created_at) }}</td>
-                                    <td>
-                                        <div class="hstack gap-2 fs-15">
-                                            <NuxtLink href="javascript:void(0);" @click="openEditModal(user)" class="btn btn-icon btn-sm btn-info-light product-btn" :title="t('admin.users.operations.edit')"><i class="ri-edit-line"></i></NuxtLink>
-                                            <template v-if="!isSelf(user)">
-                                                <NuxtLink href="javascript:void(0);" @click="inactiveItem(user.id)" class="btn btn-icon btn-sm btn-warning-light product-btn" v-if="activeTab === 'active'"><i class="ri-eye-off-line"></i></NuxtLink>
-                                                <NuxtLink href="javascript:void(0);" @click="activeItem(user.id)" class="btn btn-icon btn-sm btn-warning-light product-btn" v-else><i class="ri-eye-line"></i></NuxtLink>
-                                                <NuxtLink href="javascript:void(0);" @click="deleteItem(user.id)" class="btn btn-icon btn-sm btn-danger-light product-btn"><i class="ri-delete-bin-line"></i></NuxtLink>
-                                            </template>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="text-center p-5 border border-top-0" v-if="pageData?.items?.length==0">{{ t('common.status.nothing-show')}}</div>
-                    </div>
-                </div>
-                <div class="card-footer border-top-0">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap">
-                        <template v-if="pageData">
-                            <Pagination :page-size=pageData?.per_page
-                                :current-page=pageData?.page
-                                :total=pageData?.total
-                                :params=$route.query
-                                v-if="pageData.pages > 1"></Pagination>
-                        </template>
-                    </div>
-                </div>
-            </div>
-        </div>
-      </div>
-
-  <!-- ==================== Create / Edit Modal ==================== -->
-  <Teleport to="body">
-    <div class="modal fade" :class="{ show: showModal }" :style="{ display: showModal ? 'block' : 'none' }"
-      tabindex="-1" role="dialog">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h6 class="modal-title">{{ editingId ? t('admin.users.operations.edit') : t('admin.users.operations.add') }}</h6>
-            <button type="button" class="btn-close" @click="showModal = false"></button>
-          </div>
-          <div class="modal-body">
-            <form @submit.prevent="submitForm" autocomplete="off">
-              <div class="mb-3">
-                <label class="form-label">{{ t('common.fields.name') }} <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" v-model="form.user_name" :class="{'is-invalid': formErrors.user_name}" :placeholder="t('common.placeholders.name')">
-                <div class="invalid-feedback">{{ formErrors.user_name }}</div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">{{ t('common.fields.email') }} <span class="text-danger">*</span></label>
-                <input type="email" class="form-control" v-model="form.email" :class="{'is-invalid': formErrors.email}" :placeholder="t('common.placeholders.email')">
-                <div class="invalid-feedback">{{ formErrors.email }}</div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">{{ t('common.fields.password') }} <span class="text-danger" v-if="!editingId">*</span></label>
-                <input type="password" class="form-control" v-model="form.password" :class="{'is-invalid': formErrors.password}"
-                  :placeholder="editingId ? t('admin.users.password-keep-hint') : t('common.placeholders.password')" autocomplete="new-password">
-                <div class="invalid-feedback">{{ formErrors.password }}</div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">{{ t('staff.fields.roles') }} <span class="text-danger">*</span></label>
-                <VueMultiselect :show-labels="false" :options="roleOptions" :custom-label="roleLabel" :multiple="true" v-model="form.roles"></VueMultiselect>
-                <div v-if="formErrors.roles" class="invalid-feedback d-block">{{ formErrors.roles }}</div>
-              </div>
-              <div class="mb-1">
-                <label class="form-label">{{ t('common.fields.status') }}</label>
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="user-is-active" v-model="form.is_active">
-                  <label class="form-check-label" for="user-is-active">{{ form.is_active ? t('common.status.active') : t('common.status.inactive') }}</label>
-                </div>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-light" @click="showModal = false">{{ t('button.cancel') }}</button>
-            <button type="button" class="btn btn-primary" @click="submitForm" :disabled="saving">
-              <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
-              {{ t('button.save') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-backdrop fade show" v-if="showModal" @click="showModal = false"></div>
-  </Teleport>
-</template>
-
-<style scoped></style>
+<template><div class="w-admin-users w-scope"><header><div><h1>{{t('admin.nav.users')}}</h1><span>{{pageData?.total}}</span></div><WButton variant="primary" @click="openCreateModal">{{t('admin.users.operations.add')}}</WButton></header><WCard flush><WTabs :items="['active','inactive'].map(key=>({key,label:t('common.status.'+key)}))" :label="t('common.fields.status')" :model-value="activeTab" inset @update:model-value="value=>setActiveFilter(value==='active')"/><form class="filters" @submit.prevent="search"><WInput v-model="keyword" type="search" :aria-label="t('common.search')" :placeholder="t('common.search-placeholder')"><template #prefix><WIcon name="search" :size="16"/></template></WInput><WButton type="submit">{{t('common.search')}}</WButton></form><WTable :columns="columns" :rows="pageData?.items||[]" :loading="loading" inset><template #cell-user="{row}"><div class="user"><span class="avatar">{{row.user_name?.slice(0,1).toUpperCase()}}</span><div><strong>{{row.user_name}}</strong><small>{{row.email}}</small></div></div></template><template #cell-roles="{row}"><span v-for="role in row.roles||[]" :key="role" class="role">{{roleLabel(role)}}</span></template><template #cell-status="{row}"><WStatus :tone="row.is_active?'ok':'none'">{{t('common.status.'+(row.is_active?'active':'inactive'))}}</WStatus></template><template #cell-created="{row}">{{$dayjs(row.created_at,'YYYY-MM-DD HH:mm')}}</template><template #cell-actions="{row}"><div class="actions"><WButton size="sm" @click="openEditModal(row)">{{t('button.edit')}}</WButton><template v-if="!isSelf(row)"><WButton size="sm" @click="row.is_active?inactiveItem(row.id):activeItem(row.id)">{{t('common.status.'+(row.is_active?'inactive':'active'))}}</WButton><WButton size="sm" variant="danger" @click="deleteItem(row.id)">{{t('button.delete')}}</WButton></template></div></template></WTable><footer><WPagination :page="pageData?.page||1" :page-size="pageData?.per_page||20" :total="pageData?.total" show-total @update:page="value=>router.push({query:{...route.query,page:value}})"/></footer></WCard><WDrawer v-model:open="showModal" :title="t(editingId?'admin.users.operations.edit':'admin.users.operations.add')" width="480px" :closable="!saving" :close-on-backdrop="!saving"><form @submit.prevent="submitForm"><fieldset :disabled="saving"><WField :label="t('common.fields.name')" required :error="formErrors.user_name"><WInput v-model="form.user_name"/></WField><WField :label="t('common.fields.email')" required :error="formErrors.email"><WInput v-model="form.email" type="email"/></WField><WField :label="t('common.fields.password')" :required="!editingId" :error="formErrors.password" :hint="editingId?t('admin.users.password-keep-hint'):undefined"><WInput v-model="form.password" type="password" autocomplete="new-password"/></WField><WField :label="t('staff.fields.roles')" required :error="formErrors.roles"><div class="role-options"><WCheckbox v-for="role in roleOptions" :key="role" :model-value="form.roles.includes(role)" @update:model-value="toggleRole(role)">{{roleLabel(role)}}</WCheckbox></div></WField><WField :label="t('common.fields.status')"><WSwitch v-model="form.is_active" :disabled="!!editingId&&isSelf({id:editingId})">{{t('common.status.'+(form.is_active?'active':'inactive'))}}</WSwitch></WField></fieldset></form><template #footer><WButton :disabled="saving" @click="showModal=false">{{t('button.cancel')}}</WButton><WButton variant="primary" :loading="saving" @click="submitForm">{{t('button.save')}}</WButton></template></WDrawer></div></template>
+<style scoped>
+.w-admin-users{display:flex;flex-direction:column;gap:16px}header,header>div{display:flex;gap:12px;align-items:center}header{justify-content:space-between;flex-wrap:wrap}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}header span{font-size:13px;color:var(--w-text-2)}.filters{display:flex;gap:8px;padding:12px 20px;border-bottom:1px solid var(--w-line)}.filters>.w-input{width:300px;max-width:100%}.w-admin-users :deep(.w-table){min-width:850px}.w-admin-users :deep(.w-table td){padding-top:12px;padding-bottom:12px;vertical-align:top}.user{display:flex;align-items:center;gap:12px}.avatar{width:32px;height:32px;border-radius:50%;background:#EDEFF3;color:var(--w-text-3);display:grid;place-items:center;flex:none}.user strong{font-size:14px;font-weight:500;line-height:20px}small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:2px}.role{display:block;font-size:13px;line-height:20px}.actions{display:flex;gap:8px;justify-content:flex-end}footer{padding:16px 20px;border-top:1px solid var(--w-border)}fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px;min-width:0}.role-options{display:flex;flex-wrap:wrap;gap:12px 16px}
+</style>

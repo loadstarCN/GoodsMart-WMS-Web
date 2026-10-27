@@ -104,6 +104,7 @@ const iconSize = computed(() => (props.size === 'sm' ? 14 : 16))
 .w-btn--secondary {
   background: var(--w-surface);
   border-color: var(--w-border-strong);
+  box-shadow: var(--w-shadow-control);
   color: var(--w-text-1);
 }
 .w-btn--secondary:hover:not(:disabled) { background: var(--w-surface-2); color: var(--w-text-1); }
@@ -132,12 +133,14 @@ const iconSize = computed(() => (props.size === 'sm' ? 14 : 16))
 /* 禁用：灰底灰字；加载中保持原来的颜色，只是不能再点 */
 .w-btn:disabled:not(.is-loading) {
   cursor: not-allowed;
+  box-shadow: none;
   background: var(--w-disabled-bg);
   border-color: var(--w-disabled-border);
   color: var(--w-disabled-text);
 }
 .w-btn--text:disabled:not(.is-loading) { background: transparent; border-color: transparent; }
 .w-btn.is-loading { cursor: progress; }
+.w-btn:focus-visible { box-shadow: var(--w-focus-ring); }
 
 .w-btn__spinner {
   width: 14px;

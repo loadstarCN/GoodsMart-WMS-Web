@@ -138,6 +138,7 @@ const createAdminStaff = async (companyId: number): Promise<boolean> => {
 };
 
 const submitForm = async () => {
+  if(loading.value)return;
   if (!validate()) return;
   loading.value = true;
   try {
@@ -163,109 +164,5 @@ onMounted(() => {
   fetchRoles();
 });
 
-</script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="row">
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-header justify-content-between">
-          <div class="card-title">{{ t('admin.tenants.operations.add') }}</div>
-          <NuxtLink to="/admin/tenants/" class="btn btn-light btn-wave">
-            <i class="ri-arrow-left-line me-1"></i>{{ t('button.cancel') }}
-          </NuxtLink>
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="submitForm">
-            <div class="alert alert-warning" v-if="createdCompanyId">
-              <i class="ri-error-warning-line me-1"></i>{{ t('admin.tenants.admin.company-created-retry') }}
-            </div>
-            <fieldset :disabled="!!createdCompanyId">
-            <div class="row gy-3">
-              <!-- Name -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.name') }} <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" v-model="itemData.name" :class="{'is-invalid': errors.name}" :placeholder="t('common.placeholders.name')">
-                <div class="invalid-feedback">{{ errors.name }}</div>
-              </div>
-              <!-- Email -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.email') }} <span class="text-danger">*</span></label>
-                <input type="email" class="form-control" v-model="itemData.email" :class="{'is-invalid': errors.email}" :placeholder="t('common.placeholders.email')">
-                <div class="invalid-feedback">{{ errors.email }}</div>
-              </div>
-              <!-- Phone -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.phone') }}</label>
-                <input type="text" class="form-control" v-model="itemData.phone" :placeholder="t('common.placeholders.phone')">
-              </div>
-              <!-- Address -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.address') }}</label>
-                <input type="text" class="form-control" v-model="itemData.address" :placeholder="t('common.placeholders.address')">
-              </div>
-              <!-- Zip Code -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.zip') }}</label>
-                <input type="text" class="form-control" v-model="itemData.zip_code" :placeholder="t('common.placeholders.zip')">
-              </div>
-              <!-- Currency -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.currency') }}</label>
-                <input type="text" class="form-control" v-model="itemData.default_currency">
-              </div>
-              <!-- Expired At -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('admin.tenants.fields.expired-at') }}</label>
-                <input type="date" class="form-control" v-model="itemData.expired_at">
-              </div>
-            </div>
-            </fieldset>
-
-            <!-- Initial Admin -->
-            <div class="border-top border-block-start-dashed mt-4 pt-3">
-              <p class="fs-15 fw-semibold mb-1">{{ t('admin.tenants.admin.title') }}</p>
-              <p class="text-muted fs-12 mb-3">{{ t('admin.tenants.admin.hint') }}</p>
-              <div class="row gy-3">
-                <div class="col-xl-6">
-                  <label class="form-label">{{ t('common.fields.name') }}</label>
-                  <input type="text" class="form-control" v-model="adminData.user_name" :class="{'is-invalid': errors.admin_user_name}" :placeholder="t('common.placeholders.name')" autocomplete="off">
-                  <div class="invalid-feedback">{{ errors.admin_user_name }}</div>
-                </div>
-                <div class="col-xl-6">
-                  <label class="form-label">{{ t('common.fields.email') }}</label>
-                  <input type="email" class="form-control" v-model="adminData.email" :class="{'is-invalid': errors.admin_email}" :placeholder="t('common.placeholders.email')" autocomplete="off">
-                  <div class="invalid-feedback">{{ errors.admin_email }}</div>
-                </div>
-                <div class="col-xl-6">
-                  <label class="form-label">{{ t('common.fields.password') }}</label>
-                  <input type="password" class="form-control" v-model="adminData.password" :class="{'is-invalid': errors.admin_password}" :placeholder="t('common.placeholders.password')" autocomplete="new-password">
-                  <div class="invalid-feedback">{{ errors.admin_password }}</div>
-                </div>
-                <div class="col-xl-6">
-                  <label class="form-label">{{ t('staff.fields.roles') }}</label>
-                  <select class="form-select" v-model="adminData.role" :class="{'is-invalid': errors.admin_role}">
-                    <option value="">{{ t('common.select-placeholder') }}</option>
-                    <option v-for="role in roleOptions" :key="role" :value="role">{{ roleLabel(role) }}</option>
-                  </select>
-                  <div class="invalid-feedback">{{ errors.admin_role }}</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <button type="submit" class="btn btn-primary btn-wave" :disabled="loading">
-                <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
-                {{ t('button.submit') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<style scoped></style>
+useHead({title:()=>t('admin.tenants.operations.add')})
+</script><template><div class="w-tenant-form w-scope"><header><h1>{{t('admin.tenants.operations.add')}}</h1></header><WCard flush><form @submit.prevent="submitForm"><WAlert v-if="createdCompanyId" tone="warn" :title="t('admin.tenants.admin.company-created-retry')"/><fieldset :disabled="loading||!!createdCompanyId"><WFormSection :title="t('common.fields.name')"><div class="fields"><WField :label="t('common.fields.name')" :error="errors.name" required><WInput v-model="itemData.name" type="text"/></WField><WField :label="t('common.fields.email')" :error="errors.email" required><WInput v-model="itemData.email" type="email"/></WField><WField :label="t('common.fields.phone')" :error="errors.phone"><WInput v-model="itemData.phone" type="tel"/></WField><WField :label="t('common.fields.zip')" :error="errors.zip_code"><WInput v-model="itemData.zip_code" type="text"/></WField><WField :label="t('common.fields.address')" :error="errors.address"><WInput v-model="itemData.address" type="text"/></WField></div></WFormSection><WFormSection :title="t('admin.tenants.fields.expired-at')"><div class="fields"><WField :label="t('admin.tenants.fields.expired-at')"><WInput v-model="itemData.expired_at" type="date"/></WField><WField :label="t('common.fields.currency')"><WInput v-model="itemData.default_currency" maxlength="3"/></WField></div></WFormSection></fieldset><WFormSection :title="t('admin.tenants.admin.title')"><p>{{t('admin.tenants.admin.hint')}}</p><div class="fields"><WField :label="t('common.fields.name')" :error="errors.admin_user_name"><WInput v-model="adminData.user_name" type="text" :disabled="loading"/></WField><WField :label="t('common.fields.email')" :error="errors.admin_email"><WInput v-model="adminData.email" type="email" :disabled="loading"/></WField><WField :label="t('common.fields.password')" :error="errors.admin_password"><WInput v-model="adminData.password" type="password" :disabled="loading"/></WField><WField :label="t('staff.fields.roles')" :error="errors.admin_role"><WSelect v-model="adminData.role" :options="roleOptions.map(value=>({value,label:roleLabel(value)}))" :disabled="loading"/></WField></div></WFormSection><footer><WButton to="/admin/tenants">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="loading">{{t('button.save')}}</WButton></footer></form></WCard></div></template><style scoped>.w-tenant-form{display:flex;flex-direction:column;gap:16px}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px;max-width:800px}fieldset{border:0;padding:0;margin:0;min-width:0}p{font-size:13px;line-height:20px;color:var(--w-text-3);margin:0 0 12px}footer{display:flex;gap:8px;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--w-border)}@media(max-width:700px){.fields{grid-template-columns:minmax(0,1fr)}}</style>

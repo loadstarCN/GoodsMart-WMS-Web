@@ -35,7 +35,7 @@ export interface NavGroup {
 
 /** 待上架：库存页的「待上架」页签（独立的上架页 PutawayQueue 做好后改到新路由，权限改为 putaway_read） */
 const isPendingPutaway = (route: RouteLocationNormalizedLoaded) =>
-  route.path.replace(/\/+$/, '') === '/inventory' && route.query.pending_putaway === '1'
+  route.path.replace(/\/+$/, '') === '/inventory' && ['1','true'].includes(String(route.query.pending_putaway))
 
 export const WMS_NAV: NavGroup[] = [
   {
@@ -80,15 +80,15 @@ export const WMS_NAV: NavGroup[] = [
     ],
   },
   {
-    // 报表 6 项的页面都还没做（report_read / freight_read 是新权限，后端也还没有）
+    // 已实现的库存报表沿用 inventory_read；其余报表待对应接口和页面完成后开放。
     key: 'reports',
     label: 'shell.nav.groups.reports',
     items: [
-      { key: 'report-inbound', label: 'shell.nav.report-inbound', icon: 'report-inbound', to: '/reports/inbound', permission: 'report_read', ready: false },
-      { key: 'report-inventory', label: 'shell.nav.report-inventory', icon: 'report-inventory', to: '/reports/inventory', permission: 'report_read', ready: false },
-      { key: 'report-outbound', label: 'shell.nav.report-outbound', icon: 'report-outbound', to: '/reports/outbound', permission: 'report_read', ready: false },
-      { key: 'report-operator', label: 'shell.nav.report-operator', icon: 'report-operator', to: '/reports/operator', permission: 'report_read', ready: false },
-      { key: 'report-stock-summary', label: 'shell.nav.report-stock-summary', icon: 'report-stock-summary', to: '/reports/stock-summary', permission: 'report_read', ready: false },
+      { key: 'report-inbound', label: 'shell.nav.report-inbound', icon: 'report-inbound', to: '/reports/inbound', permission: 'asn_read', ready: true },
+      { key: 'report-inventory', label: 'shell.nav.report-inventory', icon: 'report-inventory', to: '/reports/inventory', permission: 'inventory_read', ready: true },
+      { key: 'report-outbound', label: 'shell.nav.report-outbound', icon: 'report-outbound', to: '/reports/outbound', permission: 'dn_read', ready: true },
+      { key: 'report-operator', label: 'shell.nav.report-operator', icon: 'report-operator', to: '/reports/operator', permission: ['picking_read','packing_read'], ready: true },
+      { key: 'report-stock-summary', label: 'shell.nav.report-stock-summary', icon: 'report-stock-summary', to: '/reports/stock-summary', permission: 'inventory_read', ready: true },
       { key: 'freight', label: 'shell.nav.freight', icon: 'freight', to: '/reports/freight', permission: 'freight_read', ready: false },
     ],
   },

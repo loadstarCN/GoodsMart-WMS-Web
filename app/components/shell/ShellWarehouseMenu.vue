@@ -20,7 +20,10 @@ const zoneOf = (warehouse: WarehouseSimple) => (warehouse.timezone ? timeZoneDes
 const select = (warehouse: WarehouseSimple | null) => {
   if ((warehouse?.id ?? null) === (current.value?.id ?? null)) return
   warehouseStore.selectWarehouse(warehouse)
-  location.reload()
+  const target = new URL(location.href)
+  target.searchParams.delete('warehouse_id')
+  target.searchParams.delete('page')
+  location.assign(target.href)
 }
 </script>
 

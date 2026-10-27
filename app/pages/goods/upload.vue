@@ -1,204 +1,87 @@
-<script lang="ts" setup>
-definePageMeta({
-})
-
-// 获取国际化方法
-const { t } = useI18n()
-// 导入失败按后端业务码显示三语文案（带行号等 details 时显示到具体行）；没有对应文案时显示后端 message
-const { bizErrorMessage } = useBizError()
-
-// 计算属性转换
-const dataToPass = computed(() => ({
-  current: t('nav.goods'),
-  list: [t('nav.warehouse'), t('nav.goods')]
-}))
-
-const staffStore = useStaffStore()
-
-const is_end = ref(false)
-const uploading = ref(false)
-const result = ref<any>("")
-const selectedOption = ref<'skip' | 'active' | 'append' | 'override'>('skip')
-
-// 下载模板：后端 GET /goods/bulk_upload/template（UTF-8 带 BOM 的 CSV，表头与导入读的列一致，带一行示例）
-const downloadingTemplate = ref(false)
-const downloadTemplate = async () => {
-  if (downloadingTemplate.value) return
-  downloadingTemplate.value = true
-  try {
-    await downloadFile('/api/warehouse/goods/bulk_upload/template', { method: 'GET' }, 'Goods_template.csv')
-  } catch (error) {
-    showToast(bizErrorMessage(error as HttpRequestError), 'error')
-  } finally {
-    downloadingTemplate.value = false
-  }
+<script setup lang="ts">
+const {t,locale}=useI18n(),staff=useStaffStore(),{bizErrorMessage}=useBizError()
+useHead({title:()=>t('goods.files.import-title')})
+const file=shallowRef<File|null>(null),mode=ref('skip'),encoding=ref('auto'),sheet=ref(''),sheets=ref<string[]>([])
+const busy=ref(false),error=ref(''),preview=ref<any>(null),result=ref<any>(null),history=ref<any[]>([]),previewPage=ref(1)
+let generation=0
+const invalidate=()=>{generation++;preview.value=null;result.value=null;previewPage.value=1}
+watch([mode,encoding,sheet],invalidate)
+const selectFile=(event:Event)=>{file.value=(event.target as HTMLInputElement).files?.[0]||null;sheets.value=[];sheet.value='';invalidate()}
+const form=()=>{const value=new FormData();if(file.value)value.append('file',file.value);value.append('company_id',String(staff.staffInfo?.company?.id||''));value.append('overwrite',mode.value);value.append('encoding',encoding.value);value.append('lang',locale.value);if(sheet.value)value.append('sheet',sheet.value);return value}
+const loadHistory=async()=>{const data=await httpRequest<PaginationData>('/api/warehouse/goods/imports',{params:{per_page:10}});history.value=data?.items||[]}
+const check=async()=>{
+ if(busy.value||!file.value)return
+ busy.value=true;error.value='';preview.value=null;result.value=null
+ const seq=++generation
+ try{
+  if(!staff.staffInfo?.company?.id)await staff.getCurrentStaffInfo()
+  if(!staff.staffInfo?.company?.id){error.value=t('goods.tips.company-missing');return}
+  const body=form();body.append('dry_run','true')
+  const data=await httpRequest<any>('/api/warehouse/goods/bulk_upload',{method:'POST',body,onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
+  if(seq!==generation||!data)return
+  preview.value=data;sheets.value=data.file?.sheets||[];previewPage.value=1
+ }finally{busy.value=false}
 }
-
-
-// 新增文件对象存储
-const selectedFile = ref<File | null>(null)
-
-// 改造后的文件处理方法
-const handleFileSelect = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  if (input.files?.length) {
-    selectedFile.value = input.files[0] ?? null;
-  }
+const apply=async()=>{
+ if(busy.value||!preview.value?.import_token)return
+ busy.value=true;error.value=''
+ try{const body=form();body.append('import_token',preview.value.import_token)
+  const data=await httpRequest<any>('/api/warehouse/goods/bulk_upload',{method:'POST',body,onError:err=>{error.value=bizErrorMessage(err);if(err.status===409)preview.value=null}})
+  if(data){result.value=data;preview.value=null;await loadHistory()}
+ }finally{busy.value=false}
 }
-
-// 新增上传方法
-const triggerUpload = async () => {
-  if (!selectedFile.value) {
-    showToast(t('common.validation.file-required'), 'error');
-    return
-  }
-
-  if (!selectedFile.value.name.endsWith('.csv')) {
-    showToast(t('common.validation.csv-only'), 'error');
-    return
-  }
-
-  // 公司信息缺失（员工信息还没读到 / 已过期）：先重新读取一次；仍没有时提示，不进入上传中状态
-  if (!staffStore.staffInfo?.company?.id) {
-    await staffStore.getCurrentStaffInfo();
-  }
-  const companyId = staffStore.staffInfo?.company?.id;
-  if (!companyId) {
-    showToast(t('goods.tips.company-missing'), 'error');
-    return;
-  }
-
-  uploading.value = true;
-
-  const formData = new FormData();
-  formData.append('file', selectedFile.value);
-  // 覆盖策略
-  formData.append('overwrite', selectedOption.value);
-  formData.append('company_id', String(companyId));
-
-  await httpRequest('/api/warehouse/goods/bulk_upload', {
-    method: 'POST',
-    body: formData,
-    onSuccess: async (data) => {
-      is_end.value = true;
-      const processed = processedCount(data);
-      result.value = processed !== null ? t('goods.import.processed', { count: processed }) : (data?.message || '');
-    },
-    onError: (error) => {
-      showToast(bizErrorMessage(error), 'error');
-    },
-    onFinally: () => {
-      uploading.value = false;
-      selectedFile.value = null; // 清空已选文件
-    }
-  })
-}
-
-/**
- * 导入成功处理了几条：后端给 processed 时用它；否则从英文 message（Bulk upload successful. Processed N goods.）里取；
- * 都没有时 null（原样显示 message）
- */
-const processedCount = (data: any): number | null => {
-  if (data?.processed !== undefined && data?.processed !== null && Number.isFinite(Number(data.processed))) {
-    return Number(data.processed);
-  }
-  const match = /Processed (\d+) goods/i.exec(String(data?.message || ''));
-  return match ? Number(match[1]) : null;
-}
-
-const resetToUpload = () => {
-  result.value = '';
-  is_end.value = false;
-}
-
-
+const download=async(url:string,name:string,init:RequestInit={})=>{try{await downloadFile(url,init,name)}catch(err){error.value=bizErrorMessage(err as HttpRequestError)}}
+const template=(format:string)=>download(`/api/warehouse/goods/bulk_upload/template?file_format=${format}&lang=${locale.value}`,`goods-template.${format}`)
+const rows=computed(()=>preview.value?.rows?.slice((previewPage.value-1)*50,previewPage.value*50)||[])
+const columns=computed(()=>[{key:'row',label:t('goods.files.rows'),type:'qty' as const},{key:'code',label:t('goods.fields.code')},{key:'name',label:t('goods.fields.name'),wrap:true},{key:'action',label:t('goods.files.action')},{key:'changes',label:t('goods.files.result'),wrap:true}])
+const historyColumns=computed(()=>[{key:'file_name',label:t('goods.files.file'),wrap:true},{key:'created_at',label:t('common.dates.created')},{key:'status',label:t('common.fields.status')},{key:'created',label:t('goods.files.create'),type:'qty' as const},{key:'updated',label:t('goods.files.update'),type:'qty' as const},{key:'errors',label:t('goods.files.errors'),type:'qty' as const},{key:'actions',label:t('common.fields.action')}])
+onMounted(loadHistory)
+onBeforeUnmount(()=>{generation++})
 </script>
-
-
 <template>
-  <!-- {{ searchSelectedValue }} -->
-    <PageHeader :propData="dataToPass" />
-
-    <!-- Start:: row-1 -->
-    <div class="row">
-        <div class="col">
-          <div class="d-flex justify-content-center mb-4" v-if="uploading">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-                </div>
-            </div>
-          <div class="card custom-card">
-            <div class="card-body">
-              <template v-if="!is_end">
-                  <div class="mb-3 mt-3 row">
-                    <div class="col-md-12">
-                        <label for="formFile" class="form-label">{{t('upload.upload-csv')}}</label>
-                        <div class="input-group mb-2">
-                          <input class="form-control" type="file" id="formFile" @change="handleFileSelect">
-                          <!-- 上传触发按钮 -->
-                          <button 
-                            class="btn btn-primary" 
-                            type="button"
-                            :disabled="!selectedFile || uploading"
-                            @click="triggerUpload"
-                          >
-                            <span v-if="uploading" class="spinner-border spinner-border-sm"></span>
-                            {{ uploading ? t('upload.button.uploading') : t('upload.button.upload') }}
-                          </button>
-                        </div>
-                        
-                        <div class="d-flex align-items-center flex-wrap">
-                          <div class="mr-2">
-                              <p class="text-muted m-0">{{t('upload.duplicate-record')}} :</p>
-                          </div>
-                          <div class="form-check form-check-inline">
-                              <input class="form-check-input" type="radio" name="duplicateHandling" id="skipOption"
-                                  value="skip" v-model="selectedOption">
-                              <label class="form-check-label" for="inlineRadio1">{{t('upload.skip')}}<HelpIcon :title="t('upload.skip-tips')" /></label>
-                          </div>
-                          <div class="form-check form-check-inline">
-                              <input class="form-check-input" type="radio" name="duplicateHandling" id="activeOption"
-                                  value="active" v-model="selectedOption">
-                              <label class="form-check-label" for="inlineRadio2">{{t('upload.active')}}<HelpIcon :title="t('upload.active-tips')" /></label>
-                          </div>
-                          <div class="form-check form-check-inline">
-                              <input class="form-check-input" type="radio" name="duplicateHandling" id="appendOption"
-                                  value="append" v-model="selectedOption">
-                              <label class="form-check-label" for="inlineRadio2">{{t('upload.append')}}<HelpIcon :title="t('upload.append-tips')" /></label>
-                          </div>
-                          <div class="form-check form-check-inline">
-                              <input class="form-check-input" type="radio" name="duplicateHandling" id="overrideOption" value="override" v-model="selectedOption">
-                              <label class="form-check-label" for="inlineRadio3">{{t('upload.overwrite')}}<HelpIcon :title="t('upload.overwrite-tips')" /></label>
-                          </div>
-                        </div>
-
-                        <div id="emailHelp" class="form-text">{{t('upload.upload-csv-description')}}<a href="#" @click.prevent="downloadTemplate" class="text-decoration-none text-primary ms-2">[{{t('upload.download-template')}} (.CSV)]</a></div>
-                    </div>
-                  </div>
-                
-            </template>
-              
-              <template v-else>              
-              <div class="text-center px-5 pb-0 mt-5 mb-5">
-                    <svg class="custom-alert-icon svg-secondary" xmlns="http://www.w3.org/2000/svg"
-                        height="3rem" viewBox="0 0 24 24" width="3rem" fill="#000000">
-                        <path d="M0 0h24v24H0z" fill="none" />
-                        <path
-                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                    </svg>
-                    <h5>{{ t('goods.import.success-title') }}</h5>
-                    <p class="">{{result}}</p>
-                    <div class="">
-                        <button class="btn btn-sm btn-primary m-1" @click="resetToUpload">{{ t('goods.import.upload-another') }}</button>
-                        <NuxtLink class="btn btn-sm btn-info m-1" :to="`/goods/`">{{ t('goods.import.back-to-list') }}</NuxtLink>
-                    </div>
-                </div>
-              </template>
-
-            </div>
-          </div>
-        </div>
-    </div>
+ <div class="w-import w-scope">
+  <header><nav><NuxtLink class="w-breadcrumb-link" to="/goods">{{t('nav.goods')}}</NuxtLink><span>/</span>{{t('goods.ui.import')}}</nav><h1>{{t('goods.files.import-title')}}</h1></header>
+  <WAlert v-if="error" tone="block" :title="error" />
+  <div class="w-import__card">
+   <WFormSection :title="'① '+t('goods.files.template')"><div class="w-import__templates"><WButton @click="template('xlsx')">Excel (.xlsx)</WButton><WButton @click="template('csv')">CSV</WButton></div></WFormSection>
+   <WFormSection :title="'② '+t('goods.files.upload')"><WFormGrid>
+    <label class="w-import__upload"><WIcon name="upload" :size="24" /><span>{{file?.name||t('goods.files.upload')}}</span><small>Excel (.xlsx) / CSV</small><input type="file" accept=".csv,.xlsx" :disabled="busy" :aria-label="t('goods.files.upload')" @change="selectFile"></label>
+    <WField :label="t('goods.files.encoding')" :span="6"><WSelect v-model="encoding" :disabled="busy" :options="[{value:'auto',label:'Auto'},{value:'utf-8',label:'UTF-8'},{value:'shift_jis',label:'Shift_JIS'}]" /></WField>
+    <WField v-if="sheets.length>1" :label="t('goods.files.sheet')" :span="6"><WSelect v-model="sheet" :disabled="busy" :options="sheets.map(value=>({value,label:value}))" :placeholder="sheets[0]" /></WField>
+   </WFormGrid></WFormSection>
+   <WFormSection :title="'③ '+t('goods.files.strategy')"><div class="w-import__modes"><label v-for="value in ['skip','append','override','active']" :key="value" :class="{'is-selected':mode===value}"><input v-model="mode" type="radio" name="mode" :value="value" :disabled="busy"><span>{{t('goods.files.'+value)}}</span></label></div></WFormSection>
+   <footer class="w-import__footer"><WButton variant="primary" :loading="busy" :disabled="!file" @click="check">{{t('goods.files.preview')}}</WButton></footer>
+  </div>
+  <WCard v-if="preview" :title="t('goods.files.result')" flush>
+   <div class="w-import__summary"><span v-for="(count,key) in preview.summary" :key="key">{{t('goods.files.'+key)}} <b>{{count}}</b></span></div>
+   <WTable :rows="rows" :columns="columns" row-key="row" inset><template #cell-action="{row}"><WStatus :tone="row.action==='error'?'bad':row.action==='skip'?'none':'ok'">{{t('goods.files.'+row.action)}}</WStatus></template><template #cell-changes="{row}"><div v-for="item in row.errors||[]" :key="item.field" class="w-import__error">{{item.message||item.reason}}</div><div v-for="change in row.changes||[]" :key="change.field">{{change.field}}: {{change.from}} → {{change.to}}</div></template></WTable>
+   <div class="w-import__pager"><WPagination v-model:page="previewPage" :total="preview.rows.length" :page-size="50" show-total /></div>
+   <footer class="w-import__footer"><WButton v-if="preview.summary.error" :disabled="busy" @click="download('/api/warehouse/goods/bulk_upload/errors','goods-errors.'+(preview.file.format||'csv'),{method:'POST',body:form()})">{{t('goods.files.error-file')}}</WButton><WButton variant="primary" :loading="busy" :disabled="!(preview.summary.create+preview.summary.update+preview.summary.unchanged+preview.summary.skip)" @click="apply">{{t('goods.files.confirm-import')}}</WButton></footer>
+  </WCard>
+  <WAlert v-if="result" :tone="result.status==='failed'?'block':result.status==='partial'?'warn':'info'" :title="t('goods.files.'+result.status)"><template #actions><WButton :to="'/goods?import_id='+result.import_id">{{t('nav.goods')}}</WButton></template></WAlert>
+  <WCard :title="t('goods.files.history')" flush><WTable :rows="history" :columns="historyColumns" inset><template #cell-created_at="{row}">{{$dayjs(row.created_at)}}</template><template #cell-status="{row}"><WStatus :tone="row.status==='failed'?'bad':row.status==='partial'?'warn':'ok'">{{t('goods.files.'+row.status)}}</WStatus></template><template #cell-actions="{row}"><WButton v-if="row.has_error_file" size="sm" @click="download('/api/warehouse/goods/imports/'+row.id+'/errors',row.error_file_name)">{{t('goods.files.error-file')}}</WButton><WButton v-if="row.has_original_file" size="sm" variant="text" @click="download('/api/warehouse/goods/imports/'+row.id+'/file',row.file_name)">{{t('goods.files.file')}}</WButton></template></WTable></WCard>
+ </div>
 </template>
-
-<style scoped></style>
+<style scoped>
+.w-import { display:flex; flex-direction:column; gap:16px; }
+.w-import header { display:flex; flex-direction:column; gap:8px; }
+.w-import nav { display:flex; gap:8px; font-size:13px; line-height:20px; color:var(--w-text-2); }
+.w-breadcrumb-link { color:var(--w-text-3); }
+.w-import h1 { margin:0; font-size:24px; line-height:32px; font-weight:600; }
+.w-import__card { background:var(--w-surface); border:1px solid var(--w-border); border-radius:10px; }
+.w-import__templates { display:flex; gap:8px; }
+.w-import__upload { display:flex; flex-direction:column; align-items:center; gap:8px; padding:24px; border:1px dashed var(--w-border-strong); border-radius:10px; background:var(--w-bg); cursor:pointer; position:relative; font-size:14px; line-height:22px; }
+.w-import__upload small { font-size:12px; line-height:18px; color:var(--w-text-3); }
+.w-import__upload input { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer; }
+.w-import__upload:focus-within { outline:2px solid var(--w-focus); }
+.w-import__modes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.w-import__modes label { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid var(--w-border); border-radius:6px; font-size:13px; line-height:20px; cursor:pointer; }
+.w-import__modes input { margin:3px 0 0; accent-color:var(--w-pri); }
+.w-import__modes .is-selected { border-color:var(--w-pri); background:var(--w-sel-soft); }
+.w-import__footer { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; padding:16px 24px; border-top:1px solid var(--w-border); }
+.w-import__summary { display:flex; flex-wrap:wrap; gap:16px; padding:16px 24px; font-size:13px; line-height:20px; color:var(--w-text-2); }
+.w-import__summary b { color:var(--w-text-1); }
+.w-import__error { color:var(--w-bad-text); }
+.w-import__pager { padding:12px 20px; }
+@media(max-width:767px){.w-import__modes{grid-template-columns:1fr}}
+</style>

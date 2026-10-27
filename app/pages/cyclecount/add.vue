@@ -136,6 +136,7 @@ const addCycleCount = async () => {
 // 整合所有搜索相关状态
 // 组件中调用
 const { state: goodsSearch, fetchGoodsLocation, resetSelection,resetState } = useUseGoodsLocationSearch();
+watch(() => selectWareshouse.value?.id, () => resetState());
 const handleSearch = () => {
   if (goodsSearch.code.trim()) {
     // 库位库存按仓库查：还没选仓库时先提示选仓库（否则 selectWareshouse.value 为 null 直接报错）
@@ -162,6 +163,7 @@ const addtaskItem = () => {
     if (!existingItem) {
       taskItem.value.task_details.push({
         goods: item.goods,
+        id: `${item.goods_id}-${item.location_id}`,
         location_code: item.location_code,
         goods_id: item.goods_id,
         location_id: item.location_id
@@ -184,227 +186,13 @@ const deleteItem = (detail:any) => {
 
 
 
+const warehouseId=computed({get:()=>selectWareshouse.value?.id??null,set:value=>{selectWareshouse.value=selectOptions.warehouses.find(row=>row.id===value)||null}})
+const selectedIds=computed({get:()=>goodsSearch.selected.map((row:any)=>row.id),set:(ids:(string|number)[])=>{goodsSearch.selected=goodsSearch.results.filter((row:any)=>ids.includes(row.id))}})
+const columns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},{key:'location',label:t('nav.location')},{key:'quantity',label:t('common.fields.quantity'),type:'qty' as const}])
+useHead({title:()=>t('cyclecount.operations.add')})
 </script>
 
-<template>
-  <PageHeader :propData="dataToPass" />
-  <!-- Start::row-1 -->
-  <div class="row">
-    <div class="col-xxl-9">
-      <div class="card custom-card" id="cart-container-delete">
-        <div class="card-header justify-content-between">
-          <div class="card-title">
-            {{t('cyclecount.fields.items')}} <abbr title="required" aria-hidden="true" class="text-danger">*</abbr><span
-              class="badge rounded-pill bg-success ms-2" v-if="taskItem?.task_details?.length>0">{{
-              taskItem?.task_details?.length}}</span>
-
-          </div>
-          <div class="d-flex">
-            <button class="btn btn-sm btn-primary btn-wave waves-light" data-bs-toggle="offcanvas"
-              data-bs-target="#offcanvasRight" aria-controls="offcanvasRight">
-              <i class="ri-add-line fw-semibold align-middle me-1"></i> {{t('goods.operations.add')}}
-            </button>
-          </div>
-
-        </div>
-        <div class="card-body">
-
-          <div class="table-responsive">
-            <table class="table table-bordered text-nowrap">
-              <thead>
-                <tr>
-                  <th>{{t('common.entities.goods')}}</th>
-                  <th>{{t('common.entities.location')}}</th>
-                  <th>{{ t('common.fields.action') }}</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                <tr v-for="detail in taskItem?.task_details">
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <div class="me-2 lh-1">
-                        <span class="avatar avatar-xxl me-2">
-
-                          <NuxtLink :to="`/goods/detail/${detail?.goods_id}`" target="_blank">
-                            <img :src="detail.goods?.thumbnail_url" alt="" v-if="detail.goods?.thumbnail_url">
-                            <img src="/images/goods/default.png" alt="" v-else>
-                          </NuxtLink>
-                        </span>
-                      </div>
-                      <div>
-                        <p class="mb-0 fw-semibold">
-                          <NuxtLink :to="`/goods/detail/${detail?.goods_id}`" class="text-wrap" target="_blank">{{
-                            detail.goods?.name }}</NuxtLink>
-                        </p>
-                        <p class="mb-0 fs-11 text-muted">{{ detail.goods?.code }}</p>
-                      </div>
-
-                    </div>
-
-                  </td>
-                  <td>
-                    <p class="mb-0 fw-semibold">
-                      {{ detail.location_code }}
-                    </p>
-                  </td>
-
-                  <td>
-                    <button class="btn btn-icon btn-danger btn-delete" @click="deleteItem(detail)">
-                      <i class="ri-delete-bin-line"></i>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="text-center p-5 border border-top-0" v-if="taskItem?.task_details?.length==0">{{t('common.status.nothing-show')}}</div>
-          </div>
-          <div v-if="errors.task_details" class="invalid-feedback d-block">{{ errors.task_details }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-xxl-3">
-      <div class="card custom-card">
-        <div class="card-header">
-          <div class="card-title">
-            {{t('common.fields.base-info')}}
-          </div>
-        </div>
-        <div class="card-body p-0">
-          <div class="p-3 border-bottom border-block-end-dashed">
-            <div class="mb-3">
-              <label class="form-label">{{t('cyclecount.fields.name')}}</label>
-              <input type="text" class="form-control" id="task-name" :placeholder="t('cyclecount.form.placeholders.name')"
-                v-model="taskItem.task_name">
-            </div>
-
-            <div class="form-group mb-3">
-              <label class="form-label">{{t('common.entities.warehouse')}} <abbr title="required" aria-hidden="true"
-                  class="text-danger">*</abbr></label>
-              <div class="flex-nowrap input-group-custom">
-                <VueMultiselect id="cyclecount-warehouse" :show-labels="false" :options="selectOptions.warehouses"
-                  :multiple="false" v-model="selectWareshouse" label="name" track-by="id"
-                  :disabled="shouldDisableWarehouseSelect"></VueMultiselect>
-              </div>
-              <div v-if="errors.wareshouse" class="invalid-feedback d-block">{{ errors.wareshouse }}</div>
-            </div>
-
-            <div class="form-group mb-3">
-              <label class="form-label">{{t('cyclecount.fields.scheduled-date')}}</label>
-              <div class="input-group flex-nowrap input-group-custom">
-                <div class="input-group-text text-muted"> <i class="ri-calendar-line"></i> </div>
-                <Datepicker id="scheduled_date" :placeholder="t('cyclecount.form.placeholders.scheduled-date')" class="form-control" autoApply
-                  :enable-time-picker="false" v-model="taskItem.scheduled_date" />
-              </div>
-              
-            </div>
-
-          </div>
-
-          <div class="p-3 d-grid">
-            <button type="button" class="btn btn-primary btn-wave mb-2" :disabled="submitting" @click="addCycleCount()">
-              <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>{{t('cyclecount.operations.add')}}
-            </button>
-
-            <NuxtLink to="/cyclecount" class="btn btn-light btn-wave">
-              {{t('cyclecount.operations.back-to-list')}}
-            </NuxtLink>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- End::row-1 -->
-  <!-- Start::offcanvas -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasRight" aria-labelledby="offcanvasBottomLabel">
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title" id="offcanvasRightLabel1">{{t('common.operations.add-item')}}</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-      <div class="col-12" v-if="!selectWareshouse">
-        <div class="form-group mb-3">
-          <label class="form-label">{{t('common.entities.warehouse')}} <abbr title="required" aria-hidden="true"
-              class="text-danger">*</abbr></label>
-          <div class="flex-nowrap input-group-custom">
-            <VueMultiselect id="cyclecount-warehouse" :show-labels="false" :options="selectOptions.warehouses"
-              :multiple="false" v-model="selectWareshouse" label="name" track-by="id"
-              :disabled="shouldDisableWarehouseSelect">
-            </VueMultiselect>
-          </div>
-        </div>
-      </div>
-      <div class="col-12" v-else>
-        <div class="border-bottom border-block-end-dashed">
-          <div class="input-group mb-3">
-            <input type="text" class="form-control" :placeholder="t('common.placeholders.goods-code')" aria-label="Goods Code"
-              aria-describedby="button-addon2" v-model="goodsSearch.code" @keyup.enter="handleSearch()">
-            <button class="btn btn-primary" type="button" id="button-addon2" @click="handleSearch()"><i
-                class="ri-search-line"></i></button>
-          </div>
-        </div>
-        <div class="border-bottom border-block-end-dashed mb-3">
-          <div class="row d-flex justify-content-center mb-3" v-if="goodsSearch.loading">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-            </div>
-          </div>
-          <ul class="list-group list-group-flush mb-3">
-            <li class="list-group-item" v-for="(item, index) in goodsSearch.results" :key="index">
-              <div class="d-flex align-items-center">
-                
-
-                <input class="form-check-input" type="checkbox" :id="`check-${item.goods_id}-${item.location_id}`" :value="{ 
-                    goods: item.goods, 
-                    goods_id: item.goods_id, 
-                    location_id: item.location_id,
-                    location_code: item.location_code,
-                  }" v-model="goodsSearch.selected" :disabled="item.quantity <= 0">
-
-                <div class="ms-2">
-                  <span class="avatar avatar-md me-2">
-                    <NuxtLink :to="`/goods/detail/${item.goods?.id}`" target="_blank">
-                      <img :src="item.goods?.thumbnail_url" alt="" v-if="item.goods?.thumbnail_url">
-                      <img src="/images/goods/default.png" alt="" v-else>
-                    </NuxtLink>
-                  </span>
-                </div>
-                <div class="flex-fill">
-                  <p class="fw-semibold mb-0">{{ item.goods?.name }}</p>
-                  <span class="fs-12 text-muted">{{ item.goods?.code }}</span>
-
-                  <p class="fw-semibold mb-0"><span class="badge rounded-pill bg-success me-2"
-                      :class="item.quantity>0?'bg-success':'bg-warning'">{{ item.quantity }}</span>@{{
-                    item.location_code }}</p>
-
-                </div>
-              </div>
-            </li>
-
-          </ul>
-
-          <div v-if="goodsSearch.results?.length==0" class="alert alert-warning alert-dismissible fade show mb-3"
-            role="alert">
-            <span>{{t('error.no-found-data')}}</span>
-          </div>
-
-        </div>
-
-
-
-        <div class="d-grid" v-if="goodsSearch.selected.length> 0">
-          <NuxtLink to="javascript:void(0);" class="btn btn-primary btn-wave mb-2" @click="addtaskItem()">
-            {{t('common.operations.add-item')}}
-          </NuxtLink>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- End::offcanvas -->
-  
-</template>
-
+<template><div class="w-count-form w-scope"><header><nav><NuxtLink class="w-count-link" to="/cyclecount">{{t('nav.cyclecount')}}</NuxtLink><span>/</span><span>{{t('cyclecount.operations.add')}}</span></nav><h1>{{t('cyclecount.operations.add')}}</h1></header><WCard flush><form @submit.prevent="addCycleCount"><WFormSection :title="t('recipient.ui.basic')"><WFormGrid><WField :span="4" :label="t('nav.warehouse')" :error="errors.wareshouse"><WSelect v-model="warehouseId" :options="selectOptions.warehouses.map(row=>({value:row.id,label:row.name}))" :placeholder="t('common.validation.warehouse-required')" :disabled="submitting||shouldDisableWarehouseSelect" /></WField><WField :span="4" :label="t('cyclecount.fields.scheduled-date')" :hint="warehouseId?resolveTimeZone(warehouseId):''" optional><WInput v-model="taskItem.scheduled_date" type="date" :disabled="submitting" /></WField><WField :label="t('common.fields.name')" optional><WInput v-model="taskItem.task_name" :disabled="submitting" /></WField></WFormGrid></WFormSection><WFormSection :title="t('operations.ui.scope')"><div class="w-count-scope"><div class="w-count-results"><div class="w-count-search"><WInput v-model="goodsSearch.code" type="search" :disabled="!warehouseId||submitting" :aria-label="t('common.search')" :placeholder="t('goods.fields.code')" @keydown.enter.prevent="handleSearch" @change="handleSearch"><template #prefix><WIcon name="search" :size="16" /></template></WInput></div><WTable v-model:selected="selectedIds" :rows="goodsSearch.results" :columns="columns" selectable :loading="goodsSearch.loading" inset><template #cell-goods="{row}"><strong>{{row.goods?.name}}</strong><span class="w-count-sub">{{row.goods?.code}}</span></template><template #cell-location="{row}">{{row.location?.code}}</template></WTable><div class="w-count-selected"><span>{{t('inventory.ui.selected',{count:selectedIds.length})}}</span><WButton :disabled="!selectedIds.length||submitting" @click="addtaskItem">{{t('goods.operations.add')}}</WButton></div></div><WAlert v-if="errors.task_details" tone="block" :title="errors.task_details" /><WTable v-if="taskItem.task_details.length" :rows="taskItem.task_details" :columns="[...columns.filter(col=>col.key!=='quantity'),{key:'action',label:t('common.fields.action')}]" row-key="id"><template #cell-goods="{row}">{{row.goods?.name}}<span class="w-count-sub">{{row.goods?.code}}</span></template><template #cell-location="{row}">{{row.location_code}}</template><template #cell-action="{row}"><WButton variant="text" icon="trash" icon-only size="sm" :aria-label="t('button.delete')" :disabled="submitting" @click="taskItem.task_details=taskItem.task_details.filter((item:any)=>item!==row)" /></template></WTable></div></WFormSection><footer><WButton to="/cyclecount" :disabled="submitting">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="submitting">{{t('button.save')}}</WButton></footer></form></WCard></div></template>
 <style scoped>
-/* Add any specific styles here */
+.w-count-form{display:flex;flex-direction:column;gap:16px}.w-count-form header{display:flex;flex-direction:column;gap:8px}.w-count-form nav{display:flex;gap:8px;font-size:13px;color:var(--w-text-2)}.w-count-link{color:var(--w-text-3);text-decoration:none}.w-count-form h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.w-count-scope{display:flex;flex-direction:column;gap:16px}.w-count-results{border:1px solid var(--w-border);border-radius:10px;overflow:hidden}.w-count-search{padding:12px 16px;border-bottom:1px solid var(--w-line)}.w-count-sub{display:block;font-size:12px;line-height:18px;color:var(--w-text-3)}.w-count-scope :deep(.w-table){min-width:500px}.w-count-scope strong{font-weight:500}.w-count-selected{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:12px 16px;border-top:1px solid var(--w-line)}.w-count-form footer{padding:16px 24px;border-top:1px solid var(--w-border);display:flex;justify-content:flex-end;gap:8px}
 </style>

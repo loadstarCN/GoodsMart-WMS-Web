@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 卡片：白底、1px 描边、圆角 10、不加阴影；内边距随密度（舒适 24 / 紧凑 16）。
+ * 卡片：白底、1px 描边、圆角 10、轻阴影；内边距随密度（舒适 24 / 紧凑 16）。
  * - title：区块标题 16 / 24（headingLevel 默认 h2）；右侧操作放 #actions；标题旁灰字放 subtitle
  * - flush：内容贴边（放表格时），标题区自带内边距和下分隔线
  * - divided：标题区与内容之间画分隔线
@@ -48,6 +48,7 @@ const hasHeader = computed(() => !!(props.title || slots.header || slots.actions
   border: 1px solid var(--w-border);
   border-radius: var(--w-radius-card);
   background: var(--w-surface);
+  box-shadow: var(--w-shadow-card);
   color: var(--w-text-1);
   font-family: var(--w-font);
 }
@@ -99,4 +100,5 @@ const hasHeader = computed(() => !!(props.title || slots.header || slots.actions
   padding: var(--w-sp-16) var(--w-card-pad);
   border-top: 1px solid var(--w-line);
 }
+@media print { .w-card { box-shadow: none; } }
 </style>

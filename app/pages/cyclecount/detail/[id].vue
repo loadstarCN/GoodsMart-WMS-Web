@@ -1,4 +1,7 @@
 <script lang="ts" setup>
+const staff=useStaffStore(),actionBusy=ref(false)
+const canEdit=computed(()=>staff.hasPermission('cyclecount_edit'))
+const runAction=async(action:()=>Promise<any>)=>{if(actionBusy.value||saving.value||!canEdit.value)return;actionBusy.value=true;try{await action()}finally{actionBusy.value=false}}
 
 // 定义页面元数据
 definePageMeta({
@@ -101,12 +104,12 @@ const resetTask = () => {
 };
 
 const saveTask = async () => {
-  if (saving.value) return;
+  if (saving.value||actionBusy.value||!canEdit.value) return;
   // 只提交本次录入过且未完成的行（含增量 0：盘到 0 件也要提交），没动过的行不提交：
   // 先过滤再映射（映射后的对象没有录入标记）；整单提交会按打开页面时的旧值覆盖别人刚录的结果；已完成的行后端也会拒绝
   const touchedItems = (itemData.value?.task_details ?? []).filter((item: any) => isTouched(item));
   // 打开了录入框却没填数：不提交（盘到 0 件要明确填 0）
-  if (touchedItems.some((item: any) => !hasInput(item))) {
+  if (touchedItems.some((item: any) => !hasInput(item)||!Number.isInteger(Number(item.new_cyclecount_quantity))||Number(item.new_cyclecount_quantity)<0)) {
     showToast(t('cyclecount.validation.no-quantity'), 'error');
     return;
   }
@@ -239,7 +242,7 @@ function completeFn() {
   ).then((confirmed) => {
     if (confirmed) {
       // 执行完成任务
-      completeTask()
+      runAction(completeTask)
     }
   });
 }
@@ -309,292 +312,12 @@ onMounted(async() => {
   await fetchData();
 });
 
+const columns=computed(()=>[{key:'goods',label:t('operations.ui.location-goods'),wrap:true},{key:'system_quantity',label:t('common.quantities.system'),type:'qty' as const},{key:'actual',label:t('common.quantities.actual')},{key:'difference',label:t('operations.ui.variance')},{key:'entry',label:t('operations.ui.this-entry')},{key:'action',label:t('common.fields.action')}])
+const recordedCount=computed(()=>(itemData.value?.task_details||[]).filter(isRecorded).length)
+const remaining=computed(()=>Math.max(0,(itemData.value?.task_details?.length||0)-recordedCount.value))
+useHead({title:()=>`CC-${taskId}`})
 </script>
-<template>
-  <PageHeader :propData="dataToPass" />
-  <!-- Start::row-1 -->
-  <div class="row" v-if="!loading">
-    <div class="col-xl-12">
-      <div class="row">
-        <div class="col-xl-12">
-          <div class="card custom-card">
-            <div class="card-header">
-              <div class="card-title">
-                <span class="text-primary">#CC-{{ itemData?.id }}</span>
-                <span class="badge bg-primary ms-2">{{ t('common.status.' + itemData?.status.replace('_',"-"))}}</span>
-              </div>
-            </div>
-            <div class="card-body row">
-              <div class="col-xl-6">
-                <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">{{t('cyclecount.fields.name')}} :</span>
-                  {{ itemData?.task_name }}
-                </p>
-                <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">{{t('common.entities.warehouse')}} :</span>
-                  <NuxtLink :to="`/warehouse/detail/${itemData?.warehouse_id}`">{{ itemData?.warehouse?.name
-                    }}</NuxtLink>
-                </p>
-                <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">{{t('common.users.creator')}} :</span>
-                  {{ itemData?.creator?.user_name }}
-                </p>
-                <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">{{t('common.dates.created')}} :</span>
-                  {{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                </p>
-                <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">{{t('common.dates.updated')}} :</span>
-                  {{ $dayjs(itemData?.updated_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                </p>
-                <p class="mb-2 text-muted">
-                  <span class="fw-semibold text-default">{{t('common.dates.scheduled')}} :</span>
-                  {{ $dayjs(itemData?.scheduled_date, 'YYYY-MM-DD', itemData) }}
-                </p>
-
-              </div>
-              <div class="col-xl-6 text-end">
-                <Barcode :value="`CC-${taskId}`" />
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-xl-12">
-      <div class="row">
-        <div class="col-xl-12">
-          <div class="card custom-card">
-            <div class="card-header d-flex justify-content-between">
-              <div class="card-title">
-                <span class="text-primary">{{t('common.fields.items')}}</span>
-              </div>
-              <div>
-                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                  {{t('common.dates.created')}}:{{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                </span>
-                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'in_progress'">
-                  {{t('common.dates.started')}}:{{ $dayjs(itemData?.started_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                </span>
-                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
-                  {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                </span>
-
-              </div>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{{t('common.fields.items')}}({{ itemData?.task_details.length }})</th>
-                      <th scope="col">{{t('common.entities.location')}}</th>
-                      <th scope="col">{{t('common.quantities.system')}}</th>
-                      <th scope="col">{{t('common.quantities.actual')}}</th>
-                      <th scope="col" v-if="itemData?.status==='in_progress'">{{ t('common.fields.action') }}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="item in itemData?.task_details" :class="{ 'table-danger': unrecordedIds.includes(Number(item.id)) }">
-                      <td>
-                        <div class="d-flex align-items-center">
-                          <div class="me-2 lh-1">
-                            <span class="avatar avatar-xxl me-2">
-                              <NuxtLink :to="`/goods/detail/${item?.goods?.id}`">
-                                <img :src="item?.goods?.thumbnail_url" alt="" v-if="item?.goods?.thumbnail_url">
-                                <img src="/images/goods/default.png" alt="" v-else>
-                              </NuxtLink>
-                            </span>
-                          </div>
-                          <div>
-                            <p class="mb-0 fw-semibold">
-                              <NuxtLink :to="`/goods/detail/${item?.goods?.id}`" class="text-wrap">{{ item?.goods?.name
-                                }}
-                              </NuxtLink>
-                            </p>
-                            <p class="mb-0 fs-11 text-muted">{{ item?.goods?.code }}</p>
-                            <p class="mb-0 fs-11 text-muted">{{ item?.goods?.brand }}</p>
-                            <p class="mb-0 fs-11 text-muted">{{ categoryLabel(item?.goods?.category) }}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <NuxtLink :to="`/location/detail/${item?.location?.id}`">
-                          {{ item?.location?.code }} | {{t('common.locations.'+item?.location?.location_type)}}
-                        </NuxtLink>
-                      </td>
-                      <td>{{ item.system_quantity}}
-                        <template v-if="itemData.status !== 'pending'">
-                          <span class="text-danger ms-2" v-if="rowDifference(item) !== null && rowDifference(item) !== 0">({{
-                            rowDifference(item)! > 0 ? '+' : '' }}{{ rowDifference(item) }})</span>
-                        </template>
-                      </td>
-
-                      <td>
-                        <span v-if="itemData.status != 'in_progress'">{{ item.actual_quantity }}</span>
-                        <span class="mb-2" v-if="itemData.status == 'in_progress'">
-                          <template v-if="isRecorded(item)">{{ t('cyclecount.fields.recorded') }}: {{ item.actual_quantity }}</template>
-                          <span class="text-muted" v-else>{{ t('cyclecount.fields.not-recorded') }}</span>
-                        </span>
-                        <NuxtLink class="ms-2 btn btn-secondary btn-wave btn-sm" @click="addCycleCountQTY(item)" :title="t('cyclecount.operations.record')"
-                          v-show="item.new_cyclecount_quantity === undefined" v-if="itemData.status == 'in_progress' && item.status == 'pending'">
-                          <i class="ri-edit-line"></i>
-                        </NuxtLink>
-                        <!-- 录入实盘数（绝对值）：盘错了可以改大改小 -->
-                        <input v-maska:[] type="number" min="0" class="form-control number-format" :id="`cyclecount-actual-${item.id}`"
-                          data-maska="0" data-maska-tokens="0:\d:multiple|9:\d:optional" :placeholder="t('cyclecount.form.placeholders.actual')"
-                          v-model="item.new_cyclecount_quantity" v-show="item.new_cyclecount_quantity !== undefined" @input="markTouched(item)"
-                          v-if="itemData.status == 'in_progress'">
-                      </td>
-                      <td v-if="itemData.status == 'in_progress'">
-                        <NuxtLink class="btn btn-info btn-sm" @click="completeItem(item)" v-if="item.status =='pending' && !hasUnsavedChanges"><i class="ri-checkbox-line"></i></NuxtLink>
-                      </td>
-                    </tr>
-
-                    <tr>
-                      <td colspan="2"></td>
-                      <td colspan="1">
-                        <div class="fw-semibold">{{t('common.quantities.total-system')}}:</div>
-                      </td>
-                      <td>                        
-                          <span v-if="itemData.status !== 'pending'">{{ itemData?.total_system_quantity }}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colspan="2"></td>
-                      <td colspan="1">
-                        <div class="fw-semibold">{{t('common.quantities.total-actual')}} :</div>
-                      </td>
-                      <td>
-                        <span v-if="itemData.status == 'in_progress'">{{ totalActualInProgress }}</span>
-                        <span v-else>{{ itemData?.total_actual_quantity }}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colspan="2"></td>
-                      <td colspan="1">
-                        <div class="fw-semibold">{{t('common.quantities.total-difference')}} :</div>
-                      </td>
-                      <td>
-                        <span v-if="itemData.status == 'in_progress'">{{ totalDifferenceInProgress }}</span>
-                        <span v-else>{{ itemData?.total_difference }}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div class="card-footer border-top-0">
-              <div class="btn-list float-end">
-                <!-- <NuxtLink class="btn btn-primary btn-wave btn-sm" :to="`/cyclecount/print/${taskId}`"><i
-                    class="ri-printer-line me-1 align-middle"></i>{{t('button.print')}}</NuxtLink> -->
-
-                <NuxtLink class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status==='pending'"
-                  :title="t('button.process')" @click="processTask()"><i class="ri-checkbox-line me-1 align-middle"></i>{{t('button.process')}}
-                </NuxtLink>
-
-                <NuxtLink class="btn btn-warning btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.reset')"
-                  @click="resetTask()"><i class="ri-reset-left-line me-1 align-middle"></i>{{t('button.reset')}}</NuxtLink>
-                <button class="btn btn-info btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.save')"
-                  @click="saveTask()" :disabled="!hasUnsavedChanges || saving">
-                  <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
-                  <i v-else class="ri-draft-line me-1 align-middle"></i>{{t('button.save')}}</button>
-
-                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='in_progress'" :title="t('button.complete')"
-                  @click="completeFn()" :disabled="hasUnsavedChanges || !allItemsRecorded"><i class="ri-save-line me-1 align-middle"></i>{{t('button.complete')}}
-                </button>
-                <button class="btn btn-secondary btn-wave btn-sm" v-if="itemData?.status =='completed' && validDetails.length > 0 && !adjustmentCreated" :title="t('adjustment.operations.add')"
-                    @click="carete_adjustmentFn()" :disabled="creatingAdjustment">
-                    <span v-if="creatingAdjustment" class="spinner-border spinner-border-sm me-1"></span>
-                    <i v-else class="ri-save-line me-1 align-middle"></i>{{t('adjustment.operations.add')}}
-                </button>
-
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!--End::row-1 -->
-
-  <div class="row" v-if="!loading">
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-header justify-content-between">
-          <div class="">
-            <ul class="nav nav-pills nav-style-3" role="tablist">
-
-              <li class="nav-item">
-                <a class="nav-link active" data-bs-toggle="tab" role="tab" aria-current="page" href="#logs"
-                  aria-selected="true">{{t('common.fields.task-logs')}}</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="card-body">
-          <div class="row tab-content">
-
-            <div class="tab-pane text-muted  show active" id="logs" role="tabpanel">
-              <div class="table-responsive">
-                <table class="table text-nowrap table-bordered table-hover">
-                  <thead>
-                    <tr>
-                      <th scope="col" class="d-none d-lg-table-cell">{{ t('common.fields.task-id') }}</th>
-                      <th scope="col" class="d-none d-lg-table-cell">{{ t('common.fields.old-status') }}</th>
-                      <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.new-status') }}</th>
-                      <th scope="col" class="d-none d-lg-table-cell">{{ t('common.dates.changed') }}</th>
-                      <th scope="col">{{ t('common.users.operator') }}</th>
-                    </tr>
-
-                  </thead>
-                  <tbody>
-                    <tr v-for="item in itemData?.status_logs" class="invoice-list">
-                      <td>{{ item?.task_id }}</td>
-                      <td>{{t('common.status.'+item?.old_status.replace('_',"-"))}}</td>
-                      <td>{{t('common.status.'+item?.new_status.replace('_',"-"))}}</td>
-                      <td class="d-none d-md-table-cell">{{ $dayjs(item?.changed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}</td>
-                      <td class="d-none d-xl-table-cell">{{ item?.operator?.user_name }}</td>
-                    </tr>
-
-                  </tbody>
-                </table>
-                <div class="text-center p-5 border border-top-0" v-if="itemData?.status_logs?.length <=0">{{t('common.status.nothing-show')}}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- Start::Modal -->
-  <div class="modal fade" id="djustmentModal" tabindex="-1" aria-labelledby="djustmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog  modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h6 class="modal-title" id="exampleModalLabel1">{{t('adjustment.operations.add')}}</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">{{t('common.fields.reason')}}</label>
-            <div class="flex-nowrap input-group-custom">
-              <textarea class="form-control" v-model="adjustment_reason" :placeholder="t('common.placeholders.reason')" rows="5"></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('button.close') }}</button>
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{t('button.save')}}</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- End::Modal -->
-
-</template>
-<style scoped></style>
+<template><div class="w-cycle-detail w-scope"><header><nav><NuxtLink class="w-cycle-muted" to="/cyclecount">{{t('nav.cyclecount')}}</NuxtLink><span>/</span><span>CC-{{taskId}}</span></nav><div class="w-cycle-heading"><h1>CC-{{taskId}}</h1><WStatus v-if="itemData" :tone="itemData.status==='completed'?'ok':itemData.status==='in_progress'?'warn':'none'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus><span>{{itemData?.task_name}}</span><WButton v-if="itemData" class="w-count-print-link" icon="printer" :to="'/cyclecount/print/'+taskId">{{t('count-print.print')}}</WButton></div><div v-if="itemData" class="w-cycle-meta"><span>{{itemData.warehouse?.name}}</span><span>{{$dayjs(itemData.scheduled_date,'YYYY-MM-DD',itemData)}}</span></div></header><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard><div v-if="itemData" class="w-cycle-layout"><WCard flush><div class="w-cycle-section"><h2>{{t('common.fields.task-details')}} <small>{{itemData.task_details?.length}}</small></h2><span>{{recordedCount}} / {{itemData.task_details?.length}}</span></div><WTable :columns="columns" :rows="itemData.task_details||[]" inset><template #cell-goods="{row}"><NuxtLink class="w-cycle-name" :to="'/location/detail/'+row.location_id">{{row.location?.code}}</NuxtLink><NuxtLink class="w-cycle-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span class="w-cycle-sub">{{row.goods?.code}}</span></template><template #cell-actual="{row}"><WInput v-if="canEdit&&itemData.status==='in_progress'&&row.status!=='completed'" :model-value="hasInput(row)?row.new_cyclecount_quantity:isRecorded(row)?row.actual_quantity:''" type="number" min="0" step="1" align="right" size="sm" :invalid="unrecordedIds.includes(row.id)" :aria-label="row.goods?.code+' '+row.location?.code+' '+t('common.quantities.actual')" :disabled="saving||actionBusy" @update:model-value="value=>{row.new_cyclecount_quantity=value;markTouched(row)}" /><span v-else>{{isRecorded(row)?row.actual_quantity:'—'}}</span></template><template #cell-difference="{row}"><span v-if="rowDifference(row)!==null" :class="{'w-cycle-warning':rowDifference(row)!==0}">{{(rowDifference(row)||0)>0?'+':''}}{{rowDifference(row)}}</span><span v-else>—</span></template><template #cell-entry="{row}"><WStatus :tone="isRecorded(row)?'ok':'none'">{{t(isRecorded(row)?'cyclecount.fields.recorded':'operations.ui.unrecorded')}}</WStatus><span class="w-cycle-sub">{{row.operator?.user_name}}</span><span v-if="isRecorded(row)" class="w-cycle-sub">{{$dayjs(row.updated_at,'MM/DD HH:mm',itemData)}}</span></template><template #cell-action="{row}"><WButton v-if="canEdit&&itemData.status==='in_progress'&&row.status!=='completed'&&isRecorded(row)" size="sm" :disabled="saving||actionBusy||isTouched(row)" @click="runAction(()=>completeItem(row))">{{t('button.complete')}}</WButton></template></WTable><footer v-if="canEdit"><WButton v-if="itemData.status==='pending'" variant="primary" :loading="actionBusy" @click="runAction(processTask)">{{t('button.process')}}</WButton><template v-if="itemData.status==='in_progress'"><WButton :disabled="saving||actionBusy" @click="resetTask">{{t('button.reset')}}</WButton><WButton :disabled="!hasUnsavedChanges||actionBusy" :loading="saving" @click="saveTask">{{t('button.save')}}</WButton><WButton variant="primary" :disabled="hasUnsavedChanges||saving||!allItemsRecorded" :loading="actionBusy" @click="completeFn">{{t('button.complete')}}</WButton></template></footer></WCard><aside><WCard><h3>{{t('operations.ui.variance')}}</h3><div class="w-cycle-summary"><strong>{{totalDifferenceInProgress>0?'+':''}}{{totalDifferenceInProgress}}</strong><span>{{t('operations.ui.unrecorded')}} {{remaining}}</span></div><WButton v-if="itemData.status==='completed'&&staff.hasPermission('adjustment_edit')" :disabled="!validDetails.length||adjustmentCreated" :loading="creatingAdjustment" variant="primary" block @click="carete_adjustmentFn">{{t('adjustment.operations.add')}}</WButton></WCard><WCard><h3>{{t('operations.ui.status-records')}}</h3><ol><li v-for="log in itemData.status_logs" :key="log.id"><span class="w-cycle-sub">{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</span>{{t('common.status.'+String(log.new_status).replaceAll('_','-'))}}</li></ol></WCard></aside></div></div></template>
+<style scoped>
+.w-cycle-detail{display:flex;flex-direction:column;gap:24px}.w-cycle-detail header{display:flex;flex-direction:column;gap:8px}.w-cycle-detail nav{display:flex;gap:8px;color:var(--w-text-2);font-size:13px;line-height:20px}.w-cycle-muted{color:var(--w-text-3);text-decoration:none}.w-cycle-heading{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.w-cycle-heading h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.w-count-print-link{margin-left:auto}.w-cycle-meta{display:flex;gap:24px;font-size:13px;color:var(--w-text-3)}.w-cycle-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:start}.w-cycle-layout aside{display:flex;flex-direction:column;gap:16px}.w-cycle-section{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--w-line);font-size:13px}.w-cycle-section h2{margin:0;font-size:16px;line-height:24px;font-weight:600}.w-cycle-section small{font-size:13px;font-weight:400;color:var(--w-text-3)}.w-cycle-detail :deep(.w-table){min-width:740px}.w-cycle-detail :deep(.w-table td){padding-top:14px;padding-bottom:14px;vertical-align:top}.w-cycle-detail :deep(.w-input){min-width:72px;max-width:96px}.w-cycle-name{display:block;font-size:14px;font-weight:600;color:var(--w-text-1);text-decoration:none}.w-cycle-goods{display:block;font-size:13px;color:var(--w-text-2);text-decoration:none}.w-cycle-sub{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.w-cycle-warning{color:#B87400}.w-cycle-detail footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--w-border)}.w-cycle-detail h3{margin:0 0 12px;font-size:14px;line-height:22px;font-weight:600}.w-cycle-summary{display:flex;flex-direction:column;gap:8px;font-size:13px;margin-bottom:16px}.w-cycle-summary strong{font-size:24px;line-height:32px;font-weight:600}.w-cycle-detail ol{list-style:none;padding:0;margin:0}.w-cycle-detail li{border-top:1px solid var(--w-line);padding:12px 0;font-size:13px}@media(max-width:1100px){.w-cycle-layout{grid-template-columns:minmax(0,1fr)}}
+</style>

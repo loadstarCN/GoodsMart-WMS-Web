@@ -85,7 +85,9 @@ const carrierOptionText = (c: { name: string; pickup_method?: string | null }) =
 /** 列表上的操作（取消 / 作废）失败时的详情 */
 const listFailure = ref<PickupFailure | null>(null)
 
+let overviewGeneration=0
 const fetchOverview = async () => {
+  const seq=++overviewGeneration
   if (!hasWarehouse.value) {
     overview.value = null
     loading.value = false
@@ -95,6 +97,7 @@ const fetchOverview = async () => {
   await httpRequest<PickupOverview>(`${PICKUPS_URL}${carrierQuery()}`, {
     headers: headers(),
     onSuccess: (data: PickupOverview) => {
+      if(seq!==overviewGeneration)return
       overview.value = data
       loadError.value = null
       carrierId.value = data.carrier?.id ?? null
@@ -102,6 +105,7 @@ const fetchOverview = async () => {
       selected.value = selected.value.filter((id: number) => selectable.has(id))
     },
     onError: (error) => {
+      if(seq!==overviewGeneration)return
       // 地址栏里的承运商不对（已删除 / 不是本公司的）：退回默认承运商
       if (error.code === 16131 && carrierId.value) {
         carrierId.value = null
@@ -112,7 +116,7 @@ const fetchOverview = async () => {
       loadError.value = bizErrorMessage(error)
     },
     onFinally: () => {
-      loading.value = false
+      if(seq===overviewGeneration)loading.value = false
     },
   })
 }
@@ -245,258 +249,19 @@ const pickupReasonText = (pickup: CarrierPickup): string => {
   const key = `delivery.pickup.reasons.${pickup.reason}`
   return te(key) ? t(key, { carrier: carrierName.value }) : ''
 }
+
+onBeforeUnmount(()=>overviewGeneration++)
+const selectRow=(id:number,on:boolean)=>{selected.value=on?[...new Set([...selected.value,id])]:selected.value.filter(value=>value!==id)}
+const bookOne=(row:PickupShipmentRow)=>{selected.value=[row.shipment_id];if(manualMode.value)openManualModal();else openModal()}
+const recordColumns=computed(()=>[
+ {key:'pickup_date',label:t('delivery.pickup.fields.pickup-date')},{key:'window',label:t('delivery.pickup.fields.time-window')},
+ {key:'status',label:t('delivery.pickup.fields.status')},{key:'source',label:t('shipping.pickup.source')},
+ {key:'code',label:t('delivery.pickup.fields.confirmation-code')},{key:'packages',label:t('delivery.pickup.fields.packages')},
+ {key:'shipments',label:t('delivery.pickup.fields.shipments')},{key:'created',label:t('delivery.pickup.fields.created')},{key:'actions',label:t('delivery.pickup.fields.actions'),align:'right' as const}
+])
+useHead({title:()=>t('delivery.pickup.title')})
 </script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="alert alert-warning-transparent" v-if="!hasWarehouse">
-    <i class="ri-error-warning-line me-1"></i>{{ t('delivery.pickup.select-warehouse') }}
-  </div>
-
-  <template v-else>
-    <div class="row d-flex justify-content-center mb-4" v-if="loading && !overview">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-      </div>
-    </div>
-
-    <div class="alert alert-danger-transparent" v-if="loadError">{{ loadError }}</div>
-
-    <template v-if="overview">
-      <!-- 说明 + 揽收地点 -->
-      <div class="card custom-card">
-        <div class="card-header justify-content-between flex-wrap gap-2">
-          <div class="card-title">
-            {{ t('delivery.pickup.title') }}
-            <span class="badge bg-light text-default ms-1 fs-12 align-middle" v-if="overview.carrier && carrierOptions.length <= 1">
-              {{ overview.carrier.name }}
-            </span>
-          </div>
-          <div class="d-flex align-items-center gap-2">
-            <select class="form-select form-select-sm" style="width: auto" :aria-label="t('delivery.pickup.carrier')"
-              :value="carrierId ?? ''" :disabled="loading" v-if="carrierOptions.length > 1"
-              @change="switchCarrier(Number(($event.target as HTMLSelectElement).value))">
-              <option v-for="c in carrierOptions" :key="c.id" :value="c.id">{{ carrierOptionText(c) }}</option>
-            </select>
-            <button type="button" class="btn btn-sm btn-light" :disabled="loading" @click="fetchOverview">
-              <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="ri-refresh-line me-1"></i>{{ t('delivery.pickup.operations.refresh') }}
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <p class="fs-13 text-muted mb-3">{{ manualMode ? t('shipping.pickup.page-intro-manual', { carrier: carrierName }) : t('delivery.pickup.intro') }}</p>
-          <div class="alert alert-secondary-transparent fs-13 mb-3" v-if="manualMode && pickupContact">
-            <i class="ri-phone-line me-1"></i>{{ t('shipping.pickup.contact') }}
-            <a :href="pickupContact" target="_blank" rel="noopener" v-if="contactIsUrl">{{ pickupContact }}</a>
-            <span class="text-break" v-else>{{ pickupContact }}</span>
-          </div>
-          <!-- 没有能约揽收的承运商：去承运商里设在线对接 -->
-          <div class="alert alert-secondary-transparent fs-13 mb-3" v-if="!overview.carrier">
-            {{ t('delivery.pickup.no-carrier') }}
-            <NuxtLink to="/carrier" class="ms-1">{{ t('delivery.pickup.carrier-list') }}</NuxtLink>
-          </div>
-          <div class="alert alert-secondary-transparent fs-13 mb-3" v-else-if="!overview.enabled && !manualMode">
-            {{ t('delivery.pickup.disabled', { carrier: carrierName }) }}
-            <NuxtLink :to="`/carrier/edit/${overview.carrier.id}`" class="ms-1">{{ t('delivery.pickup.setup-link') }}</NuxtLink>
-          </div>
-          <!-- 揽收地点：在线预约时提交给承运商的；手工记录不用 -->
-          <div class="row gy-2 fs-13" v-if="overview.carrier && !manualMode">
-            <div class="col-md-6">
-              <div class="text-muted fs-12">{{ t('delivery.pickup.location.address') }}</div>
-              <div>{{ formatPickupAddress(overview.pickup_location) || '—' }}</div>
-            </div>
-            <div class="col-md-3">
-              <div class="text-muted fs-12">{{ t('delivery.pickup.location.contact') }}</div>
-              <div>
-                {{ overview.pickup_location?.contact?.personName || '—' }}
-                <span class="text-muted" v-if="overview.pickup_location?.contact?.companyName">
-                  / {{ overview.pickup_location.contact.companyName }}
-                </span>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="text-muted fs-12">{{ t('delivery.pickup.location.phone') }}</div>
-              <div class="font-monospace">{{ overview.pickup_location?.contact?.phoneNumber || '—' }}</div>
-            </div>
-          </div>
-          <div class="fs-12 text-muted mt-2" v-if="overview.carrier && !manualMode">{{ t('delivery.pickup.location.hint') }}</div>
-          <div class="alert alert-warning-transparent fs-13 mt-3 mb-0" v-if="overview.carrier && overview.blockers.length && !manualMode">
-            <div class="fw-semibold mb-1">{{ t('delivery.pickup.blockers.title') }}</div>
-            <ul class="mb-0 ps-3">
-              <li v-for="(b, i) in overview.blockers" :key="`b-${i}`">{{ blockerText(b) }}</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- 待揽收运单 -->
-      <div class="card custom-card">
-        <div class="card-header justify-content-between flex-wrap gap-2">
-          <div class="card-title">
-            {{ t('delivery.pickup.shipments.title') }}
-            <span class="badge bg-light text-default rounded ms-1 fs-12 align-middle">{{ shipments.length }}</span>
-          </div>
-          <div class="d-flex align-items-center flex-wrap gap-2">
-            <span class="fs-12 text-muted" v-if="selected.length">
-              {{ t('delivery.pickup.shipments.selected', { count: selected.length, packages: selectedPackages, weight: selectedWeight }) }}
-            </span>
-            <!-- api 的承运商：手工记录是次要的退路 -->
-            <button type="button" class="btn btn-sm" :class="manualMode ? 'btn-primary' : 'btn-light'" :disabled="!canRecord"
-              @click="openManualModal" v-if="manualMode || overview.can_record !== undefined">
-              <i class="ri-edit-box-line me-1"></i>{{ t('shipping.actions.record_pickup') }}
-            </button>
-            <button type="button" class="btn btn-sm btn-primary" :disabled="!canSchedule" @click="openModal" v-if="!manualMode">
-              <i class="ri-truck-line me-1"></i>{{ t('delivery.pickup.operations.schedule') }}
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table text-nowrap table-bordered fs-13 mb-0">
-              <thead>
-                <tr>
-                  <th scope="col" style="width: 1%">
-                    <input class="form-check-input" type="checkbox" :checked="allSelected" :disabled="!schedulable.length"
-                      :aria-label="t('delivery.pickup.shipments.select-all')" @change="toggleAll">
-                  </th>
-                  <th scope="col">{{ t('delivery.pickup.fields.tracking-number') }}</th>
-                  <th scope="col">DN</th>
-                  <th scope="col" class="d-none d-lg-table-cell">{{ t('delivery.pickup.fields.delivery-task') }}</th>
-                  <th scope="col">{{ t('delivery.pickup.fields.packages') }}</th>
-                  <th scope="col" class="d-none d-md-table-cell">{{ t('delivery.pickup.fields.service') }}</th>
-                  <th scope="col" class="d-none d-md-table-cell">{{ t('delivery.pickup.fields.ship-date') }}</th>
-                  <th scope="col">{{ t('delivery.pickup.fields.pickup-status') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in shipments" :key="row.shipment_id">
-                  <td>
-                    <input class="form-check-input" type="checkbox" :value="row.shipment_id" v-model="selected"
-                      :disabled="!row.can_schedule" :aria-label="row.tracking_number || String(row.shipment_id)">
-                  </td>
-                  <td class="font-monospace">{{ row.tracking_number || '—' }}</td>
-                  <td>
-                    <NuxtLink :to="`/dn/detail/${row.dn_id}`" class="text-default">DN-{{ row.dn_id }}</NuxtLink>
-                    <div class="fs-12 text-muted" v-if="row.order_number">{{ row.order_number }}</div>
-                  </td>
-                  <td class="d-none d-lg-table-cell">
-                    <NuxtLink v-if="row.delivery_task_id" :to="`/delivery/detail/${row.delivery_task_id}`" class="text-default">
-                      DEL-{{ row.delivery_task_id }}
-                    </NuxtLink>
-                    <span v-else>—</span>
-                  </td>
-                  <td>{{ t('delivery.pickup.fields.packages-value', { count: row.package_count, weight: formatWeight(row.weight_kg) }) }}</td>
-                  <td class="d-none d-md-table-cell">{{ row.service_name || formatServiceType(row.service_type) || '—' }}</td>
-                  <td class="d-none d-md-table-cell">{{ row.ship_date || '—' }}</td>
-                  <td :class="rowPickupColor(row)" class="text-wrap">{{ rowPickupText(row) }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="text-center p-4 border border-top-0 text-muted" v-if="!shipments.length">
-              {{ t('delivery.pickup.shipments.empty') }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 预约记录 -->
-      <div class="card custom-card">
-        <div class="card-header">
-          <div class="card-title">{{ t('delivery.pickup.pickups.title') }}</div>
-        </div>
-        <div class="card-body">
-          <div class="alert alert-danger-transparent fs-13" v-if="listFailure">
-            <div>{{ listFailure.summary }}</div>
-            <ul class="mb-0 ps-3 mt-1" v-if="listFailure.errors.length">
-              <li v-for="(e, i) in listFailure.errors" :key="`le-${i}`" class="text-break">
-                <code class="me-1" v-if="e.code">{{ e.code }}</code>{{ e.message }}
-              </li>
-            </ul>
-            <div class="fs-12 mt-1" v-if="listFailure.transactionId">
-              {{ t('delivery.pickup.tips.transaction-id', { carrier: carrierName }) }}: <span class="font-monospace">{{ listFailure.transactionId }}</span>
-            </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table text-nowrap table-bordered fs-13 mb-0">
-              <thead>
-                <tr>
-                  <th scope="col">{{ t('delivery.pickup.fields.pickup-date') }}</th>
-                  <th scope="col">{{ t('delivery.pickup.fields.time-window') }} <TimeZoneBadge :zone="pickupTimeZone" /></th>
-                  <th scope="col">{{ t('delivery.pickup.fields.status') }}</th>
-                  <th scope="col">{{ t('shipping.pickup.source') }}</th>
-                  <th scope="col">{{ t('delivery.pickup.fields.confirmation-code') }}</th>
-                  <th scope="col">{{ t('delivery.pickup.fields.packages') }}</th>
-                  <th scope="col" class="d-none d-lg-table-cell">{{ t('delivery.pickup.fields.shipments') }}</th>
-                  <th scope="col" class="d-none d-xl-table-cell">{{ t('delivery.pickup.fields.created') }}</th>
-                  <th scope="col">{{ t('delivery.pickup.fields.actions') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="p in overview.pickups" :key="p.id">
-                  <td>{{ p.pickup_date }}</td>
-                  <td>{{ timeWindow(p) }}</td>
-                  <td class="text-wrap">
-                    <span :class="`badge bg-${pickupStatusColor(pickupDisplayStatus(p))}-transparent`">
-                      {{ t(`delivery.pickup.status.${pickupDisplayStatus(p)}`) }}
-                    </span>
-                    <div class="fs-12 text-warning mt-1" v-if="pickupReasonText(p)">{{ pickupReasonText(p) }}</div>
-                    <div class="fs-12 text-muted mt-1 text-break" v-if="p.error_message && p.status !== 'scheduled'"
-                      style="max-width: 320px">{{ p.error_message }}</div>
-                  </td>
-                  <td>
-                    <span class="badge" :class="p.source === 'manual' ? 'bg-light text-default' : 'bg-primary-transparent'">
-                      {{ p.source === 'manual' ? t('shipping.pickup.manual-badge') : t('shipping.pickup.api-badge') }}
-                    </span>
-                  </td>
-                  <td class="font-monospace">
-                    {{ p.confirmation_code || '—' }}
-                    <div class="fs-12 text-muted" v-if="p.location_code">{{ p.location_code }}</div>
-                  </td>
-                  <td>{{ t('delivery.pickup.fields.packages-value', { count: p.package_count, weight: formatWeight(p.total_weight_kg) }) }}</td>
-                  <td class="d-none d-lg-table-cell font-monospace fs-12 text-wrap" style="max-width: 260px">
-                    {{ (p.shipments || []).map((s: CarrierPickup['shipments'][number]) => s.tracking_number).filter(Boolean).join(', ') || '—' }}
-                  </td>
-                  <td class="d-none d-xl-table-cell">
-                    {{ $dayjs(p.created_at, 'YYYY-MM-DD HH:mm', pickupTimeZone) || '—' }}
-                    <span class="text-muted ms-1" v-if="p.created_by_user">{{ p.created_by_user.user_name }}</span>
-                  </td>
-                  <td>
-                    <div class="btn-list">
-                      <button type="button" class="btn btn-sm btn-outline-danger" v-if="p.can_cancel"
-                        :disabled="busyPickupId !== null" @click="cancelPickup(p)">
-                        <span v-if="busyPickupId === p.id" class="spinner-border spinner-border-sm me-1"></span>
-                        {{ p.reason === 'cancel_unclear' ? t('delivery.pickup.operations.retry-cancel') : t('delivery.pickup.operations.cancel') }}
-                      </button>
-                      <button type="button" class="btn btn-sm btn-outline-warning" v-if="p.can_dismiss"
-                        :disabled="busyPickupId !== null" @click="dismissPickup(p)">
-                        <span v-if="busyPickupId === p.id" class="spinner-border spinner-border-sm me-1"></span>
-                        {{ t('delivery.pickup.operations.dismiss') }}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="text-center p-4 border border-top-0 text-muted" v-if="!overview.pickups.length">
-              {{ t('delivery.pickup.pickups.empty') }}
-            </div>
-          </div>
-          <div class="fs-12 text-muted mt-2">{{ t('delivery.pickup.pickups.hint') }}</div>
-        </div>
-      </div>
-    </template>
-  </template>
-
-  <!-- 预约弹窗：提交后不论成败都按最新状态显示（预约可能落成 failed / unknown、运单可能被别人约了） -->
-  <CarrierPickupModal v-model:open="showModal" :carrier-id="carrierId" :carrier-name="carrierName" :warehouse-id="warehouseId"
-    :shipments="selectedRows" :location="overview?.pickup_location" :max-remarks="overview?.max_remarks"
-    :today="overview?.today" @booked="selected = []" @submitted="fetchOverview" />
-  <!-- 手工记录（揽收方式 manual）：电话 / 网站约好后记一笔 -->
-  <ManualPickupModal v-model:open="showManualModal" :carrier-id="carrierId" :carrier-name="carrierName" :warehouse-id="warehouseId"
-    :shipments="selectedRows" :contact="pickupContact || null" :today="overview?.today" @recorded="selected = []"
-    @submitted="fetchOverview" />
-</template>
-
-<style scoped></style>
+<template><div class="w-pickup w-scope"><header><h1>{{t('delivery.pickup.title')}}</h1><TimeZoneBadge :zone="pickupTimeZone"/><WButton :loading="loading" @click="fetchOverview">{{t('delivery.pickup.operations.refresh')}}</WButton></header><WAlert v-if="!hasWarehouse" tone="warn" :title="t('delivery.pickup.select-warehouse')"/><template v-else><WAlert v-if="loadError" tone="block" :title="loadError"/><WCard v-if="loading&&!overview"><WEmptyState :title="t('common.status.loading')"/></WCard><template v-if="overview"><nav class="carrier-tabs" :aria-label="t('delivery.pickup.carrier')"><button v-for="carrier in carrierOptions" :key="carrier.id" type="button" :class="{active:carrier.id===carrierId}" :aria-pressed="carrier.id===carrierId" :disabled="loading" @click="switchCarrier(carrier.id)">{{carrier.name}}</button></nav><WCard flush><div class="section-title"><h2>{{overview.carrier?.name||t('delivery.pickup.title')}}</h2><small>{{manualMode?t('shipping.pickup.page-intro-manual',{carrier:carrierName}):t('delivery.pickup.intro')}}</small><p v-if="!manualMode">{{formatPickupAddress(overview.pickup_location)||'—'}} · {{overview.pickup_location?.contact?.personName||'—'}} · {{overview.pickup_location?.contact?.phoneNumber||'—'}}</p></div><div v-if="!overview.carrier" class="notice">{{t('delivery.pickup.no-carrier')}} <NuxtLink to="/carrier">{{t('delivery.pickup.carrier-list')}}</NuxtLink></div><template v-else><WAlert v-if="!overview.enabled&&!manualMode" tone="warn" :title="t('delivery.pickup.disabled',{carrier:carrierName})"><NuxtLink :to="'/carrier/edit/'+overview.carrier.id">{{t('delivery.pickup.setup-link')}}</NuxtLink></WAlert><WAlert v-if="overview.blockers.length&&!manualMode" tone="warn" :title="t('delivery.pickup.blockers.title')"><ul><li v-for="(blocker,index) in overview.blockers" :key="index">{{blockerText(blocker)}}</li></ul></WAlert><div class="pickup-grid"><div class="shipments"><div class="shipment-heading"><span>{{t('delivery.pickup.shipments.title')}} {{shipments.length}}</span><WCheckbox :model-value="allSelected" :disabled="!schedulable.length" @update:model-value="toggleAll">{{t('delivery.pickup.shipments.select-all')}}</WCheckbox></div><div v-for="row in shipments" :key="row.shipment_id" class="shipment-row" :class="{selected:selected.includes(row.shipment_id)}"><WCheckbox :model-value="selected.includes(row.shipment_id)" :disabled="!row.can_schedule" :aria-label="row.tracking_number||String(row.shipment_id)" @update:model-value="value=>selectRow(row.shipment_id,value===true)"/><div class="shipment-name"><NuxtLink class="w-pickup-name" :to="'/dn/detail/'+row.dn_id">DN-{{row.dn_id}} · {{row.tracking_number||'—'}}</NuxtLink><small>{{row.order_number}} · {{row.ship_date||'—'}} · {{row.service_name||formatServiceType(row.service_type)||'—'}}</small><small v-if="!row.can_schedule">{{rowPickupText(row)}}</small></div><span class="packages">{{t('delivery.pickup.fields.packages-value',{count:row.package_count,weight:formatWeight(row.weight_kg)})}}</span><WButton v-if="row.can_schedule" size="sm" @click="bookOne(row)">{{t(manualMode?'shipping.actions.record_pickup':'delivery.pickup.operations.schedule')}}</WButton></div><WEmptyState v-if="!shipments.length" :title="t('delivery.pickup.shipments.empty')"/></div><div class="booking"><h3>{{t('delivery.pickup.shipments.selected',{count:selected.length,packages:selectedPackages,weight:selectedWeight})}}</h3><p v-if="manualMode&&pickupContact">{{t('shipping.pickup.contact')}} <a v-if="contactIsUrl" :href="pickupContact" target="_blank" rel="noopener">{{pickupContact}}</a><span v-else>{{pickupContact}}</span></p><WButton v-if="!manualMode" variant="primary" block :disabled="!canSchedule" @click="openModal">{{t('delivery.pickup.operations.schedule')}}</WButton><WButton v-if="manualMode||overview.can_record!==undefined" :variant="manualMode?'primary':'text'" block :disabled="!canRecord" @click="openManualModal">{{t('shipping.actions.record_pickup')}}</WButton><small>{{t('delivery.pickup.location.hint')}}</small></div></div></template></WCard><WCard flush><div class="section-title"><h2>{{t('delivery.pickup.pickups.title')}}</h2></div><WAlert v-if="listFailure" tone="block" :title="listFailure.summary"><ul><li v-for="(error,index) in listFailure.errors" :key="index">{{error.code}} {{error.message}}</li></ul><small>{{listFailure.transactionId}}</small></WAlert><WTable :columns="recordColumns" :rows="overview.pickups" inset><template #cell-window="{row}">{{timeWindow(row)}}</template><template #cell-status="{row}"><WStatus :tone="pickupDisplayStatus(row)==='scheduled'?'ok':'warn'">{{t('delivery.pickup.status.'+pickupDisplayStatus(row))}}</WStatus><small v-if="pickupReasonText(row)">{{pickupReasonText(row)}}</small><small v-if="row.error_message&&row.status!=='scheduled'">{{row.error_message}}</small></template><template #cell-source="{row}">{{t(row.source==='manual'?'shipping.pickup.manual-badge':'shipping.pickup.api-badge')}}</template><template #cell-code="{row}">{{row.confirmation_code||'—'}}<small>{{row.location_code}}</small></template><template #cell-packages="{row}">{{t('delivery.pickup.fields.packages-value',{count:row.package_count,weight:formatWeight(row.total_weight_kg)})}}</template><template #cell-shipments="{row}">{{(row.shipments||[]).map((shipment:any)=>shipment.tracking_number).filter(Boolean).join(', ')||'—'}}</template><template #cell-created="{row}">{{$dayjs(row.created_at,'MM/DD HH:mm',pickupTimeZone)}}<small>{{row.created_by_user?.user_name}}</small></template><template #cell-actions="{row}"><WButton v-if="row.can_cancel" size="sm" variant="danger" :disabled="busyPickupId!==null" @click="cancelPickup(row)">{{t(row.reason==='cancel_unclear'?'delivery.pickup.operations.retry-cancel':'delivery.pickup.operations.cancel')}}</WButton><WButton v-if="row.can_dismiss" size="sm" :disabled="busyPickupId!==null" @click="dismissPickup(row)">{{t('delivery.pickup.operations.dismiss')}}</WButton></template></WTable><p class="record-hint">{{t('delivery.pickup.pickups.hint')}}</p></WCard></template></template><CarrierPickupModal v-model:open="showModal" :carrier-id="carrierId" :carrier-name="carrierName" :warehouse-id="warehouseId" :shipments="selectedRows" :location="overview?.pickup_location" :max-remarks="overview?.max_remarks" :today="overview?.today" @booked="selected=[]" @submitted="fetchOverview"/><ManualPickupModal v-model:open="showManualModal" :carrier-id="carrierId" :carrier-name="carrierName" :warehouse-id="warehouseId" :shipments="selectedRows" :contact="pickupContact||null" :today="overview?.today" @recorded="selected=[]" @submitted="fetchOverview"/></div></template>
+<style scoped>
+.w-pickup{display:flex;flex-direction:column;gap:16px}header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}header>.w-button{margin-left:auto}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}.carrier-tabs{display:flex;flex-wrap:wrap;gap:8px}.carrier-tabs button{height:32px;padding:0 12px;border:1px solid var(--w-border-strong);border-radius:999px;background:white;color:var(--w-text-2);font:inherit;font-size:13px;line-height:20px}.carrier-tabs button.active{border-color:#DAD6FF;background:#F5F4FF;color:#4E1DBC;font-weight:600}.section-title{padding:16px 24px;border-bottom:1px solid var(--w-line)}h2{font-size:16px;line-height:24px;font-weight:600;margin:0 0 2px}small{display:block;color:var(--w-text-3);font-size:12px;line-height:18px}p{font-size:13px;line-height:20px;margin:6px 0 0}.pickup-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;padding:16px 24px 24px;align-items:start}.shipments{display:flex;flex-direction:column;gap:8px;min-width:0}.shipment-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--w-text-3)}.shipment-row{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;border:1px solid var(--w-border);border-radius:10px}.shipment-row.selected{border-color:#DAD6FF;background:#F5F4FF}.shipment-name{min-width:0;flex:1}.w-pickup-name{font-size:14px;line-height:20px;font-weight:600;text-decoration:none;color:var(--w-text-1);overflow-wrap:anywhere}.packages{font-size:13px;line-height:20px}.booking{padding:16px;border:1px solid var(--w-border);border-radius:10px;display:flex;flex-direction:column;gap:12px}h3{font-size:14px;line-height:22px;font-weight:600;margin:0}.record-hint,.notice{padding:16px 24px;margin:0;color:var(--w-text-3)}.w-pickup :deep(.w-table){min-width:1040px}.w-pickup :deep(.w-table td){padding-top:12px;padding-bottom:12px;vertical-align:top}@media(max-width:1100px){.pickup-grid{grid-template-columns:minmax(0,1fr)}}@media(max-width:600px){.pickup-grid{padding:16px}.shipment-row{flex-wrap:wrap}.shipment-name{min-width:65%}}
+</style>

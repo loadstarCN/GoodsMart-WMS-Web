@@ -1,4 +1,15 @@
 {
+  "operator-report": {
+    "title": "作業効率",
+    "operator": "担当者",
+    "quantity": "数量",
+    "tasks": "完了タスク",
+    "hours": "参加タスク時間",
+    "rate": "1時間当たり数量",
+    "untimed": "時間不明タスク",
+    "median": "効率中央値",
+    "scope": "期間内に完了したタスクを集計。時間は中断を含むタスク全体の経過時間で、個人の労働時間ではありません。共同作業は各参加者にタスク時間を計上。開始時刻不明・正でない時間は数量のみ集計します。"
+  },
   "language": "日本語",
   "nav": {
     "home": "ホーム",
@@ -377,7 +388,8 @@
       "password-mismatch": "新しいパスワードと確認が一致しません",
       "password-same-as-old": "新しいパスワードは現在のパスワードと同じにすることはできません",
       "quantity-exceeds-available": "数量が引当可能数を超えています（最大 {max}）",
-      "password-policy": "パスワードは {min}〜{max} 文字で、英大文字・英小文字・数字・記号（{special}）をそれぞれ含めてください（使用できるのは英字・数字とこれらの記号のみ）"
+      "password-policy": "パスワードは {min}〜{max} 文字で、英大文字・英小文字・数字・記号（{special}）をそれぞれ含めてください（使用できるのは英字・数字とこれらの記号のみ）",
+      "quantity-invalid": "0 以上の整数を入力してください"
     },
     "statistics": {
       "title": "統計情報",
@@ -474,6 +486,46 @@
         "oldest": "最も古いものは {time} から棚入れ待ち"
       },
       "empty": "棚入れ待ちの商品はありません"
+    },
+    "ui": {
+      "composition": "在庫内訳",
+      "thresholds": "補充・過剰在庫しきい値",
+      "low": "補充しきい値",
+      "high": "過剰しきい値",
+      "disabled": "-1 で無効化",
+      "selected": "{count} 件選択中",
+      "by-goods": "商品別",
+      "occupied": "出荷引当",
+      "outside": "その他の在庫状態",
+      "operations": "作業中",
+      "invalid": "整数を入力してください（-1 で無効化）。下限は上限以下にしてください。",
+      "choose-warehouse": "同じ倉庫の在庫行を選択してください。"
+    },
+    "views": {
+      "goods": "商品別",
+      "location": "ロケーション別",
+      "history": "過去の在庫",
+      "view": "在庫表示",
+      "lot": "ロット",
+      "expiry": "有効期限",
+      "occupied": "使用中ロケーション",
+      "empty": "空きロケーション",
+      "location-search": "ロケーション・商品名・コード"
+    },
+    "history": {
+      "total": "倉庫内合計",
+      "date": "残高日付",
+      "partial": "初期記録は棚在庫のみで、棚入れ待ち・ピッキング済・梱包済を含みません。",
+      "none": "選択した日付の在庫記録がありません。",
+      "source": "データソース",
+      "sources": {
+        "realtime": "現在庫",
+        "ledger": "在庫履歴残高",
+        "derived": "過去記録から算出",
+        "computed": "計算残高",
+        "legacy_snapshot": "旧スナップショット",
+        "none": "記録なし"
+      }
     }
   },
   "company": {
@@ -516,6 +568,9 @@
     "tips": {
       "export": "海外出荷のコマーシャルインボイス（CI）・パッキングリスト（PL）に英語で印字されます。",
       "export-required": "輸出書類（インボイス・パッキングリスト）の発行には英語社名・英語住所・電話番号・国コードが必要です（電話番号と国コードは倉庫の設定が優先）。"
+    },
+    "ui": {
+      "defaults": "デフォルト設定"
     }
   },
   "department": {
@@ -535,6 +590,10 @@
       "add": "部門追加",
       "edit": "部門編集",
       "delete": "部門削除"
+    },
+    "ui": {
+      "create": "部門を新規作成",
+      "view-staff": "スタッフ一覧で確認"
     }
   },
   "warehouse": {
@@ -568,6 +627,41 @@
       "export": "会社住所と異なる場合、輸出書類に出荷元（Ship From）として印字されます。",
       "export-latin": "英語住所は上の住所の「ローマ字表記」にあります。",
       "timezone": "この倉庫の伝票・タスクの時刻はこのタイムゾーンで表示・入力します。出荷日・書類の日付・集荷日や「今日」もこのタイムゾーンで決まります。「サーバーの既定」を選ぶとサーバーに設定されたタイムゾーンを使います。"
+    },
+    "ui": {
+      "create": "倉庫を新規作成",
+      "basic": "基本情報",
+      "currency": "既定の通貨",
+      "pickup-contact": "集荷担当者",
+      "capture": "入荷時の仕様収集",
+      "capture-fields": "収集項目",
+      "weight": "重量",
+      "dimensions": "寸法",
+      "origin_country": "原産国",
+      "capture-mode": "収集方法",
+      "missing": "未入力のみ",
+      "remeasure": "すべて再測定",
+      "capture-enforcement": "収集が未完了の場合",
+      "warn": "警告して続行",
+      "block": "完了をブロック",
+      "goods-count": "{count} 商品",
+      "dispatch-today": "本日の出荷待ち",
+      "receive-today": "本日の入荷待ち",
+      "status-count": "有効 {active} · 無効 {inactive}",
+      "export-missing": "英語住所または集荷担当者が未入力",
+      "overview": "概要",
+      "information": "倉庫情報",
+      "position": "役職",
+      "zone": "ゾーン",
+      "zones": "ゾーンとロケーション",
+      "empty-locations": "空き",
+      "nearly-full": "満杯間近",
+      "plan-version": "バージョン",
+      "plan-live": "公開済み",
+      "plan-changed": "下書きに変更あり",
+      "zone-summary": "{zones} ゾーン · {locations} ロケーション",
+      "all-staff": "全 {count} 人を表示",
+      "business-date": "業務日付"
     }
   },
   "location": {
@@ -612,6 +706,26 @@
       },
       "quantity-required": "数量入力",
       "reason-required": "理由入力"
+    },
+    "ui": {
+      "create": "ロケーションを新規作成",
+      "position": "位置",
+      "dimensions": "寸法と容量",
+      "positive": "0 より大きい数値を入力してください",
+      "utilization": "容積使用率",
+      "storage": "在庫商品",
+      "putaway": "棚入れ",
+      "removal": "棚出し",
+      "adjustment": "在庫調整",
+      "transfer": "棚移動",
+      "cyclecount": "棚卸",
+      "history": "最近の変動",
+      "label": "ロケーションラベル",
+      "information": "ロケーション情報",
+      "all": "すべて",
+      "putaway-time": "棚入れ日時",
+      "last-movement": "最終変動",
+      "last-count": "最終棚卸"
     }
   },
   "staff": {
@@ -637,6 +751,21 @@
       "add": "従業員追加",
       "edit": "従業員編集",
       "delete": "従業員削除"
+    },
+    "ui": {
+      "create": "スタッフを新規作成",
+      "account": "アカウント",
+      "roles": "ロール",
+      "last-login": "最終ログイン",
+      "search": "氏名・メール・電話・社員番号",
+      "account-password": "アカウントとパスワード",
+      "show-password": "パスワードを表示",
+      "warehouses": "操作可能な倉庫",
+      "new-password": "新しいパスワード",
+      "hide-password": "パスワードを隠す",
+      "account-enabled": "アカウント有効",
+      "account-enabled-help": "保存後に反映されます。無効化するとログインできなくなり、既存のセッションも終了します。自分のアカウントは無効化できません。",
+      "warehouse-help": "会社管理者は会社の全倉庫を操作できます。他の役割は割り当てられた倉庫でのみ作業できます。"
     }
   },
   "supplier": {
@@ -656,6 +785,22 @@
       "add": "サプライヤー追加",
       "edit": "サプライヤー編集",
       "delete": "サプライヤー削除"
+    },
+    "ui": {
+      "create": "仕入先を作成",
+      "basic": "基本情報",
+      "contact": "連絡先",
+      "enabled": "有効",
+      "disabled": "無効",
+      "enable": "有効にする",
+      "status-help": "無効にすると新規入荷通知では選択できません。既存の入荷通知には影響しません。",
+      "unsaved": "未保存の変更があります",
+      "recent": "最近の入荷通知",
+      "all-asns": "全 {count} 件",
+      "disable": "無効にする",
+      "last-arrival": "最近の入荷",
+      "transit": "{count} 件輸送中",
+      "no-arrival": "入荷記録なし"
     }
   },
   "carrier": {
@@ -813,8 +958,12 @@
         "preset-required": "ファイル連携ではプリセットを選択（またはテンプレートを入力）してください",
         "account-required": "{field}を入力してください"
       },
-      "version": "準拠した仕様：{version}"
-    }
+      "version": "準拠した仕様：{version}",
+      "ui": {
+        "instructions": "取込手順を確認"
+      }
+    },
+    "list-settings": "設定"
   },
   "recipient": {
     "title": "受取先管理",
@@ -827,6 +976,31 @@
       "add": "受取先追加",
       "edit": "受取先編集",
       "delete": "受取先削除"
+    },
+    "ui": {
+      "create": "配送先を作成",
+      "basic": "基本情報",
+      "contact": "連絡先",
+      "enabled": "有効",
+      "disabled": "無効",
+      "enable": "有効にする",
+      "status-help": "無効にすると新規出荷通知では選択できません。既存の出荷通知には影響しません。",
+      "unsaved": "未保存の変更があります",
+      "recent": "最近の入荷通知",
+      "all-asns": "全 {count} 件",
+      "disable": "無効にする",
+      "last-arrival": "最近の入荷",
+      "transit": "{count} 件輸送中",
+      "source": "作成元",
+      "manual": "手動作成",
+      "external": "外部システム",
+      "last-dispatch": "最近の出荷",
+      "search": "名称、連絡先、電話、住所",
+      "records": "記録",
+      "external-id": "外部番号",
+      "customs": "通関",
+      "source-unrecorded": "作成元未記録",
+      "no-dispatch": "発送記録なし"
     }
   },
   "goods": {
@@ -883,7 +1057,10 @@
         "dimensions": "mm",
         "origin-country": "包装の「MADE IN」表記どおりに登録。不明なら空欄のまま",
         "no-changes": "変更はありません"
-      }
+      },
+      "basic-info": "基本情報",
+      "specs": "仕様・重量・寸法",
+      "dates": "製造日・有効期限"
     },
     "operations": {
       "add": "商品追加",
@@ -920,6 +1097,72 @@
       "processed": "{count} 件の商品を処理しました",
       "upload-another": "続けて取り込む",
       "back-to-list": "商品一覧に戻る"
+    },
+    "ui": {
+      "brand-maker": "ブランド・メーカー",
+      "onhand": "実在庫",
+      "available": "販売可能",
+      "pending": "棚入れ待ち",
+      "info": "商品情報",
+      "complete": "入力済み",
+      "missing": "未入力：{fields}",
+      "image-missing": "画像未登録",
+      "spec-missing": "仕様未入力",
+      "dimensions": "寸法",
+      "has-stock": "在庫あり",
+      "export": "エクスポート",
+      "import": "インポート",
+      "export-filtered": "絞り込み結果を出力",
+      "activate": "有効にする",
+      "deactivate": "無効にする",
+      "brand-filter": "ブランドで絞り込み",
+      "location-stock": "ロケーション在庫",
+      "stock-records": "在庫履歴"
+    },
+    "files": {
+      "export-title": "商品エクスポート",
+      "filters": "絞り込み条件",
+      "columns": "出力項目",
+      "file": "ファイル",
+      "preset": "プリセット",
+      "template": "インポート用項目",
+      "all-columns": "全項目",
+      "format": "ファイル形式",
+      "encoding": "文字コード",
+      "language": "見出しの言語",
+      "preview": "プレビュー",
+      "generate": "ファイル生成",
+      "recent": "最近のエクスポート",
+      "download": "ダウンロード",
+      "move-up": "上へ",
+      "move-down": "下へ",
+      "matches": "対象商品 {count} 件",
+      "lossy": "{count} 件の商品に、この文字コードで表現できず「?」になる文字が含まれています。",
+      "import-title": "商品インポート",
+      "upload": "ファイルをアップロード",
+      "strategy": "重複コードの処理",
+      "history": "インポート履歴",
+      "result": "確認結果",
+      "confirm-import": "有効な行を取り込む",
+      "sheet": "シート",
+      "rows": "行",
+      "action": "処理",
+      "errors": "エラー",
+      "skip": "既存商品を維持",
+      "active": "既存商品を有効化",
+      "append": "未入力項目を補完",
+      "override": "項目を上書き",
+      "create": "新規",
+      "update": "更新",
+      "unchanged": "変更なし",
+      "error": "エラー",
+      "completed": "完了",
+      "failed": "失敗",
+      "partial": "一部完了",
+      "pending": "待機中",
+      "running": "処理中",
+      "expired": "期限切れ",
+      "error-file": "エラー行をダウンロード"
     }
   },
   "cyclecount": {
@@ -993,7 +1236,13 @@
     "tips": {
       "cancel-confirm-title": "調整を取り消しますか？",
       "cancel-confirm": "ADJ-{id} を取り消します。在庫は変更されず、取消後は承認・完了できません。元に戻せません。",
-      "from-cyclecount": "棚卸し CC-{id} から作成"
+      "from-cyclecount": "棚卸し CC-{id} から作成",
+      "independent-approval": "作成者または明細の最終編集者は承認できません。別の承認権限者が対応してください。"
+    },
+    "ui": {
+      "pending": "承認待ち",
+      "lines": "調整明細",
+      "info": "伝票情報"
     }
   },
   "asn": {
@@ -1095,6 +1344,35 @@
         "NO_DETAILS": "明細がないため受領できません",
         "SORTING_TASK_MISSING": "受領済みですが、有効な仕分けタスクがありません"
       }
+    },
+    "form-ui": {
+      "supplier-type": "仕入先と種類",
+      "warehouse-arrival": "倉庫と入荷日",
+      "invalid-measure": "重量と体積は 0 以上の数値にしてください",
+      "readonly": "現在の状態または権限では編集できません",
+      "close-confirm": "ASN-{id} を終了しますか？この通知の入荷受付を停止します。",
+      "goods-specs": "商品・単品仕様",
+      "expected": "予定",
+      "rejected": "受取拒否",
+      "pending-specs": "仕様収集待ち {count} 商品",
+      "total": "合計",
+      "document-info": "伝票情報",
+      "spec-capture": "仕様収集",
+      "missing": "不足項目のみ",
+      "remeasure": "再計測"
+    },
+    "list": {
+      "count": "{count} 件",
+      "create": "入荷通知を作成",
+      "tracking": "配送業者 · 追跡番号",
+      "arrival": "入荷予定",
+      "stage": "段階",
+      "type": "種別",
+      "arrival-from": "入荷予定日（開始）",
+      "search": "ASN、注文番号、商品コード、追跡番号",
+      "spec-pending": "仕様採寸待ち",
+      "no-tracking": "追跡番号未登録",
+      "goods-count": "{lines} 種 · {quantity} 点"
     }
   },
   "sorting": {
@@ -1148,7 +1426,8 @@
       "packing-info": "梱包情報",
       "special-handling": "特別対応",
       "transportation": "輸送方法",
-      "order-no": "注文番号"
+      "order-no": "注文番号",
+      "transportation-mode": "輸送方法"
     },
     "form": {
       "placeholders": {
@@ -1381,6 +1660,17 @@
         "created": "作成",
         "updated": "更新"
       }
+    },
+    "form-ui": {
+      "change-warehouse": "倉庫を変更",
+      "clear-items": "倉庫を変更すると追加済みの商品が消去されます。続行しますか？",
+      "use-formatted": "整形した住所を使用",
+      "use-recipient": "納品先の住所を使用",
+      "address-fields": "住所の詳細を編集",
+      "shipping": "配送情報",
+      "readonly": "現在の状態または権限では編集できません",
+      "over-stock": "{count} 件の商品が利用可能在庫を超えています。数量を修正してください",
+      "warehouse-date": "倉庫と日付"
     }
   },
   "picking": {
@@ -2966,7 +3256,8 @@
         "WAYBILL_EXISTS": "送り状の作成・ファイル出力済みのため変更できません。変更するには先に送り状を取り消して（ファイル方式は出力を取り消して）ください",
         "DN_SHIPPED": "出荷済みのため変更できません"
       }
-    }
+    },
+    "stage-label": "段階"
   },
   "address": {
     "title": "住所",
@@ -3538,5 +3829,579 @@
       "close": "クローズ",
       "delete": "削除"
     }
+  },
+  "items-import": {
+    "title": "商品を一括追加",
+    "source": "入力方法",
+    "paste": "貼り付け",
+    "file": "ファイルをアップロード",
+    "help": "商品コード、数量、備考の順に入力。数量が空欄の場合は 1。カンマまたはタブで区切ってください。",
+    "placeholder": "G001,2,備考",
+    "file-hint": "CSV または Excel（.xlsx）、最大 10 MB",
+    "first-sheet": "最初のシート",
+    "sheet": "シート",
+    "header": "先頭行は見出し",
+    "csv-template": "CSV テンプレート",
+    "xlsx-template": "Excel テンプレート",
+    "preview": "プレビュー",
+    "line": "行",
+    "available": "利用可能数",
+    "result": "処理結果",
+    "low-stock": "利用可能在庫を超えています。保存前に修正してください",
+    "kept": "元の数量を保持",
+    "merged": "数量を合算",
+    "new": "新規",
+    "existing": "既存の商品",
+    "add": "数量を加算し備考を結合",
+    "keep": "元の数量と備考を保持",
+    "limit": "最大 500 商品。数量は 1 から 2147483647 の整数にしてください。",
+    "summary": "有効 {valid} 件、エラー {errors} 件",
+    "apply": "有効な商品を追加",
+    "download-error": "テンプレートをダウンロードできません。再試行してください。",
+    "errors": {
+      "CODE_INVALID": "商品コードは必須で 50 文字以内です",
+      "QUANTITY_INVALID": "数量は有効な正の整数にしてください",
+      "EXTRA_COLUMNS": "商品コード、数量、備考の 3 列のみ対応",
+      "NOT_FOUND": "商品が見つかりません",
+      "INACTIVE": "商品は無効です",
+      "TOO_LARGE": "ファイルサイズの上限を超えています",
+      "TOO_MANY_ROWS": "最大 10000 行です",
+      "EMPTY": "読み取れる商品データがありません",
+      "HEADER_INVALID": "見出し設定が無効です",
+      "NOT_CSV": "CSV 形式が無効です",
+      "FORMAT_INVALID": "CSV または XLSX のみ対応",
+      "UNKNOWN_ENCODING": "文字コードを認識できません。UTF-8 または Shift_JIS を使用してください",
+      "NOT_UTF8": "UTF-8 として無効です",
+      "NOT_SHIFT_JIS": "Shift_JIS として無効です",
+      "NOT_XLSX": "Excel ファイルが無効です",
+      "SHEET_NOT_FOUND": "シートが見つかりません",
+      "TOO_MANY_CODES": "一度に最大 1000 商品をプレビューできます"
+    }
+  },
+  "ledger": {
+    "title": "在庫履歴",
+    "time": "日時",
+    "movement": "変動種別",
+    "document": "伝票番号",
+    "stock-type": "在庫区分",
+    "change": "変動数",
+    "balance": "残高",
+    "balances": "在庫残高",
+    "search": "商品名・商品コード",
+    "from": "開始日",
+    "to": "終了日",
+    "reset": "絞り込みをリセット",
+    "movements": {
+      "opening": "期首",
+      "reconcile": "システム調整",
+      "sort_in": "仕分入庫",
+      "putaway": "棚入れ",
+      "removal": "棚出し",
+      "transfer": "棚移動",
+      "pick": "ピッキング",
+      "pack": "梱包",
+      "pack_short_return": "梱包差額返却",
+      "dn_cancel_return": "取消返却",
+      "ship": "出荷",
+      "sign": "受領",
+      "adjust_gain": "棚卸増",
+      "adjust_loss": "棚卸減",
+      "lot_relabel": "ロット変更",
+      "correction": "履歴修正"
+    },
+    "types": {
+      "onhand": "在庫",
+      "damaged": "破損",
+      "return": "返品",
+      "pending": "良品棚入れ待ち",
+      "pending_damaged": "破損棚入れ待ち",
+      "picked": "ピッキング済",
+      "packed": "梱包済",
+      "in_transit": "輸送中"
+    },
+    "all-warehouses": "すべての倉庫",
+    "document-type": "伝票種別",
+    "documents": {
+      "asn": "入荷予定",
+      "dn": "出荷指示",
+      "putaway": "棚入れ",
+      "removal": "棚出し",
+      "transfer": "移動",
+      "picking_task": "ピッキング作業",
+      "packing_task": "梱包作業",
+      "adjustment": "在庫調整"
+    },
+    "ranges": {
+      "today": "今日",
+      "week": "過去7日",
+      "month": "今月",
+      "previous": "先月",
+      "custom": "指定期間"
+    },
+    "overview-title": "期間集計",
+    "overview-help": "標準残高は棚在庫・棚入れ待ち・ピッキング済み・梱包済みを含み、出荷後の輸送中在庫を除外します。ピッキング・梱包・倉庫内移動は状態変更のみで、出荷完了時に出庫として計上します。在庫区分を指定した場合は、その区分への流入・流出を集計します。",
+    "trend": "在庫推移",
+    "day-end": "日末 / 当日は現在値",
+    "overview-scope": "計上日時、商品、ロット、棚番、在庫区分に該当する全件を集計します。伝票・変動種別の条件は明細のみに適用されます。",
+    "no-lot": "ロットなし",
+    "balance-help": "同じ倉庫・商品・在庫区分の全ロット・棚番を合算した残高です。計上順に計算します。"
+  },
+  "threshold": {
+    "daily": "日平均出庫",
+    "current": "現在の閾値",
+    "scope": "対象：選択した {count} 商品",
+    "fixed": "固定値",
+    "suggest": "出庫数から計算",
+    "window": "集計日数",
+    "cover": "補充カバー日数",
+    "overstock": "過剰在庫日数",
+    "minimum": "最小補充数",
+    "preview": "行別プレビュー",
+    "refresh": "プレビュー更新",
+    "stale": "設定が変わりました。保存前にプレビューを更新してください。",
+    "no-outbound": "出庫なし・提案なし",
+    "keep": "空欄は各行の現在値を保持します。"
+  },
+  "operations": {
+    "ui": {
+      "progress": "進捗",
+      "review": "検品",
+      "damage": "破損",
+      "boxes": "箱数",
+      "time-operator": "時刻・担当者",
+      "next": "次の操作",
+      "process": "処理",
+      "view": "表示",
+      "full-flow": "全体フロー",
+      "new-good": "今回の良品",
+      "new-damage": "今回の破損",
+      "variance": "差異",
+      "this-entry": "今回の入力",
+      "records": "仕分け履歴",
+      "status-records": "状態履歴",
+      "select-location": "ロケーションを選択",
+      "picking-records": "ピッキング履歴",
+      "packing-records": "梱包履歴",
+      "scope": "範囲",
+      "location-goods": "ロケーション・商品",
+      "unrecorded": "未入力",
+      "this-page": "このページ"
+    }
+  },
+  "auth-design": {
+    "subtitle": "入荷から出荷まで、倉庫作業をスムーズに。",
+    "language": "表示言語",
+    "show-password": "パスワードを表示",
+    "hide-password": "パスワードを隠す"
+  },
+  "print-design": {
+    "prepared": "作成者",
+    "checked": "確認者",
+    "received": "受領者",
+    "signature": "署名",
+    "date": "日付",
+    "language": "印刷言語",
+    "arrival": "到着日時",
+    "packages": "受領箱数",
+    "condition": "外装状態",
+    "good": "良好",
+    "damaged": "破損"
+  },
+  "dashboard-design": {
+    "title": "業務概要",
+    "pending": "対応待ち",
+    "outbound": "出荷の進捗",
+    "inbound": "入荷の進捗",
+    "stock": "在庫アラート",
+    "all": "すべて表示",
+    "scope": "選択倉庫の範囲 · 未完了の全伝票",
+    "low": "補充基準を下回る在庫",
+    "putaway": "棚入れ待ち",
+    "overdue": "3 日超の棚入れ待ち",
+    "empty": "対応待ちの作業はありません"
+  },
+  "stock-report": {
+    "by-month": "月別",
+    "previous-year": "前年",
+    "next-year": "翌年",
+    "title": "入出庫・在庫集計",
+    "from": "開始日",
+    "to": "終了日",
+    "opening": "期首",
+    "inbound": "入庫",
+    "outbound": "出庫",
+    "closing": "期末",
+    "total": "ページ合計",
+    "hint": "計上日時で集計します。倉庫内移動は入出庫に重複計上しません。",
+    "scope-total": "対象範囲の合計",
+    "period-ledger": "期間内の在庫履歴",
+    "dimension": "集計単位",
+    "category": "分類",
+    "brand": "ブランド",
+    "unassigned": "未設定",
+    "expand-all": "すべて展開",
+    "collapse-all": "すべて閉じる",
+    "load-more": "さらに読み込む / 再試行",
+    "subtotal": "合計"
+  },
+  "inventory-analysis": {
+    "stock-trend": "在庫推移",
+    "stock-trend-help": "過去90日の日末在庫。本日は現在在庫。対象は在庫区分のみで、履歴は在庫台帳の記録範囲に基づきます。 空白は履歴なしを示し、在庫ゼロを意味しません。",
+    "title": "在庫分析",
+    "asof": "集計基準日",
+    "no-snapshot": "日次集計はまだありません。在庫日次締め処理の実行後に表示されます。",
+    "stocked": "在庫あり商品",
+    "moving": "30 日間の出庫商品",
+    "dead": "滞留商品",
+    "moving-rate": "出庫商品率",
+    "age": "在庫日齢分布",
+    "abc": "出庫 ABC",
+    "out90": "90 日間の出庫",
+    "unknown": "不明",
+    "days": "日",
+    "turnover": "回転日数",
+    "supply": "販売可能日数",
+    "normal": "通常",
+    "empty": "在庫なし",
+    "all": "すべて",
+    "hint": "日齢は先入先出で推定。90 日間出庫がなく最古入庫層が 90 日超の商品を滞留とします。ABC は 90 日間の累積出庫比率で分類します。",
+    "scope": "グラフは選択倉庫の全体集計です。絞り込みは下の明細にのみ適用されます。",
+    "goods": "商品明細",
+    "quantity": "数量",
+    "pieces": "個",
+    "average-age": "平均在庫日齢",
+    "no-outbound": "出庫データはありません",
+    "out30": "直近30日の出庫",
+    "oldest-age": "最長在庫日数",
+    "unknown-age": "在庫日数不明の数量",
+    "stock90": "過去90日の日末在庫",
+    "inbound-date": "入庫日時",
+    "age-days": "在庫日数",
+    "last-in": "最終入庫",
+    "last-out": "最終出庫",
+    "layers": "在庫日数別内訳"
+  },
+  "document-report": {
+    "daily": "日別推移",
+    "daily-hint": "実際の運送業者引渡日で集計。マスで伝票を開き、日付で当日の記録を絞り込みます。1 日最大 20 マス、残りは件数を選択して確認できます。薄いグレーは週末です。",
+    "unscheduled": "予定日未設定",
+    "inbound": "入荷分析",
+    "outbound": "出荷分析",
+    "scope-asn": "入荷予定日基準、クローズ済み伝票を除く",
+    "scope-dn": "運送会社への引渡日基準、クローズ済み伝票を除く",
+    "select-warehouse": "倉庫を選択してください",
+    "documents": "伝票数",
+    "actual": "実績数量",
+    "on_time_rate": "定時率",
+    "difference_rate": "入荷差異率",
+    "damage": "破損数量",
+    "expected": "予定数量",
+    "received": "受領済み伝票",
+    "difference": "差異数量",
+    "previous": "前月同期（対応する日付）",
+    "arrivals": "入荷",
+    "arrival-hint": "入荷予定日と実際の受領日、1行につき1伝票",
+    "document": "伝票",
+    "planned": "予定日",
+    "actual-date": "実績日",
+    "late": "遅延",
+    "on-time": "予定どおり",
+    "waiting": "入荷待ち",
+    "details": "伝票明細",
+    "daily-unit": "1 マス = 出荷伝票 1 件",
+    "view-table": "表で表示",
+    "view-chart": "グラフで表示",
+    "late-shipment": "出荷遅延",
+    "distribution": "分布",
+    "current": "今期",
+    "by-carrier": "配送業者別",
+    "by-country": "配送先国別",
+    "by-source": "連携元システム別",
+    "unknown-carrier": "配送業者未記録",
+    "unknown-country": "配送先国未記録",
+    "unknown-source": "API 連携元未記録",
+    "distribution-help": "実際の運送業者引渡日で件数を集計。縦線は前月同期間の件数です。行を選択して伝票を絞り込み、上部のラベルで解除できます。国は伝票の住所スナップショットに基づきます。",
+    "lead-title": "注文処理時間",
+    "lead-unit": "日 · 工程別",
+    "lead-help": "今期に運送業者へ引き渡した伝票のみ。待機と休日を含みます。ピッキング・梱包は全有効タスクの最終完了時刻を使用。欠落・無効な時刻はゼロで補完せず、有効件数を表示します。",
+    "stage": "工程",
+    "median": "中央値",
+    "previous-median": "前期中央値",
+    "samples": "有効件数",
+    "stage-pick": "作成 → ピッキング完了",
+    "stage-pack": "ピッキング完了 → 梱包完了",
+    "stage-handover": "梱包完了 → 引渡し",
+    "stage-total": "作成 → 引渡し",
+    "slowest": "今期で最も時間がかかった伝票",
+    "lead-page": "棒は現在の明細ページ。基準線と最長伝票は期間全体で集計します。",
+    "missing-stages": "工程時刻が不完全",
+    "on-time-title": "定時出荷",
+    "six-months": "直近 6 か月",
+    "on-time-help": "選択した終了日（本日まで）を含む6か月。倉庫の現地日付で予定日と引渡日を比較し、予定日なしは分母から除外。最終月は当日までの集計です。",
+    "late-limit": "遅延伝票は先頭20件を表示。残りは日付で絞り込んだ明細をご確認ください。"
+  },
+  "layout": {
+    "title": "倉庫レイアウト",
+    "new-floor": "フロア {n}",
+    "saved": "下書きを保存しました",
+    "published": "公開済み v{n}",
+    "revision": "下書き改訂 {n}",
+    "version": "公開済み v{n}",
+    "save-first": "先に下書きを保存するか変更を破棄してください",
+    "draft": "現在の下書き",
+    "publish": "公開",
+    "unsaved": "未保存",
+    "floors": "フロアと建物",
+    "objects": "個の図形",
+    "add-floor": "フロアを追加",
+    "no-floor": "フロアを追加または選択してください",
+    "units": "位置と寸法の単位：メートル",
+    "properties": "図形の属性",
+    "floor-settings": "フロア設定",
+    "x": "位置 X",
+    "y": "位置 Y",
+    "width": "幅",
+    "height": "奥行",
+    "rotate": "回転",
+    "pick-face": "ピッキング面",
+    "front": "前",
+    "back": "後",
+    "both": "両面",
+    "target": "接続先",
+    "select-target": "接続点を選択",
+    "travel-seconds": "移動時間（秒）",
+    "kind": {
+      "rack": "棚",
+      "wall": "壁",
+      "zone": "エリア",
+      "door": "出入口",
+      "connector": "接続点",
+      "station": "作業台"
+    },
+    "discard": "変更を破棄",
+    "snap": "0.5 m グリッドに合わせる",
+    "show-labels": "棚コードを表示",
+    "undo": "元に戻す",
+    "redo": "やり直す",
+    "load-more": "さらにロケーションを表示",
+    "view-map": "レイアウトで表示",
+    "delete-floor": "フロアを削除",
+    "delete-floor-hint": "下書きから「{name}」とその図形・接続を削除します。実際のロケーションと公開済みバージョンは保持されます。元に戻すことができます。"
+  },
+  "location-label": {
+    "title": "ロケーションラベル",
+    "copies": "部数",
+    "offset": "開始位置",
+    "hint": "実際のサイズ（100%）で印刷し、ヘッダーとフッターを無効にしてください。A4 ラベル用紙、2 列 × 5 行。",
+    "invalid": "部数は 1～100、開始位置は 1～10 にしてください。",
+    "code-error": "このロケーションの QR コードを生成できません"
+  },
+  "goods-label": {
+    "title": "バーコード印刷",
+    "hint": "{width} × {height} mm のラベル用紙を倍率100%、ヘッダー・フッターなしで印刷してください。商品名とコードは原文のまま表示されます。画面上は拡大表示です。",
+    "invalid": "サイズ・余白・文字サイズを確認し、印刷枚数を1～100の整数で指定してください。",
+    "company-template": "会社の商品ラベルテンプレート",
+    "company-hint": "同じ会社の従業員で既定値を共有します。会社の既定値として保存するまでは、今回の印刷だけに適用されます。",
+    "restore": "会社の既定値に戻す",
+    "save-default": "会社の既定値として保存",
+    "paper-size": "ラベルサイズ",
+    "custom": "カスタム",
+    "width_mm": "幅",
+    "height_mm": "高さ",
+    "margin_mm": "余白",
+    "name_font_pt": "商品名の文字サイズ",
+    "barcode-format": "バーコード形式",
+    "auto": "自動判定",
+    "show-name": "商品名を表示",
+    "saved": "会社の既定値を保存しました",
+    "temporary": "一時的な変更です。会社の既定値は変更されていません。",
+    "conflict": "他のユーザーが会社テンプレートを変更しました。再読み込みしてから保存してください。",
+    "lot": "ロット",
+    "expiry": "有効期限",
+    "content-overflow": "内容がラベルの範囲を超えています。用紙サイズ、余白、文字サイズを調整してから印刷してください。",
+    "reference-layout": "デザイン基準を使用",
+    "no-lot": "ロットを印刷しない",
+    "register-lot": "ロット登録",
+    "register-note": "商品のロットと日付を登録します。マスター情報のみ作成し、入庫や在庫調整は行いません。",
+    "lot-required": "ロット番号を入力してください。",
+    "invalid-dates": "有効期限は製造日以降にしてください。",
+    "duplicate-lot": "この商品のロットは登録済みです。一覧から選択してください。"
+  },
+  "warehouse-scope": {
+    "select-top": "この分析を表示するには上部で倉庫を選択してください"
+  },
+  "count-print": {
+    "title": "棚卸表",
+    "blind": "ブラインド棚卸",
+    "standard": "通常棚卸",
+    "planned": "予定日",
+    "mode": "棚卸モード",
+    "lines": "明細行",
+    "by-location": "ロケーション別棚卸明細",
+    "lot": "ロット",
+    "expiry": "有効期限",
+    "exceptions": "例外記録",
+    "counted": "棚卸担当",
+    "reviewed": "確認者",
+    "print": "棚卸表を印刷",
+    "number": "棚卸番号"
+  },
+  "pick-print": {
+    "title": "ピッキングリスト",
+    "handling": "取扱注意",
+    "suggestion": "ロケーション候補",
+    "record": "ピッキング実績",
+    "suggestion-help": "ロケーションコード順で未ピッキング残数のみ表示。通常ロケーションのロットなし在庫から進行中タスクの確保分を差し引いて提案します。印刷で在庫は確保されません。実行時に再確認してください。",
+    "record-help": "完了タスクのピッキング実績です。未作業数量ではありません。",
+    "shortage": "利用可能なロケーション在庫が不足。要確認",
+    "picked": "作業者",
+    "checked": "確認者",
+    "quantity": "数量",
+    "total": "合計",
+    "mode": "印刷内容",
+    "by-location": "ピッキング明細 · ロケーション順"
+  },
+  "operator-chart": {
+    "task-title": "タスクごと",
+    "axes": "数量 × 所要時間",
+    "minutes": "分",
+    "chart": "グラフ",
+    "table": "表",
+    "everyone": "すべての担当者",
+    "task-median": "タスク中央値（個 / 時）",
+    "no-timed": "計時可能な完了タスクはありません",
+    "coverage": "直近の計時可能タスク {shown} / {total} 件を表示。未計時は {untimed} 件。",
+    "task": "タスク",
+    "daily": "日別 · 数量",
+    "daily-help": "タスク完了日（{zone}）で集計。色が濃いほど数量が多くなります。",
+    "no-daily": "期間内に完了したタスクはありません",
+    "people-page": "現在の担当者ページを表示しています。他の担当者はページを切り替えて確認できます。",
+    "help": "各点は完了タスクです。所要時間には中断を含みます。斜線は全タスクの時間当たり数量の中央値で、線より上は中央値より遅いタスクです。"
+  },
+  "operator-overview": {
+    "hours": "時間",
+    "untimed-help": "数量のみ集計、効率には含めません",
+    "by-person": "担当者別",
+    "units-hour": "個 / 時",
+    "phase": "作業",
+    "completed": "完了日時",
+    "task-help": "数量はこの担当者の記録分です。所要時間は中断を含むタスク全体の時間です。未計時タスクも表示します。"
+  },
+  "inbound-spec": {
+    "title": "仕様収集カバー率",
+    "collect": "仕様を収集",
+    "help": "期間内に実際に入荷した商品種類を、現在の商品仕様で集計します。入荷時点の履歴ではありません。不足一覧は入荷数量順です。",
+    "complete": "重量・寸法がすべて揃う · {complete} / {total} 種",
+    "weight": "重量",
+    "dimensions": "寸法",
+    "missing": "仕様不足 {count} 種 · 入荷数量順",
+    "received": "期間内入荷 {count} 個",
+    "limit": "上位 {count} 種を表示",
+    "all-complete": "入荷商品の仕様はすべて揃っています",
+    "empty": "期間内に実入荷数量が記録された商品はありません"
+  },
+  "count-accuracy": {
+    "title": "在庫精度",
+    "help": "期間内に完了した棚卸（{zone}）のシステム数量スナップショットで集計します。有効な記録のない行は精度計算から除外します。",
+    "by-line": "行別",
+    "by-quantity": "数量別",
+    "lines": "差異あり {different} / {total} 行",
+    "quantities": "差異 {different} / システム {total} 個",
+    "tasks": "完了棚卸",
+    "unverified": "有効な記録のない行 {count} 行",
+    "months": "直近6か月の行別精度",
+    "months-help": "薄色の最終月は指定終了日または本日まで。有効な棚卸行のない月は — と表示します。",
+    "difference": "差異 {count} 個"
+  },
+  "inventory-age": {
+    "measure": "集計単位",
+    "quantity": "数量別",
+    "skus": "商品種類別",
+    "chart": "グラフ表示",
+    "table": "表で表示",
+    "share": "数量比率",
+    "sku-count": "{count} 種",
+    "sku-help": "同じ商品が複数の経過日数区分に含まれる場合があります。種類数の棒は最多の区分を基準にしています。",
+    "oldest": "180 日超 · 数量上位",
+    "no-aged": "経過日数が判明している 180 日超の在庫はありません",
+    "average": "平均経過日数 {days} 日",
+    "last-out": "最終出庫 {date}"
+  },
+  "inventory-abc": {
+    "help": "出庫は発送完了時点で計上します。過去 90 日の出庫数順で、ABC は日次集計の分類を使用します。分類を押すと下の商品明細を絞り込みます。",
+    "y": "出庫数の累積比率",
+    "x": "商品数の累積比率（出庫数の降順）",
+    "count": "商品種類数",
+    "quantity": "出庫数量",
+    "select": "{group} 分類で絞り込み",
+    "unclassified": "未分類",
+    "unclassified-help": "出庫分類のない商品 {count} 種は C 分類に含めず、別表示します。"
+  },
+  "task-list": {
+    "print": "ピッキング票",
+    "picking": {
+      "pending": "ピッキング待ち",
+      "in_progress": "ピッキング中",
+      "completed": "完了"
+    },
+    "packing": {
+      "pending": "検品待ち",
+      "in_progress": "検品中",
+      "completed": "検品済み"
+    },
+    "goods": "{count} 種類の商品",
+    "units": "合計 {count} 点"
+  },
+  "delivery-list": {
+    "date-from": "発送予定日（開始）"
+  },
+  "outbound-freight": {
+    "title": "運賃",
+    "help": "期間内に引き渡した出荷の有効な送り状から、運送会社が返した純額を元通貨別に表示します。換算しません。請求額・課金重量は未連携のため、照合済み運賃や kg 単価ではありません。",
+    "count": "金額あり",
+    "average": "1 件あたり純額",
+    "total": "純額合計",
+    "previous": "前期",
+    "empty": "今期・前期とも利用できる運送会社純額はありません",
+    "missing": "今期 {count} 件は有効な送り状の金額または通貨がないため平均から除外します。",
+    "unknown-carrier": "運送会社未記録"
+  },
+  "api-key-review": {
+    "signed": "署名設定済み",
+    "unsigned": "署名未設定",
+    "document-events": "入荷通知・出荷伝票のステータスイベント",
+    "document-events-help": "伝票のステータスイベントは作成元システムへ送信され、追加の購読は不要です。",
+    "subscribed": "購読済み",
+    "unsubscribed": "未購読",
+    "no-url": "送信先 URL 未設定",
+    "recent": "最近の履歴",
+    "call-unrecorded": "API 呼出時刻：記録なし",
+    "latest-event": "最新イベント",
+    "no-events": "送信履歴なし",
+    "failed": "送信失敗",
+    "no-log-permission": "送信ログの閲覧権限がありません"
+  },
+  "role-review": {
+    "other": "その他"
+  },
+  "location-zones": {
+    "title": "エリア",
+    "all": "すべてのエリア",
+    "help": "最初のハイフンより前のコードを使用します（A-01-1 は A）。区切りがない場合やハイフンで始まる場合は全体を使用します。件数は上部の倉庫と有効状態に基づき、検索・種別フィルター適用前の値です。"
+  },
+  "receipt-differences": {
+    "title": "入荷差異",
+    "summary": "{units} 点 · {count} / {received} 件",
+    "help": "対象期間の入荷予定日に属する受領済み通知を集計します。不足・超過は商品ごとに計算し、破損は別計上します。集計はページ分割前の全件が対象です。受領拒否は個別記録がないためゼロとはみなしません。",
+    "short": "不足",
+    "over": "超過",
+    "damage": "破損",
+    "chart": "グラフ表示",
+    "table": "表で表示",
+    "units": "点数",
+    "documents": "{count} 件",
+    "rejection-unavailable": "受領拒否：個別データがなく、上記に拒否の内訳は含まれません。",
+    "empty": "受領済み通知に数量・破損の差異記録はありません",
+    "coverage": "差異のある通知 {total} 件中 {shown} 件表示（予定日順・最大 20 件）"
   }
 }

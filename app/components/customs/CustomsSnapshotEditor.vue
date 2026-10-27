@@ -19,6 +19,7 @@ const props = defineProps<{
   /** 视图里的明细（按商品；含没有报关明细的商品） */
   lines: CustomsLine[]
   /** 单证实际用的收货人（快照没有时退回出库单收货人），用作占位提示 */
+  recipientTaxDefaults?: { tax_id?: string | null; tax_id_type?: string | null } | null
   fallbackConsignee?: Record<string, any> | null
 }>()
 
@@ -92,8 +93,8 @@ const init = () => {
   form.incoterm = str(c.incoterm)
   form.export_reason = str(c.export_reason)
   form.recipient_country = c.recipient_country || null
-  form.recipient_tax_id = str(c.recipient_tax_id)
-  form.recipient_tax_id_type = str(c.recipient_tax_id_type)
+  form.recipient_tax_id = str(props.customs ? c.recipient_tax_id : props.recipientTaxDefaults?.tax_id)
+  form.recipient_tax_id_type = str(props.customs ? c.recipient_tax_id_type : props.recipientTaxDefaults?.tax_id_type)
   form.freight_charge = str(c.freight_charge)
   form.insurance_charge = str(c.insurance_charge)
   form.declared_value_carriage = str(c.declared_value_carriage)

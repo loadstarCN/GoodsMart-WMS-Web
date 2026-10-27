@@ -27,6 +27,7 @@ import { activeStepKey, flowActionOf, type FlowAction, type FlowProblem } from '
 
 const props = defineProps<{
   asnId: number | string
+  selected?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -50,24 +51,30 @@ const carrierName = computed(() => flow.value?.carrier?.name || t('customs.carri
 // 收货、刷新跟踪：作业员的 asn_receive 或 asn_edit 任一（新建 / 修改 / 关闭 / 取消收货通知仍只认 asn_edit）
 const canReceive = computed(() => staffStore.hasPermission('asn_receive', 'asn_edit'))
 
+let loadGeneration = 0
+onBeforeUnmount(() => { loadGeneration++ })
 const load = async () => {
+  const generation = ++loadGeneration
   loading.value = true
   loadError.value = null
   await httpRequest<any>(inboundFlowUrl(props.asnId), {
     method: 'GET',
     onSuccess: (data) => {
+      if (generation !== loadGeneration) return
       const next = normalizeInboundFlow(data)
       flow.value = next
       if (next) emit('loaded', next)
     },
     onError: (error) => {
+      if (generation !== loadGeneration) return
       loadError.value = bizErrorMessage(error)
     },
     onFinally: () => {
+      if (generation !== loadGeneration) return
       loading.value = false
     },
   })
-  syncExpanded()
+  if (generation === loadGeneration) syncExpanded()
 }
 
 /** 做了操作：整体重读，通知页面 */
@@ -252,6 +259,14 @@ const setTransitRef = (el: any) => {
 }
 
 const receiving = ref(false)
+const selectedStep = computed(() => props.selected || null)
+const activeStep = computed(() => flow.value?.steps.find(step => ['current', 'warning', 'blocked'].includes(step.state))
+  || flow.value?.steps.filter(step => step.state === 'done').at(-1) || flow.value?.steps[0])
+const shownSteps = computed(() => {
+  const selected = flow.value?.steps.find(step => step.key === selectedStep.value) || activeStep.value
+  return selected ? [selected] : []
+})
+
 const receive = async () => {
   if (receiving.value) return
   receiving.value = true
@@ -289,101 +304,59 @@ const transitStep = (step: InboundStep): InboundStep => (canReceive.value ? step
 defineExpose({ reload })
 </script>
 
+
 <template>
-  <div class="card custom-card inbound-flow" id="inbound-flow">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <div class="card-title d-flex flex-wrap align-items-center gap-2">
-        <span><i class="ri-route-line me-1 align-middle"></i>{{ t('asn.flow.title') }}</span>
-        <InboundStageBadge :stage="flow?.stage" />
-        <span class="badge bg-light text-default fw-normal" v-if="flow?.carrier">
-          <i class="ri-truck-line me-1"></i>{{ flow.carrier.name }}
-        </span>
-        <TimeZoneBadge v-if="flow" :zone="flowTimeZone" />
-      </div>
-      <button type="button" class="btn btn-sm btn-icon btn-light" :disabled="loading" :title="t('shipping.refresh')"
-        :aria-label="t('shipping.refresh')" @click="refresh">
-        <span class="spinner-border spinner-border-sm" v-if="loading && flow"></span>
-        <i class="ri-refresh-line" v-else></i>
-      </button>
-    </div>
-
-    <div class="card-body">
-      <div class="d-flex justify-content-center py-4" v-if="loading && !flow">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-        </div>
-      </div>
-      <div class="alert alert-danger-transparent mb-0" v-else-if="loadError && !flow">{{ loadError }}</div>
-
-      <template v-else-if="flow">
-        <ShippingFlowStepper :steps="flow.steps" :groups="INBOUND_STAGE_GROUPS" label-prefix="asn.flow.steps"
-          :aria-label="t('asn.flow.title')" class="mb-3" />
-
-        <ul class="list-unstyled fs-13 mb-3" v-if="generalProblems.length">
-          <li v-for="(p, i) in generalProblems" :key="`gp-${i}`" :class="p.level === 'error' ? 'text-danger' : 'text-warning'">
-            <i class="me-1" :class="p.level === 'error' ? 'ri-close-circle-line' : 'ri-error-warning-line'"></i>{{ problemText(p) }}
-          </li>
-        </ul>
-
-        <ShippingFlowStep v-for="(step, index) in flow.steps" :key="step.key" :step="step" :index="index + 1"
-          id-prefix="inbound-step" :title="stepTitle(step.key)" :summary="summaryText(step)" :expandable="expandable(step)"
-          :expanded="isExpanded(step.key)" :problems="stepProblems(step)" :problem-text="problemText"
-          :last="index === flow.steps.length - 1" @toggle="toggle(step)">
-          <template #meta v-if="step.key === 'sorting' && sortingTasks(step).length">
-            <NuxtLink v-for="task in sortingTasks(step)" :key="task.id" :to="`/sorting/detail/${task.id}`">
-              #SORT-{{ task.id }}<span class="text-muted ms-1">{{ taskStatusText(task.status) }}</span>
-            </NuxtLink>
-          </template>
-          <template #actions v-if="headerActions(step).length">
-            <button type="button" class="btn btn-sm" v-for="a in headerActions(step)" :key="a.key"
-              :class="a.key === 'receive' ? 'btn-primary-light' : 'btn-light'"
-              :disabled="a.key === 'receive' && receiving" @click="onHeaderAction(step, a.key)">
-              <span class="spinner-border spinner-border-sm me-1" v-if="a.key === 'receive' && receiving"></span>
-              <i class="me-1" :class="ACTION_ICONS[a.key]" v-else></i>{{ actionText(a.key) }}
-            </button>
-          </template>
-
-          <!-- 在途：跟踪状态、扫描记录、刷新 / 查询页 -->
+  <div class="asn-current" id="inbound-flow">
+    <WCard v-if="loading && !flow"><span role="status">{{ t('common.status.loading') }}</span></WCard>
+    <WAlert v-else-if="loadError && !flow" tone="block" :title="loadError"><template #actions><WButton @click="reload">{{ t('dn.list.retry') }}</WButton></template></WAlert>
+    <template v-else-if="flow">
+      <WAlert v-for="(problem, index) in generalProblems" :key="index" :tone="problem.level === 'error' ? 'block' : 'warn'" :title="problemText(problem)" />
+      <section v-for="step in shownSteps" :key="step.key" class="asn-current__card" :aria-label="stepTitle(step.key)">
+        <header class="asn-current__header">
+          <div class="asn-current__heading">
+            <span class="asn-current__eyebrow">{{ step.key === activeStep?.key ? t('dn.detail.now', { position: t('dn.detail.step-of', { index: flow.steps.indexOf(step) + 1, total: flow.steps.length }) }) : t('dn.detail.step-of', { index: flow.steps.indexOf(step) + 1, total: flow.steps.length }) }}</span>
+            <h2>{{ stepTitle(step.key) }}</h2>
+            <p v-if="summaryText(step)">{{ summaryText(step) }}</p>
+          </div>
+          <div class="asn-current__reference" v-if="step.key === 'in_transit' && flow.tracking_number"><span>{{ flow.carrier?.name }} · {{ t('common.fields.tracking-number') }}</span><strong>{{ flow.tracking_number }}</strong></div>
+          <div class="asn-current__reference" v-else-if="step.at"><span>{{ t('common.fields.status') }} · {{ t('shipping.states.' + step.state) }}</span><strong class="asn-current__date">{{ time(step.at) }}</strong></div>
+        </header>
+        <div class="asn-current__body">
+          <WAlert v-for="(problem, index) in stepProblems(step)" :key="index" :tone="problem.level === 'error' ? 'block' : 'warn'" :title="problemText(problem)" />
           <FlowTransitDetail v-if="step.key === 'in_transit' && expandable(step)" :ref="setTransitRef" :step="transitStep(step)"
             :carrier-name="flow.carrier?.name" :tracking-url="flow.carrier?.tracking_url" :refresh-url="inboundTrackUrl(asnId)"
             :waiting-text="t('asn.flow.transit.waiting', { carrier: carrierName })" @changed="refresh" />
-
-          <!-- 上架：逐商品的待上架（估算） -->
-          <template v-else-if="step.key === 'putaway' && expandable(step)">
-            <div class="table-responsive">
-              <table class="table table-sm align-middle mb-0 fs-12 inbound-putaway">
-                <thead>
-                  <tr>
-                    <th scope="col">{{ t('common.entities.goods') }}</th>
-                    <th scope="col" class="text-end">{{ t('asn.flow.putaway.quantity') }}</th>
-                    <th scope="col" class="text-end">{{ t('asn.flow.putaway.pending') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="g in step.summary.goods" :key="g.goods_id">
-                    <td class="text-wrap">
-                      <NuxtLink :to="`/goods/detail/${g.goods_id}`">{{ g.name || g.code || `#${g.goods_id}` }}</NuxtLink>
-                      <span class="text-muted ms-1" v-if="g.code && g.name">{{ g.code }}</span>
-                    </td>
-                    <td class="text-end">{{ g.quantity }}</td>
-                    <td class="text-end" :class="{ 'fw-semibold text-warning': Number(g.pending) > 0 }">{{ g.pending }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p class="fs-12 text-muted mb-0 mt-1">
-              <i class="ri-information-line me-1"></i>{{ t('asn.flow.putaway.estimated') }}
-              <template v-if="step.summary.last_putaway_at"> {{ t('asn.flow.putaway.last', { time: time(step.summary.last_putaway_at) }) }}</template>
-            </p>
+          <template v-if="step.key === 'putaway' && expandable(step)">
+            <WTable :rows="step.summary.goods" row-key="goods_id" :columns="[
+              { key: 'goods', label: t('common.entities.goods'), wrap: true },
+              { key: 'quantity', label: t('asn.flow.putaway.quantity'), type: 'qty', keepZero: true },
+              { key: 'pending', label: t('asn.flow.putaway.pending'), type: 'qty', keepZero: true, strong: true }]">
+              <template #cell-goods="{ row }"><NuxtLink :to="'/goods/detail/' + row.goods_id">{{ row.name || row.code }}</NuxtLink><div class="w-muted">{{ row.code }}</div></template>
+            </WTable>
+            <p class="asn-current__note">{{ t('asn.flow.putaway.estimated') }} <template v-if="step.summary.last_putaway_at">{{ t('asn.flow.putaway.last', { time: time(step.summary.last_putaway_at) }) }}</template></p>
           </template>
-        </ShippingFlowStep>
-      </template>
-    </div>
+          <div v-if="step.key === 'sorting' && sortingTasks(step).length" class="asn-current__actions"><WButton v-for="task in sortingTasks(step)" :key="task.id" :to="'/sorting/detail/' + task.id">SORT-{{ task.id }} · {{ taskStatusText(task.status) }}</WButton></div>
+          <div class="asn-current__actions" v-if="step.key !== 'in_transit' && headerActions(step).length">
+            <WButton v-for="action in headerActions(step)" :key="action.key" :variant="action.key === 'receive' ? 'primary' : 'secondary'" :loading="action.key === 'receive' && receiving" @click="onHeaderAction(step, action.key)">{{ actionText(action.key) }}</WButton>
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
-
 <style scoped>
-.inbound-putaway {
-  max-width: 40rem;
-}
+.asn-current { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.asn-current__card { background: var(--w-surface); border: 1px solid var(--w-sel-line); border-radius: 10px; overflow: hidden; }
+.asn-current__header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; padding: 20px 24px 16px; border-bottom: 1px solid var(--w-line); }
+.asn-current__heading { display: flex; flex-direction: column; gap: 2px; flex: 1 1 320px; min-width: 0; }
+.asn-current__eyebrow { font-size: 12px; line-height: 18px; font-weight: 600; color: var(--w-sel-text); }
+.asn-current h2 { margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; }
+.asn-current p { margin: 0; font-size: 13px; line-height: 20px; color: var(--w-text-2); }
+.asn-current__reference { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.asn-current__reference > span { font-size: 12px; line-height: 18px; color: var(--w-text-3); }
+.asn-current__reference > strong { font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: .02em; }
+.asn-current__reference > .asn-current__date { font-size: 14px; letter-spacing: 0; }
+.asn-current__body { padding: 16px 24px 20px; display: flex; flex-direction: column; gap: 12px; }
+.asn-current__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.asn-current .asn-current__note { font-size: 12px; line-height: 18px; color: var(--w-text-3); }
 </style>

@@ -19,6 +19,8 @@ const props = defineProps<{
   items: WTabItem[]
   /** 这组控件的无障碍名称（aria-label） */
   label: string
+  /** Full-width card tab bar: 20px inset and 48px rows, as in list designs. */
+  inset?: boolean
   panelId?: string
 }>()
 
@@ -70,7 +72,7 @@ defineExpose({ tabId })
 </script>
 
 <template>
-  <div class="w-tabs" role="tablist" :aria-label="label" @keydown="onKeydown">
+  <div class="w-tabs" :class="{ 'w-tabs--inset': inset }" role="tablist" :aria-label="label" @keydown="onKeydown">
     <button v-for="(item, index) in items" :id="tabId(item.key)" :key="item.key" ref="tabs" type="button" role="tab"
       class="w-tabs__tab" :class="{ 'is-active': index === activeIndex }" :aria-selected="index === activeIndex"
       :aria-controls="panelId" :tabindex="index === activeIndex ? 0 : -1" :disabled="item.disabled" @click="select(index)">
@@ -86,6 +88,7 @@ defineExpose({ tabId })
 
 <style scoped>
 .w-tabs {
+  position: relative;
   display: flex;
   gap: 20px;
   /* 页签多时横向滚动，不出现纵向滚动条 */
@@ -96,6 +99,8 @@ defineExpose({ tabId })
   box-shadow: inset 0 -1px 0 var(--w-border);
   font-family: var(--w-font);
 }
+.w-tabs--inset { padding: 0 20px 1px; scroll-padding-inline: 20px; }
+.w-tabs--inset .w-tabs__tab { height: 48px; }
 .w-tabs::-webkit-scrollbar { display: none; }
 .w-tabs__tab {
   display: inline-flex;

@@ -23,13 +23,38 @@ const route = useRoute()
 let loading = ref(true)
 let keyword = ref('')
 let pageData = ref<PaginationData | null>(null)
+const loadError = ref('')
+const recentByKey = ref<Record<string, any>>({})
+const recentError = ref('')
+const recentLoading = ref(false)
+let loadGeneration = 0
+onBeforeUnmount(() => loadGeneration++)
+const loadRecent = async (ids: number[], generation: number) => {
+  if (!staffStore.hasPermission('webhook_read') || !ids.length) return
+  recentLoading.value = true
+  recentError.value = ''
+  await httpRequest<{items: any[]}>('/api/system/webhook/key-summary', {
+    method: 'GET', params: {api_key_ids: ids.join(',')},
+    onSuccess: data => {
+      if (generation === loadGeneration) recentByKey.value = Object.fromEntries(data.items.map((row: any) => [row.api_key_id, row]))
+    },
+    onError: error => { if (generation === loadGeneration) recentError.value = bizErrorMessage(error) },
+    onFinally: () => { if (generation === loadGeneration) recentLoading.value = false },
+  })
+}
 
 // ==================== 列表数据 ====================
 const fetchData = async () => {
+  const generation = ++loadGeneration
+  loadError.value = ''
+  pageData.value = null
+  recentByKey.value = {}
+  recentError.value = ''
+  recentLoading.value = false
   loading.value = true
   const companyId = staffStore.staffInfo?.company_id
   if (!companyId) {
-    showToast(t('common.validation.company-required'), 'error')
+    loadError.value = t('common.validation.company-required')
     loading.value = false
     return
   }
@@ -39,15 +64,19 @@ const fetchData = async () => {
     // 默认展示启用中的 Key，与下方 Tab 高亮保持一致
     params: { is_active: 'true', ...route.query, company_id: companyId },
     onSuccess: (data) => {
-      pageData.value = data
+      if (generation === loadGeneration) pageData.value = data
     },
     onError: (error) => {
-      showToast(bizErrorMessage(error), 'error')
+      if (generation === loadGeneration) loadError.value = bizErrorMessage(error)
     },
     onFinally: () => {
-      loading.value = false
+      if (generation === loadGeneration) loading.value = false
     }
   })
+  const fetched = pageData.value as PaginationData | null
+  if (generation === loadGeneration && fetched) {
+    await loadRecent(fetched.items.map((item: any) => item.id), generation)
+  }
 }
 
 watch(() => route.query, async () => {
@@ -150,6 +179,7 @@ const openCreateModal = () => {
 }
 
 const submitCreate = async () => {
+  if(creating.value)return
   // 验证
   createErrors.value.system_name = !createForm.value.system_name?.trim()
     ? t('common.validation.name-required', { entity: t('apikeys.entity') })
@@ -305,6 +335,7 @@ const openEditModal = (item: any) => {
 }
 
 const submitEdit = async () => {
+  if(editing.value)return
   editErrors.value.system_name = !editForm.value.system_name?.trim()
     ? t('common.validation.name-required', { entity: t('apikeys.entity') })
     : null
@@ -344,311 +375,14 @@ const submitEdit = async () => {
   })
 }
 
+
+const formModel=computed(()=>showEditModal.value?editForm.value:createForm.value)
+const formErrors=computed(()=>showEditModal.value?editErrors.value:createErrors.value)
+const formOpen=computed({get:()=>showCreateModal.value||showEditModal.value,set:(value:boolean)=>{if(!value){showCreateModal.value=false;showEditModal.value=false;newKeyResult.value=null}}})
+const busy=computed(()=>creating.value||editing.value)
+useHead({title:()=>t('nav.apikeys')})
 </script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <!-- Loading -->
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-    </div>
-  </div>
-
-  <!-- Content -->
-  <div class="row" v-else>
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-header justify-content-between">
-          <div class="card-title">
-            {{ t('apikeys.title') }}
-            <span class="badge bg-light text-default rounded ms-1 fs-12 align-middle">{{ pageData?.total }}</span>
-          </div>
-          <div class="d-flex flex-wrap gap-2">
-            <div class="d-flex flex-wrap gap-2">
-              <button v-if="staffStore.hasPermission('api_keys_edit')" class="btn btn-primary btn-wave" @click="openCreateModal">
-                <i class="ri-add-line me-1 fw-semibold align-middle"></i>{{ t('apikeys.operations.add') }}
-              </button>
-            </div>
-            <div class="d-flex" role="search">
-              <input class="form-control me-2" type="search" :placeholder="t('common.search-placeholder')"
-                v-model="keyword" style="width: auto;" @keyup.enter="search">
-              <button class="btn btn-light" type="submit" @click="search">{{ t('common.search') }}</button>
-            </div>
-          </div>
-        </div>
-        <div class="card-body">
-          <!-- Status Tabs -->
-          <div>
-            <ul class="nav nav-pills nav-style-3 mb-3" role="tablist">
-              <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeTab === 'active' }" href="javascript:void(0);"
-                  @click="setActiveFilter(true)">{{ t('common.status.active') }}</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeTab === 'inactive' }" href="javascript:void(0);"
-                  @click="setActiveFilter(false)">{{ t('common.status.inactive') }}</a>
-              </li>
-            </ul>
-          </div>
-
-          <!-- Table -->
-          <div class="table-responsive">
-            <table class="table table-bordered table-hover">
-              <thead>
-                <tr>
-                  <th scope="col">{{ t('common.fields.id') }}</th>
-                  <th scope="col">{{ t('apikeys.fields.system-name') }}</th>
-                  <th scope="col">{{ t('apikeys.fields.key') }}</th>
-                  <th scope="col" class="">{{ t('apikeys.fields.permissions') }}</th>
-                  <th scope="col" class="">{{ t('apikeys.fields.webhook-url') }}</th>
-                  <th scope="col">{{ t('common.fields.status') }}</th>
-                  <th scope="col">{{ t('common.fields.action') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in pageData?.items" :key="item.id">
-                  <td>{{ item.id }}</td>
-                  <td>
-                    <span class="fw-semibold">{{ item.system_name }}</span>
-                  </td>
-                  <td>
-                    <!-- 后端只返回前缀，完整 key 仅在创建时显示一次 -->
-                    <code class="fs-12">{{ item.key_prefix }}…</code>
-                  </td>
-                  <td class="">
-                    <div v-if="item.permissions && item.permissions.length > 0" class="d-flex flex-wrap gap-1">
-                      <span class="badge bg-primary-transparent" v-for="mod in permissionSummaries[item.id]?.modules" :key="mod.label"
-                        :title="mod.items.map(i => i.name).join(', ')">{{ moduleSummaryText(mod) }}</span>
-                      <span class="badge bg-light text-default" v-for="perm in permissionSummaries[item.id]?.others" :key="perm">{{ perm }}</span>
-                    </div>
-                    <span v-else class="text-muted fs-12">—</span>
-                  </td>
-                  <td class="">
-                    <span v-if="item.webhook_url" class="fs-12">{{ item.webhook_url }}</span>
-                    <span v-else class="text-muted fs-12">—</span>
-                    <div v-if="item.webhook_subscriptions && item.webhook_subscriptions.length > 0" class="d-flex flex-wrap gap-1 mt-1">
-                      <span class="badge bg-info-transparent" v-for="ev in item.webhook_subscriptions" :key="ev" :title="ev">
-                        <i class="ri-notification-3-line me-1"></i>{{ eventLabel(ev) }}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <span class="badge" :class="item.is_active ? 'bg-success-transparent' : 'bg-danger-transparent'">
-                      {{ item.is_active ? t('common.status.active') : t('common.status.inactive') }}
-                    </span>
-                  </td>
-                  <td>
-                    <div class="hstack gap-2 fs-15">
-                      <button v-if="staffStore.hasPermission('api_keys_edit')" @click="openEditModal(item)"
-                        class="btn btn-icon btn-sm btn-primary-light product-btn"
-                        :title="t('apikeys.operations.edit')">
-                        <i class="ri-pencil-line"></i>
-                      </button>
-                      <button v-if="staffStore.hasPermission('api_keys_edit')" @click="toggleActive(item)"
-                        class="btn btn-icon btn-sm btn-warning-light product-btn"
-                        :title="item.is_active ? t('common.status.inactive') : t('common.status.active')">
-                        <i :class="item.is_active ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
-                      </button>
-                      <button v-if="staffStore.hasPermission('api_keys_delete')" @click="deleteItem(item.id)"
-                        class="btn btn-icon btn-sm btn-danger-light product-btn">
-                        <i class="ri-delete-bin-line"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="text-center p-5 border border-top-0" v-if="pageData?.items?.length == 0">
-              {{ t('apikeys.tips.no-keys') }}
-            </div>
-          </div>
-        </div>
-        <div class="card-footer border-top-0">
-          <div class="d-flex align-items-center justify-content-between flex-wrap">
-            <template v-if="pageData">
-              <Pagination :page-size="pageData?.per_page" :current-page="pageData?.page" :total="pageData?.total"
-                :params="$route.query" v-if="pageData.pages > 1" />
-            </template>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== Create Modal ==================== -->
-  <Teleport to="body">
-    <div class="modal fade" :class="{ show: showCreateModal }" :style="{ display: showCreateModal ? 'block' : 'none' }"
-      tabindex="-1" role="dialog">
-      <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h6 class="modal-title">{{ t('apikeys.operations.add') }}</h6>
-            <button type="button" class="btn-close" @click="showCreateModal = false"></button>
-          </div>
-          <div class="modal-body">
-            <!-- 创建成功后显示 Key -->
-            <div v-if="newKeyResult" class="mb-3">
-              <div class="alert alert-success-transparent">
-                <div class="mb-2 fw-semibold">
-                  <i class="ri-check-line me-1"></i>{{ t('action-results.success') }}
-                </div>
-                <p class="fs-12 mb-2 text-warning">
-                  <i class="ri-error-warning-line me-1"></i>{{ t('apikeys.tips.key-warning') }}
-                </p>
-                <div class="input-group">
-                  <input type="text" class="form-control form-control-sm font-monospace" :value="newKeyResult" readonly>
-                  <button class="btn btn-sm btn-outline-primary" @click="copyKey(newKeyResult!)">
-                    <i class="ri-file-copy-line me-1"></i>{{ t('apikeys.operations.copy') }}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 创建表单 -->
-            <div v-if="!newKeyResult">
-              <div class="mb-3">
-                <label class="form-label">{{ t('apikeys.fields.system-name') }}
-                  <abbr title="required" class="text-danger">*</abbr>
-                </label>
-                <input type="text" class="form-control" v-model="createForm.system_name"
-                  :placeholder="t('apikeys.form.placeholders.system-name')">
-                <div v-if="createErrors.system_name" class="invalid-feedback d-block">{{ createErrors.system_name }}</div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">{{ t('apikeys.fields.webhook-url') }}</label>
-                <input type="text" class="form-control" v-model="createForm.webhook_url"
-                  :placeholder="t('apikeys.form.placeholders.webhook-url')">
-              </div>
-              <div class="mb-3">
-                <label class="form-label">{{ t('apikeys.fields.webhook-secret') }}</label>
-                <!-- 签名密钥默认遮住，可切换显示 -->
-                <SecretInput id="apikey-create-webhook-secret" v-model="createForm.webhook_secret" autocomplete="new-password"
-                  :placeholder="t('apikeys.form.placeholders.webhook-secret')" />
-              </div>
-              <div class="mb-3">
-                <label class="form-label mb-1">{{ t('apikeys.fields.webhook-subscriptions') }}</label>
-                <p class="fs-12 text-muted mb-2">{{ t('apikeys.tips.subscriptions') }}</p>
-                <div class="form-check mb-1" v-for="ev in WEBHOOK_SUBSCRIPTION_EVENTS" :key="ev">
-                  <input class="form-check-input" type="checkbox" :id="`createForm-sub-${ev}`"
-                    :checked="createForm.webhook_subscriptions.includes(ev)"
-                    @change="toggleSubscription(createForm.webhook_subscriptions, ev)">
-                  <label class="form-check-label" :for="`createForm-sub-${ev}`">
-                    {{ eventLabel(ev) }} <code class="fs-11 ms-1">{{ ev }}</code>
-                    <span class="d-block fs-12 text-muted" v-if="te(eventDescKey(ev))">{{ t(eventDescKey(ev)) }}</span>
-                  </label>
-                </div>
-                <div class="form-text text-warning" v-if="createForm.webhook_subscriptions.length > 0 && !createForm.webhook_url">
-                  {{ t('apikeys.tips.subscriptions-need-url') }}
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>
-                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                  <span class="fs-12 text-muted">{{ t('apikeys.fields.template') }}</span>
-                  <button v-for="tpl in API_KEY_TEMPLATES" :key="tpl.key" type="button" class="btn btn-sm"
-                    :class="activeTemplateKey === tpl.key ? 'btn-primary' : 'btn-outline-primary'"
-                    :title="t(`apikeys.templates.${tpl.key}.desc`)" @click="applyTemplate(tpl)">
-                    {{ t(`apikeys.templates.${tpl.key}.name`) }}
-                  </button>
-                  <button type="button" class="btn btn-sm btn-light" :disabled="createForm.permissions.length === 0"
-                    @click="createForm.permissions = []">
-                    {{ t('button.reset') }}
-                  </button>
-                </div>
-                <PermissionSelector
-                  v-if="apiKeyPermissions.length > 0"
-                  :all-permissions="apiKeyPermissions"
-                  v-model="createForm.permissions"
-                />
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-light" @click="showCreateModal = false">
-              {{ newKeyResult ? t('button.close') : t('button.cancel') }}
-            </button>
-            <button v-if="!newKeyResult" type="button" class="btn btn-primary" @click="submitCreate"
-              :disabled="creating">
-              <span v-if="creating" class="spinner-border spinner-border-sm me-1"></span>
-              {{ t('apikeys.operations.add') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-backdrop fade show" v-if="showCreateModal" @click="showCreateModal = false"></div>
-  </Teleport>
-
-  <!-- ==================== Edit Modal ==================== -->
-  <Teleport to="body">
-    <div class="modal fade" :class="{ show: showEditModal }" :style="{ display: showEditModal ? 'block' : 'none' }"
-      tabindex="-1" role="dialog">
-      <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h6 class="modal-title">{{ t('apikeys.operations.edit') }}</h6>
-            <button type="button" class="btn-close" @click="showEditModal = false"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">{{ t('apikeys.fields.system-name') }}
-                <abbr title="required" class="text-danger">*</abbr>
-              </label>
-              <input type="text" class="form-control" v-model="editForm.system_name"
-                :placeholder="t('apikeys.form.placeholders.system-name')">
-              <div v-if="editErrors.system_name" class="invalid-feedback d-block">{{ editErrors.system_name }}</div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">{{ t('apikeys.fields.webhook-url') }}</label>
-              <input type="text" class="form-control" v-model="editForm.webhook_url"
-                :placeholder="t('apikeys.form.placeholders.webhook-url')">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">{{ t('apikeys.fields.webhook-secret') }}</label>
-              <SecretInput id="apikey-edit-webhook-secret" v-model="editForm.webhook_secret" autocomplete="new-password"
-                :placeholder="editingItem?.has_webhook_secret ? t('apikeys.form.placeholders.webhook-secret-keep') : t('apikeys.form.placeholders.webhook-secret')" />
-            </div>
-            <div class="mb-3">
-              <label class="form-label mb-1">{{ t('apikeys.fields.webhook-subscriptions') }}</label>
-              <p class="fs-12 text-muted mb-2">{{ t('apikeys.tips.subscriptions') }}</p>
-              <div class="form-check mb-1" v-for="ev in WEBHOOK_SUBSCRIPTION_EVENTS" :key="ev">
-                <input class="form-check-input" type="checkbox" :id="`editForm-sub-${ev}`"
-                  :checked="editForm.webhook_subscriptions.includes(ev)"
-                  @change="toggleSubscription(editForm.webhook_subscriptions, ev)">
-                <label class="form-check-label" :for="`editForm-sub-${ev}`">
-                  {{ eventLabel(ev) }} <code class="fs-11 ms-1">{{ ev }}</code>
-                  <span class="d-block fs-12 text-muted" v-if="te(eventDescKey(ev))">{{ t(eventDescKey(ev)) }}</span>
-                </label>
-              </div>
-              <div class="form-text text-warning" v-if="editForm.webhook_subscriptions.length > 0 && !editForm.webhook_url">
-                {{ t('apikeys.tips.subscriptions-need-url') }}
-              </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label mb-2">{{ t('apikeys.fields.permissions') }}</label>
-              <PermissionSelector
-                v-if="apiKeyPermissions.length > 0"
-                :all-permissions="apiKeyPermissions"
-                v-model="editForm.permissions"
-              />
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-light" @click="showEditModal = false">
-              {{ t('button.cancel') }}
-            </button>
-            <button type="button" class="btn btn-primary" @click="submitEdit" :disabled="editing">
-              <span v-if="editing" class="spinner-border spinner-border-sm me-1"></span>
-              {{ t('button.save') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-backdrop fade show" v-if="showEditModal" @click="showEditModal = false"></div>
-  </Teleport>
-</template>
-
-<style scoped></style>
+<template><div class="w-api-keys w-scope"><header><div><h1>{{t('nav.apikeys')}}</h1><span>{{pageData?.total}}</span></div><div class="header-actions"><WButton v-if="staffStore.hasPermission('webhook_read')" to="/webhook-logs">{{t('nav.webhook-logs')}}</WButton><WButton v-if="staffStore.hasPermission('api_keys_edit')" variant="primary" icon="plus" @click="openCreateModal">{{t('apikeys.operations.add')}}</WButton></div></header><div class="filters"><div class="segments" role="group" :aria-label="t('common.fields.status')"><button v-for="key in ['active','inactive']" :key="key" type="button" :class="{active:activeTab===key}" :aria-pressed="activeTab===key" @click="setActiveFilter(key==='active')">{{t('common.status.'+key)}}</button></div><form @submit.prevent="search"><WInput v-model="keyword" type="search" :placeholder="t('common.search-placeholder')" :aria-label="t('common.search')"><template #prefix><WIcon name="search" :size="16"/></template></WInput><WButton type="submit">{{t('common.search')}}</WButton></form></div><WCard v-if="loading"><WEmptyState :title="t('common.status.loading')"/></WCard><WAlert v-else-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData">{{t('dn.list.retry')}}</WButton></template></WAlert><WCard v-else-if="!pageData?.items?.length"><WEmptyState :title="t('apikeys.tips.no-keys')"/></WCard><template v-else><WCard v-for="item in pageData.items" :key="item.id" flush><div class="key-heading"><h2>{{item.system_name}}</h2><WStatus :tone="item.is_active?'ok':'none'">{{t('common.status.'+(item.is_active?'active':'inactive'))}}</WStatus><code>{{item.key_prefix ? item.key_prefix+'…' : '—'}}</code><div class="key-actions"><WButton v-if="staffStore.hasPermission('api_keys_edit')" size="sm" @click="openEditModal(item)">{{t('button.edit')}}</WButton><WDropdown v-if="staffStore.hasPermission('api_keys_edit')||staffStore.hasPermission('api_keys_delete')" :label="t('common.fields.action')" placement="bottom-end" width="180px"><template #trigger="{attrs}"><WButton v-bind="attrs" class="key-more" size="sm" icon="more" icon-only :aria-label="t('common.fields.action')"/></template><button v-if="staffStore.hasPermission('api_keys_edit')" class="w-menu-item" role="menuitem" @click="toggleActive(item)">{{t('common.status.'+(item.is_active?'inactive':'active'))}}</button><button v-if="staffStore.hasPermission('api_keys_delete')" class="w-menu-item" role="menuitem" @click="deleteItem(item.id)">{{t('button.delete')}}</button></WDropdown></div></div><div class="key-grid"><section><h3>{{t('apikeys.fields.permissions')}} · {{item.permissions?.length||0}}</h3><dl><template v-for="mod in permissionSummaries[item.id]?.modules" :key="mod.label"><dt>{{t(mod.label)}}</dt><dd :title="mod.items.map(i=>i.name).join(', ')">{{mod.items.filter(i=>i.opLabel).map(i=>t(i.opLabel!)).join(' / ')||'—'}}</dd></template></dl><span v-for="permission in permissionSummaries[item.id]?.others" :key="permission">{{permission}}</span><span v-if="!item.permissions?.length">—</span></section><section><h3>{{t('apikeys.fields.webhook-url')}}</h3><template v-if="item.webhook_url"><code class="webhook-url">{{item.webhook_url}}</code><WStatus :tone="item.has_webhook_secret?'ok':'warn'">{{t(item.has_webhook_secret?'api-key-review.signed':'api-key-review.unsigned')}}</WStatus><div class="subscriptions"><span :title="t('api-key-review.document-events-help')">{{t('api-key-review.document-events')}}</span><div v-for="event in WEBHOOK_SUBSCRIPTION_EVENTS" :key="event" class="subscription-row"><span>{{eventLabel(event)}}<small>{{event}}</small></span><WStatus :tone="item.webhook_subscriptions?.includes(event)?'ok':'none'">{{t(item.webhook_subscriptions?.includes(event)?'api-key-review.subscribed':'api-key-review.unsubscribed')}}</WStatus></div></div></template><span v-else class="key-muted">{{t('api-key-review.no-url')}}</span></section><section><h3>{{t('api-key-review.recent')}}</h3><small>{{t('api-key-review.call-unrecorded')}}</small><template v-if="staffStore.hasPermission('webhook_read')"><small v-if="recentLoading">{{t('common.status.loading')}}</small><WAlert v-else-if="recentError" tone="warn" :title="recentError"><template #actions><WButton size="sm" @click="loadRecent(pageData.items.map((key:any)=>key.id),loadGeneration)">{{t('dn.list.retry')}}</WButton></template></WAlert><dl v-else-if="recentByKey[item.id]"><dt>{{t('api-key-review.latest-event')}}</dt><dd><template v-if="recentByKey[item.id].latest_event"><WStatus :tone="recentByKey[item.id].latest_event.status==='failed'?'bad':recentByKey[item.id].latest_event.status==='sent'?'ok':'none'">{{t('webhook-logs.status.'+recentByKey[item.id].latest_event.status)}}</WStatus><small>{{recentByKey[item.id].latest_event.created_at?$dayjs(recentByKey[item.id].latest_event.created_at,'YYYY-MM-DD HH:mm'):'—'}}</small></template><span v-else>{{t('api-key-review.no-events')}}</span></dd><dt>{{t('api-key-review.failed')}}</dt><dd><NuxtLink v-if="recentByKey[item.id].failed_count" :to="'/webhook-logs?status=failed&api_key_id='+item.id">{{recentByKey[item.id].failed_count}} →</NuxtLink><span v-else>0</span></dd></dl><WButton size="sm" :to="'/webhook-logs?api_key_id='+item.id">{{t('nav.webhook-logs')}} →</WButton></template><small v-else>{{t('api-key-review.no-log-permission')}}</small></section></div></WCard></template><WPagination :page="pageData?.page||1" :page-size="pageData?.per_page||20" :total="pageData?.total" show-total @update:page="value=>router.push({query:{...route.query,page:value}})"/><WDrawer v-model:open="formOpen" :title="t(showEditModal?'apikeys.operations.edit':'apikeys.operations.add')" width="600px" :closable="!busy" :close-on-backdrop="!busy"><div v-if="newKeyResult" class="key-result"><WAlert tone="warn" :title="t('apikeys.tips.key-warning')"/><WInput :model-value="newKeyResult" readonly :aria-label="t('apikeys.fields.key')"/><WButton @click="copyKey(newKeyResult)">{{t('apikeys.operations.copy')}}</WButton></div><fieldset v-else :disabled="busy" class="key-form"><WField :label="t('apikeys.fields.system-name')" required :error="formErrors.system_name"><WInput v-model="formModel.system_name" :placeholder="t('apikeys.form.placeholders.system-name')"/></WField><WField :label="t('apikeys.fields.webhook-url')"><WInput v-model="formModel.webhook_url" :placeholder="t('apikeys.form.placeholders.webhook-url')"/></WField><WField :label="t('apikeys.fields.webhook-secret')"><SecretInput v-model="formModel.webhook_secret" autocomplete="new-password" :placeholder="showEditModal&&editingItem?.has_webhook_secret?t('apikeys.form.placeholders.webhook-secret-keep'):t('apikeys.form.placeholders.webhook-secret')"/></WField><section><h3>{{t('apikeys.fields.webhook-subscriptions')}}</h3><small>{{t('apikeys.tips.subscriptions')}}</small><WCheckbox v-for="event in WEBHOOK_SUBSCRIPTION_EVENTS" :key="event" :model-value="formModel.webhook_subscriptions.includes(event)" @update:model-value="toggleSubscription(formModel.webhook_subscriptions,event)">{{eventLabel(event)}} <code>{{event}}</code></WCheckbox><small v-if="formModel.webhook_subscriptions.length&&!formModel.webhook_url">{{t('apikeys.tips.subscriptions-need-url')}}</small></section><section><h3>{{t('apikeys.fields.permissions')}}</h3><div v-if="!showEditModal" class="templates"><WButton v-for="tpl in API_KEY_TEMPLATES" :key="tpl.key" size="sm" :variant="activeTemplateKey===tpl.key?'primary':'secondary'" :title="t('apikeys.templates.'+tpl.key+'.desc')" @click="applyTemplate(tpl)">{{t('apikeys.templates.'+tpl.key+'.name')}}</WButton><WButton size="sm" @click="createForm.permissions=[]">{{t('button.reset')}}</WButton></div><PermissionSelector v-if="apiKeyPermissions.length" :all-permissions="apiKeyPermissions" v-model="formModel.permissions"/></section></fieldset><template #footer><WButton :disabled="busy" @click="formOpen=false">{{t(newKeyResult?'button.close':'button.cancel')}}</WButton><WButton v-if="!newKeyResult" variant="primary" :loading="busy" @click="showEditModal?submitEdit():submitCreate()">{{t(showEditModal?'button.save':'apikeys.operations.add')}}</WButton></template></WDrawer></div></template>
+<style scoped>
+.w-api-keys{display:flex;flex-direction:column;gap:16px}header,header>div{display:flex;align-items:center;gap:12px}header{justify-content:space-between;flex-wrap:wrap}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}header span{font-size:13px;color:var(--w-text-2)}.filters,.filters form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.filters form{margin-left:auto}.filters .w-input{width:300px;max-width:100%}.segments{display:flex;padding:2px;border-radius:6px;background:#EDEFF3}.segments button{height:28px;padding:0 12px;border:0;border-radius:6px;font:inherit;font-size:13px;line-height:20px;color:var(--w-text-2);background:transparent}.segments button.active{background:white;box-shadow:0 1px 2px #10121b1a;color:var(--w-text-1);font-weight:600}.key-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:16px 24px;border-bottom:1px solid var(--w-line)}h2{font-size:16px;line-height:24px;font-weight:600;margin:0}.key-heading code{border:1px solid var(--w-border);border-radius:6px;padding:1px 6px;line-height:16px}.key-actions{display:flex;gap:8px;margin-left:auto}.key-grid{display:grid;grid-template-columns:1fr 1fr .85fr}.key-grid section{padding:16px 24px 20px;display:flex;flex-direction:column;gap:8px;min-width:0}.key-grid section+section{border-left:1px solid var(--w-line)}h3{font-size:12px;line-height:18px;font-weight:500;color:var(--w-text-3);margin:0}.key-grid dl{display:grid;grid-template-columns:72px minmax(0,1fr);gap:6px 12px;font-size:13px;line-height:20px;margin:0}.key-grid dt{color:var(--w-text-3);font-weight:400}.key-grid dd{margin:0;overflow-wrap:anywhere}code{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--w-text-2)}.webhook-url{overflow-wrap:anywhere}.subscriptions{display:flex;flex-direction:column;gap:8px;font-size:13px;border-top:1px solid var(--w-line);padding-top:8px}small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3)}.key-form{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:16px;min-width:0}.key-form section{border-top:1px solid var(--w-line);padding-top:16px;display:flex;flex-direction:column;gap:8px}.key-form h3{font-size:14px;line-height:22px;font-weight:600;color:var(--w-text-1)}.templates{display:flex;flex-wrap:wrap;gap:8px}.header-actions{display:flex;gap:8px;flex-wrap:wrap}.key-more{color:var(--w-text-1)}.subscription-row{display:flex;align-items:start;justify-content:space-between;gap:8px;flex-wrap:wrap}.key-muted{font-size:13px;line-height:20px;color:var(--w-text-3)}.key-result{display:flex;flex-direction:column;gap:16px}@media(max-width:1000px){.key-grid{grid-template-columns:minmax(0,1fr)}.key-grid section+section{border-left:0;border-top:1px solid var(--w-line)}}@media(max-width:600px){.filters form{margin-left:0;width:100%}.filters .w-input{width:100%}.key-actions{margin-left:0;flex-wrap:wrap}}
+</style>

@@ -31,6 +31,7 @@ const validate = () => {
 };
 
 const submitForm = async () => {
+  if(loading.value)return;
   if (!validate()) return;
   loading.value = true;
   await httpRequest('/api/system/user/permissions', {
@@ -49,47 +50,6 @@ const submitForm = async () => {
   });
 };
 
+useHead({title:()=>t('admin.permissions.operations.add')})
 </script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="row">
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-header justify-content-between">
-          <div class="card-title">{{ t('admin.permissions.operations.add') }}</div>
-          <NuxtLink to="/admin/permissions/" class="btn btn-light btn-wave">
-            <i class="ri-arrow-left-line me-1"></i>{{ t('button.cancel') }}
-          </NuxtLink>
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="submitForm">
-            <div class="row gy-3">
-              <!-- Name -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.name') }} <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" v-model="itemData.name" :class="{'is-invalid': errors.name}" :placeholder="t('admin.permissions.placeholders.name')">
-                <div class="invalid-feedback">{{ errors.name }}</div>
-              </div>
-              <!-- Description -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.description') }}</label>
-                <input type="text" class="form-control" v-model="itemData.description" :placeholder="t('admin.permissions.placeholders.description')">
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <button type="submit" class="btn btn-primary btn-wave" :disabled="loading">
-                <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
-                {{ t('button.submit') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<style scoped></style>
+<template><div class="w-permission-form w-scope"><header><h1>{{t('admin.permissions.operations.add')}}</h1></header><WCard flush><form @submit.prevent="submitForm"><WFormSection :title="t('common.fields.name')"><div class="fields"><WField :label="t('common.fields.name')" required :error="errors.name"><WInput v-model="itemData.name"/></WField><WField :label="t('common.fields.description')"><WTextarea v-model="itemData.description" :rows="3"/></WField></div></WFormSection><footer><WButton to="/admin/permissions">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="loading">{{t('button.save')}}</WButton></footer></form></WCard></div></template><style scoped>.w-permission-form{display:flex;flex-direction:column;gap:16px}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.fields{display:flex;flex-direction:column;gap:16px;max-width:600px}footer{display:flex;gap:8px;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--w-border)}</style>

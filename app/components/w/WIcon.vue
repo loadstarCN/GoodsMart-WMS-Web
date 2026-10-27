@@ -20,7 +20,10 @@ const path = computed(() => W_ICONS[props.name] ?? '')
 <template>
   <svg class="w-icon" :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     :stroke-width="strokeWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-    <path :d="path" />
+    <template v-if="name === 'more'">
+      <circle v-for="x in [5, 12, 19]" :key="x" :cx="x" cy="12" r="1.8" fill="currentColor" stroke="none" />
+    </template>
+    <path v-else :d="path" />
   </svg>
 </template>
 

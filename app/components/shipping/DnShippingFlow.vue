@@ -63,6 +63,8 @@ const {
 } = view
 const { t } = useI18n()
 const editorOpen = ref(false)
+const compactKey = ref<string|null>(null)
+const selectCompact = (step:FlowStep) => {compactKey.value=step.key;if(expandable(step))expand(step.key)}
 
 // ------------------ 读取 ----------------------
 const load = async () => {
@@ -83,6 +85,8 @@ watch(() => props.dnId, () => {
   expanded.value = []
   mounted.value = []
   autoKey = null
+  compactKey.value = null
+  userOpened.clear()
   load()
 })
 
@@ -131,6 +135,7 @@ const syncExpanded = () => {
   const activeStep = active ? steps.find((s: FlowStep) => s.key === active) : null
   const firstTime = autoKey === null && expanded.value.length === 0
   if (active !== autoKey) {
+    compactKey.value = active || steps.at(-1)?.key || null
     if (autoKey && !userOpened.has(autoKey)) collapse(autoKey)
     if (activeStep && expandable(activeStep)) expand(activeStep.key)
     autoKey = active
@@ -138,6 +143,7 @@ const syncExpanded = () => {
   if (firstTime && props.mode === 'full') {
     steps.filter((s: FlowStep) => s.state === 'warning' && expandable(s)).forEach((s: FlowStep) => expand(s.key))
   }
+  if (!compactKey.value) compactKey.value = active || steps.at(-1)?.key || null
   // 不能再展开的（如已完成的交承运商）收起
   expanded.value = expanded.value.filter((key: string) => {
     const step = steps.find((s: FlowStep) => s.key === key)
@@ -279,7 +285,8 @@ defineExpose({ reload })
       <div class="alert alert-danger-transparent mb-0" v-else-if="loadError && !flow">{{ loadError }}</div>
 
       <template v-else-if="flow">
-        <ShippingFlowStepper :steps="flow.steps" class="mb-3" />
+        <ShippingFlowStepper v-if="mode==='full'" :steps="flow.steps" class="mb-3" />
+        <nav v-else class="w-flow-tabs" :aria-label="t('shipping.title')"><button v-for="step in visibleSteps" :key="step.key" type="button" :class="{selected:compactKey===step.key,done:step.state==='done'}" :aria-pressed="compactKey===step.key" @click="selectCompact(step)"><i/><span>{{stepTitle(step.key)}}</span></button></nav>
 
         <ul class="list-unstyled fs-13 mb-3" v-if="generalProblems.length">
           <li v-for="(p, i) in generalProblems" :key="`gp-${i}`" :class="p.level === 'error' ? 'text-danger' : 'text-warning'">
@@ -287,7 +294,7 @@ defineExpose({ reload })
           </li>
         </ul>
 
-        <ShippingFlowStep v-for="(step, index) in visibleSteps" :key="step.key" :step="step" :index="index + 1"
+        <ShippingFlowStep v-for="(step, index) in visibleSteps" v-show="mode==='full'||compactKey===step.key" :key="step.key" :step="step" :index="index + 1"
           :title="stepTitle(step.key)" :summary="summaryText(step)" :expandable="expandable(step)"
           :expanded="isExpanded(step.key)" :problems="stepProblems(step)" :problem-text="problemText"
           :last="index === visibleSteps.length - 1" @toggle="toggle(step)">
@@ -357,15 +364,12 @@ defineExpose({ reload })
         </ShippingFlowStep>
 
         <CustomsSnapshotEditor v-if="customsView" v-model:open="editorOpen" :dn-id="dnId" :customs="customsView.customs"
-          :lines="customsView.lines" :fallback-consignee="customsView.consignee" @saved="refresh" />
+          :lines="customsView.lines" :recipient-tax-defaults="customsView.recipient_tax_defaults" :fallback-consignee="customsView.consignee" @saved="refresh" />
       </template>
     </div>
   </div>
 </template>
 
 <style scoped>
-.shipping-flow.is-compact .card-body {
-  padding-top: 0.875rem;
-  padding-bottom: 0.875rem;
-}
+.shipping-flow.is-compact{border:1px solid var(--w-border);border-radius:10px;box-shadow:none;margin:0;font-family:var(--w-font);overflow:hidden}.shipping-flow.is-compact>.card-header{padding:16px 24px;border-bottom:1px solid var(--w-line);background:white}.shipping-flow.is-compact .card-title{font-size:16px;line-height:24px;font-weight:600;margin:0}.shipping-flow.is-compact .card-body{padding:0 24px 24px}.w-flow-tabs{display:flex;overflow-x:auto;gap:20px;min-width:0;border-bottom:1px solid var(--w-border);margin:0 -24px 20px;padding:0 24px}.w-flow-tabs button{flex:none;display:flex;gap:6px;align-items:center;height:48px;padding:0;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;color:var(--w-text-2)}.w-flow-tabs button.selected{color:var(--w-link);font-weight:600;border-bottom-color:var(--w-link)}.w-flow-tabs i{width:6px;height:6px;border-radius:50%;background:#A1A6B3}.w-flow-tabs .done i{background:#2E9E52}.w-flow-tabs .selected i{background:#7855FE}.is-compact :deep(.flow-step-rail){display:none}.is-compact :deep(.flow-step-main){padding-bottom:0}.is-compact :deep(.flow-step-title){font-size:14px;line-height:22px}.is-compact :deep(.flow-step-summary){font-size:13px;line-height:20px}.is-compact :deep(.flow-step-body){margin-top:16px;padding-top:16px;border-top:1px solid var(--w-line)}@media(max-width:600px){.shipping-flow.is-compact>.card-header{padding:16px}.shipping-flow.is-compact .card-body{padding:0 16px 16px}.w-flow-tabs{padding:0 16px;margin:0 -16px 16px}}
 </style>

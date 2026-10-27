@@ -162,6 +162,7 @@ onBeforeUnmount(() => {
   padding: var(--w-page-pad-top) var(--w-page-pad-x) var(--w-sp-24);
 }
 .w-page { flex: 1 0 auto; min-width: 0; }
+.w-main:has(.dn-form, .asn-form, .asn-detail, .w-dnd) { padding-top: 20px; }
 .w-main:focus { outline: none; }
 /* 版权行：内容区最下面，弱化小字 */
 .w-shell__footer {

@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<{
   accept?: string                    // Accepted file types
   maxSize?: number                   // Max file size in bytes (default 5MB)
   fallbackSrc?: string               // Fallback image when no image
+  showHint?: boolean
 }>(), {
   shape: 'circle',
   size: 100,
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<{
   accept: 'image/png,image/jpeg,image/gif',
   maxSize: 5 * 1024 * 1024,
   fallbackSrc: '/images/goods/default.png',
+  showHint: true,
 })
 
 const emit = defineEmits<{
@@ -60,6 +62,7 @@ const triggerSelect = () => {
     fileInput.value?.click()
   }
 }
+defineExpose({ triggerSelect })
 
 const handleFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement
@@ -196,7 +199,7 @@ onUnmounted(() => {
       @change="handleFileChange"
     />
 
-    <div class="image-uploader__hint text-muted fs-12 mt-1" :style="{ maxWidth: `${size}px` }">
+    <div v-if="showHint" class="image-uploader__hint text-muted fs-12 mt-1" :style="{ maxWidth: `${size}px` }">
       {{ t('upload.image-uploader-hint', 'Click or drag to upload') }}
     </div>
   </div>

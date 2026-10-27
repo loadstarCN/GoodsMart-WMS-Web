@@ -18,6 +18,7 @@ const dataToPass = computed(() => ({
 }));
 
 let loading = ref(true);
+const loadError=ref('');
 let saving = ref(false);
 
 let itemData = ref({
@@ -31,6 +32,7 @@ let errors = ref<Record<string, string>>({});
 
 const fetchData = async () => {
   loading.value = true;
+  loadError.value='';
   await httpRequest<any>(`/api/system/user/permissions/${itemId}`, {
     method: 'GET',
     onSuccess: (data) => {
@@ -41,6 +43,7 @@ const fetchData = async () => {
       isBuiltin.value = data.is_builtin === true;
     },
     onError: (error) => {
+      loadError.value=bizErrorMessage(error);
       showToast(error.message, 'error');
     },
     onFinally: () => {
@@ -58,6 +61,7 @@ const validate = () => {
 };
 
 const submitForm = async () => {
+  if(saving.value||loading.value||loadError.value)return;
   if (!validate()) return;
   saving.value = true;
   await httpRequest(`/api/system/user/permissions/${itemId}`, {
@@ -80,57 +84,6 @@ onMounted(() => {
   fetchData();
 });
 
+useHead({title:()=>t('admin.permissions.operations.edit')})
 </script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-    </div>
-  </div>
-
-  <div class="row" v-else>
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-header justify-content-between">
-          <div class="card-title">{{ t('admin.permissions.operations.edit') }}</div>
-          <NuxtLink to="/admin/permissions/" class="btn btn-light btn-wave">
-            <i class="ri-arrow-left-line me-1"></i>{{ t('button.cancel') }}
-          </NuxtLink>
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="submitForm">
-            <div class="row gy-3">
-              <!-- Name -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.name') }} <span class="text-danger">*</span>
-                  <span class="badge bg-secondary-transparent ms-1" v-if="isBuiltin">{{ t('admin.builtin.label') }}</span>
-                </label>
-                <input type="text" class="form-control" v-model="itemData.name" :class="{'is-invalid': errors.name}" :placeholder="t('admin.permissions.placeholders.name')"
-                  :readonly="isBuiltin">
-                <div class="invalid-feedback">{{ errors.name }}</div>
-                <div class="form-text" v-if="isBuiltin">{{ t('admin.builtin.permission-tip') }}</div>
-              </div>
-              <!-- Description -->
-              <div class="col-xl-6">
-                <label class="form-label">{{ t('common.fields.description') }}</label>
-                <input type="text" class="form-control" v-model="itemData.description" :placeholder="t('admin.permissions.placeholders.description')">
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <button type="submit" class="btn btn-primary btn-wave" :disabled="saving">
-                <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
-                {{ t('button.save') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<style scoped></style>
+<template><div class="w-permission-form w-scope"><header><h1>{{t('admin.permissions.operations.edit')}}</h1></header><WAlert v-if="loadError" tone="block" :title="loadError"/><WCard flush><form @submit.prevent="submitForm"><WFormSection :title="t('common.fields.name')"><div class="fields"><WField :label="t('common.fields.name')" required :error="errors.name" :hint="isBuiltin?t('admin.builtin.permission-tip'):undefined"><WInput :disabled="loading||saving||!!loadError" v-model="itemData.name" :readonly="isBuiltin"/></WField><WField :label="t('common.fields.description')"><WTextarea :disabled="loading||saving||!!loadError" v-model="itemData.description" :rows="3"/></WField></div></WFormSection><footer><WButton to="/admin/permissions">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="saving" :disabled="loading||!!loadError">{{t('button.save')}}</WButton></footer></form></WCard></div></template><style scoped>.w-permission-form{display:flex;flex-direction:column;gap:16px}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.fields{display:flex;flex-direction:column;gap:16px;max-width:600px}footer{display:flex;gap:8px;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--w-border)}</style>

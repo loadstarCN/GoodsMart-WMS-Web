@@ -92,14 +92,6 @@ const address = computed<StructuredAddress>(() => ({
 // ------------------ 字段 ----------------------
 const parts = computed<AddressPartKey[]>(() => addressPartOrder(country.value)
   .filter((k: AddressPartKey) => k !== 'dependent_locality' || props.withDependentLocality))
-const COLS: Record<AddressPartKey, string> = {
-  postal_code: 'col-md-4',
-  admin_area: 'col-md-4',
-  locality: 'col-md-4',
-  dependent_locality: 'col-md-6',
-  address_line1: 'col-md-12',
-  address_line2: 'col-md-12',
-}
 // 与后端的列宽一致（收件人 / 仓库的 zip_code 是 10 位，单行地址 address 255、address_en 500）
 const MAX: Record<string, number> = {
   postal_code: 10, admin_area: 100, locality: 100, dependent_locality: 100, address_line1: 255, address_line2: 255,
@@ -107,7 +99,7 @@ const MAX: Record<string, number> = {
 }
 const fieldLabel = (field: string): string => {
   const key = addressLabelKeys(field, country.value).find((k: string) => te(k))
-  return key ? t(key) : field
+  return key ? t(key).replace(/（可选）|\(optional\)|（任意）/gi, '').replace(/，可选(?=）)/g, '') : field
 }
 const placeholderOf = (field: string): string => {
   const code = String(country.value || '').toUpperCase()
@@ -198,110 +190,26 @@ const legacyLatinDiffers = computed(() =>
 </script>
 
 <template>
-  <div class="row gy-3 structured-address">
-    <!-- 国家 / 公司 -->
-    <div class="col-xl-6">
-      <label :for="`${idPrefix}-country`" class="form-label">
-        {{ t('common.fields.country') }} <abbr title="required" aria-hidden="true" class="text-danger" v-if="countryRequired">*</abbr>
-      </label>
-      <CountrySelect :id="`${idPrefix}-country`" v-model="country" :disabled="!editable" />
-      <div class="form-text">{{ t('address.tips.country') }}</div>
-      <div v-if="countryError" class="invalid-feedback d-block">{{ countryError }}</div>
-    </div>
-    <div class="col-xl-6" v-if="withOrganization">
-      <label :for="`${idPrefix}-organization`" class="form-label">{{ t('address.fields.organization') }}</label>
-      <input type="text" class="form-control" :id="`${idPrefix}-organization`" :maxlength="MAX.organization" :disabled="!editable"
-        :placeholder="t('address.placeholders.organization')" :value="model.organization ?? ''"
-        @input="setValue('organization', ($event.target as HTMLInputElement).value)">
-    </div>
-    <div class="w-100 m-0" v-else></div>
-
-    <!-- 地址本体（顺序按国家） -->
-    <div v-for="field in parts" :key="field" :class="COLS[field]">
-      <label :for="`${idPrefix}-${field}`" class="form-label">{{ fieldLabel(field) }}</label>
-      <div class="input-group" v-if="field === 'postal_code' && isJapan">
-        <span class="input-group-text">〒</span>
-        <input type="text" class="form-control" :id="`${idPrefix}-${field}`" :maxlength="MAX[field]" :disabled="!editable"
-          inputmode="numeric" :placeholder="placeholderOf(field)" :value="valueOf(field)"
-          @input="setValue(modelKeyOf(field), ($event.target as HTMLInputElement).value)" @blur="onPostalBlur">
-      </div>
-      <input type="text" class="form-control" :id="`${idPrefix}-${field}`" :maxlength="MAX[field]" :disabled="!editable"
-        :list="field === 'admin_area' && isJapan ? `${idPrefix}-prefectures` : undefined"
-        :placeholder="placeholderOf(field)" :value="valueOf(field)" v-else
-        @input="setValue(modelKeyOf(field), ($event.target as HTMLInputElement).value)"
-        @blur="field === 'postal_code' ? onPostalBlur() : undefined">
-    </div>
-    <datalist :id="`${idPrefix}-prefectures`" v-if="isJapan">
-      <option v-for="p in JP_PREFECTURES" :key="p" :value="p"></option>
-    </datalist>
-
-    <!-- 排版预览 + 旧的单行地址 -->
-    <div class="col-xl-12">
-      <div class="structured-address-preview fs-13" v-if="localLines.length">
-        <div class="fs-12 text-muted mb-1">{{ t('address.preview') }}</div>
-        <div v-for="(line, i) in localLines" :key="`ll-${i}`">{{ line }}</div>
-      </div>
-      <template v-if="legacyKey">
-        <label :for="`${idPrefix}-legacy`" class="form-label mt-2">{{ t('address.legacy') }}</label>
-        <input type="text" class="form-control" :id="`${idPrefix}-legacy`" maxlength="255" :disabled="!editable"
-          :placeholder="t('common.placeholders.address')" :value="model[legacyKey] ?? ''"
-          @input="onLegacyInput(($event.target as HTMLInputElement).value)">
-        <div class="form-text" :class="{ 'text-warning': legacyDiffers && !legacyAuto && !!legacyValue(legacyKey).trim() }">
-          <template v-if="legacyAuto && formattedLocal">{{ t('address.legacy-auto') }}</template>
-          <!-- 手工写的单行地址与上面的结构化地址不一致（如旧数据只有单行地址、后来补了结构化字段） -->
-          <template v-else-if="legacyDiffers && legacyValue(legacyKey).trim()">{{ t('address.legacy-differs') }}</template>
-          <template v-else>{{ t('address.legacy-hint') }}</template>
-          <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline fs-12" v-if="editable && legacyDiffers && !legacyAuto"
-            @click="useFormatted">{{ t('address.use-formatted') }}</button>
-        </div>
-      </template>
-    </div>
-
-    <!-- 拉丁转写（国际面单用） -->
-    <div class="col-xl-12">
-      <details class="structured-address-latin" :open="latinOpen" @toggle="latinOpen = ($event.target as HTMLDetailsElement).open">
-        <summary class="fs-13 text-primary">{{ t('address.latin.title') }}</summary>
-        <p class="fs-12 text-muted mb-2 mt-2">{{ t('address.latin.hint') }}</p>
-        <div class="row gy-2">
-          <div v-for="key in latinKeys" :key="key"
-            :class="key === 'address_line1' || key === 'address_line2' ? 'col-md-12' : 'col-md-6'">
-            <label :for="`${idPrefix}-latin-${key}`" class="form-label fs-13 mb-1">{{ latinLabel(key) }}</label>
-            <input type="text" class="form-control form-control-sm" :id="`${idPrefix}-latin-${key}`" :maxlength="MAX[key] || 255"
-              :disabled="!editable" :value="latin[key] ?? ''" @input="setLatin(key, ($event.target as HTMLInputElement).value)">
-            <div class="form-text text-warning" v-if="hasNonLatin(latin[key])">{{ t('address.latin.non-latin') }}</div>
-          </div>
-        </div>
-        <div class="structured-address-preview fs-13 mt-2" v-if="latinLines.length">
-          <div class="fs-12 text-muted mb-1">{{ t('address.latin.preview') }}</div>
-          <div v-for="(line, i) in latinLines" :key="`lt-${i}`">{{ line }}</div>
-          <div class="fs-12 text-warning mt-1" v-if="latinLines.some((line) => hasNonLatin(line))">{{ t('address.latin.preview-non-latin') }}</div>
-        </div>
-        <template v-if="legacyLatinKey">
-          <label :for="`${idPrefix}-legacy-latin`" class="form-label fs-13 mt-2 mb-1">{{ t('address.latin.legacy') }}</label>
-          <textarea class="form-control" :id="`${idPrefix}-legacy-latin`" rows="2" maxlength="500" :disabled="!editable"
-            :value="model[legacyLatinKey] ?? ''" @input="onLegacyLatinInput(($event.target as HTMLTextAreaElement).value)"></textarea>
-          <div class="form-text text-warning" v-if="hasNonLatin(model[legacyLatinKey])">{{ t('common.tips.non-latin') }}</div>
-          <div class="form-text">
-            <template v-if="legacyLatinAuto && formattedLatin">{{ t('address.legacy-auto') }}</template>
-            <template v-else>{{ t('address.latin.legacy-hint') }}</template>
-            <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline fs-12"
-              v-if="editable && legacyLatinDiffers && !legacyLatinAuto" @click="useFormattedLatin">{{ t('address.use-formatted') }}</button>
-          </div>
-        </template>
-      </details>
-    </div>
-  </div>
+  <WFormGrid class="w-structured-address">
+    <WField :id="`${idPrefix}-country`" :label="t('common.fields.country')" :span="4" :optional="!countryRequired" :error="countryError"><CountryCombobox v-model="country" :disabled="!editable" /></WField>
+    <WField v-if="withOrganization" :label="t('address.fields.organization')" optional><WInput :model-value="model.organization" :maxlength="MAX.organization" :disabled="!editable" @update:model-value="value=>setValue('organization',String(value??''))" /></WField>
+    <WField v-for="field in parts" :key="field" :id="`${idPrefix}-${field}`" :label="fieldLabel(field)" optional :span="field.startsWith('address_line')?12:withDependentLocality?3:4">
+      <WInput :model-value="valueOf(field)" :maxlength="MAX[field]" :disabled="!editable" :list="field==='admin_area'&&isJapan?`${idPrefix}-prefectures`:undefined" :placeholder="placeholderOf(field)" @update:model-value="value=>setValue(modelKeyOf(field),String(value??''))" @blur="field==='postal_code'?onPostalBlur():undefined"><template v-if="field==='postal_code'&&isJapan" #prefix>〒</template></WInput>
+    </WField>
+    <datalist v-if="isJapan" :id="`${idPrefix}-prefectures`"><option v-for="p in JP_PREFECTURES" :key="p" :value="p" /></datalist>
+    <div class="w-address-preview w-span-6"><span>{{t('address.preview')}}</span><address><div v-for="(line,i) in localLines" :key="i">{{line}}</div><span v-if="!localLines.length">—</span></address></div>
+    <WField v-if="legacyKey" :label="t('address.legacy')" optional :span="6" :hint="t(legacyAuto&&formattedLocal?'address.legacy-auto':legacyDiffers&&legacyValue(legacyKey).trim()?'address.legacy-differs':'address.legacy-hint')"><WTextarea :model-value="model[legacyKey]" :maxlength="255" :disabled="!editable" :rows="3" @update:model-value="value=>onLegacyInput(String(value??''))" /><WButton v-if="editable&&legacyDiffers&&!legacyAuto" variant="text" size="sm" @click="useFormatted">{{t('address.use-formatted')}}</WButton></WField>
+    <div class="w-address-latin w-span-12"><button type="button" class="w-address-latin__toggle" :aria-expanded="latinOpen" @click="latinOpen=!latinOpen"><WIcon :name="latinOpen?'chevron-down':'chevron-right'" :size="16" />{{t('address.latin.title')}}</button><div v-if="latinOpen" class="w-address-latin__body"><p>{{t('address.latin.hint')}}</p><WFormGrid><WField v-for="key in latinKeys" :key="key" :label="latinLabel(key)" optional :span="key.startsWith('address_line')?12:6" :hint="hasNonLatin(latin[key])?t('address.latin.non-latin'):undefined"><WInput :model-value="latin[key]" :maxlength="MAX[key]||255" :disabled="!editable" @update:model-value="value=>setLatin(key,String(value??''))" /></WField></WFormGrid><address v-if="latinLines.length" class="w-address-latin-preview"><span>{{t('address.latin.preview')}}</span><div v-for="(line,i) in latinLines" :key="i">{{line}}</div></address><WField v-if="legacyLatinKey" :label="t('address.latin.legacy')" optional :hint="t(legacyLatinAuto&&formattedLatin?'address.legacy-auto':'address.latin.legacy-hint')"><WTextarea :model-value="model[legacyLatinKey]" :maxlength="500" :rows="2" :disabled="!editable" @update:model-value="value=>onLegacyLatinInput(String(value??''))" /><WButton v-if="editable&&legacyLatinDiffers&&!legacyLatinAuto" variant="text" size="sm" @click="useFormattedLatin">{{t('address.use-formatted')}}</WButton></WField></div></div>
+  </WFormGrid>
 </template>
-
 <style scoped>
-.structured-address-preview {
-  border: 1px dashed var(--default-border);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  white-space: pre-wrap;
-}
-
-.structured-address-latin summary {
-  cursor: pointer;
-}
+.w-structured-address { gap:12px 16px; }
+.w-address-preview { display:flex; flex-direction:column; gap:4px; }
+.w-address-preview>span { font-size:13px; line-height:20px; font-weight:500; }
+.w-address-preview address { min-height:86px; margin:0; padding:12px 16px; border:1px solid var(--w-border); border-radius:6px; font-style:normal; font-size:14px; line-height:22px; }
+.w-address-latin__toggle { width:100%; display:flex; align-items:center; gap:8px; min-height:40px; padding:8px 12px; border:1px solid var(--w-border); border-radius:6px; background:var(--w-surface); font:inherit; font-size:14px; line-height:20px; font-weight:600; color:var(--w-text-1); text-align:left; cursor:pointer; }
+.w-address-latin__body { display:flex; flex-direction:column; gap:12px; padding:16px; }
+.w-address-latin__body>p { margin:0; font-size:12px; line-height:18px; color:var(--w-text-3); }
+.w-address-latin-preview { margin:0; padding:12px 16px; border:1px solid var(--w-border); border-radius:6px; font-style:normal; font-size:14px; line-height:22px; }
+.w-address-latin-preview>span { font-size:12px; color:var(--w-text-3); }
 </style>

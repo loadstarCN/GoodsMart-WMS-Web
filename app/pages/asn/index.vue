@@ -1,432 +1,171 @@
-<script lang="ts" setup>
-/**
- * 入库单列表：页签是入库的工作队列（按 inbound_stage：预计到货 / 在途 / 待收货 / 分拣 / 待上架 / 异常 / 已完成 / 已关闭），
- * 入库单状态（status）在右边的下拉里另选，两个条件可以一起用。每行显示入库阶段、承运商与运单号。
- */
+<script setup lang="ts">
 import { INBOUND_STAGE_TABS } from '~/composables/asn/inboundFlow'
-
-// 定义页面元数据
-definePageMeta({
-});
-
-// 获取国际化方法
-const { t } = useI18n();
-const { bizErrorMessage } = useBizError();
-
-// 计算属性转换
-const dataToPass = computed(() => ({
-  current: t('nav.ASN'),
-  list: [t('nav.warehouse'), t('nav.ASN')]
-}));
-
-const router = useRouter();
-// 按权限显示新建 / 编辑 / 删除（鉴权仍以后端为准）
-const staffStore = useStaffStore();
-let route = useRoute();
-let loading = ref(true);
-let keyword = ref("");
-let pageData = ref<PaginationData | null>(null);
-
-const fetchData = async () => {
-    loading.value = true;
-    const data = await httpRequest<PaginationData>('/api/warehouse/asn/', {
-        method: 'GET',
-        params: route.query,
-        onSuccess: async(data) => {
-            pageData.value = data;
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        },
-        onFinally: () => {
-            loading.value = false;
-        }
-    })
-    return data;   
-};
-
-watch(() => route.query, async () => {
-    await fetchData();
-});
-
-async function search() {
-    await router.push({ query: { ...route.query, keyword: keyword.value.trim(),page:1 } });
-}
-
-
-// 删除ASN
-const deleteItem = async (item_id:Number) => {
-    const confirm = await showConfirm(t('action-results.delete-confirm-title'), t('action-results.delete-confirm', { entity: t('asn.entity') }),t('button.confirm'),t('button.cancel'));
-    if (confirm) {
-        await httpRequest(`/api/warehouse/asn/${item_id}`, {
-            method: 'DELETE',
-            onSuccess: async() => {
-                showToast(t('action-results.success'), 'success')
-                await fetchData();                 
-            },
-            onError: (error) => {
-                showToast(bizErrorMessage(error), 'error')
-            }
-        })
+import { asnTypesOptions } from '~/data/selectOptions'
+import { useAsnActions } from '~/composables/asn/useAsnActions'
+definePageMeta({})
+const { t, locale } = useI18n()
+useHead({ title: () => t('nav.ASN') })
+const route = useRoute()
+const router = useRouter()
+const staff = useStaffStore()
+const warehouses = useWarehouseStore()
+const { bizErrorMessage } = useBizError()
+const { busy, run } = useAsnActions()
+const loading = ref(false)
+const error = ref('')
+const data = ref<PaginationData | null>(null)
+const keyword = ref(String(route.query.keyword || ''))
+const page = computed(() => Math.max(1, Number(route.query.page) || 1))
+const stage = computed(() => String(route.query.inbound_stage || 'all'))
+const status = computed(() => String(route.query.status || ''))
+const type = computed(() => String(route.query.asn_type || ''))
+const counts = ref<Record<string, number>>({})
+const specCount = ref<number>()
+const suppliers = ref<{value:number;label:string}[]>([])
+const moreFilters = ref(false)
+const dateFrom = ref(String(route.query.expected_arrival_date || ''))
+const listStages = ['expected','in_transit','receiving','sorting','putaway','completed','exception','closed']
+const loadSuppliers = async () => {
+  if (!staff.hasPermission('supplier_read')) return
+  const options: {value:number;label:string}[] = []
+  for (const is_active of [true, false]) {
+    let page = 1
+    while (true) {
+      const result = await httpRequest<PaginationData>('/api/warehouse/supplier/', {params:{is_active,page,per_page:100}})
+      if (!result) return
+      options.push(...result.items.map((row:any)=>({value:row.id,label:row.name})))
+      if (page >= result.pages) break
+      page++
     }
-}
-
-// 激活ASN
-const activeItem = async (item_id:Number) => {    
-    await httpRequest(`/api/warehouse/asn/${item_id}`, {
-        method: 'PUT',
-        body: { is_active: true },
-        onSuccess: async() => {
-            showToast(t('action-results.success'), 'success')
-            await fetchData();            
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        }
-    })
-}
-
-// 禁用ASN
-const closeItem = async (item_id:Number) => {    
-    const data = await httpRequest(`/api/warehouse/asn/${item_id}/close/`, {
-        method: 'PUT',
-        onSuccess: async() => {
-            showToast(t('action-results.success'), 'success')
-            await fetchData();       
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        }
-    })
-}
-
-// 取消ASN（已签收、分拣尚未开始）：后端回滚签收库存、停用分拣任务并关闭单据；待处理的 ASN 用「关闭」
-const cancelingId = ref<number | null>(null);
-const cancelItem = async (item_id: number) => {
-    if (cancelingId.value !== null) return;
-    const confirmed = await showConfirm(
-        t('asn.tips.cancel-confirm-title'),
-        t('asn.tips.cancel-confirm', { id: item_id }),
-        t('asn.operations.cancel'),
-        t('button.dont-cancel'),
-    );
-    if (!confirmed) return;
-    cancelingId.value = item_id;
-    let done = false;
-    let conflict = false;
-    await httpRequest(`/api/warehouse/asn/${item_id}/cancel/`, {
-        method: 'PUT',
-        onSuccess: () => {
-            done = true;
-        },
-        onError: (error) => {
-            // 16059 状态已变 / 16060 分拣已开始
-            conflict = error.status === 409;
-            showToast(bizErrorMessage(error), 'error')
-        }
-    })
-    if (done) showToast(t('action-results.success'), 'success')
-    // 成功或状态已变（409）：刷新列表
-    if (done || conflict) await fetchData();
-    cancelingId.value = null;
-}
-
-// 签收ASN
-const receiveItem = async (item_id:Number) => {    
-    const data = await httpRequest(`/api/warehouse/asn/${item_id}/receive/`, {
-        method: 'PUT',
-        onSuccess: async() => {
-            showToast(t('action-results.success'), 'success')
-            await fetchData();       
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        }
-    })
-}
-
-
-// 状态下拉（入库单状态 status）：空 = 全部
-const setStatusFilter = (status: string | null) => {
-  const query: Record<string, any> = { ...route.query }
-
-  // 处理状态参数
-  if (!status || status === 'all') {
-    delete query.status
-  } else {
-    query.status = status
   }
-
-  // 切换过滤条件时重置页码
-  query.page = '1'
-  
+  suppliers.value = options
+}
+const number = (value:unknown) => Number(value || 0).toLocaleString(locale.value)
+const shortDate = (value:string) => value ? value.slice(5).replace('-', '/') : ''
+const tabs = computed(() => [{ key: 'all', label: t('common.status.all'), count: counts.value.all }, ...listStages.map(key => ({ key, label: t(`asn.flow.stage.${key}`), count: counts.value[key], attention: ['receiving', 'putaway'].includes(key), error: key === 'exception' }))])
+const statuses = computed(() => [{ value: '', label: t('common.status.all') }, ...['pending', 'received', 'completed', 'closed'].map(value => ({ value, label: t(`common.status.${value}`) }))])
+const types = computed(() => [{ value: '', label: t('common.status.all') }, ...asnTypesOptions.map(value => ({ value, label: t(`asn.type.${value}`) }))])
+const columns = computed(() => [
+  { key: 'number', label: t('asn.entity'), wrap: true },
+  { key: 'supplier', label: t('common.entities.supplier'), value: (row: any) => row.supplier?.name, wrap: true },
+  { key: 'goods', label: t('common.entities.goods'), wrap: true },
+  { key: 'carrier', label: t('asn.list.tracking'), wrap: true },
+  ...(!warehouses.currentWarehouse ? [{ key: 'warehouse', label: t('common.entities.warehouse'), value: (row: any) => row.warehouse?.name }] : []),
+  { key: 'expected_arrival_date', label: t('asn.list.arrival') },
+  { key: 'stage', label: t('asn.list.stage'), wrap: true },
+  { key: 'actions', label: t('button.next'), align: 'right' as const, wrap: true },
+])
+const go = (patch: Record<string, unknown>, keepPage = false) => {
+  const query: Record<string, any> = { ...route.query, ...patch }
+  for (const key of Object.keys(query)) if (query[key] == null || query[key] === '' || query[key] === 'all') delete query[key]
+  if (!keepPage) delete query.page
   router.push({ query })
 }
-
-// 页签：入库阶段（inbound_stage）；切换时重置页码
-const setStageFilter = (stage: string | null) => {
-  const query: Record<string, any> = { ...route.query }
-  if (!stage || stage === 'all') {
-    delete query.inbound_stage
-  } else {
-    query.inbound_stage = stage
-  }
-  query.page = '1'
-  router.push({ query })
+let generation = 0, countGeneration = 0
+const fetchList = async () => {
+  const seq = ++generation
+  loading.value = true; error.value = ''
+  await httpRequest<PaginationData>('/api/warehouse/asn/', {
+    params: { ...route.query, page: page.value, per_page: 20 },
+    onSuccess: value => { if (seq === generation) data.value = value },
+    onError: err => { if (seq === generation) error.value = bizErrorMessage(err) },
+    onFinally: () => { if (seq === generation) loading.value = false },
+  })
 }
-
-const activeStage = computed(() => {
-  const stage = String(route.query.inbound_stage || '')
-  return (INBOUND_STAGE_TABS as string[]).includes(stage) ? stage : 'all'
-})
-
-// 入库单状态（下拉，与阶段页签可以一起用）
-const ASN_STATUSES = ['pending', 'received', 'completed', 'closed']
-const activeStatus = computed(() => {
-  const status = String(route.query.status || '')
-  return ASN_STATUSES.includes(status) ? status : ''
-})
-
-// 6个月的统计数据
-import { useChartMonthOptions } from '@/composables/chart/useChartMonthOptions';
-const listViewOptions = useChartMonthOptions(6);
-const listViewSeries = ref<any[]>([]);
-
-
-const fetchMonthlyStatsData = async () => {
-    loading.value = true;
-    const data = await httpRequest('/api/warehouse/asn/monthly-stats', {
-        method: 'GET',
-        params: {'months': 6},
-        onSuccess: async(data) => {
-            // 处理数据格式转换
-            for (let i = 0; i < data.length; i++) {
-                data[i].name = t('common.status.' + data[i].name.replace('_', '-').toLowerCase());
-            }
-            listViewSeries.value = data;
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        },
-        onFinally: () => {
-            loading.value = false;
-        }
-    })
-    return data;   
-};
-
-// 统计数据
-const statsData = ref<any[]>([]);
-const fetchStatsData = async () => {
-    loading.value = true;
-    const data = await httpRequest('/api/warehouse/asn/status-overview-stats', {
-        method: 'GET',
-        params: route.query,
-        onSuccess: async(data) => {
-            statsData.value = data;
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        },
-        onFinally: () => {
-            loading.value = false;
-        }
-    })
-    return data;   
-};
-
-onMounted(async() => {
-    fetchData();
-    fetchStatsData();
-    fetchMonthlyStatsData();
-});
-
+const fetchCounts = async () => {
+  const seq = ++countGeneration
+  const params: Record<string, any> = { ...route.query, per_page: 1 }
+  delete params.page; delete params.inbound_stage
+  counts.value = {}; specCount.value = undefined
+  const specParams = {...params}; delete specParams.spec_pending
+  const specResult = await httpRequest<PaginationData>('/api/warehouse/asn/', {params:{...specParams,spec_pending:true}})
+  if (seq !== countGeneration) return
+  if (specResult) specCount.value = specResult.total
+  await Promise.all(['all', ...INBOUND_STAGE_TABS].map(async key => {
+    const result = await httpRequest<PaginationData>('/api/warehouse/asn/', { params: { ...params, ...(key === 'all' ? {} : { inbound_stage: key }) } })
+    if (seq === countGeneration && result) counts.value[key] = result.total
+  }))
+}
+const countKey = computed(() => { const q = { ...route.query }; delete q.page; delete q.inbound_stage; return JSON.stringify(q) })
+watch(() => route.query, () => { keyword.value = String(route.query.keyword || ''); dateFrom.value = String(route.query.expected_arrival_date || ''); fetchList() })
+watch(countKey, fetchCounts)
+const act = async (id: number, action: 'receive' | 'close' | 'cancel' | 'delete') => { if (await run(id, action)) await Promise.all([fetchList(), fetchCounts()]) }
+onMounted(() => { fetchList(); fetchCounts(); loadSuppliers() })
+onBeforeUnmount(() => { generation++; countGeneration++ })
+const tone = (value: string): 'ok' | 'warn' | 'bad' | 'info' | 'none' => value === 'exception' ? 'bad' : value === 'completed' ? 'ok' : ['receiving', 'putaway'].includes(value) ? 'warn' : ['in_transit', 'sorting'].includes(value) ? 'info' : 'none'
 </script>
-
-
 <template>
-    <PageHeader :propData="dataToPass" />
-    <!-- Start::row-1 -->
-    <div class="row d-flex justify-content-center mb-4" v-if="loading">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-        </div>
-    </div>
-    <div class="row" v-else>
-        <div class="col-xxl-9 col-xl-8">
-
-            <div class="card custom-card">
-                <div class="card-header justify-content-between">
-                    <div class="card-title">
-                        {{ $t('asn.title') }} <span
-                            class="badge bg-light text-default rounded ms-1 fs-12 align-middle">{{ pageData?.total
-                            }}</span>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2">
-                        <div class="d-flex flex-wrap gap-2">
-                            <NuxtLink v-if="staffStore.hasPermission('asn_edit')" to="/asn/add" class="btn btn-primary btn-wave"><i
-                                    class="ri-add-line me-1 fw-semibold align-middle"></i>{{t('asn.operations.add')}}</NuxtLink>
-                        </div>
-                        <div class="d-flex" role="search">
-                            <input class="form-control me-2" type="search" :placeholder="t('asn.form.placeholders.search')"
-                                :aria-label="t('common.search')" v-model="keyword" style="width: auto;">
-                            <button class="btn btn-light" type="submit" @click="search">{{ $t('common.search')
-                                }}</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
-                        <ul class="nav nav-pills nav-style-3" role="tablist">
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeStage === 'all' }" href="javascript:void(0);"
-                                    @click="setStageFilter('all')">{{t('common.status.all')}}</a>
-                            </li>
-                            <li class="nav-item" v-for="stage in INBOUND_STAGE_TABS" :key="stage">
-                                <a class="nav-link" :class="{ active: activeStage === stage }" href="javascript:void(0);"
-                                    @click="setStageFilter(stage)">{{ t(`asn.flow.stage.${stage}`) }}</a>
-                            </li>
-                        </ul>
-                        <select class="form-select form-select-sm w-auto" :aria-label="t('shipping.dn.status-filter')"
-                            :value="activeStatus" @change="setStatusFilter(($event.target as HTMLSelectElement).value)">
-                            <option value="">{{ t('shipping.dn.status-filter') }}: {{ t('common.status.all') }}</option>
-                            <option v-for="status in ASN_STATUSES" :key="status" :value="status">
-                                {{ t('shipping.dn.status-filter') }}: {{ t('common.status.' + status) }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table text-nowrap table-bordered">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="">{{ t('common.fields.id') }}</th>
-                                    <th scope="col">{{ t('common.entities.warehouse') }}</th>
-                                    <!-- 表头与单元格的显示断点一致（否则中等宽度时列错位） -->
-                                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.entities.supplier') }}</th>
-                                    <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.type') }}</th>
-                                    <th scope="col" class="d-none d-xl-table-cell">{{t('common.fields.quantity')}}</th>
-                                    <th scope="col" class="d-none d-xl-table-cell">{{ t('common.fields.status') }}</th>
-                                    <th scope="col">{{ t('asn.flow.stage-column') }}</th>
-                                    <th scope="col" class="d-none d-lg-table-cell">{{ t('shipping.dn.carrier-tracking') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.updated') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.users.creator') }}</th>
-                                    <th scope="col">{{ t('common.fields.action') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="asn in pageData?.items" class="invoice-list">
-                                    <td class="">
-                                        <NuxtLink :to="`/asn/detail/${asn?.id}`" class="text-default">ASN-{{ asn?.id }}
-                                        </NuxtLink>
-                                    </td>
-                                    <td class="">
-                                        <NuxtLink :to="`/warehouse/detail/${asn?.warehouse?.id}`" class="text-default">{{
-                                            asn?.warehouse?.name }}
-                                        </NuxtLink>
-                                    </td>
-                                    <td class="d-none d-md-table-cell">{{ asn?.supplier?.name }}</td>
-                                    <td class="d-none d-xl-table-cell">{{ t('asn.type.'+asn?.asn_type) }}</td>
-                                    <td class="d-none d-xl-table-cell">{{ t('common.units.sku-count', { n: $n(asn?.detail_count ?? 0) }, Number(asn?.detail_count) || 0) }}<br>{{
-                                        t('common.units.pcs-count', { n: $n(asn?.total_quantity ?? 0) }, Number(asn?.total_quantity) || 0) }}</td>
-                                    <td class="d-none d-xl-table-cell">{{ t('common.status.'+asn?.status.replace('_',"-")) }}</td>
-                                    <td><InboundStageBadge :stage="asn?.inbound_stage" /></td>
-                                    <td class="d-none d-lg-table-cell">
-                                        <div v-if="asn?.carrier?.name">{{ asn.carrier.name }}</div>
-                                        <div class="font-monospace fs-12 text-muted" v-if="asn?.tracking_number">{{ asn.tracking_number }}</div>
-                                        <span class="text-muted" v-if="!asn?.carrier?.name && !asn?.tracking_number">—</span>
-                                    </td>
-
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(asn?.updated_at, undefined, asn) }}</td>
-                                    <td class="d-none d-xxl-table-cell">{{ asn?.creator?.user_name }}</td>
-                                    <td>
-                                        <div class="hstack gap-2 fs-15">
-                                            <NuxtLink :to="`/asn/edit/${asn?.id}`" class="btn btn-icon btn-sm btn-success-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_edit')"><i class="ri-edit-line"></i></NuxtLink>
-                                            <NuxtLink  href="javascript:void(0);" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_receive', 'asn_edit')" :title="t('asn.operations.receive')" @click="receiveItem(asn.id)"><i  class="ri-checkbox-line"></i></NuxtLink>
-                                            <NuxtLink :to="`/sorting/?asn_id=${asn.id}`" class="btn btn-icon btn-sm btn-primary-light product-btn" v-if="asn.status==='received'" :title="t('asn.operations.sorting')"><i class="ri-list-check-3"></i></NuxtLink>
-                                            <button type="button" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(asn.status==='received') && staffStore.hasPermission('asn_edit')"
-                                                :title="t('asn.operations.cancel')" :disabled="cancelingId !== null" @click="cancelItem(asn.id)">
-                                                <span v-if="cancelingId === asn.id" class="spinner-border spinner-border-sm"></span>
-                                                <i v-else class="ri-arrow-go-back-line"></i>
-                                            </button>
-                                            <NuxtLink href="javascript:void(0);" @click="closeItem(asn.id)" class="btn btn-icon btn-sm btn-info-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_edit')" :title="t('button.close')"><i class="ri-close-line"></i></NuxtLink>
-                                            <NuxtLink href="javascript:void(0);" @click="deleteItem(asn.id)" class="btn btn-icon btn-sm btn-danger-light product-btn" v-if="(asn.status==='pending') && staffStore.hasPermission('asn_delete')"><i class="ri-delete-bin-line"></i></NuxtLink>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="text-center p-5 border border-top-0" v-if="pageData?.items?.length==0">{{ t('common.status.nothing-show')}}</div>
-                    </div>
-                </div>
-                <div class="card-footer border-top-0">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap">
-                        <template v-if="pageData">
-                            <Pagination :page-size=pageData?.per_page :current-page=pageData?.page
-                                :total=pageData?.total :params=$route.query v-if="pageData.pages > 1"></Pagination>
-                        </template>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-3 col-xl-4">
-            <div class="card custom-card">
-                <div class="card-body p-0">
-
-                    <div v-for="status in statsData" :key="status.name"
-                        class="p-4 border-bottom border-block-end-dashed d-flex align-items-top">
-                        <!-- 动态图标容器 -->
-                        <div :class="`svg-icon-background bg-${getStatusColor(status.name)}-transparent me-4`">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                :class="`svg-${getStatusColor(status.name)}`">
-                                <path :d="getIconPath(status.name)" />
-                            </svg>
-                        </div>
-
-                        <!-- 动态内容区域 -->
-                        <div class="flex-fill">
-                            <h6 class="mb-2 fs-12">
-                                {{t('common.status.' + status.name.replace('_', '-'))}}
-                                <span :class="`badge bg-${getStatusColor(status.name)} fw-semibold float-end`">
-                                    {{ formatNumber(status.last_year) }}
-                                </span>
-                            </h6>
-
-                            <div class="pb-0 mt-0">
-                                <div>
-                                    <h4 class="fs-18 fw-semibold mb-2">
-                                        <span class="count-up" :data-count="status.last_year">
-                                            {{ formatNumber(status.current_month) }}
-                                        </span>
-                                        <span class="text-muted float-end fs-11 fw-normal">{{t('common.statistics.last-year')}}</span>
-                                    </h4>
-
-                                    <!-- 增长率计算 -->
-                                    <p class="text-muted fs-11 mb-0 lh-1">
-                                        <span :class="`text-${growthColor(status)} me-1 fw-semibold`">
-                                            <i
-                                                :class="`ri-arrow-${growthDirection(status)}-s-line me-1 align-middle`"></i>
-                                            {{ growthRate(status) }}%
-                                        </span>
-                                        <span>{{t('common.statistics.this-month')}}</span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="p-4 pb-2">
-                        <p class="fs-15 fw-semibold">{{t('common.statistics.title')}} <span class="text-muted fw-normal">({{t('common.statistics.last-n-months',6)}})
-                                :</span></p>
-                        <apexchart height="210" type="bar" :options="listViewOptions" :series="listViewSeries">
-                        </apexchart>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- End::row-1 -->
-
+  <div class="asn-list w-scope">
+    <header><h1>{{ t('nav.ASN') }} <small>{{ warehouses.currentWarehouse?.name ? warehouses.currentWarehouse.name + ' · ' : '' }}{{ data ? t('asn.list.count', {count:number(data.total)}) : '' }}</small></h1><WButton v-if="staff.hasPermission('asn_edit')" variant="primary" icon="plus" to="/asn/add">{{ t('asn.list.create') }}</WButton></header>
+    <WCard flush>
+      <WTabs inset :model-value="stage" :items="tabs" :label="t('asn.flow.stage-column')" @update:model-value="value => go({ inbound_stage: value })" />
+      <form class="asn-list__filters" @submit.prevent="go({ keyword: keyword.trim() })">
+        <WInput v-model="keyword" type="search" :placeholder="t('asn.list.search')" :aria-label="t('common.search')" @change="go({keyword:keyword.trim()})"><template #prefix><WIcon name="search" :size="16" /></template></WInput>
+        <WFilterSelect v-if="staff.hasPermission('supplier_read')" :model-value="Number(route.query.supplier_id)||null" :options="suppliers" :label="t('common.entities.supplier')" @change="value=>go({supplier_id:value})" />
+        <WFilterSelect :model-value="type || null" :options="types.filter(option => option.value)" :label="t('asn.list.type')" @change="value => go({ asn_type: value })" />
+        <WDropdown :label="t('asn.list.arrival')" width="260px"><template #trigger="{attrs}"><button v-bind="attrs" class="w-asn-filter" type="button"><span>{{ t('asn.list.arrival') }}</span><span>{{ dateFrom || t('common.status.all') }}</span><WIcon name="chevron-down" :size="14" /></button></template>
+          <div class="w-asn-date" data-keep-open><WField :label="t('asn.list.arrival-from')" optional><WInput v-model="dateFrom" type="date" @change="go({expected_arrival_date:dateFrom})" /></WField><WButton size="sm" @click="go({expected_arrival_date:null})">{{ t('common.status.all') }}</WButton></div>
+        </WDropdown>
+        <button class="w-asn-spec-filter" type="button" :aria-pressed="route.query.spec_pending==='true'" @click="go({spec_pending:route.query.spec_pending==='true'?null:'true'})"><span class="w-asn-spec-dot" />{{ t('asn.list.spec-pending') }}<strong v-if="specCount!==undefined">{{ number(specCount) }}</strong></button>
+        <WButton variant="text" :aria-expanded="moreFilters" @click="moreFilters=!moreFilters">{{ t('dn.list.more-filters') }}</WButton>
+        <div v-if="moreFilters" class="w-asn-more"><WFilterSelect :model-value="status || null" :options="statuses.filter(option => option.value)" :label="t('shipping.dn.status-filter')" @change="value => go({ status: value })" /></div>
+      </form>
+      <WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="fetchList">{{ t('dn.list.retry') }}</WButton></template></WAlert>
+      <WTable :rows="data?.items || []" :columns="columns" :loading="loading" inset valign="top">
+        <template #cell-number="{ row }"><div class="w-asn-number"><NuxtLink class="w-asn-record-link" :to="`/asn/detail/${row.id}`">ASN-{{ row.id }}</NuxtLink><span v-if="row.asn_type !== 'inbound'" class="w-asn-type">{{ t(`asn.type.${row.asn_type}`) }}</span></div><div v-if="row.order_number" class="w-asn-sub">{{ row.order_number }}</div></template>
+        <template #cell-goods="{ row }"><div>{{ t('asn.list.goods-count', { lines: number(row.detail_count), quantity: number(row.total_quantity) }) }}</div><span v-if="row.spec_pending_count" class="w-asn-spec-badge">{{ t('asn.form-ui.pending-specs',{count:row.spec_pending_count}) }}</span></template>
+        <template #cell-carrier="{ row }"><span :class="{'w-asn-muted':!row.carrier?.name}">{{ row.carrier?.name || t('asn.list.no-tracking') }}</span><div v-if="row.tracking_number" class="w-asn-sub">{{ row.tracking_number }}</div></template>
+        <template #cell-expected_arrival_date="{row}"><span class="w-asn-date-text">{{ shortDate(row.expected_arrival_date) }}</span></template>
+        <template #cell-stage="{ row }"><WStatus muted :tone="tone(row.inbound_stage)">{{ t(`asn.flow.stage.${row.inbound_stage || 'expected'}`) }}</WStatus><div class="w-asn-sub w-asn-stage-sub">{{ t(`common.status.${row.status}`) }}</div></template>
+        <template #cell-actions="{ row }"><div class="asn-list__actions">
+          <WButton v-if="row.status === 'pending' && staff.hasPermission('asn_receive', 'asn_edit')" size="sm" :disabled="busy" @click="act(row.id, 'receive')">{{ t('asn.operations.receive') }}</WButton>
+          <WButton v-if="row.inbound_stage === 'sorting' && staff.hasPermission('sorting_read')" size="sm" :to="`/sorting?asn_id=${row.id}`">{{ t('asn.operations.sorting') }}</WButton>
+          <WButton v-if="row.inbound_stage==='putaway' && staff.hasPermission('inventory_read')" size="sm" :to="{path:'/inventory',query:{pending_putaway:'true',warehouse_id:row.warehouse_id}}">{{ t('asn.flow.steps.putaway') }}</WButton>
+          <WDropdown :label="t('common.fields.action')" placement="bottom-end" width="180px">
+            <template #trigger="{ attrs }"><WButton v-bind="attrs" variant="text" class="w-asn-more-button" icon="more" icon-only size="sm" :aria-label="t('common.fields.action')" /></template>
+            <NuxtLink class="w-menu-item" role="menuitem" :to="`/asn/detail/${row.id}`">{{ t('asn.fields.details') }}</NuxtLink>
+            <NuxtLink class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && staff.hasPermission('asn_edit')" :to="`/asn/edit/${row.id}`">{{ t('asn.operations.edit') }}</NuxtLink>
+            <button class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && staff.hasPermission('asn_edit')" :disabled="busy" @click="act(row.id, 'close')">{{ t('button.close') }}</button>
+            <button class="w-menu-item" role="menuitem" v-if="row.status === 'received' && staff.hasPermission('asn_edit')" :disabled="busy" @click="act(row.id, 'cancel')">{{ t('asn.operations.cancel') }}</button>
+            <button class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && staff.hasPermission('asn_delete')" :disabled="busy" @click="act(row.id, 'delete')">{{ t('button.delete') }}</button>
+          </WDropdown>
+        </div></template>
+      </WTable>
+      <div class="asn-list__pagination"><WPagination :page="page" :total="data?.total" :page-size="20" show-total @update:page="value => go({ page: value }, true)" /></div>
+    </WCard>
+  </div>
 </template>
-
-<style scoped></style>
+<style scoped>
+.asn-list { display: flex; flex-direction: column; gap: 16px; }
+.asn-list header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.asn-list h1 { display: flex; align-items: baseline; gap: 12px; font-size: 24px; line-height: 32px; font-weight: 600; margin: 0; }
+.asn-list h1 small { font-size: 13px; line-height: 20px; color: var(--w-text-2); font-weight: 400; }
+.asn-list__filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--w-line); }
+.asn-list__filters > :first-child { flex: 1 1 260px; min-width: 200px; max-width: 320px; }
+.asn-list__filters > .w-select { width: auto; min-width: 150px; }
+.asn-list__actions { display: flex; align-items: flex-start; justify-content: flex-end; gap: 8px; }
+.asn-list__pagination { padding: 12px 20px; border-top: 1px solid var(--w-border); }
+.asn-list :deep(.w-table-wrap.is-inset) { --w-table-edge:20px; }
+.asn-list :deep(.w-table) { min-width:1000px; border-collapse:collapse; }
+.asn-list :deep(.w-table thead th) { height:auto; line-height:16px; padding-top:10px; padding-bottom:8px; }
+.asn-list :deep(.w-table__head) { vertical-align:top; }
+.asn-list__filters :deep(input[type="search"]) { font-size:13px; }
+.w-asn-record-link { font-size:14px; line-height:20px; font-weight:600; color:var(--w-text-1); text-decoration:none; white-space:nowrap; }
+.w-asn-record-link:hover { color:var(--w-link); }
+.w-asn-number { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.w-asn-sub { font-size:12px; line-height:18px; color:var(--w-text-3); margin-top:2px; }
+.w-asn-stage-sub { padding-left:12px; }
+.w-asn-date-text { color:var(--w-text-2); white-space:nowrap; }
+.w-asn-muted { color:var(--w-text-3); }
+.w-asn-type,.w-asn-spec-badge { display:inline-block; font-size:12px; line-height:16px; font-weight:500; padding:0 6px; border:1px solid var(--w-border); border-radius:6px; color:var(--w-text-2); white-space:nowrap; }
+.w-asn-spec-badge { margin-top:2px; border-color:#F8D399; color:#92500B; }
+.w-asn-filter,.w-asn-spec-filter { display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border:1px solid var(--w-border-strong); border-radius:6px; background:var(--w-surface); font:inherit; font-size:13px; line-height:20px; cursor:pointer; color:var(--w-text-2); }
+.w-asn-filter span:nth-child(2) { color:var(--w-text-1); }
+.w-asn-spec-filter { border-radius:999px; border-color:var(--w-border); }
+.w-asn-spec-filter[aria-pressed="true"] { border-color:var(--w-sel); background:var(--w-sel-soft); }
+.w-asn-spec-filter strong { font-weight:600; color:var(--w-text-1); }
+.w-asn-spec-dot { width:6px; height:6px; border-radius:50%; background:var(--w-warn-dot); }
+.w-asn-date { display:flex; flex-direction:column; gap:8px; padding:8px; }
+.w-asn-more { display:flex; flex-basis:100%; padding-top:4px; }
+.w-asn-more-button { color:var(--w-text-2); }
+</style>

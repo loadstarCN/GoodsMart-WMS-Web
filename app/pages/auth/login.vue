@@ -1,14 +1,12 @@
 <script lang="ts" setup>
+import AuthFrame from "~/components/auth/AuthFrame.vue"
 /********************
  * 模块导入
  ​********************/
 
 // 组件库
 import CryptoJS from 'crypto-js';
-import { Swiper, SwiperSlide } from "swiper/vue";
-import { Navigation, Pagination, Keyboard } from 'swiper/modules';
-import type { PaginationOptions } from 'swiper/types';
-import "swiper/swiper-bundle.css";
+
 
 // 国际化与语言切换
 import { languages } from '~/data/headerData.js'
@@ -25,12 +23,7 @@ const setLocale = async (lang: string) => {
 /********************
  * Swiper配置模块
  ​********************/
-const modules = ref([Navigation, Pagination, Keyboard]);
-const pagination = ref<PaginationOptions>({
-  clickable: true,
-  type: 'bullets',
-  dynamicBullets: true
-});
+
 
 // 从环境变量获取加密密钥（需在.env.local配置）
 const runtimeConfig = useRuntimeConfig();
@@ -179,137 +172,7 @@ onUnmounted(() => document.body.classList.remove('bg-white'));
 definePageMeta({
   layout: 'custom',
 });
-</script>
 
-
-
-<template>
-  <div class="row authentication mx-0">
-
-      <div class="col-xxl-7 col-xl-7 col-lg-7 position-relative">
-          <!-- 语言切换 - 右上角 -->
-          <div class="position-absolute top-0 end-0 p-3" style="z-index: 10;">
-            <div class="dropdown">
-              <a href="javascript:void(0);" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
-                <img :src="`/images/flags/${currentLang}_flag.jpg`" :alt="currentLang" class="rounded-circle me-1" style="width:16px;height:16px;">{{ languages[currentLang as keyof typeof languages] }}
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li v-for="lang in ['en', 'zh', 'ja']" :key="lang">
-                  <a @click="setLocale(lang)" class="dropdown-item" href="javascript:void(0);">
-                    <img :src="`/images/flags/${lang}_flag.jpg`" class="rounded-circle me-2" style="width:16px;height:16px;">{{ languages[lang] }}
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div class="row justify-content-center align-items-center h-100">
-              <div class="col-xxl-6 col-xl-7 col-lg-7 col-md-7 col-sm-8 col-12">
-                  <div class="p-5">
-                      <div class="mb-3">
-                          <NuxtLink to='/'>
-                              <img src="/images/brand-logos/desktop-logo.svg" alt=""
-                                  class="authentication-brand desktop-logo">
-                              <img src="/images/brand-logos/desktop-dark.svg" alt=""
-                                  class="authentication-brand desktop-dark">
-                          </NuxtLink>
-                      </div>
-                      <p class="h5 fw-semibold mb-3">{{ $t('login.title') }}</p>
-                      
-                      <div class="row gy-3">
-                        <form @submit.prevent="login" class="col-12">
-                          <div class="col-xl-12 mb-3">
-                            <label for="signin-username" class="form-label text-default">{{ $t('common.account') }}</label>
-                            <input v-model="user.account" name="uname" type="text" class="form-control form-control-lg"
-                              id="signin-username" :placeholder="$t('common.account')" :required="true">
-                          </div>
-                          <div class="col-xl-12 mb-2">
-                            <label for="signin-password" class="form-label text-default d-block">{{ $t('common.password') }}<NuxtLink
-                                to="/auth/forgot-password" class="float-end text-danger">{{ $t('login.forgot-password') }}</NuxtLink></label>
-                            <passwordInput v-model="user.password" name="psw" id="signin-password" :placeholder="$t('common.password')"  required />
-                            <div class="mt-2" v-if="isStorageSupported">
-                              <div class="form-check">
-                                <input 
-                                  class="form-check-input" 
-                                  type="checkbox" 
-                                  v-model="rememberMe"
-                                  id="rememberPasswordCheck"
-                                >
-                                <label 
-                                  class="form-check-label text-muted fw-normal" 
-                                  for="rememberPasswordCheck"
-                                >
-                                  {{ $t('login.remember-me') }}
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                          <div class="col-xl-12 d-grid mt-2">
-                            <button type="submit" id="login-btn" class="btn btn-lg btn-primary" :disabled="authStore.loading">
-                              <span v-if="authStore.loading" class="spinner-border spinner-border-sm me-1"></span>
-                              {{ $t('login.sign-in') }}
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-      <div class="col-xxl-5 col-xl-5 col-lg-5 d-lg-block d-none px-0">
-          <div class="authentication-cover">
-              <div class="aunthentication-cover-content rounded">
-                  <swiper :navigation="true" :pagination="pagination" :keyboard="{ enabled: true, }" :modules="modules"
-                      class="swiper-wrapper">
-                      <swiper-slide>
-                          <div class="text-fixed-white text-center p-5 d-flex align-items-center justify-content-center">
-                              <div>
-                                  <div class="mb-5">
-                                      <img src="/images/media/magician.svg" class="authentication-image" alt="">
-                                  </div>
-                                  <h6 class="fw-semibold text-fixed-white">{{ $t("login.marketing.dare-to-dream-title") }}</h6>
-                                  <p class="fw-normal fs-14 op-7">{{ $t("login.marketing.dare-to-dream") }}</p>
-                              </div>
-                          </div>
-                      </swiper-slide>
-                      <swiper-slide>
-                          <div class="text-fixed-white text-center p-5 d-flex align-items-center justify-content-center">
-                              <div>
-                                  <div class="mb-5">
-                                      <img src="/images/media/station.svg" class="authentication-image" alt="">
-                                  </div>
-                                  <h6 class="fw-semibold text-fixed-white">{{ $t("login.marketing.path-to-success-title") }}</h6>
-                                  <p class="fw-normal fs-14 op-7">{{ $t("login.marketing.path-to-success") }}</p>
-                              </div>
-                          </div>
-                      </swiper-slide>
-                      <swiper-slide>
-                          <div class="text-fixed-white text-center p-5 d-flex align-items-center justify-content-center">
-                              <div>
-                                  <div class="mb-5">
-                                      <img src="/images/media/people.svg" class="authentication-image" alt="">
-                                  </div>
-                                  <h6 class="fw-semibold text-fixed-white">{{ $t("login.marketing.fearless-journey-title") }}</h6>
-                                  <p class="fw-normal fs-14 op-7">{{ $t("login.marketing.fearless-journey") }}</p>
-                              </div>
-                          </div>
-                      </swiper-slide>
-                  </swiper>
-              </div>
-          </div>
-      </div>
-
-  </div>
-</template>
-
-<style scoped>
-/* 修复 custom layout 下图标字体未加载导致下拉箭头显示异常 */
-:deep(.dropdown-toggle::after) {
-  font-family: inherit;
-  content: "";
-  border-top: 0.3em solid;
-  border-right: 0.3em solid transparent;
-  border-bottom: 0;
-  border-left: 0.3em solid transparent;
-}
-</style>
+const showPassword=ref(false)
+useHead({title:()=>t('login.sign-in')})
+</script><template><AuthFrame><form @submit.prevent="login"><h2>{{t('login.sign-in')}}</h2><WField :label="t('common.account')"><WInput v-model="user.account" autocomplete="username" required :disabled="authStore.loading"/></WField><div class="password"><NuxtLink class="recover" to="/auth/forgot-password">{{t('login.forgot-password')}}</NuxtLink><WField :label="t('common.password')"><WInput v-model="user.password" :type="showPassword?'text':'password'" autocomplete="current-password" required :disabled="authStore.loading"><template #suffix><button type="button" class="show-password" :aria-label="t(showPassword?'auth-design.hide-password':'auth-design.show-password')" @click="showPassword=!showPassword"><WIcon :name="showPassword?'eye-off':'eye'" :size="18"/></button></template></WInput></WField></div><WCheckbox v-if="isStorageSupported" v-model="rememberMe">{{t('login.remember-me')}}</WCheckbox><WButton type="submit" variant="primary" block :loading="authStore.loading">{{t('login.sign-in')}}</WButton></form></AuthFrame></template><style scoped>.password{position:relative}.recover{position:absolute;right:0;top:0;z-index:1}.show-password{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--w-text-3)}</style>

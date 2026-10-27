@@ -274,96 +274,10 @@ const dirty = computed(() => {
 </script>
 
 <template>
-  <div class="card custom-card">
-    <div class="card-header justify-content-between">
-      <div class="card-title">{{ t('carrier.integration.title') }}</div>
-      <span class="badge" :class="badge.cls" v-if="!loading">{{ badge.text }}</span>
-    </div>
-    <div class="card-body">
-      <div class="d-flex justify-content-center py-3" v-if="loading">
-        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-      </div>
-      <template v-else>
-        <p class="fs-13 text-muted mb-3">{{ t('carrier.integration.intro') }}</p>
-
-        <div class="row gy-3">
-          <div class="col-xl-6">
-            <label class="form-label" for="integration-adapter">{{ t('carrier.integration.adapter') }}</label>
-            <select class="form-select" id="integration-adapter" :value="form.adapter" :disabled="!editable"
-              @change="onAdapterChange">
-              <option value="">{{ t('carrier.integration.none') }}</option>
-              <option v-for="p in plugins" :key="p.code" :value="p.code">{{ p.name }}</option>
-            </select>
-            <div class="d-flex flex-wrap align-items-center gap-1 mt-2" v-if="capabilities.length">
-              <span class="fs-12 text-muted me-1">{{ t('carrier.integration.capabilities.title') }}</span>
-              <span class="badge bg-success-transparent" v-for="cap in capabilities" :key="cap">
-                <i class="ri-check-line me-1"></i>{{ cap }}
-              </span>
-            </div>
-          </div>
-          <div class="col-xl-6 d-flex align-items-end" v-if="form.adapter">
-            <div class="form-check form-switch mb-2">
-              <input class="form-check-input" type="checkbox" role="switch" id="integration-enabled" v-model="form.enabled"
-                :disabled="!editable">
-              <label class="form-check-label" for="integration-enabled">{{ t('carrier.integration.enabled') }}</label>
-              <div class="form-text mt-0">{{ t('carrier.integration.enabled-help') }}</div>
-            </div>
-          </div>
-        </div>
-
-        <template v-for="g in groups" :key="g.group">
-          <h6 class="fs-13 text-muted fw-semibold mt-4 mb-2">{{ groupTitle(g.group) }}</h6>
-          <div class="row gy-3">
-            <div class="col-xl-6" v-for="field in g.fields" :key="field.key">
-              <template v-if="field.kind === 'boolean'">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" role="switch" :id="`integration-${field.key}`"
-                    v-model="form.settings[field.key]" :disabled="!editable">
-                  <label class="form-check-label" :for="`integration-${field.key}`">{{ localized(field.label) }}</label>
-                </div>
-              </template>
-              <template v-else>
-                <label class="form-label" :for="`integration-${field.key}`">
-                  {{ localized(field.label) }}<span class="text-danger ms-1" v-if="field.required">*</span>
-                </label>
-                <select class="form-select" :id="`integration-${field.key}`" v-model="form.settings[field.key]"
-                  v-if="field.kind === 'select'" :disabled="!editable">
-                  <option v-for="o in field.options || []" :key="o.value" :value="o.value">{{ localized(o.label) }}</option>
-                </select>
-                <input type="password" class="form-control" :id="`integration-${field.key}`" autocomplete="new-password"
-                  v-model="form.secrets[field.key]" v-else-if="field.kind === 'secret'" :disabled="!editable"
-                  :placeholder="current?.adapter === form.adapter && current?.secrets?.[field.key] ? t('carrier.integration.secret-saved') : ''">
-                <input type="text" class="form-control" :id="`integration-${field.key}`" v-model="form.settings[field.key]" v-else
-                  :disabled="!editable" :placeholder="localized(field.placeholder)">
-              </template>
-              <div class="form-text" v-if="field.help">{{ localized(field.help) }}</div>
-              <div class="invalid-feedback d-block" v-if="fieldErrors[field.key]">{{ fieldErrors[field.key] }}</div>
-            </div>
-          </div>
-        </template>
-
-        <ul class="fs-13 text-warning mb-0 mt-3 ps-3" v-if="current && current.adapter === form.adapter && current.problems.length > 0">
-          <li v-for="(p, i) in current.problems" :key="i">{{ problemText(p) }}</li>
-        </ul>
-
-        <div class="fs-13 mt-3" :class="testResult.ok ? 'text-success' : 'text-danger'" v-if="testResult">
-          <i class="me-1" :class="testResult.ok ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'"></i>{{ testResult.message }}
-          <div class="fs-12 text-muted mt-1 text-break" v-if="testResult.detail">{{ testResult.detail }}</div>
-        </div>
-      </template>
-    </div>
-    <div class="card-footer d-flex flex-wrap align-items-center gap-2" v-if="!loading && editable">
-      <button type="button" class="btn btn-sm btn-link text-danger px-0" v-if="current" :disabled="saving" @click="remove">
-        {{ t('carrier.integration.remove') }}
-      </button>
-      <div class="ms-auto btn-list">
-        <button type="button" class="btn btn-sm btn-light" :disabled="!form.adapter || testing" @click="test">
-          <span v-if="testing" class="spinner-border spinner-border-sm me-1"></span>{{ t('carrier.integration.test') }}
-        </button>
-        <button type="button" class="btn btn-sm btn-primary" :disabled="saving || !dirty" @click="save">
-          <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>{{ t('button.save') }}
-        </button>
-      </div>
-    </div>
-  </div>
+ <WFormSection class="w-carrier-integration" :title="t('carrier.integration.title')"><div class="w-integration-body"><WEmptyState v-if="loading" :title="t('common.status.loading')" /><template v-else><WStatus :tone="current?.enabled?(current?.ready?'ok':'warn'):'none'">{{badge.text}}</WStatus><p>{{t('carrier.integration.intro')}}</p><WFormGrid><WField :span="6" :label="t('carrier.integration.adapter')"><WSelect :model-value="form.adapter" :options="[{value:'',label:t('carrier.integration.none')},...plugins.map(p=>({value:p.code,label:p.name}))]" :disabled="!editable||saving||testing" @update:model-value="value=>resetForm(String(value||''))" /></WField><div v-if="form.adapter" class="w-span-6 w-integration-enabled"><WSwitch v-model="form.enabled" :label="t('carrier.integration.enabled')" :disabled="!editable||saving||testing" /></div></WFormGrid><div v-if="capabilities.length" class="w-integration-caps"><span>{{t('carrier.integration.capabilities.title')}}</span><WStatus v-for="cap in capabilities" :key="cap" tone="ok">{{cap}}</WStatus></div>
+ <section v-for="g in groups" :key="g.group" class="w-integration-group"><h3>{{groupTitle(g.group)}}</h3><WFormGrid><WField v-for="field in g.fields" :key="field.key" :label="localized(field.label)" :span="6" :optional="!field.required" :hint="localized(field.help)" :error="fieldErrors[field.key]"><WSwitch v-if="field.kind==='boolean'" v-model="form.settings[field.key]" :label="localized(field.label)" :disabled="!editable||saving||testing" /><WSelect v-else-if="field.kind==='select'" v-model="form.settings[field.key]" :options="(field.options||[]).map(o=>({value:o.value,label:localized(o.label)}))" :disabled="!editable||saving||testing" /><WInput v-else-if="field.kind==='secret'" v-model="form.secrets[field.key]" type="password" autocomplete="new-password" :disabled="!editable||saving||testing" :placeholder="current?.adapter===form.adapter&&current?.secrets?.[field.key]?t('carrier.integration.secret-saved'):''" /><WInput v-else v-model="form.settings[field.key]" :disabled="!editable||saving||testing" :placeholder="localized(field.placeholder)" /></WField></WFormGrid></section>
+ <WAlert v-for="(problem,index) in current&&current.adapter===form.adapter?current.problems:[]" :key="index" tone="warn" :title="problemText(problem)" /><WAlert v-if="testResult" :tone="testResult.ok?'ok':'block'" :title="testResult.message">{{testResult.detail}}</WAlert><footer v-if="editable"><WButton v-if="current" variant="danger" :disabled="saving||testing" @click="remove">{{t('carrier.integration.remove')}}</WButton><span /><WButton :disabled="!form.adapter||saving" :loading="testing" @click="test">{{t('carrier.integration.test')}}</WButton><WButton variant="primary" :disabled="!dirty||testing" :loading="saving" @click="save">{{t('button.save')}}</WButton></footer></template></div></WFormSection>
 </template>
+<style scoped>
+.w-carrier-integration{border-top:1px solid var(--w-line)}.w-integration-body{display:flex;flex-direction:column;gap:16px}.w-integration-body>p{margin:0;color:var(--w-text-3);font-size:13px;line-height:20px}.w-integration-enabled{display:flex;align-items:center}.w-integration-caps{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px}.w-integration-group{border-top:1px solid var(--w-line);padding-top:16px}.w-integration-group h3{margin:0 0 12px;font-size:13px;line-height:20px;font-weight:600;color:var(--w-text-2)}.w-integration-body footer{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.w-integration-body footer>span{flex:1}
+</style>

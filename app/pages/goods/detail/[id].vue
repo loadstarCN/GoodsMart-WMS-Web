@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import {removalReasonsOptions}  from '~/data/selectOptions'
+import GoodsLots from '~/components/goods/GoodsLots.vue'
+import GoodsAnalytics from '~/components/inventory/GoodsAnalytics.vue'
+import GoodsStockComposition from '~/components/inventory/GoodsStockComposition.vue'
 import { countryName } from '~/data/countries'
-import { Modal } from 'bootstrap/dist/js/bootstrap.js'
 import { pendingPutaway, putawayLimit, putawayQuantityError, type PendingPutaway } from '~/composables/inventory/putawayStock'
 
 // 定义页面元数据
@@ -67,7 +69,7 @@ const fetchLocationData = async (code: string, targetRef: Ref<any[]>) => {
   
   const data = await httpRequest<PaginationData>('/api/warehouse/location/', {
     method: 'GET',
-    params: { all: true, code },
+    params: { all: true, code, warehouse_id: route.query.warehouse_id || undefined },
     onSuccess: (data) => targetRef.value = data.items,
     onError: (error) => showToast(error.message, 'error'),
     onFinally: () => isLoading.value = false
@@ -89,15 +91,20 @@ const nameWithTypeAndWarehouse = (({ code,location_type,warehouse_name }: any) =
 // ------------------ 上架：待上架库存（良品 / 破损） ----------------------
 // 本商品在各仓库的库存记录（页头选了仓库时只有该仓库）；读不到（没有库存查看权限等）时不提示、不预校验，以后端为准
 const putawayInventories = ref<any[] | null>(null);
+let inventoryGeneration = 0;
 const loadPutawayInventory = async () => {
+  const seq = ++inventoryGeneration;
+  putawayInventories.value = null;
   await httpRequest<PaginationData>('/api/warehouse/inventory/', {
     method: 'GET',
-    params: { goods_id: productId, all: true },
+    params: { goods_id: productId, all: true, warehouse_id: route.query.warehouse_id || undefined },
+    headers: warehouseHeaders(String(route.query.warehouse_id || warehouseStore.currentWarehouse?.id || '')),
     onSuccess: (data) => {
+      if (seq !== inventoryGeneration) return;
       putawayInventories.value = Array.isArray(data?.items) ? data.items : [];
     },
     onError: () => {
-      putawayInventories.value = null;
+      if (seq === inventoryGeneration) putawayInventories.value = null;
     },
   });
 };
@@ -148,11 +155,26 @@ const putawayFn = () => {
 }
 
 /** 深链 ?putaway=open（库存页「待上架」的「上架」按钮）：打开上架弹窗 */
-const openPutawayModal = () => {
-  const el = document.getElementById('putawayModal');
-  if (!el) return;
-  putawayFn();
-  Modal.getOrCreateInstance(el).show();
+const stockModal = ref<'putaway'|'removal'|'transfer'|null>(null)
+const stockOpen = computed({get:()=>stockModal.value!==null,set:value=>{if(!value)stockModal.value=null}})
+const stockBusy = ref(false)
+const openPutawayModal = () => { putawayFn(); stockModal.value='putaway' }
+const searchStockLocations = async (code:string) => {
+ const warehouseId = stockModal.value==='transfer' ? selectedFromLocation.value?.warehouse_id : route.query.warehouse_id || putawayWarehouseId.value
+ const data = await httpRequest<PaginationData>('/api/warehouse/location/', {params:{code:code||undefined,per_page:50,warehouse_id:warehouseId||undefined}})
+ const values=data?.items||[]
+ if(stockModal.value==='transfer')locationToSelectedOptions.value=values
+ else locationSelectedOptions.value=values
+ return values.map((item:any)=>({value:item.id,label:item.code,description:nameWithTypeAndWarehouse(item)}))
+}
+const chosenLocationId = computed<number|null>({get:()=>stockModal.value==='transfer'?selectedToLocation.value?.id:selectedLocation.value?.id,set:value=>{
+ if(stockModal.value==='transfer')selectedToLocation.value=locationToSelectedOptions.value.find(item=>item.id===value)||null
+ else selectedLocation.value=locationSelectedOptions.value.find(item=>item.id===value)||null
+}})
+const submitStock = async()=>{
+ if(stockBusy.value)return
+ stockBusy.value=true
+ try{if(stockModal.value==='putaway')await createPutaway();else if(stockModal.value==='removal')await createRemoval();else if(stockModal.value==='transfer')await createTransfer()}finally{stockBusy.value=false}
 }
 
 const createPutaway = async () => {
@@ -178,8 +200,9 @@ const createPutaway = async () => {
   const data = await httpRequest('/api/warehouse/putaway/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: {location_id: selectedLocation.value.id, goods_id: productId, quantity: quantity.value, remark: remark.value},
-      onSuccess: async() => {        
+      body: {location_id: selectedLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), remark: remark.value},
+      onSuccess: async() => {
+        stockModal.value=null;
         selectedLocation.value = null;
         quantity.value = null;
         remark.value = null;
@@ -203,6 +226,7 @@ const createPutaway = async () => {
 };
 
 const removalFn = (item: any) => {
+  quantity.value=null;remark.value=null;reason.value=null;errors.value={};stockModal.value='removal';
   selectedLocation.value = item.location;
   maxQuantity.value = item.quantity;
 }
@@ -221,15 +245,16 @@ const createRemoval = async () => {
     return;
   }
   if (!reason.value) {
-    errors.value.quantity = t('goods.validation.reason-required');
+    errors.value.reason = t('goods.validation.reason-required');
     return;
   }
   loading.value = true;
   const data = await httpRequest('/api/warehouse/removal/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: {location_id: selectedLocation.value.id, goods_id: productId, quantity: quantity.value, reason:reason.value, remark: remark.value},
-      onSuccess: async() => {        
+      body: {location_id: selectedLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), reason:reason.value, remark: remark.value},
+      onSuccess: async() => {
+        stockModal.value=null;
         selectedLocation.value = null;
         quantity.value = null;
         remark.value = null;
@@ -237,7 +262,8 @@ const createRemoval = async () => {
         // 调用公共方法关闭模态框
         // closeModal('removalModal');
         showToast(t('action-results.op-success',{operation:t('goods.operations.create-removal'),entity:itemData.value?.code ?? ''}), 'success')
-        await fetchTabData();      
+        if (staff.hasPermission('inventory_read')) await loadPutawayInventory();
+        await fetchTabData();
       },
       onError: (error) => {
           showToast(bizErrorMessage(error), 'error')
@@ -250,6 +276,7 @@ const createRemoval = async () => {
 };
 
 const transferFn = (item: any) => {
+  quantity.value=null;remark.value=null;selectedToLocation.value=null;errors.value={};stockModal.value='transfer';
   selectedFromLocation.value = item.location;
   maxQuantity.value = item.quantity;
   transferReason.value = null;
@@ -293,8 +320,9 @@ const createTransfer = async () => {
   const data = await httpRequest('/api/warehouse/transfer/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: {from_location_id: selectedFromLocation.value.id, to_location_id:selectedToLocation.value.id, goods_id: productId, quantity: quantity.value, remark: remark.value, reason: reasonText || undefined},
-      onSuccess: async() => {        
+      body: {from_location_id: selectedFromLocation.value.id, to_location_id:selectedToLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), remark: remark.value, reason: reasonText || undefined},
+      onSuccess: async() => {
+        stockModal.value=null;
         selectedFromLocation.value = null;
         selectedToLocation.value = null;
         quantity.value = null;
@@ -303,7 +331,8 @@ const createTransfer = async () => {
         // 调用公共方法关闭模态框
         // closeModal('transferModal');
         showToast(t('action-results.op-success',{operation:t('goods.operations.create-transfer'),entity:itemData.value?.code ?? ''}), 'success')
-        await fetchTabData();      
+        if (staff.hasPermission('inventory_read')) await loadPutawayInventory();
+        await fetchTabData();
       },
       onError: (error) => {
           // 15018 移回标准库位没填原因：标在原因下
@@ -345,9 +374,16 @@ const fetchData = async () => {
 };
 
 
+let tabGeneration = 0
+onBeforeUnmount(() => { tabGeneration++; inventoryGeneration++ })
 const fetchTabData = async () => {
+    const seq = ++tabGeneration;
+    if (activeTab.value === 'analytics' || activeTab.value === 'lots') { loading.value=false; return; }
     let url = '';
     switch (activeTab.value) {
+        case 'ledger':
+            url = '/api/warehouse/stock-ledger/'
+            break;
         case 'storage':
             url = '/api/warehouse/goods/locations/'
             break;
@@ -374,14 +410,15 @@ const fetchTabData = async () => {
     const data = await httpRequest(url, {
         method: 'GET',
         params: {...route.query, goods_id: productId},
+        headers: warehouseHeaders(String(route.query.warehouse_id || warehouseStore.currentWarehouse?.id || '')),
         onSuccess: (data) => {
-          tabData.value = data;
+          if (seq === tabGeneration) tabData.value = data;
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            if (seq === tabGeneration) showToast(error.message, 'error')
         },
         onFinally: () => {
-            loading.value = false;
+            if (seq === tabGeneration) loading.value = false;
         }
     })
     return data;   
@@ -408,6 +445,7 @@ const setActiveFilter = (tab: string | null) => {
   router.push({ query })
 }
 
+watch([()=>route.query.warehouse_id,()=>warehouseStore.currentWarehouse?.id], () => { if(staff.hasPermission('inventory_read')) loadPutawayInventory(); });
 watch(() => route.query, async () => {
     // await fetchData();
     await fetchTabData();
@@ -415,6 +453,7 @@ watch(() => route.query, async () => {
 
 onMounted(async() => {
   await fetchData();
+  if (staff.hasPermission('inventory_read')) await loadPutawayInventory();
   await fetchTabData();
   if (route.query.putaway === 'open') {
     await nextTick();
@@ -423,557 +462,136 @@ onMounted(async() => {
 });
 
 
+
+const staff = useStaffStore()
+useHead({title:()=>itemData.value?.name || t('nav.goods')})
+const recordTabs = computed(()=>[...(staff.hasPermission('inventory_read')?[{key:'ledger',label:t('common.status.all')}]:[]),...['putaway','removal','adjustment','transfer','cyclecount'].map(key=>({key,label:t('common.inventory-ops.'+(key==='cyclecount'?'cycle-count':key))}))])
+const detailTab = computed(()=>activeTab.value==='lots'?'lots':activeTab.value==='analytics'?'analytics':activeTab.value==='storage'?'storage':'records')
+const detailTabs = computed(()=>[{key:'storage',label:t('goods.ui.location-stock')},{key:'records',label:t('goods.ui.stock-records')},...(staff.hasPermission('inventory_read')?[{key:'analytics',label:t('inventory-analysis.title')}]:[]),{key:'lots',label:t('goods-label.lot')}])
+const selectDetailTab = (key:string|number|null|undefined)=>setActiveFilter(key==='records'?(staff.hasPermission('inventory_read')?'ledger':'putaway'):String(key||'storage'))
+const goodsFacts = computed(()=>[
+ {label:t('goods.fields.price'),value:itemData.value?.price==null?'':itemData.value.price+' '+(itemData.value.currency||'')},
+ {label:t('goods.fields.discount-price'),value:itemData.value?.discount_price},
+ {label:t('goods.fields.manufacturer'),value:itemData.value?.manufacturer},
+ {label:t('goods.fields.unit'),value:unitLabel(itemData.value?.unit)},
+ {label:t('goods.fields.weight'),value:itemData.value?.weight ? itemData.value.weight+' kg':''},
+ {label:t('goods.ui.dimensions'),value:[itemData.value?.length,itemData.value?.width,itemData.value?.height].every(Boolean)?[itemData.value.length,itemData.value.width,itemData.value.height].join(' × ')+' mm':''},
+ {label:t('goods.fields.origin-country'),value:countryName(itemData.value?.origin_country,locale.value)},
+ {label:t('goods.fields.product-date'),value:itemData.value?.production_date},
+ {label:t('goods.fields.expiry-date'),value:itemData.value?.expiration_date},
+ {label:t('common.users.creator'),value:itemData.value?.creator?.user_name},
+])
+
+const {$dayjs}=useNuxtApp()
+const recordColumns=computed(()=>{
+ const col=(key:string,label:string,value?:(row:any)=>any)=>({key,label:t(label),...(value?{value}:{}),wrap:true})
+ const quantity=(key:string,label='common.fields.quantity')=>({key,label:t(label),type:'qty' as const,keepZero:true,strong:true})
+ const date=(key:string,label:string,value?:(row:any)=>any)=>col(key,label,row=>{const v=value?value(row):row[key];return v?$dayjs(v,'YYYY-MM-DD HH:mm',row):''})
+ const location=col('location','common.entities.location'),operator=col('operator','common.users.operator',row=>row.operator_name||row.operator?.user_name),remark=col('remark','common.fields.remark')
+ switch(activeTab.value){
+  case 'putaway':return [location,quantity('quantity'),operator,date('putaway_time','common.dates.putaway'),remark]
+  case 'removal':return [location,quantity('quantity'),col('reason','common.fields.reason',row=>removalReasonLabel(row.reason)),operator,date('removal_time','common.dates.removal'),remark]
+  case 'transfer':return [col('from','common.locations.from'),col('to','common.locations.to'),quantity('quantity'),operator,date('transfer_time','common.dates.transfer'),remark]
+  case 'adjustment':return [location,col('document','common.inventory-ops.adjustment'),quantity('system_quantity','common.quantities.system'),quantity('actual_quantity','common.quantities.actual'),quantity('adjustment_quantity','common.quantities.adjusted'),date('approved','common.dates.approved',row=>row.adjustment?.approved_at),date('completed','common.dates.completed',row=>row.adjustment?.completed_at),col('approver','common.users.approver',row=>row.approver?.user_name),operator,col('reason','common.fields.reason',row=>row.adjustment?.adjustment_reason)]
+  case 'cyclecount':return [location,col('document','common.entities.task'),quantity('actual_quantity','common.quantities.actual'),quantity('difference','common.fields.difference'),operator,date('completed_at','common.dates.completed'),date('updated_at','common.dates.updated')]
+  default:return [location,quantity('quantity'),date('created_at','common.dates.created'),date('updated_at','common.dates.updated'),col('actions','common.fields.action')]
+ }
+})
+
 </script>
 <template>
-  <PageHeader :propData="dataToPass" />
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
+  <div class="w-goods-detail w-scope">
+  <nav class="w-goods-detail__breadcrumb"><NuxtLink class="w-breadcrumb-link" to="/goods">{{ t('nav.goods') }}</NuxtLink><span>/</span>{{ itemData?.code }}</nav>
+  <section v-if="itemData" class="w-goods-detail__overview">
+    <div class="w-goods-detail__media"><img v-if="itemData.image_url" :src="itemData.image_url" :alt="itemData.name" /><div v-else class="w-goods-detail__image-empty">{{t('goods.fields.image')}}</div></div>
+    <div class="w-goods-detail__body">
+      <header><div class="w-goods-detail__heading"><span class="w-goods-detail__sub">{{ t('goods.fields.code') }} {{ itemData.code }}</span><h1>{{ itemData.name }}</h1><div class="w-goods-detail__tags"><WStatus :tone="itemData.is_active?'ok':'none'" variant="pill">{{ t(itemData.is_active?'common.status.active':'common.status.inactive') }}</WStatus><span>{{ [itemData.brand,categoryLabel(itemData.category)].filter(Boolean).join(' · ') }}</span><span v-for="tag in itemData.tags" :key="tag" class="w-goods-detail__tag">{{ tagLabel(tag) }}</span></div></div><div class="w-goods-detail__actions"><WButton v-if="staff.hasPermission('goods_edit')" :to="'/goods/edit/'+productId">{{ t('button.edit') }}</WButton><WButton :to="'/goods/label/'+productId">{{t('goods-label.title')}}</WButton></div></header>
+      <GoodsStockComposition v-if="putawayInventories" :rows="putawayInventories" :goods-id="String(productId)" :unit="unitLabel(itemData.unit)" />
+      <dl class="w-goods-detail__facts"><div v-for="fact in goodsFacts" :key="fact.label"><dt>{{ fact.label }}</dt><dd>{{ fact.value || '—' }}</dd></div></dl>
+      <div v-if="itemData.description" class="w-goods-detail__description" v-html="sanitizeHtml(itemData.description)" />
     </div>
+  </section>
+
+  <WCard class="w-goods-detail__records" flush>
+    <div class="w-goods-detail__record-head"><WTabs :model-value="detailTab" :items="detailTabs" :label="t('nav.inventory')" @update:model-value="selectDetailTab" /><WButton v-if="staff.hasPermission('putaway_add','putaway_edit') && (activeTab==='putaway'||activeTab==='storage')" icon="plus" size="sm" @click="openPutawayModal">{{t('goods.operations.create-putaway')}}</WButton></div>
+    <GoodsAnalytics v-if="detailTab==='analytics' && staff.hasPermission('inventory_read')" :goods-id="String(productId)" />
+    <GoodsLots v-else-if="detailTab==='lots'" :goods-id="Number(productId)" />
+    <template v-else>
+    <div v-if="detailTab==='records'" class="w-goods-detail__record-filters"><button v-for="tab in recordTabs" :key="tab.key" type="button" :class="{'is-active':activeTab===tab.key}" :aria-pressed="activeTab===tab.key" @click="setActiveFilter(tab.key)">{{tab.label}}</button></div>
+    <StockLedgerTable v-if="activeTab==='ledger'" :rows="tabData?.items||[]" :loading="loading" hide-goods />
+    <WTable v-else :rows="tabData?.items||[]" :columns="recordColumns" :loading="loading" inset>
+      <template #cell-location="{row}"><NuxtLink v-if="row.location" class="w-stock-link" :to="'/location/detail/'+(row.location_id||row.location.id)">{{row.location.code}}</NuxtLink><span v-if="row.location" class="w-stock-location-type">{{locationTypeLabel(row.location.location_type)}}</span><span class="w-stock-warehouse">{{row.location?.warehouse_name}}</span></template>
+      <template #cell-from="{row}"><NuxtLink v-if="row.from_location" class="w-stock-link" :to="'/location/detail/'+row.from_location_id">{{nameWithTypeAndWarehouse(row.from_location)}}</NuxtLink></template>
+      <template #cell-to="{row}"><NuxtLink v-if="row.to_location" class="w-stock-link" :to="'/location/detail/'+row.to_location_id">{{nameWithTypeAndWarehouse(row.to_location)}}</NuxtLink></template>
+      <template #cell-document="{row}"><NuxtLink class="w-stock-link" :to="activeTab==='adjustment'?'/adjustment/detail/'+row.adjustment_id:'/cyclecount/detail/'+row.task_id">{{activeTab==='adjustment'?'ADJ-':'CC-'}}{{row.adjustment_id||row.task_id}}</NuxtLink></template>
+      <template #cell-actions="{row}"><div class="w-stock-actions"><WButton v-if="staff.hasPermission('removal_add','removal_edit')" size="sm" variant="text" @click="removalFn(row)">{{t('common.inventory-ops.removal')}}</WButton><WButton v-if="staff.hasPermission('transfer_add','transfer_edit')" size="sm" variant="text" @click="transferFn(row)">{{t('common.inventory-ops.transfer')}}</WButton></div></template>
+    </WTable>
+    <footer class="w-goods-detail__record-foot"><WPagination :page="Number(route.query.page)||1" :page-size="tabData?.per_page||20" :total="tabData?.total" show-total @update:page="value=>router.push({query:{...route.query,page:value}})" /></footer>
+    </template>
+  </WCard>
+
+  <WModal v-model:open="stockOpen" :title="t('goods.operations.create-'+(stockModal||'putaway'))" :closable="!stockBusy">
+    <WFormGrid>
+      <WField v-if="stockModal==='transfer'" :label="t('common.locations.from')"><p class="w-stock-location">{{ selectedFromLocation ? nameWithTypeAndWarehouse(selectedFromLocation):'' }}</p></WField>
+      <WField v-if="stockModal==='removal'" :label="t('common.entities.location')"><p class="w-stock-location">{{ selectedLocation ? nameWithTypeAndWarehouse(selectedLocation):'' }}</p></WField>
+      <WField v-else :label="t(stockModal==='transfer'?'common.locations.to':'common.entities.location')" :error="stockModal==='transfer'?errors.to_location:errors.location"><WCombobox v-model="chosenLocationId" :search="searchStockLocations" :selected-label="stockModal==='transfer'?selectedToLocation?.code:selectedLocation?.code" :disabled="stockBusy" /></WField>
+      <div v-if="stockModal==='putaway' && putawayInventories!==null"><PutawayPendingNotice v-if="selectedLocation||putawayPendingRows.length<=1" :pending="selectedPending" :location-type="selectedLocation?.location_type" :warehouse-id="putawayWarehouseId" /><template v-else><PutawayPendingNotice v-for="row in putawayPendingRows" :key="row.warehouseId" :pending="row.pending" :warehouse-id="row.warehouseId" /></template></div>
+      <WField :label="t('common.fields.quantity')" :error="errors.quantity"><WInput v-model="quantity" type="number" min="1" step="1" :max="stockModal==='putaway'?putawayMax??undefined:maxQuantity??undefined" :disabled="stockBusy" /></WField>
+      <WField v-if="stockModal==='removal'" :label="t('common.fields.reason')" :error="errors.reason"><WSelect v-model="reason" :options="removalReasonsOptions.map(value=>({value,label:removalReasonLabel(value)}))" placeholder="—" :disabled="stockBusy" /></WField>
+      <WField v-if="stockModal==='transfer'&&showTransferReason" :label="t('common.fields.reason')" :hint="t('common.tips.transfer-restore-reason')" :error="errors.transfer_reason"><WInput v-model="transferReason" maxlength="255" :disabled="stockBusy" /></WField>
+      <WField :label="t('common.fields.remark')" optional><WTextarea v-model="remark" :disabled="stockBusy" /></WField>
+    </WFormGrid>
+    <template #footer><WButton :disabled="stockBusy" @click="stockOpen=false">{{t('button.cancel')}}</WButton><WButton variant="primary" :loading="stockBusy" @click="submitStock">{{t('button.submit')}}</WButton></template>
+  </WModal>
   </div>
-  <div class="row" v-else>
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-body">
-          <div class="row gx-5">
-            <div class="col-xxl-3 col-xl-12">
-              <div class="row flex-column justify-content-center align-items-center">
-                <div class="col-xxl-12 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-md-5 mb-3">
-                  <img :src="itemData?.image_url" class="img-fluid rounded" :alt="itemData?.name"
-                    v-if="itemData?.image_url" />
-                  <img src="/images/goods/default.png" class="img-fluid rounded" :alt="itemData?.name" v-else>
-                </div>
-              </div>
-            </div>
-            <div class="col-xxl-9 col-xl-12">
-              <div class="row gx-5">
-                <div class="col-xl-8 mt-xxl-0 mt-3">
-                  <div>
-                    <p class="mb-0">{{ itemData?.code }}</p>
-                    <p class="fs-18 fw-semibold mb-2">{{ itemData?.name}}</p>
-                    <p class="mb-2">
-                      <span v-for="(tag, index) in itemData?.tags" :key="index"
-                        class="badge bg-light text-default me-2" :title="tag">{{ tagLabel(tag) }}</span>
-                    </p>
-                    <p class="fs-18 mb-4">
-                      <span class="text-info fw-semibold text-muted ms-1" v-if="itemData?.category">{{ categoryLabel(itemData?.category) }}</span>
-                    </p>
-                    <div class="row mb-4">
-                      <div class="col-xxl-4 col-xl-12" v-if="itemData?.price">
-                        <p class="mb-1 lh-1 fs-11 text-success fw-semibold">{{ t('goods.fields.price') }}</p>
-                        <p class="mb-1"><span class="h5">{{ $currency(itemData?.price, {currencyType:
-                            itemData?.currency,displayMode : 'code'}) }}</span><span
-                            class="ms-3 badge bg-danger-transparent" v-if="itemData?.discount_price">{{
-                            Math.round(itemData?.discount_price/itemData?.price*100) }}% {{ t('goods.fields.off') }}</span></p>
-                        <p class="mb-0 text-muted fs-12" v-if="itemData?.discount_price">{{ t('goods.fields.discount-price') }}​-{{
-                          $currency(itemData?.discount_price,
-                          {currencyType: itemData?.currency,displayMode : 'code'}) }}</p>
-                      </div>
-
-                      <div class="col-xxl-4 col-xl-12" v-if="itemData?.brand">
-                        <p class="mb-2 fs-15 fw-semibold">{{ t('goods.fields.brand') }}</p>
-                        <p class="text-wrap mb-0">{{itemData.brand}}
-                        </p>
-                      </div>
-                      <div class="col-xxl-4 col-xl-12" v-if="itemData?.manufacturer">
-                        <p class="mb-2 fs-15 fw-semibold">{{ t('goods.fields.manufacturer') }}</p>
-                        <p class="text-wrap mb-0">{{itemData.manufacturer}}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div class="mb-4" v-if="itemData?.description">
-                      <p class="fs-15 fw-semibold mb-1">{{ t('goods.fields.description') }}</p>
-                      <p class="text-muted mb-0" v-html="sanitizeHtml(itemData.description)">
-                      </p>
-                    </div>
-
-                    <div class="mb-4">
-                      <p class="fs-15 fw-semibold mb-2">{{ t('goods.fields.specification') }}</p>
-                      <div class="row">
-                        <div class="col-xl-6">
-                          <ul class="mb-0">
-                            <li class="text-muted mb-2" v-if="itemData?.unit">
-                              {{ t('goods.fields.unit') }}: {{ unitLabel(itemData.unit) }}
-                            </li>
-                            <li class="text-muted mb-2" v-if="itemData?.weight">
-                              {{ t('goods.fields.weight') }}: {{ itemData.weight }} kg
-                            </li>
-                            <li class="text-muted" v-if="itemData">
-                              {{ t('goods.fields.origin-country') }}:
-                              <template v-if="itemData.origin_country">
-                                {{ String(itemData.origin_country).toUpperCase() }} {{ countryName(itemData.origin_country, locale) }}
-                              </template>
-                              <span class="badge bg-warning-transparent" v-else>{{ t('goods.tips.origin-missing') }}</span>
-                            </li>
-                          </ul>
-                        </div>
-                        <div class="col-xl-6">
-                          <ul class="mb-0">
-                            <li class="text-muted mb-2" v-if="itemData?.length">
-                              {{ t('goods.fields.length') }}: {{ itemData.length }} mm
-                            </li>
-                            <li class="text-muted mb-2" v-if="itemData?.width">
-                              {{ t('goods.fields.width') }}: {{ itemData.width }} mm
-                            </li>
-                            <li class="text-muted mb-2" v-if="itemData?.height">
-                              {{ t('goods.fields.height') }}: {{ itemData.height }} mm
-                            </li>
-
-                          </ul>
-                        </div>
-
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-xl-4 mt-xxl-0 mt-3">
-                  <div class="mb-4 text-center mt-3">
-                    <Barcode :value="itemData?.code" />
-                  </div>
-                  <div class="mb-4">
-                    <div class="row">
-                      <div class="col-xl-12">
-                        <div class="table-responsive">
-                          <table class="table table-bordered text-nowrap">
-                            <tbody>
-                              <tr v-if="itemData?.production_date">
-                                <th scope="row" class="fw-semibold">
-                                  {{ t('goods.fields.product-date') }}
-                                </th>
-                                <td>
-                                  {{ itemData?.production_date }}
-                                </td>
-                              </tr>
-                              <tr v-if="itemData?.extra_data">
-                                <th scope="row" class="fw-semibold">
-                                  {{ t('goods.fields.expiry-date') }}
-                                </th>
-                                <td>
-                                  {{ itemData?.expiration_date }}
-                                </td>
-                              </tr>
-                              <tr>
-                                <th scope="row" class="fw-semibold">
-                                  {{ t('common.users.creator') }}
-                                </th>
-                                <td>
-                                  {{ itemData?.creator.user_name }}
-                                </td>
-                              </tr>
-                              <tr>
-                                <th scope="row" class="fw-semibold">
-                                  {{ t('common.dates.created') }}
-                                </th>
-                                <td>
-                                  {{ $dayjs(itemData?.created_at,'YYYY-MM-DD HH:mm:ss') }}
-                                </td>
-                              </tr>
-                              <tr>
-                                <th scope="row" class="fw-semibold">
-                                  {{ t('common.dates.updated') }}
-                                </th>
-                                <td>
-                                  {{ $dayjs(itemData?.updated_at,'YYYY-MM-DD HH:mm:ss') }}
-                                </td>
-                              </tr>
-
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="mb-5">
-                    <div class="d-grid">
-                      <NuxtLink :to="`/goods/edit/${productId}`" class="btn btn-primary mb-2">{{ t('goods.operations.edit') }}</NuxtLink>
-                      <NuxtLink :to="`/inventory?goods_id=${productId}`" class="btn btn-secondary mb-2">{{ t('goods.operations.view-inventory') }}</NuxtLink>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!--End::row-1 -->
-  <div class="row" v-if="!loading">
-    <div class="col-xl-12">
-      <div class="card custom-card">
-        <div class="card-header justify-content-between">
-          <div class="">
-            <ul class="nav nav-pills nav-style-3" role="tablist">
-              <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeTab === 'storage' }" href="javascript:void(0);"
-                  @click="setActiveFilter('storage')">{{ t('common.inventory-ops.storage') }}</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeTab === 'putaway' }" href="javascript:void(0);"
-                  @click="setActiveFilter('putaway')">{{ t('common.inventory-ops.putaway') }}</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeTab === 'removal' }" href="javascript:void(0);"
-                  @click="setActiveFilter('removal')">{{ t('common.inventory-ops.removal') }}</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeTab === 'adjustment' }" href="javascript:void(0);"
-                  @click="setActiveFilter('adjustment')">{{ t('common.inventory-ops.adjustment') }}</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeTab === 'transfer' }" href="javascript:void(0);"
-                  @click="setActiveFilter('transfer')">{{ t('common.inventory-ops.transfer') }}</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeTab === 'cyclecount' }" href="javascript:void(0);"
-                  @click="setActiveFilter('cyclecount')">{{ t('common.inventory-ops.cycle-count') }}</a>
-              </li>
-            </ul>
-          </div>
-          <div class="d-flex">
-            <button class="btn btn-sm btn-primary btn-wave waves-light" data-bs-toggle="modal"
-              data-bs-target="#putawayModal" v-if="activeTab === 'putaway' || activeTab === 'storage'" @click="putawayFn()">
-              <i class="ri-add-line fw-semibold align-middle me-1"></i> {{ t('goods.operations.create-putaway') }}
-            </button>
-
-          </div>
-        </div>
-
-        <div class="card-body">
-          <div class="row gx-5">
-
-            <div class="table-responsive">
-              <table class="table text-nowrap table-bordered table-hover">
-                <thead>
-                  <tr v-if="activeTab === 'storage'">
-                    <th scope="col">{{ t('common.entities.location') }}</th>
-                    <th scope="col">{{ t('common.fields.quantity') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.fields.type') }}</th>
-                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.dates.created') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.dates.updated') }}</th>
-                    <th scope="col">{{ t('common.fields.action') }}</th>
-                  </tr>
-                  <tr v-if="activeTab === 'putaway'">
-                    <th scope="col">{{ t('common.entities.location') }}</th>
-                    <th scope="col">{{ t('common.fields.quantity') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.users.operator') }}</th>
-                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.dates.putaway') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.fields.remark') }}</th>
-                  </tr>
-                  <tr v-if="activeTab === 'removal'">
-                    <th scope="col">{{ t('common.entities.location') }}</th>
-                    <th scope="col">{{ t('common.fields.quantity') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.fields.reason') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.users.operator') }}</th>
-                    
-                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.dates.removal') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.fields.remark') }}</th>
-                  </tr>
-                  <tr v-if="activeTab === 'adjustment'">
-                    <th scope="col">{{ t('common.entities.location') }}</th>
-                    <th scope="col">{{ t('common.inventory-ops.adjustment') }}</th>
-                    <th scope="col">{{ t('common.quantities.system') }}</th>
-                    <th scope="col">{{ t('common.quantities.actual') }}</th>
-                    <th scope="col">{{ t('common.quantities.adjusted') }}</th>
-                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.dates.approved') }}</th>
-                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.dates.completed') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.users.approver') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.users.operator') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.fields.reason') }}</th>
-                  </tr>
-                  <tr v-if="activeTab === 'transfer'">
-                    <th scope="col">{{ t('common.locations.from') }}</th>
-                    <th scope="col">{{ t('common.locations.to') }}</th>
-                    <th scope="col">{{ t('common.fields.quantity') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.users.operator') }}</th>
-                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.dates.transfer') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.fields.remark') }}</th>
-                  </tr>
-                  <tr v-if="activeTab === 'cyclecount'">
-                    <th scope="col">{{ t('common.entities.location') }}</th>
-                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.entities.task') }}</th>
-                    <th scope="col">{{ t('common.quantities.actual') }}</th>
-                    <th scope="col">{{ t('common.fields.difference') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.users.operator') }}</th>
-                    <th scope="col" class="d-none d-lg-table-cell">{{ t('common.dates.completed') }}</th>
-                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.dates.updated') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-
-                  <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'storage'">
-                    <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/location/detail/${item?.location?.id}`" target="_blank">{{ nameWithTypeAndWarehouse(item?.location) }}
-                      </NuxtLink>
-                    </td>
-                    <td>
-                      {{ item?.quantity }}
-                    </td>
-                    <td class="d-none d-lg-table-cell">{{t('common.locations.'+item?.location?.location_type)}}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.created_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
-                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.updated_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
-                    <td>
-                      <button class="btn btn-sm btn-warning btn-wave waves-light me-2" data-bs-toggle="modal"
-                        data-bs-target="#removalModal" @click="removalFn(item)" :title="t('common.inventory-ops.removal')">
-                        <i class="ri-arrow-down-line"></i>
-                      </button>
-                      <button class="btn btn-sm btn-info btn-wave waves-light" data-bs-toggle="modal"
-                        data-bs-target="#transferModal" @click="transferFn(item)" :title="t('common.inventory-ops.transfer')">
-                        <i class="ri-arrow-right-line"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'putaway'">
-                    <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/location/detail/${item?.location_id}`" target="_blank">{{ nameWithTypeAndWarehouse(item?.location) }}
-                      </NuxtLink>
-                    </td>
-                    <td>↑{{ item?.quantity }}</td>
-                    <td class="d-none d-lg-table-cell">{{ item?.operator_name }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.putaway_time, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
-                    <td class="d-none d-xl-table-cell">{{ item?.remark }}</td>
-                  </tr>
-                  <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'removal'">
-                    <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/location/detail/${item?.location_id}`" target="_blank">{{ nameWithTypeAndWarehouse(item?.location) }}
-                      </NuxtLink>
-                    </td>
-                    <td>↓{{ item?.quantity }}</td>
-                    <td class="d-none d-xl-table-cell">{{ removalReasonLabel(item?.reason) }}</td>
-                    <td class="d-none d-lg-table-cell">{{ item?.operator_name }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.removal_time, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
-                    <td class="d-none d-xl-table-cell">{{ item?.remark }}</td>
-                  </tr>
-                  <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'adjustment'">
-                    <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/location/detail/${item?.location?.id}`" target="_blank">{{ nameWithTypeAndWarehouse(item?.location) }}
-                      </NuxtLink>
-                    </td>
-                    <td><NuxtLink :to="`/adjustment/detail/${item?.adjustment_id}`" target="_blank">ADJ-{{ item?.adjustment_id }}</NuxtLink></td>
-                    <td>{{ item?.system_quantity }}</td>
-                    <td>{{ item?.actual_quantity }}</td>
-                    <td>{{ item?.adjustment_quantity }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.adjustment?.approved_at, 'YYYY-MM-DD HH:mm:ss', item) }}
-                    </td>
-                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.adjustment?.completed_at, 'YYYY-MM-DD HH:mm:ss', item)
-                      }}</td>
-                    <td>{{ item?.approver?.user_name }}</td>
-                    <td>{{ item?.operator?.user_name }}</td>
-                    <td class="d-none d-lg-table-cell">{{ item?.adjustment?.adjustment_reason }}</td>
-                  </tr>
-                  <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'transfer'">
-                    <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/location/detail/${item?.from_location_id}`" target="_blank">{{ nameWithTypeAndWarehouse(item?.from_location) }}</NuxtLink>
-                    </td>
-                    <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/location/detail/${item?.to_location_id}`" target="_blank">{{ nameWithTypeAndWarehouse(item?.to_location) }}
-                      </NuxtLink>
-                    </td>
-                    <td>→{{ item?.quantity }}</td>
-                    <td class="d-none d-lg-table-cell">{{ item?.operator_name }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.transfer_time, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
-                    <td class="d-none d-xl-table-cell">{{ item?.remark }}</td>
-                  </tr>
-                  <tr v-for="item in tabData?.items" class="invoice-list" v-if="activeTab === 'cyclecount'">
-                    <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/location/detail/${item?.location?.id}`" target="_blank">{{ nameWithTypeAndWarehouse(item?.location) }}
-                      </NuxtLink>
-                    </td>
-                    <td class="d-none d-md-table-cell">
-                      <NuxtLink :to="`/cyclecount/detail/${item?.task_id}`" target="_blank">CC-{{ item?.task_id }}</NuxtLink>
-                    </td>
-                    <td>{{ item?.actual_quantity }}</td>
-                    <td>{{ item?.difference }}</td>
-                    <td class="d-none d-lg-table-cell">{{ item?.operator?.user_name }}</td>
-                    <td class="d-none d-xl-table-cell">{{ $dayjs(item?.updated_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
-                    <td class="d-none d-md-table-cell">{{ $dayjs(item?.completed_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div class="text-center p-5 border border-top-0" v-if="tabData?.items?.length <=0">{{ t('common.status.nothing-show')}}</div>
-            </div>
-
-          </div>
-        </div>
-        <div class="card-footer border-top-0">
-          <div class="d-flex align-items-center justify-content-between flex-wrap">
-            <template v-if="tabData">
-              <Pagination :page-size=tabData?.per_page :current-page=tabData?.page :total=tabData?.total
-                :params=$route.query v-if="tabData.pages > 1"></Pagination>
-            </template>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-  <div class="modal fade" id="putawayModal" tabindex="-1" aria-labelledby="putawayModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h6 class="modal-title" id="exampleModalLabel1">{{ t('goods.operations.create-putaway')}}</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">{{ t('common.entities.location')}} <abbr title="required" aria-hidden="true"
-                class="text-danger">*</abbr></label>
-            <div class="flex-nowrap input-group-custom">
-              <VueMultiselect :searchable="true" :show-labels="false" v-model="selectedLocation"
-                :options="locationSelectedOptions" :placeholder="t('common.search-placeholder')" :loading="isLoading"
-                :internal-search="false" :custom-label="nameWithTypeAndWarehouse" label="code" track-by="id"
-                :options-limit="100" @search-change="fetchLocation" />
-            </div>
-            <div v-if="errors.location" class="invalid-feedback d-block">{{ errors.location }}</div>
-            <!-- 待上架：良品 N · 破损 M；有破损待上架时提示上到破损库位 -->
-            <div class="mt-2" v-if="putawayInventories !== null">
-              <PutawayPendingNotice v-if="selectedLocation || putawayPendingRows.length <= 1" :pending="selectedPending"
-                :location-type="selectedLocation?.location_type" :warehouse-id="putawayWarehouseId" can-pick-damaged
-                @pick-damaged="pickDamagedLocations" />
-              <template v-else>
-                <PutawayPendingNotice v-for="row in putawayPendingRows" :key="row.warehouseId" class="mb-1"
-                  :pending="row.pending" :warehouse-id="row.warehouseId" :warehouse-name="row.warehouseName"
-                  can-pick-damaged @pick-damaged="pickDamagedLocations" />
-              </template>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">{{ t('common.fields.quantity')}} <abbr title="required" aria-hidden="true"
-                class="text-danger">*</abbr></label>
-            <div class="flex-nowrap input-group-custom">
-              <input type="number" class="form-control" v-model="quantity" :placeholder="t('common.placeholders.quantity')"
-                min="1" :max="putawayMax ?? undefined" />
-              <div v-if="errors.quantity" class="invalid-feedback d-block">{{ errors.quantity }}</div>
-              <div v-else-if="putawayMax !== null" class="form-text">{{ t('putaway.max', { max: putawayMax }) }}</div>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">{{ t('common.fields.remark')}}</label>
-            <div class="flex-nowrap input-group-custom">
-              <textarea class="form-control" v-model="remark" :placeholder="t('common.placeholders.remark')"></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('button.close') }}</button>
-          <button type="button" class="btn btn-primary" @click="createPutaway">{{ t('button.submit') }}</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-  <div class="modal fade" id="removalModal" tabindex="-1" aria-labelledby="removalModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h6 class="modal-title" id="exampleModalLabel1">{{ t('goods.operations.create-removal')}} </h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-              <label class="form-label">{{ t('common.entities.location')}} <abbr title="required" aria-hidden="true"
-                  class="text-danger">*</abbr></label>
-              <div class="flex-nowrap input-group-custom"  v-if="selectedLocation" >
-                {{ nameWithTypeAndWarehouse(selectedLocation) }}
-              </div>
-            </div>
-          <div class="mb-3">
-            <label class="form-label">{{ t('common.fields.quantity')}} <abbr title="required" aria-hidden="true"
-                class="text-danger">*</abbr></label>
-            <div class="flex-nowrap input-group-custom">
-              <input type="number" class="form-control" v-model="quantity" :placeholder="t('goods.form.placeholders.quantity')" :max="maxQuantity" :min="1" />
-              <div v-if="errors.quantity" class="invalid-feedback d-block">{{ errors.quantity }}</div>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="removal-reason" class="form-label">{{ t('common.fields.reason')}} <abbr title="required" aria-hidden="true"
-                class="text-danger">*</abbr></label>
-            <VueMultiselect id="removal-reason" :show-labels="false" :options="removalReasonsOptions" :multiple="false"
-              :custom-label="removalReasonLabel" v-model="reason">
-            </VueMultiselect>
-            <div v-if="errors.reason" class="invalid-feedback d-block">{{ errors.reason }}</div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">{{ t('common.fields.remark')}}</label>
-            <div class="flex-nowrap input-group-custom">
-              <textarea class="form-control" v-model="remark" :placeholder="t('goods.form.placeholders.remark')"></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('button.close') }}</button>
-          <button type="button" class="btn btn-primary" @click="createRemoval">{{ t('button.submit') }}</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-  <div class="modal fade" id="transferModal" tabindex="-1" aria-labelledby="transferModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h6 class="modal-title" id="exampleModalLabel1">{{ t('goods.operations.create-transfer') }}</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-              <label class="form-label">{{ t('common.locations.from') }} <abbr title="required" aria-hidden="true"
-                  class="text-danger">*</abbr></label>
-              <div class="flex-nowrap input-group-custom"  v-if="selectedFromLocation" >
-                {{ nameWithTypeAndWarehouse(selectedFromLocation) }}
-            </div>
-            </div>
-
-            
-          <div class="mb-3">
-            <label class="form-label">{{ t('common.locations.to') }} <abbr title="required" aria-hidden="true"
-                class="text-danger">*</abbr></label>
-            <div class="flex-nowrap input-group-custom">
-              <VueMultiselect :searchable="true" :show-labels="false" v-model="selectedToLocation"
-                :options="locationToSelectedOptions" :placeholder="t('common.search-placeholder')" 
-                :loading="isLoading"
-                :internal-search="false" :custom-label="nameWithTypeAndWarehouse" label="code" track-by="id"
-                :options-limit="100" @search-change="fetchToLocation" />
-            </div>
-            <div v-if="errors.to_location" class="invalid-feedback d-block">{{ errors.to_location }}</div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">{{ t('common.fields.quantity')}} <abbr title="required" aria-hidden="true"
-                class="text-danger">*</abbr></label>
-            <div class="flex-nowrap input-group-custom">
-              <input type="number" class="form-control" v-model="quantity" :placeholder="t('common.placeholders.quantity')" />
-              <div v-if="errors.quantity" class="invalid-feedback d-block">{{ errors.quantity }}</div>
-            </div>
-          </div>
-          <div class="mb-3" v-if="showTransferReason">
-            <label for="transfer-reason" class="form-label">{{ t('common.fields.reason')}} <abbr title="required" aria-hidden="true"
-                class="text-danger">*</abbr></label>
-            <div class="flex-nowrap input-group-custom">
-              <input type="text" id="transfer-reason" class="form-control" v-model="transferReason" maxlength="255" :placeholder="t('common.placeholders.reason')" />
-              <div class="form-text">{{ t('common.tips.transfer-restore-reason') }}</div>
-              <div v-if="errors.transfer_reason" class="invalid-feedback d-block">{{ errors.transfer_reason }}</div>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">{{ t('common.fields.remark')}}</label>
-            <div class="flex-nowrap input-group-custom">
-              <textarea class="form-control" v-model="remark" :placeholder="t('goods.form.placeholders.remark')"></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('button.close') }}</button>
-          <button type="button" class="btn btn-primary" @click="createTransfer">{{ t('button.submit') }}</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
 </template>
 <style>
 
+</style>
+<style scoped>
+.w-goods-detail { display:flex; flex-direction:column; gap:16px; }
+.w-goods-detail__breadcrumb { display:flex; gap:8px; font-size:13px; line-height:20px; color:var(--w-text-2); }
+.w-breadcrumb-link { color:var(--w-text-3); }
+.w-goods-detail__overview { display:flex; flex-wrap:wrap; gap:24px; padding:24px; border:1px solid var(--w-border); border-radius:10px; background:var(--w-surface); }
+.w-goods-detail__media { flex:0 1 240px; min-width:200px; }
+.w-goods-detail__image-empty { width:100%; aspect-ratio:1; display:grid; place-items:center; background:var(--w-line); border-radius:10px; color:var(--w-text-3); font-size:13px; line-height:20px; }
+.w-stock-location-type { margin-left:6px; color:var(--w-text-3); font-size:12px; line-height:18px; }
+.w-stock-warehouse { display:block; color:var(--w-text-3); font-size:12px; line-height:18px; }
+.w-goods-detail__media img { width:100%; aspect-ratio:1; object-fit:contain; border-radius:10px; background:var(--w-line); }
+.w-goods-detail__body { flex:999 1 460px; min-width:0; display:flex; flex-direction:column; gap:16px; }
+.w-goods-detail__body header { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.w-goods-detail__actions { display:flex; flex-wrap:wrap; gap:8px; }
+.w-goods-detail__heading { flex:1 1 360px; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.w-goods-detail h1 { margin:0; font-size:24px; line-height:32px; font-weight:600; }
+.w-goods-detail__sub { font-size:13px; line-height:20px; color:var(--w-text-3); }
+.w-goods-detail__tags { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:4px; font-size:13px; line-height:20px; color:var(--w-text-2); }
+.w-goods-detail__tag { padding:1px 6px; border:1px solid var(--w-border); border-radius:6px; font-size:12px; line-height:16px; }
+.w-goods-detail__stock { border:1px solid var(--w-border); border-radius:10px; padding:16px 20px; }
+.w-goods-detail__stock-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:14px; line-height:22px; }
+.w-goods-detail__metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; border-top:1px solid var(--w-line); padding-top:12px; }
+.w-goods-detail__metrics>div { display:flex; flex-direction:column; }
+.w-goods-detail__metrics span { font-size:12px; line-height:18px; color:var(--w-text-3); }
+.w-goods-detail__metrics b { font-size:16px; line-height:24px; font-weight:600; }
+.w-goods-detail__facts { margin:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px 24px; font-size:14px; line-height:22px; }
+.w-goods-detail__facts>div { display:grid; grid-template-columns:76px minmax(0,1fr); gap:8px; }
+.w-goods-detail__facts dt { color:var(--w-text-3); font-weight:400; }
+.w-goods-detail__facts dd { margin:0; overflow-wrap:anywhere; }
+.w-goods-detail__description { font-size:14px; line-height:22px; color:var(--w-text-2); }
+.w-goods-detail__record-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; padding:0 20px; border-bottom:1px solid var(--w-border); }
+.w-goods-detail__record-head>.w-tabs { min-width:0; flex:1 1 240px; box-shadow:none; }
+.w-goods-detail__record-head>.w-btn { margin:8px 0; }
+.w-goods-detail__records :deep(.w-tabs__tab) { height:48px; }
+.w-goods-detail__records :deep(.w-table-wrap.is-inset) { --w-table-edge:20px; }
+.w-goods-detail__records :deep(.w-table) { min-width:850px; border-collapse:collapse; }
+.w-goods-detail__records :deep(.w-table thead th) { height:auto; padding-top:10px; padding-bottom:8px; line-height:16px; }
+.w-goods-detail__records :deep(.w-table__head) { vertical-align:top; }
+.w-goods-detail__records :deep(.w-table tbody td) { padding-top:12px; padding-bottom:12px; }
+.w-goods-detail__record-foot { padding:12px 20px; border-top:1px solid var(--w-border); }
+.w-goods-detail__record-filters { display:flex; flex-wrap:wrap; gap:4px; padding:12px 20px; border-bottom:1px solid var(--w-line); }
+.w-goods-detail__record-filters button { border:0; background:transparent; color:var(--w-text-2); border-radius:6px; padding:5px 12px; font:inherit; font-size:13px; line-height:20px; }
+.w-goods-detail__record-filters button.is-active { background:var(--w-pri-light,#F1EBFE); color:var(--w-link); font-weight:600; }
+.w-goods-detail__record-filters button:hover { background:var(--w-line); }
+.w-stock-link { color:var(--w-text-1); text-decoration:none; }
+.w-stock-link:hover { color:var(--w-link); }
+.w-stock-actions { display:flex; gap:8px; }
 </style>

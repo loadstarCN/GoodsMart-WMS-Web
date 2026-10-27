@@ -1,4 +1,15 @@
 {
+  "operator-report": {
+    "title": "作业效率",
+    "operator": "操作人",
+    "quantity": "件数",
+    "tasks": "完成任务",
+    "hours": "参与任务时长（小时）",
+    "rate": "每小时件数",
+    "untimed": "无有效用时任务",
+    "median": "全员效率中位数",
+    "scope": "按本期完成的任务统计。参与任务时长为任务开始至完成的完整历时（含暂停），不是个人工时；多人参与同一任务时，各人均计该任务历时。缺少开始时间或时长非正数时，只计件数，不计效率。"
+  },
   "language": "中文",
   "nav": {
     "home": "首页",
@@ -377,7 +388,8 @@
       "password-mismatch": "新密码和确认密码不匹配",
       "password-same-as-old": "新密码不能与当前密码相同",
       "quantity-exceeds-available": "数量超出可用量（最多 {max}）",
-      "password-policy": "密码须为 {min}–{max} 位，同时包含大写字母、小写字母、数字和特殊符号（{special}），只能使用英文字母、数字和这些符号"
+      "password-policy": "密码须为 {min}–{max} 位，同时包含大写字母、小写字母、数字和特殊符号（{special}），只能使用英文字母、数字和这些符号",
+      "quantity-invalid": "请输入大于或等于 0 的整数"
     },
     "statistics": {
       "title": "统计信息",
@@ -474,6 +486,46 @@
         "oldest": "最早一笔自 {time} 起待上架"
       },
       "empty": "没有待上架的商品"
+    },
+    "ui": {
+      "composition": "数量构成",
+      "thresholds": "补货 / 积压阈值",
+      "low": "补货阈值",
+      "high": "积压阈值",
+      "disabled": "-1 表示不启用",
+      "selected": "已选 {count} 项",
+      "by-goods": "按商品",
+      "occupied": "发货占用",
+      "outside": "其他库存状态",
+      "operations": "作业中",
+      "invalid": "请输入整数（-1 表示不启用），补货阈值不能高于积压阈值。",
+      "choose-warehouse": "请选择同一仓库内的库存记录。"
+    },
+    "views": {
+      "goods": "按商品",
+      "location": "按库位",
+      "history": "历史库存",
+      "view": "库存视角",
+      "lot": "批号",
+      "expiry": "有效期至",
+      "occupied": "已占用库位",
+      "empty": "空库位",
+      "location-search": "库位码、商品名称或编码"
+    },
+    "history": {
+      "total": "仓内总量",
+      "date": "结存日期",
+      "partial": "早期记录仅包含库位库存，未包含待上架、已拣和已打包库存。",
+      "none": "所选日期没有可用的库存记录。",
+      "source": "数据来源",
+      "sources": {
+        "realtime": "实时库存",
+        "ledger": "流水结存",
+        "derived": "历史推导",
+        "computed": "计算结存",
+        "legacy_snapshot": "旧版快照",
+        "none": "无记录"
+      }
     }
   },
   "company": {
@@ -516,6 +568,9 @@
     "tips": {
       "export": "用于海外发货的商业发票（CI）和装箱单（PL），以英文印出。",
       "export-required": "生成单证需要英文名称、英文地址、电话和国家代码（电话与国家代码优先取仓库设置）。"
+    },
+    "ui": {
+      "defaults": "默认设置"
     }
   },
   "department": {
@@ -535,6 +590,10 @@
       "add": "添加部门",
       "edit": "编辑部门",
       "delete": "删除部门"
+    },
+    "ui": {
+      "create": "新建部门",
+      "view-staff": "在员工中查看"
     }
   },
   "warehouse": {
@@ -568,6 +627,41 @@
       "export": "与公司地址不同时，作为发货地（Ship From）印在单证上。",
       "export-latin": "英文地址在上面地址的「拉丁转写」里。",
       "timezone": "该仓库的单据、任务的时间按这个时区显示和填写，发货日、单证日期、揽收日和「今天」也按它算。选「服务器默认」时用服务器配置的时区。"
+    },
+    "ui": {
+      "create": "新建仓库",
+      "basic": "基本信息",
+      "currency": "默认币种",
+      "pickup-contact": "揽收联系人",
+      "capture": "收货规格采集",
+      "capture-fields": "采集项目",
+      "weight": "重量",
+      "dimensions": "尺寸",
+      "origin_country": "原产国",
+      "capture-mode": "采集方式",
+      "missing": "仅补齐缺失",
+      "remeasure": "全部重新测量",
+      "capture-enforcement": "未完成采集时",
+      "warn": "提醒后继续",
+      "block": "阻止完成",
+      "goods-count": "{count} 种商品",
+      "dispatch-today": "今日待发",
+      "receive-today": "今日待收",
+      "status-count": "{active} 个启用 · {inactive} 个停用",
+      "export-missing": "缺少英文地址或揽收联系人",
+      "overview": "概览",
+      "information": "仓库信息",
+      "position": "职位",
+      "zone": "库区",
+      "zones": "库区与库位",
+      "empty-locations": "空置",
+      "nearly-full": "将满",
+      "plan-version": "版本",
+      "plan-live": "已发布",
+      "plan-changed": "草稿有修改",
+      "zone-summary": "{zones} 个库区 · {locations} 个库位",
+      "all-staff": "查看全部 {count} 人",
+      "business-date": "业务日期"
     }
   },
   "location": {
@@ -612,6 +706,26 @@
       },
       "quantity-required": "请输入数量",
       "reason-required": "请输入原因"
+    },
+    "ui": {
+      "create": "新建库位",
+      "position": "位置",
+      "dimensions": "尺寸与库容",
+      "positive": "请输入大于 0 的数值",
+      "utilization": "库容占用率",
+      "storage": "在库商品",
+      "putaway": "上架",
+      "removal": "下架",
+      "adjustment": "调整",
+      "transfer": "移库",
+      "cyclecount": "盘点",
+      "history": "最近变动",
+      "label": "库位标签",
+      "information": "库位信息",
+      "all": "全部",
+      "putaway-time": "上架时间",
+      "last-movement": "最后变动",
+      "last-count": "最近盘点"
     }
   },
   "staff": {
@@ -637,6 +751,21 @@
       "add": "添加员工",
       "edit": "编辑员工",
       "delete": "删除员工"
+    },
+    "ui": {
+      "create": "新建员工",
+      "account": "账号",
+      "roles": "角色",
+      "last-login": "最近登录",
+      "search": "姓名、邮箱、电话或工号",
+      "account-password": "账号与密码",
+      "show-password": "显示密码",
+      "warehouses": "可操作的仓库",
+      "new-password": "设置新密码",
+      "hide-password": "隐藏密码",
+      "account-enabled": "账号启用",
+      "account-enabled-help": "保存后生效。停用后不能登录，已登录设备将退出；不能停用自己的账号。",
+      "warehouse-help": "公司管理员可操作本公司全部仓库；其他角色只能在已授权的仓库作业。"
     }
   },
   "supplier": {
@@ -656,6 +785,22 @@
       "add": "添加供应商",
       "edit": "编辑供应商",
       "delete": "删除供应商"
+    },
+    "ui": {
+      "create": "新建供应商",
+      "basic": "基本信息",
+      "contact": "联系方式",
+      "enabled": "已启用",
+      "disabled": "已停用",
+      "enable": "启用",
+      "status-help": "停用后新建收货通知时不可选，已有收货通知不受影响",
+      "unsaved": "有未保存的修改",
+      "recent": "最近的收货通知",
+      "all-asns": "全部 {count} 张",
+      "disable": "停用",
+      "last-arrival": "最近到货",
+      "transit": "{count} 张在途",
+      "no-arrival": "无到货记录"
     }
   },
   "carrier": {
@@ -813,8 +958,12 @@
         "preset-required": "文件方式要选一个预设（或填写模板）",
         "account-required": "请填写{field}"
       },
-      "version": "依据的规格：{version}"
-    }
+      "version": "依据的规格：{version}",
+      "ui": {
+        "instructions": "查看导入说明"
+      }
+    },
+    "list-settings": "设置"
   },
   "recipient": {
     "title": "收货方管理",
@@ -827,6 +976,31 @@
       "add": "添加收货方",
       "edit": "编辑收货方",
       "delete": "删除收货方"
+    },
+    "ui": {
+      "create": "新建收货方",
+      "basic": "基本信息",
+      "contact": "联系方式",
+      "enabled": "已启用",
+      "disabled": "已停用",
+      "enable": "启用",
+      "status-help": "停用后新建发货单时不可选，已有发货单不受影响",
+      "unsaved": "有未保存的修改",
+      "recent": "最近的收货通知",
+      "all-asns": "全部 {count} 张",
+      "disable": "停用",
+      "last-arrival": "最近到货",
+      "transit": "{count} 张在途",
+      "source": "来源",
+      "manual": "手动创建",
+      "external": "外部系统",
+      "last-dispatch": "最近发货",
+      "search": "名称、联系人、电话、地址",
+      "records": "记录",
+      "external-id": "外部编号",
+      "customs": "报关",
+      "source-unrecorded": "来源未记录",
+      "no-dispatch": "无发货记录"
     }
   },
   "goods": {
@@ -883,7 +1057,10 @@
         "dimensions": "毫米",
         "origin-country": "按包装上的「MADE IN」录入；不确定就留空",
         "no-changes": "没有修改"
-      }
+      },
+      "basic-info": "基本信息",
+      "specs": "规格与重量尺寸",
+      "dates": "生产与有效期"
     },
     "operations": {
       "add": "添加商品",
@@ -920,6 +1097,72 @@
       "processed": "已处理 {count} 个商品",
       "upload-another": "继续导入",
       "back-to-list": "返回商品列表"
+    },
+    "ui": {
+      "brand-maker": "品牌 · 生产商",
+      "onhand": "在库",
+      "available": "可售",
+      "pending": "待上架",
+      "info": "资料",
+      "complete": "齐全",
+      "missing": "缺失：{fields}",
+      "image-missing": "图片缺失",
+      "spec-missing": "规格缺失",
+      "dimensions": "长宽高",
+      "has-stock": "有库存",
+      "export": "导出",
+      "import": "导入",
+      "export-filtered": "导出当前筛选结果",
+      "activate": "启用",
+      "deactivate": "停用",
+      "brand-filter": "按品牌筛选",
+      "location-stock": "库位库存",
+      "stock-records": "库存记录"
+    },
+    "files": {
+      "export-title": "商品导出",
+      "filters": "筛选条件",
+      "columns": "导出列",
+      "file": "文件",
+      "preset": "预设",
+      "template": "导入模板列",
+      "all-columns": "全部列",
+      "format": "文件格式",
+      "encoding": "编码",
+      "language": "表头语言",
+      "preview": "预览",
+      "generate": "生成文件",
+      "recent": "最近导出",
+      "download": "下载",
+      "move-up": "上移",
+      "move-down": "下移",
+      "matches": "共 {count} 件商品",
+      "lossy": "有 {count} 件商品包含此编码无法表示的字符，导出后会变成问号。",
+      "import-title": "商品导入",
+      "upload": "上传文件",
+      "strategy": "重复编码的处理",
+      "history": "导入记录",
+      "result": "识别结果",
+      "confirm-import": "导入有效行",
+      "sheet": "工作表",
+      "rows": "行",
+      "action": "处理方式",
+      "errors": "错误",
+      "skip": "保留已有商品",
+      "active": "只启用已有商品",
+      "append": "只补充空字段",
+      "override": "覆盖已有字段",
+      "create": "新增",
+      "update": "更新",
+      "unchanged": "不变",
+      "error": "错误",
+      "completed": "已完成",
+      "failed": "失败",
+      "partial": "部分完成",
+      "pending": "等待中",
+      "running": "生成中",
+      "expired": "已过期",
+      "error-file": "下载问题行"
     }
   },
   "cyclecount": {
@@ -993,7 +1236,13 @@
     "tips": {
       "cancel-confirm-title": "取消调整单？",
       "cancel-confirm": "将取消 ADJ-{id}：调整单作废，不会改动库存；取消后不能再审批或完成。此操作不能撤销。",
-      "from-cyclecount": "按盘点单 CC-{id} 生成"
+      "from-cyclecount": "按盘点单 CC-{id} 生成",
+      "independent-approval": "创建或修改明细的人不能审批此单，请由其他有审批权限的人员处理。"
+    },
+    "ui": {
+      "pending": "待审批",
+      "lines": "调整明细",
+      "info": "单据信息"
     }
   },
   "asn": {
@@ -1095,6 +1344,35 @@
         "NO_DETAILS": "入库单没有明细，不能接收",
         "SORTING_TASK_MISSING": "已接收，但没有有效的分拣任务"
       }
+    },
+    "form-ui": {
+      "supplier-type": "供应商与类型",
+      "warehouse-arrival": "仓库与到货日",
+      "invalid-measure": "重量和体积须为非负数",
+      "readonly": "当前状态或权限不允许编辑此收货通知",
+      "close-confirm": "关闭 ASN-{id}？此单将停止接收。",
+      "goods-specs": "商品 · 单件规格",
+      "expected": "预计",
+      "rejected": "拒收",
+      "pending-specs": "待采集规格 {count} 种",
+      "total": "合计",
+      "document-info": "单据信息",
+      "spec-capture": "规格采集",
+      "missing": "只补缺失",
+      "remeasure": "重新测量"
+    },
+    "list": {
+      "count": "{count} 张",
+      "create": "新建收货通知",
+      "tracking": "承运商 · 运单号",
+      "arrival": "计划到货",
+      "stage": "阶段",
+      "type": "类型",
+      "arrival-from": "计划到货日期（起）",
+      "search": "ASN、订单号、商品编码、运单号",
+      "spec-pending": "待采集规格",
+      "no-tracking": "未登记运单号",
+      "goods-count": "{lines} 种 · {quantity} 件"
     }
   },
   "sorting": {
@@ -1148,7 +1426,8 @@
       "packing-info": "包装信息",
       "special-handling": "特殊处理要求",
       "transportation": "运输方式",
-      "order-no": "订单号"
+      "order-no": "订单号",
+      "transportation-mode": "运输方式"
     },
     "form": {
       "placeholders": {
@@ -1381,6 +1660,17 @@
         "created": "创建",
         "updated": "更新"
       }
+    },
+    "form-ui": {
+      "change-warehouse": "切换仓库",
+      "clear-items": "切换仓库会清空已添加商品。是否继续？",
+      "use-formatted": "使用格式化地址",
+      "use-recipient": "使用收货方地址",
+      "address-fields": "编辑地址详细字段",
+      "shipping": "配送信息",
+      "readonly": "当前状态或权限不允许编辑此发货单",
+      "over-stock": "{count} 项商品超过可用库存，请调整数量",
+      "warehouse-date": "仓库与日期"
     }
   },
   "picking": {
@@ -2966,7 +3256,8 @@
         "WAYBILL_EXISTS": "运单已建好或已导出，不能再改；要改请先取消运单（文件方式为作废导出）",
         "DN_SHIPPED": "已发货，不能再改"
       }
-    }
+    },
+    "stage-label": "阶段"
   },
   "address": {
     "title": "地址",
@@ -3538,5 +3829,579 @@
       "close": "关闭发货单",
       "delete": "删除发货单"
     }
+  },
+  "items-import": {
+    "title": "批量添加商品",
+    "source": "添加方式",
+    "paste": "粘贴商品",
+    "file": "上传文件",
+    "help": "按商品编码、数量、备注排列。数量留空默认为 1；支持逗号或制表符分隔。",
+    "placeholder": "G001,2,备注",
+    "file-hint": "CSV 或 Excel（.xlsx），最大 10 MB",
+    "first-sheet": "第一个工作表",
+    "sheet": "工作表",
+    "header": "第一行是表头",
+    "csv-template": "下载 CSV 模板",
+    "xlsx-template": "下载 Excel 模板",
+    "preview": "预览",
+    "line": "行号",
+    "available": "可用数量",
+    "result": "处理结果",
+    "low-stock": "数量超过可用库存，保存前需调整",
+    "kept": "保留原数量",
+    "merged": "合并数量",
+    "new": "新增",
+    "existing": "已存在的商品",
+    "add": "累加数量并合并备注",
+    "keep": "保留原数量及备注",
+    "limit": "最多 500 种商品；数量须为 1 至 2147483647 的整数。",
+    "summary": "可添加 {valid} 项，错误 {errors} 项",
+    "apply": "添加有效商品",
+    "download-error": "模板下载失败，请重试",
+    "errors": {
+      "CODE_INVALID": "商品编码为空或超过 50 个字符",
+      "QUANTITY_INVALID": "数量须为有效的正整数",
+      "EXTRA_COLUMNS": "仅允许商品编码、数量、备注三列",
+      "NOT_FOUND": "未找到商品",
+      "INACTIVE": "商品已停用",
+      "TOO_LARGE": "文件超过大小限制",
+      "TOO_MANY_ROWS": "最多允许 10000 行",
+      "EMPTY": "没有可读取的商品数据",
+      "HEADER_INVALID": "表头设置无效",
+      "NOT_CSV": "CSV 格式无效",
+      "FORMAT_INVALID": "只支持 CSV 或 XLSX",
+      "UNKNOWN_ENCODING": "无法识别编码，请使用 UTF-8 或 Shift_JIS",
+      "NOT_UTF8": "文件不是有效的 UTF-8",
+      "NOT_SHIFT_JIS": "文件不是有效的 Shift_JIS",
+      "NOT_XLSX": "Excel 文件无效",
+      "SHEET_NOT_FOUND": "未找到工作表",
+      "TOO_MANY_CODES": "一次最多预览 1000 种商品"
+    }
+  },
+  "ledger": {
+    "title": "流水",
+    "time": "时间",
+    "movement": "变动类型",
+    "document": "单据号",
+    "stock-type": "库存类别",
+    "change": "变动数",
+    "balance": "结存",
+    "balances": "结存",
+    "search": "商品名称或编码",
+    "from": "开始日期",
+    "to": "结束日期",
+    "reset": "重置筛选",
+    "movements": {
+      "opening": "期初",
+      "reconcile": "系统校正",
+      "sort_in": "分拣入库",
+      "putaway": "上架",
+      "removal": "下架",
+      "transfer": "移库",
+      "pick": "拣货",
+      "pack": "打包",
+      "pack_short_return": "打包差额退回",
+      "dn_cancel_return": "取消退回",
+      "ship": "发货",
+      "sign": "签收",
+      "adjust_gain": "盘盈",
+      "adjust_loss": "盘亏",
+      "lot_relabel": "批次改标",
+      "correction": "历史校正"
+    },
+    "types": {
+      "onhand": "在库",
+      "damaged": "破损",
+      "return": "退货",
+      "pending": "待上架良品",
+      "pending_damaged": "待上架破损",
+      "picked": "已拣",
+      "packed": "已打包",
+      "in_transit": "在途"
+    },
+    "all-warehouses": "全部仓库",
+    "document-type": "单据类型",
+    "documents": {
+      "asn": "收货通知",
+      "dn": "发货单",
+      "putaway": "上架",
+      "removal": "下架",
+      "transfer": "转移",
+      "picking_task": "拣货任务",
+      "packing_task": "打包任务",
+      "adjustment": "库存调整"
+    },
+    "ranges": {
+      "today": "今天",
+      "week": "近 7 天",
+      "month": "本月",
+      "previous": "上月",
+      "custom": "自定义"
+    },
+    "overview-title": "期间汇总",
+    "overview-help": "默认结存包含库位库存、待上架、已拣货和已打包，不含发货后的在途库存。拣货、打包及仓内移库只改变库存状态，发货完成才计为出库。选择单一库存类别时，统计该类别的流入和流出。",
+    "trend": "结存走势",
+    "day-end": "日终 / 今日实时",
+    "overview-scope": "汇总按入账时间、商品、批号、库位和库存类别统计全部匹配记录；单据及变动类型筛选仅作用于流水明细。",
+    "no-lot": "无批号",
+    "balance-help": "该商品在本仓库、该库存类别下的结存，合并所有批号与库位；按入账顺序计算。"
+  },
+  "threshold": {
+    "daily": "日均出库",
+    "current": "现阈值",
+    "scope": "范围：已选 {count} 种商品",
+    "fixed": "固定值",
+    "suggest": "按出库计算",
+    "window": "统计天数",
+    "cover": "补货覆盖天数",
+    "overstock": "积压天数",
+    "minimum": "最小补货量",
+    "preview": "逐行预览",
+    "refresh": "更新预览",
+    "stale": "参数已改变，请更新预览后保存。",
+    "no-outbound": "无出库，不设建议",
+    "keep": "留空保留每行现值。"
+  },
+  "operations": {
+    "ui": {
+      "progress": "进度",
+      "review": "复核",
+      "damage": "破损",
+      "boxes": "箱子",
+      "time-operator": "时间 · 操作人",
+      "next": "下一步",
+      "process": "处理",
+      "view": "查看",
+      "full-flow": "完整流程",
+      "new-good": "本次良品",
+      "new-damage": "本次破损",
+      "variance": "差异",
+      "this-entry": "本次录入",
+      "records": "分拣记录",
+      "status-records": "状态记录",
+      "select-location": "选择库位",
+      "picking-records": "拣货记录",
+      "packing-records": "打包记录",
+      "scope": "范围",
+      "location-goods": "库位 · 商品",
+      "unrecorded": "未录入",
+      "this-page": "本页"
+    }
+  },
+  "auth-design": {
+    "subtitle": "从收货到发货，让仓库作业井然有序。",
+    "language": "界面语言",
+    "show-password": "显示密码",
+    "hide-password": "隐藏密码"
+  },
+  "print-design": {
+    "prepared": "制单",
+    "checked": "复核",
+    "received": "签收",
+    "signature": "签名",
+    "date": "日期",
+    "language": "打印语言",
+    "arrival": "到货时刻",
+    "packages": "实收箱数",
+    "condition": "外箱状况",
+    "good": "完好",
+    "damaged": "破损"
+  },
+  "dashboard-design": {
+    "title": "工作概览",
+    "pending": "待处理工作",
+    "outbound": "发货进度",
+    "inbound": "收货进度",
+    "stock": "库存提醒",
+    "all": "查看全部",
+    "scope": "当前仓库范围 · 全部未完成单据",
+    "low": "低于补货阈值",
+    "putaway": "待上架",
+    "overdue": "待上架超过 3 天",
+    "empty": "暂无待处理工作"
+  },
+  "stock-report": {
+    "by-month": "按月",
+    "previous-year": "上一年",
+    "next-year": "下一年",
+    "title": "收发存汇总",
+    "from": "开始日期",
+    "to": "结束日期",
+    "opening": "期初",
+    "inbound": "入库",
+    "outbound": "出库",
+    "closing": "期末",
+    "total": "本页合计",
+    "hint": "按入账时间汇总；仓内转移不重复计入收发。",
+    "scope-total": "当前范围合计",
+    "period-ledger": "本期库存流水",
+    "dimension": "汇总维度",
+    "category": "分类",
+    "brand": "品牌",
+    "unassigned": "未设置",
+    "expand-all": "全部展开",
+    "collapse-all": "全部收起",
+    "load-more": "加载更多 / 重试",
+    "subtotal": "合计"
+  },
+  "inventory-analysis": {
+    "stock-trend": "在库走势",
+    "stock-trend-help": "近 90 天日终在库数量，今天为实时在库；仅含在库类别，历史覆盖范围以库存流水为准。 空档表示没有历史记录，不代表零库存。",
+    "title": "库存分析",
+    "asof": "统计截至",
+    "no-snapshot": "尚无日终统计，请等待库存日结任务生成数据。",
+    "stocked": "有库存商品",
+    "moving": "近 30 天动销商品",
+    "dead": "呆滞商品",
+    "moving-rate": "动销率",
+    "age": "库龄分布",
+    "abc": "动销 ABC",
+    "out90": "近 90 天出库",
+    "unknown": "未知",
+    "days": "天",
+    "turnover": "周转天数",
+    "supply": "可售天数",
+    "normal": "正常",
+    "empty": "无库存",
+    "all": "全部",
+    "hint": "库龄按先进先出估算；呆滞指近 90 天无出库且最老入库层超过 90 天。ABC 按近 90 天出库累计占比划分。",
+    "scope": "图表为所选仓库全量统计，筛选仅作用于下方明细。",
+    "goods": "商品明细",
+    "quantity": "件数",
+    "pieces": "件",
+    "average-age": "平均库龄",
+    "no-outbound": "暂无出库数据",
+    "out30": "近 30 天出库",
+    "oldest-age": "最老库龄",
+    "unknown-age": "未知库龄数量",
+    "stock90": "近 90 天库存（日终）",
+    "inbound-date": "入库时间",
+    "age-days": "库龄（天）",
+    "last-in": "最近入库",
+    "last-out": "最近出库",
+    "layers": "库龄分层"
+  },
+  "document-report": {
+    "daily": "按日走势",
+    "daily-hint": "按实际交承运商日期统计；格子打开发货单，点击日期筛选当天记录。每日至多显示 20 格，更多记录可点击数量查看。浅灰底为周末。",
+    "unscheduled": "未设计划日期",
+    "inbound": "收货分析",
+    "outbound": "发货分析",
+    "scope-asn": "按预计到货日统计，已关闭单据除外",
+    "scope-dn": "按交承运商日期统计，已关闭单据除外",
+    "select-warehouse": "请选择仓库",
+    "documents": "单据数",
+    "actual": "实际件数",
+    "on_time_rate": "准时率",
+    "difference_rate": "收货差异率",
+    "damage": "破损件数",
+    "expected": "预计件数",
+    "received": "已接收单据",
+    "difference": "差异件数",
+    "previous": "上期同期（前月对应日期）",
+    "arrivals": "到货",
+    "arrival-hint": "预计到货日 vs 实际接收日，每行一张收货通知",
+    "document": "单据",
+    "planned": "预计日期",
+    "actual-date": "实际日期",
+    "late": "晚到",
+    "on-time": "准时",
+    "waiting": "待到货",
+    "details": "单据明细",
+    "daily-unit": "每格一张发货单",
+    "view-table": "以表格查看",
+    "view-chart": "以图表查看",
+    "late-shipment": "延迟发货",
+    "distribution": "分布",
+    "current": "本期",
+    "by-carrier": "按承运商",
+    "by-country": "按目的国",
+    "by-source": "按来源系统",
+    "unknown-carrier": "未记录承运商",
+    "unknown-country": "未记录目的国",
+    "unknown-source": "未记录 API 来源",
+    "distribution-help": "按本期交承运商的发货单计票数；竖线为前月同期票数。点击一行筛选对应单据，点击上方筛选标签清除。目的国取单据地址快照。",
+    "lead-title": "订单处理时长",
+    "lead-unit": "天 · 按阶段",
+    "lead-help": "仅统计本期交承运商的单据，包含等待及休息日。拣货、打包取全部有效任务的最后完成时间；缺失或无效时间不补零，各阶段显示有效样本数。",
+    "stage": "阶段",
+    "median": "中位数",
+    "previous-median": "上期中位数",
+    "samples": "有效样本",
+    "stage-pick": "建单 → 拣货完成",
+    "stage-pack": "拣货完成 → 打包完成",
+    "stage-handover": "打包完成 → 交承运商",
+    "stage-total": "建单 → 交承运商",
+    "slowest": "本期最慢单据",
+    "lead-page": "下图显示当前明细页的单据；参考线及最慢单据按全期统计。",
+    "missing-stages": "阶段时间不完整",
+    "on-time-title": "准时发货",
+    "six-months": "近 6 个月",
+    "on-time-help": "截至所选结束日（不晚于今天）的六个月；按仓库当地日期比较计划日与交承运商日，未填计划日不计入分母。最后一月为截至该日的数据。",
+    "late-limit": "此处展示前 20 张延迟发货单，其余请在单据明细中按日期查看。"
+  },
+  "layout": {
+    "title": "仓库平面图",
+    "new-floor": "楼层 {n}",
+    "saved": "草稿已保存",
+    "published": "已发布 v{n}",
+    "revision": "草稿修订 {n}",
+    "version": "已发布 v{n}",
+    "save-first": "请先保存或放弃草稿修改",
+    "draft": "当前草稿",
+    "publish": "发布",
+    "unsaved": "未保存",
+    "floors": "楼层与建筑",
+    "objects": "个图形",
+    "add-floor": "新增楼层",
+    "no-floor": "请新增或选择楼层",
+    "units": "位置和尺寸单位：米",
+    "properties": "图形属性",
+    "floor-settings": "楼层设置",
+    "x": "位置 X",
+    "y": "位置 Y",
+    "width": "宽",
+    "height": "深",
+    "rotate": "旋转",
+    "pick-face": "取货面",
+    "front": "前",
+    "back": "后",
+    "both": "两面",
+    "target": "连接到",
+    "select-target": "选择连接点",
+    "travel-seconds": "通行时间（秒）",
+    "kind": {
+      "rack": "货架",
+      "wall": "墙体",
+      "zone": "区域",
+      "door": "出入口",
+      "connector": "连接点",
+      "station": "工作台"
+    },
+    "discard": "放弃修改",
+    "snap": "吸附网格 0.5 m",
+    "show-labels": "显示货架编码",
+    "undo": "撤销",
+    "redo": "重做",
+    "load-more": "加载更多库位",
+    "view-map": "在平面图中查看",
+    "delete-floor": "删除楼层",
+    "delete-floor-hint": "从草稿中移除「{name}」及其图形和连接关系。实际库位和已发布版本会保留，可通过撤销恢复。"
+  },
+  "location-label": {
+    "title": "库位标签",
+    "copies": "份数",
+    "offset": "起始位置",
+    "hint": "请按实际尺寸（100%）打印，关闭页眉页脚；A4 标签纸，每页 2 列 × 5 行。",
+    "invalid": "份数须为 1–100，起始位置须为 1–10。",
+    "code-error": "无法生成此库位码的二维码"
+  },
+  "goods-label": {
+    "title": "打印条码",
+    "hint": "使用 {width} × {height} mm 标签纸，以 100% 比例打印，关闭页眉页脚。商品名称和编码保持原文；屏幕预览放大显示。",
+    "invalid": "请检查尺寸、边距和字号是否合理，并将份数设为 1–100 的整数。",
+    "company-template": "公司商品标签模板",
+    "company-hint": "默认模板由同公司员工共用。当前调整仅用于本次打印；保存为公司默认后才会同步。",
+    "restore": "恢复公司默认",
+    "save-default": "保存为公司默认",
+    "paper-size": "标签尺寸",
+    "custom": "自定义",
+    "width_mm": "宽度",
+    "height_mm": "高度",
+    "margin_mm": "边距",
+    "name_font_pt": "商品名字号",
+    "barcode-format": "条码格式",
+    "auto": "自动识别",
+    "show-name": "显示商品名称",
+    "saved": "已保存为公司默认模板",
+    "temporary": "当前为临时调整，未覆盖公司默认模板。",
+    "conflict": "公司模板已被其他人修改，请重新加载后再保存。",
+    "lot": "批号",
+    "expiry": "有效期至",
+    "content-overflow": "当前内容超出标签边界，请增大标签尺寸、减小边距或调整字号后再打印。",
+    "reference-layout": "使用设计稿基准",
+    "no-lot": "不打印批号",
+    "register-lot": "登记批号",
+    "register-note": "登记商品批号和日期，仅用于批次资料，不会生成入库或调整库存。",
+    "lot-required": "请输入批号。",
+    "invalid-dates": "有效期不能早于生产日期。",
+    "duplicate-lot": "该商品已存在此批号，请从列表选择已有记录。"
+  },
+  "warehouse-scope": {
+    "select-top": "请在顶部选择一个仓库以查看此分析"
+  },
+  "count-print": {
+    "title": "盘点单",
+    "blind": "盲盘",
+    "standard": "明盘",
+    "planned": "计划日期",
+    "mode": "盘点模式",
+    "lines": "明细行",
+    "by-location": "盘点明细 · 按库位",
+    "lot": "批号",
+    "expiry": "有效期至",
+    "exceptions": "异常记录",
+    "counted": "盘点人",
+    "reviewed": "复核人",
+    "print": "打印盘点表",
+    "number": "盘点单号"
+  },
+  "pick-print": {
+    "title": "拣货单",
+    "handling": "特殊处理",
+    "suggestion": "库位建议",
+    "record": "已拣记录",
+    "suggestion-help": "按库位编码排列，仅含剩余未拣数量。建议基于打印时可用的无批次标准库位库存，扣除进行中任务的已拣占用；打印不锁定库存，执行时需重新核验。",
+    "record-help": "已完成任务的实际拣货记录，数量不是待拣数量。",
+    "shortage": "可用库位库存不足，需复核",
+    "picked": "拣货人",
+    "checked": "复核人",
+    "quantity": "数量",
+    "total": "合计",
+    "mode": "打印内容",
+    "by-location": "拣货明细 · 按库位"
+  },
+  "operator-chart": {
+    "task-title": "每个任务",
+    "axes": "件数 × 用时",
+    "minutes": "分钟",
+    "chart": "图表",
+    "table": "表格",
+    "everyone": "全部操作人",
+    "task-median": "任务中位数（件 / 时）",
+    "no-timed": "没有可计时的完成任务",
+    "coverage": "显示最近 {shown} / {total} 个可计时任务；另有 {untimed} 个任务未计时。",
+    "task": "任务",
+    "daily": "按日 · 件数",
+    "daily-help": "按任务完成日期（{zone}）统计，颜色越深件数越多。",
+    "no-daily": "本期没有完成的任务",
+    "people-page": "热力图显示当前操作人页；换页可查看其余操作人。",
+    "help": "每点代表一个完成任务；用时包含暂停。斜线为全部任务每小时件数的中位数，线上方比中位数慢。"
+  },
+  "operator-overview": {
+    "hours": "小时",
+    "untimed-help": "仅计件数，不计效率",
+    "by-person": "按操作人",
+    "units-hour": "件 / 时",
+    "phase": "作业",
+    "completed": "完成时间",
+    "task-help": "件数为该操作人记录的数量；用时为整个任务从开始到完成的历时（含暂停）。未计时任务也列出。"
+  },
+  "inbound-spec": {
+    "title": "规格采集覆盖率",
+    "collect": "去采集",
+    "help": "统计本期实际收到的商品种类，规格取当前商品资料；不是收货当时的历史快照。缺失清单按本期收货件数排序。",
+    "complete": "重量和长宽高都有 · {complete} / {total} 种",
+    "weight": "重量",
+    "dimensions": "长宽高",
+    "missing": "还缺规格的 {count} 种 · 按本期收货件数",
+    "received": "本期收货 {count} 件",
+    "limit": "显示前 {count} 种",
+    "all-complete": "本期收到的商品规格均已齐全",
+    "empty": "本期没有已记录实收数量的商品"
+  },
+  "count-accuracy": {
+    "title": "库存准确率",
+    "help": "按本期完成的盘点统计（{zone}），使用盘点时的系统数量快照；缺失快照的行不计准确率。",
+    "by-line": "按行",
+    "by-quantity": "按件",
+    "lines": "{different} / {total} 行有差异",
+    "quantities": "差异 {different} / 系统 {total} 件",
+    "tasks": "完成盘点",
+    "unverified": "{count} 行缺少有效快照",
+    "months": "近六个月按行准确率",
+    "months-help": "浅色为最后一个月截至所选截止日或今天；无有效盘点行的月份显示 —。",
+    "difference": "差异 {count} 件"
+  },
+  "inventory-age": {
+    "measure": "度量",
+    "quantity": "按件数",
+    "skus": "按种数",
+    "chart": "以图表查看",
+    "table": "以表格查看",
+    "share": "件数占比",
+    "sku-count": "{count} 种",
+    "sku-help": "同一商品可出现在多个库龄档位；按种数的条长以最多的档位为基准。",
+    "oldest": "180 天以上 · 件数最多",
+    "no-aged": "没有已知库龄超过 180 天的库存",
+    "average": "平均库龄 {days} 天",
+    "last-out": "最近出库 {date}"
+  },
+  "inventory-abc": {
+    "help": "出库按发货完成计。按近 90 天出库量排序，ABC 使用库存日结记录的分类；点击分类筛选下方商品明细。",
+    "y": "出库量累计占比",
+    "x": "商品数累计占比（按出库量从高到低）",
+    "count": "商品种数",
+    "quantity": "出库件数",
+    "select": "筛选 {group} 类商品",
+    "unclassified": "未分类",
+    "unclassified-help": "{count} 种商品没有出库分类，单独列示，不自动计入 C 类。"
+  },
+  "task-list": {
+    "print": "拣货单打印",
+    "picking": {
+      "pending": "待拣货",
+      "in_progress": "拣货中",
+      "completed": "已完成"
+    },
+    "packing": {
+      "pending": "待复核",
+      "in_progress": "复核中",
+      "completed": "已复核"
+    },
+    "goods": "{count} 种商品",
+    "units": "共 {count} 件"
+  },
+  "delivery-list": {
+    "date-from": "计划发货自"
+  },
+  "outbound-freight": {
+    "title": "运费",
+    "help": "按本期交承运商的发货单统计有效运单中承运商返回的净额，按原币种分列，不换算。当前未接账单金额，也没有计费重量，不能视为已对账运费或计算每 kg 单价。",
+    "count": "有金额",
+    "average": "单票净额",
+    "total": "净额合计",
+    "previous": "上期",
+    "empty": "本期及上期没有可用的承运商净额",
+    "missing": "本期 {count} 票缺少有效运单净额或币种，不计入平均值。",
+    "unknown-carrier": "未记录承运商"
+  },
+  "api-key-review": {
+    "signed": "已配置签名",
+    "unsigned": "未配置签名",
+    "document-events": "收货通知、发货单状态事件",
+    "document-events-help": "单据状态事件定向推送给创建该单据的系统，无需额外订阅。",
+    "subscribed": "已订阅",
+    "unsubscribed": "未订阅",
+    "no-url": "未设置推送地址",
+    "recent": "最近",
+    "call-unrecorded": "调用时间：未记录",
+    "latest-event": "最新事件",
+    "no-events": "暂无推送记录",
+    "failed": "推送失败",
+    "no-log-permission": "无推送日志查看权限"
+  },
+  "role-review": {
+    "other": "其他"
+  },
+  "location-zones": {
+    "title": "库区",
+    "all": "全部库区",
+    "help": "库区取库位编码第一个连字符之前的部分，如 A-01-1 属于 A 区。无分隔符或以连字符开头时保留完整编码。数量按顶部仓库范围及启用状态统计，不受右侧搜索和类型筛选影响。"
+  },
+  "receipt-differences": {
+    "title": "收货差异",
+    "summary": "{units} 件 · {count} / {received} 张",
+    "help": "按本期预计到货日期范围内已接收的收货通知统计，逐商品计算短收与多收，破损单列。数量及张数覆盖全范围，不受明细分页影响；拒收尚无独立记录，不能据此认定为零。",
+    "short": "短收",
+    "over": "多收",
+    "damage": "破损",
+    "chart": "以图表查看",
+    "table": "以表格查看",
+    "units": "件数",
+    "documents": "{count} 张",
+    "rejection-unavailable": "拒收：暂无独立数据，以上差异不包含拒收拆分。",
+    "empty": "已接收单据中暂无已记录的数量或破损差异",
+    "coverage": "展示 {shown} / {total} 张有差异的单据（按预计到货日，最多 20 张）"
   }
 }

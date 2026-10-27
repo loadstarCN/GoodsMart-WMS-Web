@@ -142,6 +142,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
         <col v-for="col in columns" :key="col.key" :style="col.width ? { width: col.width } : undefined">
       </colgroup>
       <thead>
+        <slot name="header">
         <tr>
           <th v-if="selectable" class="w-table__select" scope="col">
             <WCheckbox :model-value="allSelected" :indeterminate="someSelected" :disabled="loading || selectableKeys.length === 0"
@@ -155,6 +156,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
             </span>
           </th>
         </tr>
+        </slot>
       </thead>
       <tbody v-if="loading">
         <tr v-for="n in skeletonRows" :key="`sk-${n}`" class="w-table__skeleton-row" aria-hidden="true">
@@ -167,9 +169,11 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
       <tbody v-else-if="rows.length === 0">
         <tr class="w-table__empty-row">
           <td :colspan="colspan">
-            <slot name="empty">
-              <WEmptyState :title="emptyTitle || t('w.table.empty')" compact />
-            </slot>
+            <div class="w-table__empty-content">
+              <slot name="empty">
+                <WEmptyState :title="emptyTitle || t('w.table.empty')" compact />
+              </slot>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -200,6 +204,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
   --w-table-edge: 12px;
   --w-table-sticky-top: 0px;
   position: relative;
+  container-type: inline-size;
   width: 100%;
   overflow-x: auto;
   font-family: var(--w-font);
@@ -233,8 +238,8 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
 .w-table thead th {
   height: var(--w-th-h);
   border-bottom: 1px solid var(--w-border);
-  background: var(--w-surface);
-  color: var(--w-text-3);
+  background: var(--w-table-head);
+  color: var(--w-text-2);
   font-size: var(--w-fs-12);
   line-height: var(--w-lh-12);
   font-weight: var(--w-fw-medium);
@@ -264,7 +269,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
 
 /* 底色画在行上（不画在单元格上），单元格之间不会露出细缝 */
 .w-table tbody tr.is-clickable { cursor: pointer; }
-.w-table tbody tr.is-clickable:hover { background: var(--w-surface-2); }
+.w-table tbody tr:hover:not(.is-selected) { background: var(--w-row-hover); }
 .w-table tbody tr.is-selected { background: var(--w-sel-soft); }
 
 .w-table__select-col { width: 44px; }
@@ -278,7 +283,8 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
   background: var(--w-skeleton);
   vertical-align: middle;
 }
-.w-table__empty-row td { height: auto; padding: 0; border-bottom: 0; white-space: normal; }
+.w-table__empty-content { position: sticky; left: 0; width: 100cqw; max-width: 100%; }
+.w-table .w-table__empty-row td:first-child:last-child { height: auto; padding: 0; border-bottom: 0; white-space: normal; }
 .w-table tfoot :deep(td),
 .w-table tfoot :deep(th) {
   height: var(--w-row-h);
@@ -286,4 +292,7 @@ const skeletonWidths = ['72%', '48%', '60%', '36%', '54%']
   border-top: 1px solid var(--w-border);
   font-weight: var(--w-fw-semibold);
 }
+/* Adjacent inline actions must not share an edge; wrappers keep their own gap. */
+.w-table td > :deep(.w-btn + .w-btn) { margin-inline-start: 8px; }
+@media print { .w-table tbody tr:hover { background: transparent; } }
 </style>

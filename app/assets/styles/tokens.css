@@ -149,7 +149,11 @@
   --w-radius-card: 10px;    /* 卡片、浮层、弹窗、警示条外框 */
   --w-radius-pill: 999px;   /* 状态胶囊、计数、头像 */
 
-  /* ---------- 阴影：卡片不加阴影；浮层 = 描边 + 阴影；焦点 = 强调描边 + 3px 焦点环 ---------- */
+  /* ---------- 视觉层次：保持布局，卡片轻阴影，浮层更高；焦点环独立 ---------- */
+  --w-table-head: color-mix(in srgb, var(--w-surface) 60%, var(--w-bg));
+  --w-row-hover: color-mix(in srgb, var(--w-surface) 65%, var(--w-sel-soft));
+  --w-shadow-card: 0 1px 2px rgba(16, 18, 27, 0.025), 0 3px 12px rgba(16, 18, 27, 0.025);
+  --w-shadow-control: 0 1px 2px rgba(16, 18, 27, 0.04);
   --w-shadow-raised: 0 8px 24px rgba(16, 18, 27, 0.12), 0 1px 2px rgba(16, 18, 27, 0.06);
   --w-shadow-modal: 0 16px 48px rgba(16, 18, 27, 0.18);
   --w-shadow-thumb: 0 1px 2px rgba(16, 18, 27, 0.10);  /* 分段控件选中块、开关滑块 */

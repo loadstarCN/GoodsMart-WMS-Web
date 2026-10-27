@@ -1,372 +1,129 @@
-<script lang="ts" setup>
-/**
- * 入库单详情：上面是入库流程（AsnInboundFlow：创建 / 在途 / 收货 / 分拣 / 上架 / 完成，每一步的状态、实际时刻、来源和操作，
- * 在途一步可刷新承运商跟踪、打开查询页），下面是商品明细与入库单自己的操作（打印 / 编辑 / 收货 / 分拣 / 关闭 / 取消），
- * 右边是入库单资料。流程里做了操作（收货、刷新跟踪）页面重读入库单；页面做了操作流程重读。
- */
+<script setup lang="ts">
+import { countryName } from '~/data/countries'
 import type { InboundFlow } from '~/composables/asn/inboundFlow'
-
-// 定义页面元数据
-definePageMeta({
-});
-
-let loading = ref(true);
-const route = useRoute();
-const asnId = String(route.params.id);
-
-const itemData = ref<any>(null);
-const { t } = useI18n();
-// 商品分类存英文原值，显示译名
-const { categoryLabel } = useOptionLabel();
-// 按权限显示操作按钮（鉴权仍以后端为准）
-const staffStore = useStaffStore();
-const { bizErrorMessage } = useBizError();
-// 计算属性转换
-const dataToPass = computed(() => ({
-  current: t('nav.ASN'),
-  list: [t('nav.warehouse'), t('nav.ASN')]
-}));
-
-const fetchData = async () => {
-    loading.value = true;
-    const data = await httpRequest(`/api/warehouse/asn/${asnId}`, {
-        method: 'GET',
-        params: route.query,
-        onSuccess: (data) => {
-          itemData.value = data;
-        },
-        onError: (error) => {
-            showToast(error.message, 'error')
-        },
-        onFinally: () => {
-            loading.value = false;
-        }
-    })
-    return data;   
-};
-
-onMounted(() => {
-    fetchData();
-});
-
-// ------------------ 入库流程（页头的阶段取流程接口的） ----------------------
-const flowRef = ref<{ reload: () => Promise<void> } | null>(null);
-const flowInfo = ref<InboundFlow | null>(null);
-/** 流程里做了操作（收货、刷新跟踪）：入库单的状态、数量随之变化 */
-const onFlowChanged = () => {
-    fetchData();
-};
-
-const receivedASN = async () => {
-    const data = await httpRequest(`/api/warehouse/asn/${asnId}/receive/`, {
-        method: 'PUT',
-        onSuccess: (data) => {
-            itemData.value = data;
-            showToast(t('action-results.success'), 'success')
-        },
-        onError: (error) => {
-            showToast(bizErrorMessage(error), 'error')
-        }
-    })
-    flowRef.value?.reload();
-    return data;   
-};
-const closeASN = async () => {
-    const data = await httpRequest(`/api/warehouse/asn/${asnId}/close/`, {
-        method: 'PUT',
-        onSuccess: (data) => {
-            itemData.value = data;
-            showToast(t('action-results.success'), 'success')
-        },
-        onError: (error) => {
-            showToast(bizErrorMessage(error), 'error')
-        }
-    })
-    flowRef.value?.reload();
-    return data;   
-};
-// 取消ASN（已签收、分拣尚未开始）：后端回滚签收库存、停用分拣任务并关闭单据；待处理的 ASN 用「关闭」
-const canceling = ref(false);
-const cancelASN = async () => {
-    if (canceling.value) return;
-    const confirmed = await showConfirm(
-        t('asn.tips.cancel-confirm-title'),
-        t('asn.tips.cancel-confirm', { id: asnId }),
-        t('asn.operations.cancel'),
-        t('button.dont-cancel'),
-    );
-    if (!confirmed) return;
-    canceling.value = true;
-    let done = false;
-    let conflict = false;
-    await httpRequest(`/api/warehouse/asn/${asnId}/cancel/`, {
-        method: 'PUT',
-        onSuccess: () => {
-            done = true;
-        },
-        onError: (error) => {
-            // 16059 状态已变 / 16060 分拣已开始
-            conflict = error.status === 409;
-            showToast(bizErrorMessage(error), 'error')
-        }
-    })
-    if (done) showToast(t('action-results.success'), 'success')
-    // 成功或状态已变（409）：重新读取单据与流程
-    if (done || conflict) {
-        await Promise.all([fetchData(), flowRef.value?.reload()]);
-    }
-    canceling.value = false;
-};
+import { useAsnActions } from '~/composables/asn/useAsnActions'
+definePageMeta({})
+const route = useRoute()
+const id = computed(() => String(route.params.id))
+const { t, locale } = useI18n()
+useHead({ title: () => `ASN-${id.value}` })
+const staff = useStaffStore()
+const { bizErrorMessage } = useBizError()
+const { busy, run } = useAsnActions()
+const record = ref<any>(null)
+const supplier = ref<any>(null)
+const loading = ref(true)
+const error = ref('')
+const flow = ref<InboundFlow | null>(null)
+const selectedStep = ref<string | null>(null)
+const flowRef = ref<{ reload: () => Promise<void> } | null>(null)
+let generation = 0
+const load = async () => {
+  const seq = ++generation
+  loading.value = true; error.value = ''
+  await httpRequest<any>(`/api/warehouse/asn/${id.value}`, {
+    onSuccess: data => {
+      if (seq !== generation) return
+      record.value = data
+      supplier.value = data.supplier
+      if (data.supplier_id && staff.hasPermission('supplier_read')) httpRequest<any>('/api/warehouse/supplier/' + data.supplier_id, {
+        onSuccess: value => { if (seq === generation) supplier.value = value },
+      })
+    },
+    onError: err => { if (seq === generation) error.value = bizErrorMessage(err) },
+    onFinally: () => { if (seq === generation) loading.value = false },
+  })
+}
+const act = async (action: 'receive' | 'close' | 'cancel') => { if (await run(id.value, action)) await Promise.all([load(), flowRef.value?.reload()]) }
+watch(id, () => { record.value = null; flow.value = null; selectedStep.value = null; load() })
+onMounted(load)
+onBeforeUnmount(() => { generation++ })
+const columns = computed(() => [
+  { key: 'goods', label: t('asn.form-ui.goods-specs'), wrap: true },
+  { key: 'quantity', label: t('asn.form-ui.expected'), type: 'qty' as const, keepZero: true, strong: true },
+  { key: 'actual_quantity', label: t('common.quantities.actual'), type: 'qty' as const, keepZero: true, value: (row: any) => record.value?.status === 'pending' ? null : row.actual_quantity },
+  { key: 'sorted_quantity', label: t('common.quantities.sorted'), type: 'qty' as const },
+  { key: 'damage_quantity', label: t('common.quantities.damaged'), type: 'qty' as const },
+  { key: 'rejected_quantity', label: t('asn.form-ui.rejected'), type: 'qty' as const },
+  { key: 'weight', label: `${t('goods.fields.weight')} (kg)`, type: 'qty' as const },
+  { key: 'volume', label: `${t('goods.fields.volume')} (m³)`, type: 'qty' as const },
+  { key: 'remark', label: t('common.fields.remark'), wrap: true },
+])
+const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.value?.status === 'completed' ? 'ok' : record.value?.status === 'received' ? 'warn' : flow.value?.stage === 'in_transit' ? 'info' : 'none')
 </script>
 <template>
-    <PageHeader :propData="dataToPass" />
-    <!-- Start::row-1 -->
-    <div class="row">
-        <div class="col-xxl-8 col-xl-7">
-            <!-- 入库流程（主区域） -->
-            <AsnInboundFlow ref="flowRef" :asn-id="asnId" @loaded="flowInfo = $event" @changed="onFlowChanged" />
-            <div class="row">
-                <div class="col-xl-12">
-                    <div class="card custom-card">
-                        <div class="card-header d-flex justify-content-between">
-                            <div class="card-title d-flex flex-wrap align-items-center gap-2">
-                                <span class="text-primary">#ASN-{{ itemData?.id }}</span>
-                                <span class="fs-13 text-muted fw-normal" v-if="itemData?.order_number">{{ itemData.order_number }}</span>
-                                <InboundStageBadge :stage="flowInfo?.stage" />
-                            </div>
-                            <div>
-
-                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'pending'">
-                                    {{t('common.dates.expected-arrival')}}:{{ itemData?.expected_arrival_date }}
-                                </span>
-                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'received'">
-                                    {{t('common.dates.actual-arrival')}}:{{ $dayjs(itemData?.received_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                                </span>
-                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'completed'">
-                                    {{t('common.dates.completed')}}:{{ $dayjs(itemData?.completed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                                </span>
-                                <span class="badge bg-primary-transparent" v-if="itemData?.status == 'closed'">
-                                    {{t('common.dates.closed')}}:{{ $dayjs(itemData?.closed_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                                </span>
-
-                            </div>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">{{t('common.fields.items')}}({{ itemData?.detail_count }})</th>
-                                            <th scope="col">{{t('common.fields.quantity')}}</th>
-                                            <th scope="col">{{t('common.quantities.actual')}}</th>
-                                            <th scope="col">{{t('common.quantities.sorted')}}</th>
-                                            <th scope="col">{{t('common.quantities.damaged')}}</th>
-                                            <th scope="col">{{t('goods.fields.weight')}}(kg)</th>
-                                            <th scope="col">{{t('goods.fields.volume')}}(m³)</th>
-
-                                            <th scope="col">{{t('common.fields.remark')}}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="item in itemData?.details">
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="me-2 lh-1">
-                                                        <span class="avatar avatar-xxl me-2">
-                                                            <NuxtLink :to="`/goods/detail/${item?.goods?.id}`">
-                                                                <img :src="item?.goods?.thumbnail_url" alt=""
-                                                                    v-if="item?.goods?.thumbnail_url">
-                                                                <img src="/images/goods/default.png" alt="" v-else>
-                                                            </NuxtLink>
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <p class="mb-0 fw-semibold">
-                                                            <NuxtLink :to="`/goods/detail/${item?.goods?.id}`"
-                                                                class="text-wrap">{{ item?.goods?.name }}
-                                                            </NuxtLink>
-                                                        </p>
-                                                        <p class="mb-0 fs-11 text-muted">{{ item?.goods?.code }}</p>
-                                                        <p class="mb-0 fs-11 text-muted">{{ item?.goods?.brand }}</p>
-                                                        <p class="mb-0 fs-11 text-muted">{{ categoryLabel(item?.goods?.category) }}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>{{ item.quantity}}</td>
-                                            <td>{{ item.actual_quantity}}</td>
-                                            <td>{{ item.sorted_quantity}}</td>
-                                            <td>{{ item.damage_quantity}}</td>
-                                            <td>{{ item.weight}}</td>
-                                            <td>{{ item.volume}}</td>
-                                            <td>{{ item.remark}}</td>
-                                        </tr>
-
-                                        <tr>
-                                            <td colspan="5"></td>
-                                            <td colspan="2">
-                                                <div class="fw-semibold">{{t('common.quantities.total-items')}} :</div>
-                                            </td>
-                                            <td>
-                                                {{ itemData?.total_quantity }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="5"></td>
-                                            <td colspan="2">
-                                                <div class="fw-semibold">{{t('common.quantities.total-actual')}} :</div>
-                                            </td>
-                                            <td>
-                                                {{ itemData?.total_actual_quantity }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="5"></td>
-                                            <td colspan="2">
-                                                <div class="fw-semibold">{{t('common.quantities.total-sorted')}} :</div>
-                                            </td>
-                                            <td>
-                                                {{ itemData?.total_sorted_quantity }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="5"></td>
-                                            <td colspan="2">
-                                                <div class="fw-semibold">{{t('common.quantities.total-damage')}} :</div>
-                                            </td>
-                                            <td>
-                                                {{ itemData?.total_damage_quantity }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="5"></td>
-                                            <td colspan="2">
-                                                <div class="fw-semibold">{{t('common.quantities.total-weight')}} :</div>
-                                            </td>
-                                            <td>
-                                                {{ itemData?.total_weight }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="5"></td>
-                                            <td colspan="2">
-                                                <div class="fw-semibold">{{t('common.quantities.total-volume')}} :</div>
-                                            </td>
-                                            <td>
-                                                {{ itemData?.total_volume }}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="card-footer border-top-0">
-                            <div class="btn-list float-end">
-                                <NuxtLink class="btn btn-primary btn-wave btn-sm" :to="`/asn/print/${asnId}`"><i
-                                        class="ri-printer-line me-1 align-middle"></i>{{t('button.print')}}</NuxtLink>
-                                <NuxtLink :to="`/asn/edit/${itemData?.id}`" class="btn btn-secondary btn-wave btn-sm"
-                                    v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"><i
-                                        class="ri-edit-line me-1 align-middle"></i>{{t('button.edit')}}</NuxtLink>
-                                <button class="btn btn-warning btn-wave btn-sm" v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_receive', 'asn_edit')"
-                                    title="Received" @click="receivedASN()"><i
-                                        class="ri-checkbox-line me-1 align-middle"></i>{{t('asn.operations.receive')}}</button>
-                                <NuxtLink :to="`/sorting/?asn_id=${asnId}`" class="btn btn-warning btn-wave btn-sm"
-                                    v-if="itemData?.status =='received'" title="Go Sorting"><i
-                                        class="ri-checkbox-line me-1 align-middle"></i>{{t('asn.operations.sorting')}}</NuxtLink>
-                                <button class="btn btn-danger btn-wave btn-sm" v-if="(itemData?.status =='pending') && staffStore.hasPermission('asn_edit')"
-                                    :title="t('button.close')" @click="closeASN()"><i
-                                        class="ri-close-line me-1 align-middle"></i>{{ t('button.close') }}</button>
-                                <button type="button" class="btn btn-danger btn-wave btn-sm" v-if="(itemData?.status =='received') && staffStore.hasPermission('asn_edit')"
-                                    :title="t('asn.operations.cancel')" :disabled="canceling" @click="cancelASN()">
-                                    <span v-if="canceling" class="spinner-border spinner-border-sm me-1"></span>
-                                    <i v-else class="ri-arrow-go-back-line me-1 align-middle"></i>{{ t('asn.operations.cancel') }}</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-4 col-xl-5">
-            <div class="row">
-                <div class="col-xl-12">
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                {{t('asn.fields.details')}}
-                            </div>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="mt-2 text-center border-bottom border-block-end-dashed">
-                                <Barcode :value="`ASN-${asnId}`" />
-                            </div>
-
-                            <div class="p-3 border-bottom border-block-end-dashed">
-                                <div class="mb-3">
-                                    <span class="fs-14 fw-semibold">{{t('common.fields.summary')}}</span>
-                                </div>
-                                <p class="mb-2 text-muted">
-                                    <span class="fw-semibold text-default">{{t('asn.fields.type')}} :</span>
-                                    {{ itemData?.asn_type ? t('asn.type.'+itemData.asn_type) : '' }}
-                                </p>
-                                <p class="mb-2 text-muted">
-                                    <span class="fw-semibold text-default">{{t('common.fields.status')}} :</span>
-                                    {{ itemData?.status ? t('common.status.'+itemData.status.replace('_',"-")) : '' }}
-                                </p>
-                                <p class="mb-2 text-muted">
-                                    <span class="fw-semibold text-default">{{t('common.users.creator')}} :</span>
-                                    {{ itemData?.creator?.user_name }}
-                                </p>
-                                <p class="mb-2 text-muted">
-                                    <span class="fw-semibold text-default">{{t('common.dates.created')}} :</span>
-                                    {{ $dayjs(itemData?.created_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                                </p>
-                                <p class="mb-2 text-muted">
-                                    <span class="fw-semibold text-default">{{t('common.dates.updated')}} :</span>
-                                    {{ $dayjs(itemData?.updated_at, 'YYYY-MM-DD HH:mm:ss', itemData) }}
-                                </p>
-                            </div>
-
-                            <div class="p-3 border-bottom border-block-end-dashed">
-                                <div class="d-flex align-items-center justify-content-between mb-3">
-                                    <span class="fs-14 fw-semibold">{{t('common.fields.delivery-info')}} :</span>
-
-                                </div>
-                                <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('common.entities.supplier')}} :
-                                    </span>{{ itemData?.supplier?.name }}
-                                </p>
-
-                                <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('common.entities.carrier')}} :
-                                    </span>{{ itemData?.carrier?.name }}
-                                </p>
-                                <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('common.fields.tracking-number')}} :
-                                    </span>{{ itemData?.tracking_number}}</p>
-                                <p class="mb-2 text-muted"><span class="fw-semibold text-default">{{t('asn.fields.expected-arrival-date')}}
-                                        :
-                                    </span>{{ itemData?.expected_arrival_date}}
-                                </p>
-                                <p class="mb-0 text-muted"><span class="fw-semibold text-default">{{t('common.entities.warehouse')}} :
-                                    </span>{{ itemData?.warehouse?.name}}
-                                </p>
-                            </div>
-                            <div class="p-3 border-bottom border-block-end-dashed">
-                                <div class="mb-3">
-                                    <span class="fs-14 fw-semibold">{{t('common.fields.remark')}} :</span>
-                                </div>
-                                <p class="mb-2 text-muted">
-                                    {{ itemData?.remark }}
-                                </p>
-
-                            </div>
-
-
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
+  <div class="asn-detail w-scope">
+    <div class="asn-detail__top">
+    <nav :aria-label="t('nav.ASN')"><NuxtLink class="w-breadcrumb-link" to="/asn">{{ t('nav.ASN') }}</NuxtLink> / ASN-{{ id }}</nav>
+    <header><div class="asn-detail__heading"><h1>ASN-{{ id }}</h1><WStatus v-if="record" :tone="tone" variant="pill">{{ flow ? t('asn.flow.stage.' + flow.stage) : t('common.status.' + record.status) }}</WStatus><span class="asn-detail__type" v-if="record">{{ t('asn.type.' + record.asn_type) }}<template v-if="record.carrier"> · {{ record.carrier.name }}</template></span></div>
+      <div v-if="record" class="asn-detail__summary"><span>{{ t('common.entities.supplier') }} <b>{{ record.supplier?.name }}</b></span><span v-if="record.order_number">{{ t('dn.fields.order-no') }} <b>{{ record.order_number }}</b></span><span v-if="record.expected_arrival_date">{{ t('asn.fields.expected-arrival-date') }} <b>{{ record.expected_arrival_date }}</b></span></div>
+      <div v-if="record" class="asn-detail__actions">
+        <WButton :to="`/asn/print/${id}`" target="_blank">{{ t('button.print') }}</WButton>
+        <WButton v-if="record.status === 'pending' && staff.hasPermission('asn_edit')" :to="`/asn/edit/${id}`">{{ t('button.edit') }}</WButton>
+        <WButton v-if="record.status === 'received' && staff.hasPermission('sorting_read')" :to="`/sorting?asn_id=${id}`">{{ t('asn.operations.sorting') }}</WButton>
+        <WButton variant="danger" v-if="record.status === 'pending' && staff.hasPermission('asn_edit')" :disabled="busy" @click="act('close')">{{ t('button.close') }}</WButton>
+        <WButton v-if="record.status === 'received' && staff.hasPermission('asn_edit')" variant="text" :disabled="busy" @click="act('cancel')">{{ t('asn.operations.cancel') }}</WButton>
+      </div>
+    </header>
     </div>
-    <!--End::row-1 -->
-
+    <WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="load">{{ t('dn.list.retry') }}</WButton></template></WAlert>
+    <WCard v-if="loading && !record"><span role="status">{{ t('common.status.loading') }}</span></WCard>
+    <AsnFlowProgress v-if="flow" :flow="flow" :selected="selectedStep" @select="selectedStep = $event" />
+    <div v-if="record" class="asn-detail__layout">
+      <div class="asn-detail__main">
+        <AsnInboundFlow :key="id" ref="flowRef" :asn-id="id" :selected="selectedStep" @loaded="flow = $event" @changed="load" />
+        <WCard class="asn-detail__items" :title="t('common.entities.goods')" :subtitle="t('dn.list.goods', { kinds: record.detail_count, qty: record.total_quantity })" flush>
+          <template #actions><WStatus v-if="record.spec_pending_count" tone="warn">{{ t('asn.form-ui.pending-specs', { count: record.spec_pending_count }) }}</WStatus></template>
+          <WTable :rows="record.details || []" :columns="columns" row-key="id" inset>
+            <template #cell-goods="{ row }"><div class="asn-detail__goods"><NuxtLink class="w-record-link" :to="'/goods/detail/' + row.goods_id">{{ row.goods?.name }}</NuxtLink><div>{{ row.goods?.code }}</div><div class="asn-detail__specs">{{ [row.goods?.weight ? row.goods.weight + ' kg' : '', row.goods?.length && row.goods?.width && row.goods?.height ? [row.goods.length, row.goods.width, row.goods.height].map(value => value / 10).join(' × ') + ' cm' : '', row.goods?.origin_country ? countryName(row.goods.origin_country, locale) : ''].filter(Boolean).join(' · ') }}</div></div></template>
+            <template #foot><tr><th>{{ t('asn.form-ui.total') }}</th><td>{{ record.total_quantity }}</td><td>{{ record.status === 'pending' ? '' : record.total_actual_quantity }}</td><td>{{ record.total_sorted_quantity || '' }}</td><td>{{ record.total_damage_quantity || '' }}</td><td>{{ record.total_rejected_quantity || '' }}</td><td>{{ record.total_weight || '' }}</td><td>{{ record.total_volume || '' }}</td><td /></tr></template>
+          </WTable>
+        </WCard>
+      </div>
+      <aside :aria-label="t('asn.fields.details')">
+        <section class="asn-detail__aside-card"><h3>{{ t('common.entities.supplier') }}</h3><div class="asn-detail__supplier"><NuxtLink class="w-record-link" v-if="supplier" :to="'/supplier/detail/' + supplier.id">{{ supplier.name }}</NuxtLink><span v-if="supplier?.address">{{ supplier.address }}</span></div><p v-if="supplier?.phone || supplier?.contact">{{ [supplier.phone, supplier.contact].filter(Boolean).join(' · ') }}</p></section>
+        <section class="asn-detail__aside-card"><h3>{{ t('asn.form-ui.document-info') }}</h3>
+          <dl class="asn-detail__facts">
+            <dt>{{ t('common.entities.warehouse') }}</dt><dd>{{ record.warehouse?.name }}</dd>
+            <template v-if="record.order_number"><dt>{{ t('dn.fields.order-no') }}</dt><dd>{{ record.order_number }}</dd></template>
+            <dt>{{ t('common.dates.created') }}</dt><dd>{{ $dayjs(record.created_at, 'MM/DD HH:mm', record) }} · {{ record.creator?.user_name }}</dd>
+            <dt>{{ t('common.dates.updated') }}</dt><dd>{{ $dayjs(record.updated_at, 'MM/DD HH:mm', record) }}</dd>
+            <dt>{{ t('asn.form-ui.spec-capture') }}</dt><dd>{{ t('asn.form-ui.' + (record.spec_capture?.mode || 'missing')) }}<template v-if="record.spec_capture?.fields?.length"> · {{ record.spec_capture.fields.map((field: string) => t('sorting.spec-pending.fields.' + field.replaceAll('_', '-'))).join('、') }}</template></dd>
+            <dt>{{ t('common.fields.remark') }}</dt><dd class="asn-detail__remark">{{ record.remark || '—' }}</dd>
+          </dl>
+        </section>
+      </aside>
+    </div>
+  </div>
 </template>
-<style scoped></style>
+<style scoped>
+.asn-detail { display: flex; flex-direction: column; gap: 24px; max-width: 1216px; padding-bottom: 24px; }
+.asn-detail__top { display: flex; flex-direction: column; gap: 8px; }
+.asn-detail__summary { display: flex; flex-wrap: wrap; gap: 4px 24px; font-size: 13px; line-height: 20px; color: var(--w-text-3); order: 3; flex-basis: 100%; margin-top: -6px; }
+.asn-detail__summary b { color: var(--w-text-1); font-weight: 500; }
+.asn-detail__type { font-size: 13px; line-height: 20px; color: var(--w-text-2); }
+.asn-detail nav { display: flex; gap: 8px; font-size: 13px; line-height: 20px; color: var(--w-text-2); }
+.w-breadcrumb-link { color: var(--w-text-3); }
+.asn-detail header, .asn-detail__heading, .asn-detail__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.asn-detail header { justify-content: space-between; }
+.asn-detail h1 { margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; }
+.asn-detail__layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.asn-detail__main { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.asn-detail aside { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.asn-detail__aside-card { background: var(--w-surface); border: 1px solid var(--w-border); border-radius: 10px; padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 10px; }
+.asn-detail__aside-card h3 { margin: 0; font-size: 14px; line-height: 22px; font-weight: 600; }
+.asn-detail__aside-card p { margin: 0; font-size: 12px; line-height: 18px; color: var(--w-text-3); }
+.asn-detail__supplier { display: flex; flex-direction: column; font-size: 13px; line-height: 20px; color: var(--w-text-2); }
+.asn-detail__supplier a { font-size: 14px; line-height: 22px; font-weight: 600; color: var(--w-text-1); }
+.asn-detail__facts { display: grid; grid-template-columns: 88px minmax(0, 1fr); row-gap: 6px; margin: 0; font-size: 13px; line-height: 20px; }
+.asn-detail dt { color: var(--w-text-2); font-weight: 400; }
+.asn-detail dd { margin: 0; overflow-wrap: anywhere; }
+.asn-detail__remark { white-space: pre-wrap; }
+.asn-detail__goods { display: flex; flex-direction: column; gap: 0; font-size: 12px; line-height: 18px; color: var(--w-text-3); }
+.asn-detail__goods > a { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--w-text-1); }
+.asn-detail__items :deep(.w-card__header) { padding: 16px 24px; }
+.asn-detail__items :deep(table) { min-width: 800px; }
+.asn-detail__items :deep(tfoot td) { text-align: right; }
+.asn-detail__goods img { object-fit: contain; }
+@media (max-width: 1100px) { .asn-detail__layout { grid-template-columns: minmax(0, 1fr); } }
+</style>

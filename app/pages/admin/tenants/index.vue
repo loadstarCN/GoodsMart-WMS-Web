@@ -116,101 +116,11 @@ const activeTab = computed(() => {
   return statusParam === 'false' ? 'inactive' : 'active'
 })
 
+
+const columns=computed(()=>[{key:'name',label:t('admin.nav.tenants')},{key:'status',label:t('common.fields.status')},{key:'expired',label:t('admin.tenants.fields.expired-at')},{key:'created',label:t('common.dates.created')},{key:'actions',label:t('common.fields.action'),align:'right' as const}])
+useHead({title:()=>t('admin.nav.tenants')})
 </script>
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <div class="row d-flex justify-content-center mb-4" v-if="loading">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">{{ t('common.status.loading') }}...</span>
-        </div>
-  </div>
-  <div class="row" v-else>
-        <div class="col-xl-12">
-            <div class="card custom-card">
-                <div class="card-header justify-content-between">
-                    <div class="card-title">
-                        {{ t('admin.tenants.title') }} <span class="badge bg-light text-default rounded ms-1 fs-12 align-middle">{{ pageData?.total }}</span>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2">
-                        <div class="d-flex flex-wrap gap-2">
-                            <NuxtLink to="/admin/tenants/add" class="btn btn-primary btn-wave"><i class="ri-add-line me-1 fw-semibold align-middle"></i>{{ t('admin.tenants.operations.add') }}</NuxtLink>
-                        </div>
-                        <div class="d-flex" role="search">
-                            <input class="form-control me-2" type="search" :placeholder="t('common.search-placeholder')" :aria-label="t('common.search')" v-model="keyword" style="width: auto;">
-                            <button class="btn btn-light" type="submit" @click="search">{{ t('common.search') }}</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div>
-                        <ul class="nav nav-pills nav-style-3 mb-3" role="tablist">
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'active' }" href="javascript:void(0);" @click="setActiveFilter(true)">{{ t('common.status.active') }}</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" :class="{ active: activeTab === 'inactive' }" href="javascript:void(0);" @click="setActiveFilter(false)">{{ t('common.status.inactive') }}</a>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table text-nowrap table-bordered table-hover">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="d-none d-md-table-cell">{{ t('common.fields.id') }}</th>
-                                    <th scope="col">{{ t('common.fields.name') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.fields.email') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.fields.phone') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('admin.tenants.fields.expired-at') }}</th>
-                                    <th scope="col" class="d-none d-xxl-table-cell">{{ t('common.dates.created') }}</th>
-                                    <th scope="col">{{ t('common.fields.action') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="company in pageData?.items" :key="company?.id" class="invoice-list">
-                                    <td class="d-none d-md-table-cell">{{ company?.id }}</td>
-                                    <td>
-                                      <NuxtLink :to="`/admin/tenants/${company?.id}`">{{ company?.name }}</NuxtLink>
-                                    </td>
-                                    <td class="d-none d-xxl-table-cell">{{ company?.email }}</td>
-                                    <td class="d-none d-xxl-table-cell">{{ company?.phone }}</td>
-                                    <td class="d-none d-xxl-table-cell">
-                                      <span v-if="company?.expired_at" :class="new Date(company.expired_at) < new Date() ? 'text-danger' : ''">
-                                        {{ $dayjs(company?.expired_at, 'YYYY-MM-DD') }}
-                                      </span>
-                                      <span v-else class="text-muted">-</span>
-                                    </td>
-                                    <td class="d-none d-xxl-table-cell">{{ $dayjs(company?.created_at) }}</td>
-                                    <td>
-                                        <div class="hstack gap-2 fs-15">
-                                            <NuxtLink :to="`/admin/tenants/${company?.id}`" class="btn btn-icon btn-sm btn-success-light product-btn"><i class="ri-edit-line"></i></NuxtLink>
-                                            <NuxtLink href="javascript:void(0);" @click="inactiveItem(company.id)" class="btn btn-icon btn-sm btn-warning-light product-btn" v-if="activeTab === 'active'"><i class="ri-eye-off-line"></i></NuxtLink>
-                                            <NuxtLink href="javascript:void(0);" @click="activeItem(company.id)" class="btn btn-icon btn-sm btn-warning-light product-btn" v-else><i class="ri-eye-line"></i></NuxtLink>
-                                            <NuxtLink href="javascript:void(0);" @click="deleteItem(company.id)" class="btn btn-icon btn-sm btn-danger-light product-btn"><i class="ri-delete-bin-line"></i></NuxtLink>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="text-center p-5 border border-top-0" v-if="pageData?.items?.length==0">{{ t('common.status.nothing-show')}}</div>
-                    </div>
-                </div>
-                <div class="card-footer border-top-0">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap">
-                        <template v-if="pageData">
-                            <Pagination :page-size=pageData?.per_page
-                                :current-page=pageData?.page
-                                :total=pageData?.total
-                                :params=$route.query
-                                v-if="pageData.pages > 1"></Pagination>
-                        </template>
-                    </div>
-                </div>
-            </div>
-        </div>
-      </div>
-</template>
-
-<style scoped></style>
+<template><div class="w-admin-list w-scope"><header><div><h1>{{t('admin.nav.tenants')}}</h1><span>{{pageData?.total}}</span></div><WButton variant="primary" to="/admin/tenants/add">{{t('admin.tenants.operations.add')}}</WButton></header><WCard flush><WTabs :items="['active','inactive'].map(key=>({key,label:t('common.status.'+key)}))" :label="t('common.fields.status')" :model-value="activeTab" inset @update:model-value="value=>setActiveFilter(value==='active')"/><form class="filters" @submit.prevent="search"><WInput v-model="keyword" type="search" :aria-label="t('common.search')" :placeholder="t('common.search-placeholder')"><template #prefix><WIcon name="search" :size="16"/></template></WInput><WButton type="submit">{{t('common.search')}}</WButton></form><WTable :columns="columns" :rows="pageData?.items||[]" :loading="loading" inset><template #cell-name="{row}"><NuxtLink class="w-admin-name" :to="'/admin/tenants/'+row.id">{{row.name}}</NuxtLink><small v-if="row.is_builtin">{{t('admin.builtin.label')}}</small></template><template #cell-created="{row}">{{$dayjs(row.created_at,'YYYY-MM-DD HH:mm')}}</template><template #cell-status="{row}"><WStatus :tone="row.is_active?'ok':'none'">{{t('common.status.'+(row.is_active?'active':'inactive'))}}</WStatus></template><template #cell-expired="{row}">{{row.expired_at?$dayjs(row.expired_at,'YYYY-MM-DD'):'—'}}</template><template #cell-actions="{row}"><div class="actions"><WButton size="sm" :to="'/admin/tenants/'+row.id">{{t('button.edit')}}</WButton><WButton size="sm" @click="row.is_active?inactiveItem(row.id):activeItem(row.id)">{{t('common.status.'+(row.is_active?'inactive':'active'))}}</WButton><WButton size="sm" variant="danger" :disabled="!!row.is_builtin" @click="deleteItem(row.id)">{{t('button.delete')}}</WButton></div></template></WTable><footer><WPagination :page="pageData?.page||1" :page-size="pageData?.per_page||20" :total="pageData?.total" show-total @update:page="value=>router.push({query:{...route.query,page:value}})"/></footer></WCard></div></template>
+<style scoped>
+.w-admin-list{display:flex;flex-direction:column;gap:16px}header,header>div{display:flex;gap:12px;align-items:center}header{justify-content:space-between;flex-wrap:wrap}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}header span{font-size:13px;color:var(--w-text-2)}.filters{display:flex;gap:8px;padding:12px 20px;border-bottom:1px solid var(--w-line)}.filters>.w-input{width:300px;max-width:100%}.w-admin-list :deep(.w-table){min-width:800px}.w-admin-list :deep(.w-table td){padding-top:12px;padding-bottom:12px;vertical-align:top}.w-admin-name{color:var(--w-text-1);font-size:14px;font-weight:500;line-height:20px;text-decoration:none}small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.actions{display:flex;gap:8px;justify-content:flex-end}footer{padding:16px 20px;border-top:1px solid var(--w-border)}
+</style>

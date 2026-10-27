@@ -1,35 +1,25 @@
-<script lang="ts" setup>
-
-// 定义页面元数据
-definePageMeta({
-});
-
-// 获取国际化方法
-const { t } = useI18n();
-
-// 计算属性转换
-const dataToPass = computed(() => ({
-  current: t('welcome-wms.title'),
-  list: [t('nav.home'), t('nav.welcome')]
-}));
-
-
+<script setup lang="ts">
+const {t}=useI18n(),warehouse=useWarehouseStore(),staff=useStaffStore(),{bizErrorMessage}=useBizError()
+const loading=ref(true),error=ref(''),counts=ref<Record<string,number>>({}),tasks=ref<any[]>([]),receipts=ref<any[]>([]),pending=ref<any>(null),low=ref<number|null>(null)
+const outbound=['pending','in_progress','picked','packed']
+const inbound=['pending','received']
+const workModules=[{kind:'adjustment',status:'pending',prefix:'ADJ'},{kind:'cyclecount',status:'in_progress',prefix:'CC'},{kind:'sorting',status:'pending',prefix:'SORT'},{kind:'picking',status:'pending',prefix:'PICK'},{kind:'packing',status:'pending',prefix:'PACK'},{kind:'delivery',status:'pending',prefix:'DEL'}]
+let generation=0
+const load=async()=>{
+ const seq=++generation;await warehouse.fetchWarehouses();if(seq!==generation)return;loading.value=true;error.value='';counts.value={};tasks.value=[];receipts.value=[];pending.value=null;low.value=null
+ const headers=warehouseHeaders(warehouse.currentWarehouse?.id),params={warehouse_id:warehouse.currentWarehouse?.id,is_active:true}
+ const request=(path:string,extra:Record<string,any>={})=>httpRequest<any>('/api/warehouse/'+path,{params:{...params,...extra},headers,onError:e=>{if(seq===generation)error.value=bizErrorMessage(e)}})
+ const jobs:Promise<any>[]=[]
+ for(const kind of ['dn','asn'])if(staff.hasPermission(kind+'_read'))for(const status of kind==='dn'?outbound:inbound)jobs.push(request(kind+'/',{status,per_page:kind==='asn'?3:1}).then(result=>{if(seq!==generation||!result)return;counts.value[kind+'-'+status]=result.total;if(kind==='asn')receipts.value.push(...result.items)}))
+ for(const module of workModules)if(staff.hasPermission(module.kind+'_read'))jobs.push(request(module.kind+'/',{status:module.status,per_page:3}).then(result=>{if(seq===generation&&result)tasks.value.push(...result.items.map((row:any)=>({...row,kind:module.kind,prefix:module.prefix})))}))
+ if(staff.hasPermission('inventory_read','putaway_read','putaway_edit'))jobs.push(request('inventory/pending-putaway/summary').then(value=>{if(seq===generation)pending.value=value}))
+ if(staff.hasPermission('inventory_read'))jobs.push(request('inventory/',{below_low_threshold:true,per_page:1}).then(value=>{if(seq===generation)low.value=value?.total??null}))
+ await Promise.all(jobs);if(seq===generation){tasks.value.sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));loading.value=false}
+}
+watch(()=>warehouse.currentWarehouse?.id,load);onMounted(load);onBeforeUnmount(()=>generation++)
+useHead({title:()=>t('dashboard-design.title')})
 </script>
-
-
-<template>
-  <PageHeader :propData="dataToPass" />
-
-  <!-- Start::row-1 -->
-  <div class="row mb-5">
-    <p>{{ $t('welcome-wms.description') }}</p>
-  </div>
-
-  <!--End::row-1 -->
-
-
-
-</template>
-
+<template><div class="w-work-home w-scope"><header><div><p>{{warehouse.currentWarehouse?.name||t('common.all-warehouse')}} · {{t('dashboard-design.scope')}}</p><h1>{{t('dashboard-design.title')}}</h1></div><div class="actions"><WButton v-if="staff.hasPermission('asn_edit')" to="/asn/add">{{t('asn.operations.add')}}</WButton><WButton v-if="staff.hasPermission('dn_edit')" variant="primary" to="/dn/add">{{t('dn.operations.add')}}</WButton></div></header><WAlert v-if="error" tone="block" :title="error"/><div class="home-grid"><div class="main-column"><WCard flush><div class="card-head"><h2>{{t('dashboard-design.pending')}}</h2></div><WEmptyState v-if="loading" :title="t('common.status.loading')"/><WEmptyState v-else-if="!tasks.length" :title="error?t('action-results.failed'):t('dashboard-design.empty')"/><div v-for="task in tasks.slice(0,9)" :key="task.kind+task.id" class="work-row"><i class="dot"/><div><NuxtLink class="w-work-title" :to="'/'+task.kind+'/detail/'+task.id">{{task.prefix}}-{{task.id}} <span>{{t('nav.'+task.kind)}}</span></NuxtLink><small>{{task.warehouse?.name||warehouse.warehouses.find(row=>row.id===(task.warehouse_id||task.asn?.warehouse_id||task.dn?.warehouse_id))?.name}} · {{$dayjs(task.created_at,'MM/DD HH:mm',task.warehouse_id||task.asn?.warehouse_id||task.dn?.warehouse_id||task)}}</small></div><WButton size="sm" :to="'/'+task.kind+'/detail/'+task.id">{{t('operations.ui.process')}}</WButton></div></WCard><WCard v-if="staff.hasPermission('dn_read')" flush><div class="card-head"><h2>{{t('dashboard-design.outbound')}}</h2><NuxtLink class="w-home-link" to="/dn">{{t('dashboard-design.all')}} →</NuxtLink></div><div class="pipeline"><NuxtLink v-for="status in outbound" :key="status" class="w-stage" :to="{path:'/dn',query:{status}}"><small><i class="dot"/>{{t('common.status.'+status.replaceAll('_','-'))}}</small><strong>{{counts['dn-'+status]??'—'}}</strong></NuxtLink></div></WCard></div><aside><WCard v-if="staff.hasPermission('asn_read')" flush><div class="card-head"><h2>{{t('dashboard-design.inbound')}}</h2><NuxtLink class="w-home-link" to="/asn">{{t('nav.ASN')}} →</NuxtLink></div><div class="pipeline"><NuxtLink v-for="status in inbound" :key="status" class="w-stage" :to="{path:'/asn',query:{status}}"><small>{{t('common.status.'+status)}}</small><strong>{{counts['asn-'+status]??'—'}}</strong></NuxtLink><NuxtLink v-if="pending" class="w-stage" to="/inventory?pending_putaway=true"><small>{{t('dashboard-design.putaway')}}</small><strong>{{pending.total_quantity}}</strong></NuxtLink></div><NuxtLink v-for="row in receipts" :key="row.id" class="w-receipt" :to="'/asn/detail/'+row.id"><b>ASN-{{row.id}} · {{row.supplier?.name}}</b><small>{{row.warehouse?.name}} · {{t('asn.flow.summary.lines',{lines:row.detail_count,quantity:row.total_quantity})}}</small></NuxtLink></WCard><WCard v-if="pending||low!==null" flush><div class="card-head"><h2>{{t('dashboard-design.stock')}}</h2><NuxtLink class="w-home-link" to="/inventory">{{t('nav.inventory')}} →</NuxtLink></div><NuxtLink v-if="low!==null" class="w-alert-row" to="/inventory?below_low_threshold=true"><i class="dot"/><span>{{t('dashboard-design.low')}}</span><strong>{{low}}</strong></NuxtLink><NuxtLink v-if="pending" class="w-alert-row" to="/inventory?pending_putaway=true&amp;overdue_days=3"><i class="dot"/><span>{{t('dashboard-design.overdue')}}</span><strong>{{pending.overdue_quantity}}</strong></NuxtLink></WCard></aside></div></div></template>
 <style scoped>
+.w-work-home{display:flex;flex-direction:column;gap:24px}header{display:flex;align-items:center;justify-content:space-between;gap:16px}header p{font-size:12px;line-height:18px;color:var(--w-text-3);margin:0 0 4px}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.actions{display:flex;gap:8px}.home-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(300px,3fr);gap:16px;align-items:start}.main-column,aside{display:flex;flex-direction:column;gap:16px;min-width:0}.card-head{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--w-line)}h2{margin:0;font-size:16px;line-height:24px;font-weight:600}.w-home-link{font-size:12px;line-height:18px;color:var(--w-link);text-decoration:none;white-space:nowrap}.work-row{display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--w-line)}.work-row:last-child{border-bottom:0}.work-row>div{flex:1;min-width:0}.w-work-title{font-size:14px;line-height:22px;font-weight:500;color:var(--w-text-1);text-decoration:none}.w-work-title>span{font-weight:400;margin-left:8px;color:#9A6700}small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3)}.dot{display:inline-block;flex:none;width:6px;height:6px;border-radius:50%;background:#E99B1A}.pipeline{display:flex;padding:16px 24px;gap:16px}.w-stage{flex:1;min-width:0;text-decoration:none;color:var(--w-text-1)}.w-stage+.w-stage{border-left:1px solid var(--w-line);padding-left:16px}.w-stage small{display:flex;gap:6px;align-items:center}.w-stage strong{font-size:28px;line-height:36px;font-weight:600}.w-receipt{display:block;padding:12px 24px;border-top:1px solid var(--w-line);color:var(--w-text-1);text-decoration:none}.w-receipt b{font-size:13px;line-height:20px;font-weight:500}.w-alert-row{display:flex;gap:12px;align-items:center;padding:16px 24px;text-decoration:none;color:var(--w-text-1);border-top:1px solid var(--w-line);font-size:13px;line-height:20px}.w-alert-row>span{flex:1}.w-alert-row strong{font-size:18px;font-weight:600}@media(max-width:1100px){.home-grid{grid-template-columns:minmax(0,1fr)}}@media(max-width:600px){header{align-items:flex-start;flex-direction:column}.pipeline{flex-wrap:wrap;gap:12px}.w-stage{min-width:80px}.work-row,.card-head,.w-receipt,.w-alert-row{padding-left:16px;padding-right:16px}}
 </style>

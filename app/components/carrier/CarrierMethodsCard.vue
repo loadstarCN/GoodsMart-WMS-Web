@@ -67,6 +67,7 @@ const optionsOf = (kind: Kind): string[] => {
     list.push('file')
     list.sort((a, b) => WAYBILL_ORDER.indexOf(a) - WAYBILL_ORDER.indexOf(b))
   }
+  if(!list.includes('api'))list.unshift('api')
   const current = carrier.value?.[FIELD[kind]]
   if (current && !list.includes(current)) list.unshift(current)
   return list
@@ -76,7 +77,7 @@ const unavailable = (kind: Kind, value: string): boolean => {
   const available = carrier.value?.available_methods?.[kind]
   return Array.isArray(available) && !available.includes(value)
 }
-const apiUnavailable = (kind: Kind): boolean => !optionsOf(kind).includes('api')
+const apiUnavailable = (kind: Kind): boolean => unavailable(kind,'api')
 /** 三项都不能选 api（没有启用的在线对接）：说明只写一次 */
 const noApiAtAll = computed(() => KINDS.every((kind) => apiUnavailable(kind)))
 const optionText = (kind: Kind, value: string) => {
@@ -167,95 +168,17 @@ defineExpose({ validate, payload })
 </script>
 
 <template>
-  <div class="card custom-card">
-    <div class="card-header">
-      <div class="card-title">{{ t('carrier.methods.title') }}</div>
-    </div>
-    <div class="card-body">
-      <p class="fs-13 text-muted mb-1">{{ t('carrier.methods.intro') }}</p>
-      <p class="fs-12 text-muted mb-3" v-if="noApiAtAll"><i class="ri-information-line me-1"></i>{{ t('carrier.methods.api-unavailable') }}</p>
-      <div class="mb-3" v-else></div>
-
-      <div class="row gy-4">
-        <!-- 运单 / 揽收 / 跟踪 -->
-        <div class="col-xl-4" v-for="kind in KINDS" :key="kind">
-          <label class="form-label" :for="`carrier-method-${kind}`">{{ t(`carrier.methods.${kind}`) }}</label>
-          <select class="form-select" :id="`carrier-method-${kind}`" :value="methodOf(kind)" :disabled="!editable"
-            @change="setMethod(kind, ($event.target as HTMLSelectElement).value)">
-            <option v-for="value in optionsOf(kind)" :key="value" :value="value" :disabled="unavailable(kind, value)">
-              {{ optionText(kind, value) }}
-            </option>
-          </select>
-          <div class="form-text">{{ helpText(kind, methodOf(kind)) }}</div>
-          <div class="form-text text-muted" v-if="apiUnavailable(kind) && !noApiAtAll">{{ t('carrier.methods.api-unavailable') }}</div>
-          <div class="invalid-feedback d-block" v-if="errorOf(FIELD[kind])">{{ errorOf(FIELD[kind]) }}</div>
-
-          <!-- 定期集荷：星期 + 时间段 -->
-          <div class="mt-3" v-if="kind === 'pickup' && methodOf('pickup') === 'scheduled'">
-            <div class="form-label fs-13 mb-1">{{ t('carrier.methods.schedule-days') }}</div>
-            <div class="d-flex flex-wrap gap-1">
-              <button type="button" class="btn btn-sm" v-for="day in ISO_WEEKDAYS" :key="day" :disabled="!editable"
-                :class="schedule.weekdays?.includes(day) ? 'btn-primary' : 'btn-outline-light text-default'"
-                :aria-pressed="schedule.weekdays?.includes(day)" @click="toggleWeekday(day)">
-                {{ t(`shipping.weekdays.${day}`) }}
-              </button>
-            </div>
-            <div class="row g-2 mt-1">
-              <div class="col-6">
-                <label class="form-label fs-12 mb-1" for="carrier-schedule-ready">{{ t('delivery.pickup.modal.ready-time') }}</label>
-                <input type="time" class="form-control form-control-sm" id="carrier-schedule-ready" :disabled="!editable"
-                  :value="schedule.ready_time || ''" @input="setScheduleTime('ready_time', ($event.target as HTMLInputElement).value)">
-              </div>
-              <div class="col-6">
-                <label class="form-label fs-12 mb-1" for="carrier-schedule-close">{{ t('delivery.pickup.modal.close-time') }}</label>
-                <input type="time" class="form-control form-control-sm" id="carrier-schedule-close" :disabled="!editable"
-                  :value="schedule.close_time || ''" @input="setScheduleTime('close_time', ($event.target as HTMLInputElement).value)">
-              </div>
-            </div>
-            <div class="form-text">{{ t('timezone.warehouse-local-hint') }}</div>
-            <div class="invalid-feedback d-block" v-if="errorOf('pickup_schedule')">{{ errorOf('pickup_schedule') }}</div>
-          </div>
-
-          <!-- 手工约揽收：联系方式 -->
-          <div class="mt-3" v-if="kind === 'pickup' && methodOf('pickup') === 'manual'">
-            <label class="form-label fs-13 mb-1" for="carrier-pickup-contact">{{ t('carrier.methods.pickup-contact') }}</label>
-            <input type="text" class="form-control form-control-sm" id="carrier-pickup-contact" maxlength="255"
-              :placeholder="t('carrier.methods.pickup-contact-placeholder')" :disabled="!editable"
-              v-model="carrier.pickup_contact">
-            <div class="invalid-feedback d-block" v-if="errorOf('pickup_contact')">{{ errorOf('pickup_contact') }}</div>
-          </div>
-        </div>
-
-        <!-- 文件方式：预设、账号项、导出的列、模板 -->
-        <div class="col-xl-12" v-if="methodOf('waybill') === 'file' && filePresets">
-          <CarrierFileSettings ref="fileRef" v-model="carrier" :presets="filePresets" :editable="editable"
-            :server-errors="serverErrors" />
-        </div>
-
-        <!-- 公开查询页 -->
-        <div class="col-xl-8">
-          <label class="form-label" for="carrier-tracking-url">{{ t('carrier.methods.tracking-url') }}</label>
-          <input type="url" class="form-control font-monospace" id="carrier-tracking-url" maxlength="500" :disabled="!editable"
-            :placeholder="pluginTemplate || 'https://example.com/track?number={tracking_number}'" v-model="carrier.tracking_url_template">
-          <div class="form-text">{{ t('carrier.methods.tracking-url-hint', { placeholder: TRACKING_PLACEHOLDER }) }}</div>
-          <div class="form-text" v-if="pluginTemplate">
-            {{ t('carrier.methods.tracking-url-plugin') }} <span class="font-monospace text-break">{{ pluginTemplate }}</span>
-          </div>
-          <div class="invalid-feedback d-block" v-if="errorOf('tracking_url_template')">{{ errorOf('tracking_url_template') }}</div>
-        </div>
-
-        <!-- 自动视为签收 -->
-        <div class="col-xl-4">
-          <label class="form-label" for="carrier-auto-sign">{{ t('carrier.methods.auto-sign') }}</label>
-          <div class="input-group">
-            <input type="number" class="form-control" id="carrier-auto-sign" min="1" max="90" step="1" :disabled="!editable"
-              :placeholder="t('carrier.methods.auto-sign-off')" v-model="carrier.auto_sign_days">
-            <span class="input-group-text">{{ t('carrier.methods.days') }}</span>
-          </div>
-          <div class="form-text">{{ t('carrier.methods.auto-sign-help') }}</div>
-          <div class="invalid-feedback d-block" v-if="errorOf('auto_sign_days')">{{ errorOf('auto_sign_days') }}</div>
-        </div>
-      </div>
-    </div>
-  </div>
+ <div class="w-carrier-methods">
+  <WFormSection v-for="kind in KINDS" :key="kind" :title="t(`carrier.methods.${kind}`)"><div class="w-method-body"><div class="w-method-options"><label v-for="value in optionsOf(kind)" :key="value" class="w-method-option" :class="{'is-selected':methodOf(kind)===value,'is-disabled':unavailable(kind,value)||!editable}"><input type="radio" :name="'carrier-method-'+kind" :value="value" :checked="methodOf(kind)===value" :disabled="!editable||unavailable(kind,value)" @change="setMethod(kind,value)" /><span><strong>{{optionText(kind,value)}}</strong><small>{{helpText(kind,value)}}</small></span></label></div><WAlert v-if="errorOf(FIELD[kind])" tone="block" :title="errorOf(FIELD[kind])" />
+   <p v-if="apiUnavailable(kind)" class="w-method-hint">{{t('carrier.methods.api-unavailable')}}</p>
+   <template v-if="kind==='waybill'&&methodOf(kind)==='file'&&filePresets"><CarrierFileSettings :ref="(el:any)=>{fileRef=el}" v-model="carrier" :presets="filePresets" :editable="editable" :server-errors="serverErrors" /></template>
+   <div v-if="kind==='pickup'&&methodOf(kind)==='scheduled'" class="w-method-schedule"><div class="w-method-days"><WButton v-for="day in ISO_WEEKDAYS" :key="day" type="button" :disabled="!editable" :variant="schedule.weekdays?.includes(day)?'primary':'secondary'" :aria-pressed="schedule.weekdays?.includes(day)" @click="toggleWeekday(day)">{{t(`shipping.weekdays.${day}`)}}</WButton></div><WFormGrid><WField :span="6" :label="t('delivery.pickup.modal.ready-time')"><WInput type="time" :disabled="!editable" :model-value="schedule.ready_time||''" @update:model-value="value=>setScheduleTime('ready_time',String(value||''))" /></WField><WField :span="6" :label="t('delivery.pickup.modal.close-time')"><WInput type="time" :disabled="!editable" :model-value="schedule.close_time||''" @update:model-value="value=>setScheduleTime('close_time',String(value||''))" /></WField></WFormGrid><p class="w-method-hint">{{t('timezone.warehouse-local-hint')}}</p><WAlert v-if="errorOf('pickup_schedule')" tone="block" :title="errorOf('pickup_schedule')" /></div>
+   <WField v-if="kind==='pickup'&&methodOf(kind)==='manual'" :label="t('carrier.methods.pickup-contact')" :error="errorOf('pickup_contact')"><WInput v-model="carrier.pickup_contact" maxlength="255" :placeholder="t('carrier.methods.pickup-contact-placeholder')" :disabled="!editable" /></WField>
+   <WField v-if="kind==='tracking'" :label="t('carrier.methods.tracking-url')" :error="errorOf('tracking_url_template')" :hint="t('carrier.methods.tracking-url-hint',{placeholder:TRACKING_PLACEHOLDER})" optional><WInput v-model="carrier.tracking_url_template" type="url" maxlength="500" :disabled="!editable" :placeholder="pluginTemplate||'https://example.com/track?number={tracking_number}'" /></WField>
+  </div></WFormSection>
+  <WFormSection :title="t('carrier.methods.auto-sign')"><WFormGrid><WField :span="6" :label="t('carrier.methods.auto-sign')" :hint="t('carrier.methods.auto-sign-help')" :error="errorOf('auto_sign_days')" optional><WInput v-model="carrier.auto_sign_days" type="number" min="1" max="90" step="1" :disabled="!editable" :placeholder="t('carrier.methods.auto-sign-off')" :suffix="t('carrier.methods.days')" /></WField></WFormGrid></WFormSection>
+ </div>
 </template>
+<style scoped>
+.w-carrier-methods{border-top:1px solid var(--w-line)}.w-method-body{display:flex;flex-direction:column;gap:16px}.w-method-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.w-method-option{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--w-border);border-radius:8px;padding:14px 12px;cursor:pointer}.w-method-option input{margin:3px 0 0;width:16px;height:16px;flex:none;accent-color:var(--w-pri)}.w-method-option strong{display:block;font-size:14px;line-height:20px;font-weight:500}.w-method-option small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.w-method-option.is-selected{border-color:#5F1FE6;background:#F5F4FF}.w-method-option.is-disabled{opacity:.6;cursor:default}.w-method-hint{font-size:12px;line-height:18px;color:var(--w-text-3);margin:0}.w-method-days{display:flex;flex-wrap:wrap;gap:8px}.w-method-schedule{display:flex;flex-direction:column;gap:12px}
+</style>

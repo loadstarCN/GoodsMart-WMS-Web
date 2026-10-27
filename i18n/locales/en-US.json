@@ -1,4 +1,15 @@
 {
+  "operator-report": {
+    "title": "Operator efficiency",
+    "operator": "Operator",
+    "quantity": "Quantity",
+    "tasks": "Completed tasks",
+    "hours": "Participating task hours",
+    "rate": "Units per hour",
+    "untimed": "Untimed tasks",
+    "median": "Median rate",
+    "scope": "Completed tasks in this period. Time is full task elapsed time including pauses, not individual labor hours; shared tasks count once for each participant. Missing or nonpositive durations contribute quantity only."
+  },
   "language": "English",
   "nav": {
     "home": "Home",
@@ -377,7 +388,8 @@
       "password-mismatch": "New password and confirmation do not match",
       "password-same-as-old": "New password cannot be the same as the current password",
       "quantity-exceeds-available": "Quantity exceeds the available stock (max {max})",
-      "password-policy": "Password must be {min}–{max} characters with an uppercase letter, a lowercase letter, a digit and a special character ({special}); only letters, digits and these characters are allowed"
+      "password-policy": "Password must be {min}–{max} characters with an uppercase letter, a lowercase letter, a digit and a special character ({special}); only letters, digits and these characters are allowed",
+      "quantity-invalid": "Enter a whole number greater than or equal to 0"
     },
     "statistics": {
       "title": "Statistics",
@@ -474,6 +486,46 @@
         "oldest": "Oldest awaiting putaway since {time}"
       },
       "empty": "No goods are awaiting putaway"
+    },
+    "ui": {
+      "composition": "Stock composition",
+      "thresholds": "Replenishment / excess thresholds",
+      "low": "Replenishment threshold",
+      "high": "Excess threshold",
+      "disabled": "-1 disables the threshold",
+      "selected": "{count} selected",
+      "by-goods": "By goods",
+      "occupied": "Reserved for shipping",
+      "outside": "Other stock states",
+      "operations": "In progress",
+      "invalid": "Enter integers (-1 to disable); the low threshold cannot exceed the high threshold.",
+      "choose-warehouse": "Select inventory rows from one warehouse."
+    },
+    "views": {
+      "goods": "By product",
+      "location": "By location",
+      "history": "Historical stock",
+      "view": "Inventory view",
+      "lot": "Lot",
+      "expiry": "Expiry date",
+      "occupied": "Occupied locations",
+      "empty": "Empty locations",
+      "location-search": "Location, product name or code"
+    },
+    "history": {
+      "total": "In-warehouse total",
+      "date": "Balance date",
+      "partial": "Early records contain location stock only; pending, picked and packed stock are excluded.",
+      "none": "No inventory records are available for this date.",
+      "source": "Source",
+      "sources": {
+        "realtime": "Live stock",
+        "ledger": "Ledger balance",
+        "derived": "Derived history",
+        "computed": "Computed balance",
+        "legacy_snapshot": "Legacy snapshot",
+        "none": "No records"
+      }
     }
   },
   "company": {
@@ -516,6 +568,9 @@
     "tips": {
       "export": "Printed in English on Commercial Invoices (CI) and Packing Lists (PL) for export shipments.",
       "export-required": "Issuing documents requires the English legal name, English address, phone and country code (phone and country code are taken from the warehouse first)."
+    },
+    "ui": {
+      "defaults": "Defaults"
     }
   },
   "department": {
@@ -535,6 +590,10 @@
       "add": "Add Department",
       "edit": "Edit Department",
       "delete": "Delete Department"
+    },
+    "ui": {
+      "create": "New department",
+      "view-staff": "View staff"
     }
   },
   "warehouse": {
@@ -568,6 +627,41 @@
       "export": "Printed on documents as Ship From when it differs from the company address.",
       "export-latin": "The English address is under \"Latin (for international labels)\" above.",
       "timezone": "Times on this warehouse's orders and tasks are shown and entered in this time zone; business dates (ship date, document date, pickup date) and \"today\" follow it too. Server default = the time zone the server is configured with."
+    },
+    "ui": {
+      "create": "New warehouse",
+      "basic": "Basic information",
+      "currency": "Default currency",
+      "pickup-contact": "Pickup contact",
+      "capture": "Receiving specifications",
+      "capture-fields": "Capture fields",
+      "weight": "Weight",
+      "dimensions": "Dimensions",
+      "origin_country": "Country of origin",
+      "capture-mode": "Capture mode",
+      "missing": "Missing values only",
+      "remeasure": "Measure all again",
+      "capture-enforcement": "Incomplete capture",
+      "warn": "Warn and continue",
+      "block": "Block completion",
+      "goods-count": "{count} products",
+      "dispatch-today": "Dispatch today",
+      "receive-today": "Receive today",
+      "status-count": "{active} active · {inactive} inactive",
+      "export-missing": "English address or pickup contact missing",
+      "overview": "Overview",
+      "information": "Warehouse information",
+      "position": "Position",
+      "zone": "Zone",
+      "zones": "Zones and locations",
+      "empty-locations": "Empty",
+      "nearly-full": "Nearly full",
+      "plan-version": "Version",
+      "plan-live": "Published",
+      "plan-changed": "Draft changes",
+      "zone-summary": "{zones} zones · {locations} locations",
+      "all-staff": "View all {count} staff",
+      "business-date": "Business date"
     }
   },
   "location": {
@@ -612,6 +706,26 @@
       },
       "quantity-required": "Enter quantity",
       "reason-required": "Enter reason"
+    },
+    "ui": {
+      "create": "New location",
+      "position": "Position",
+      "dimensions": "Dimensions and capacity",
+      "positive": "Enter a number greater than zero",
+      "utilization": "Volume utilization",
+      "storage": "Stored products",
+      "putaway": "Putaway",
+      "removal": "Removal",
+      "adjustment": "Adjustments",
+      "transfer": "Transfers",
+      "cyclecount": "Cycle counts",
+      "history": "Recent movements",
+      "label": "Location label",
+      "information": "Location information",
+      "all": "All",
+      "putaway-time": "Put away at",
+      "last-movement": "Last movement",
+      "last-count": "Last count"
     }
   },
   "staff": {
@@ -637,6 +751,21 @@
       "add": "Add Staff",
       "edit": "Edit Staff",
       "delete": "Delete Staff"
+    },
+    "ui": {
+      "create": "New staff member",
+      "account": "Account",
+      "roles": "Roles",
+      "last-login": "Last login",
+      "search": "Name, email, phone or employee number",
+      "account-password": "Account and password",
+      "show-password": "Show password",
+      "warehouses": "Accessible warehouses",
+      "new-password": "Set new password",
+      "hide-password": "Hide password",
+      "account-enabled": "Account enabled",
+      "account-enabled-help": "Applied when saved. Disabling blocks sign-in and revokes existing sessions. You cannot disable your own account.",
+      "warehouse-help": "Company administrators can access all company warehouses. Other roles can only work in assigned warehouses."
     }
   },
   "supplier": {
@@ -656,6 +785,22 @@
       "add": "Add Supplier",
       "edit": "Edit Supplier",
       "delete": "Delete Supplier"
+    },
+    "ui": {
+      "create": "New supplier",
+      "basic": "Basic information",
+      "contact": "Contact information",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "enable": "Enable",
+      "status-help": "Disabled suppliers cannot be selected for new receipt notices. Existing notices are unaffected.",
+      "unsaved": "Unsaved changes",
+      "recent": "Recent receipt notices",
+      "all-asns": "All {count} notices",
+      "disable": "Disable",
+      "last-arrival": "Last receipt",
+      "transit": "{count} in transit",
+      "no-arrival": "No arrivals recorded"
     }
   },
   "carrier": {
@@ -813,8 +958,12 @@
         "preset-required": "Choose a preset (or enter a template) for file mode",
         "account-required": "Enter {field}"
       },
-      "version": "Based on: {version}"
-    }
+      "version": "Based on: {version}",
+      "ui": {
+        "instructions": "View import instructions"
+      }
+    },
+    "list-settings": "Settings"
   },
   "recipient": {
     "title": "Recipient Management",
@@ -827,6 +976,31 @@
       "add": "Add Recipient",
       "edit": "Edit Recipient",
       "delete": "Delete Recipient"
+    },
+    "ui": {
+      "create": "New recipient",
+      "basic": "Basic information",
+      "contact": "Contact information",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "enable": "Enable",
+      "status-help": "Disabled recipients cannot be selected for new delivery notices. Existing notices are unaffected.",
+      "unsaved": "Unsaved changes",
+      "recent": "Recent receipt notices",
+      "all-asns": "All {count} notices",
+      "disable": "Disable",
+      "last-arrival": "Last receipt",
+      "transit": "{count} in transit",
+      "source": "Source",
+      "manual": "Manual",
+      "external": "External system",
+      "last-dispatch": "Last dispatch",
+      "search": "Name, contact, phone, address",
+      "records": "Record",
+      "external-id": "External reference",
+      "customs": "Customs",
+      "source-unrecorded": "Source not recorded",
+      "no-dispatch": "No dispatches recorded"
     }
   },
   "goods": {
@@ -883,7 +1057,10 @@
         "dimensions": "mm",
         "origin-country": "As printed on the package (\"MADE IN\"). Leave blank if unknown.",
         "no-changes": "No changes"
-      }
+      },
+      "basic-info": "Basic information",
+      "specs": "Specifications and dimensions",
+      "dates": "Production and expiry"
     },
     "operations": {
       "add": "Add Product",
@@ -920,6 +1097,72 @@
       "processed": "{count} goods processed",
       "upload-another": "Import another file",
       "back-to-list": "Back to goods list"
+    },
+    "ui": {
+      "brand-maker": "Brand · Manufacturer",
+      "onhand": "On hand",
+      "available": "Available",
+      "pending": "Awaiting putaway",
+      "info": "Details",
+      "complete": "Complete",
+      "missing": "Missing: {fields}",
+      "image-missing": "Missing image",
+      "spec-missing": "Missing specs",
+      "dimensions": "Dimensions",
+      "has-stock": "In stock",
+      "export": "Export",
+      "import": "Import",
+      "export-filtered": "Export filtered results",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "brand-filter": "Filter by brand",
+      "location-stock": "Location stock",
+      "stock-records": "Stock records"
+    },
+    "files": {
+      "export-title": "Export goods",
+      "filters": "Filters",
+      "columns": "Export columns",
+      "file": "File",
+      "preset": "Preset",
+      "template": "Import template",
+      "all-columns": "All columns",
+      "format": "File format",
+      "encoding": "Encoding",
+      "language": "Header language",
+      "preview": "Preview",
+      "generate": "Generate file",
+      "recent": "Recent exports",
+      "download": "Download",
+      "move-up": "Move up",
+      "move-down": "Move down",
+      "matches": "{count} matching goods",
+      "lossy": "{count} goods contain characters that will become question marks in this encoding.",
+      "import-title": "Import goods",
+      "upload": "Upload file",
+      "strategy": "Duplicate codes",
+      "history": "Import history",
+      "result": "Preview results",
+      "confirm-import": "Import valid rows",
+      "sheet": "Worksheet",
+      "rows": "Row",
+      "action": "Action",
+      "errors": "Errors",
+      "skip": "Keep existing goods",
+      "active": "Reactivate existing goods",
+      "append": "Fill empty fields",
+      "override": "Overwrite fields",
+      "create": "Create",
+      "update": "Update",
+      "unchanged": "Unchanged",
+      "error": "Error",
+      "completed": "Completed",
+      "failed": "Failed",
+      "partial": "Partially completed",
+      "pending": "Pending",
+      "running": "Running",
+      "expired": "Expired",
+      "error-file": "Download error rows"
     }
   },
   "cyclecount": {
@@ -993,7 +1236,13 @@
     "tips": {
       "cancel-confirm-title": "Cancel this adjustment?",
       "cancel-confirm": "ADJ-{id} will be cancelled. Stock is not changed, and it can no longer be approved or completed. This cannot be undone.",
-      "from-cyclecount": "Generated from cycle count CC-{id}"
+      "from-cyclecount": "Generated from cycle count CC-{id}",
+      "independent-approval": "The creator or last editor of the lines cannot approve this document. Another authorized person must approve it."
+    },
+    "ui": {
+      "pending": "Awaiting approval",
+      "lines": "Adjustment lines",
+      "info": "Document information"
     }
   },
   "asn": {
@@ -1095,6 +1344,35 @@
         "NO_DETAILS": "The ASN has no lines, so it cannot be received",
         "SORTING_TASK_MISSING": "Received, but there is no active sorting task"
       }
+    },
+    "form-ui": {
+      "supplier-type": "Supplier and type",
+      "warehouse-arrival": "Warehouse and arrival",
+      "invalid-measure": "Weight and volume must be nonnegative numbers",
+      "readonly": "This receipt cannot be edited with its current status or your permissions",
+      "close-confirm": "Close ASN-{id}? Receiving will stop for this order.",
+      "goods-specs": "Goods · Unit specifications",
+      "expected": "Expected",
+      "rejected": "Rejected",
+      "pending-specs": "Specifications pending: {count}",
+      "total": "Total",
+      "document-info": "Document details",
+      "spec-capture": "Spec capture",
+      "missing": "Missing only",
+      "remeasure": "Remeasure"
+    },
+    "list": {
+      "count": "{count} notices",
+      "create": "New receipt notice",
+      "tracking": "Carrier · tracking number",
+      "arrival": "Planned arrival",
+      "stage": "Stage",
+      "type": "Type",
+      "arrival-from": "Planned arrival from",
+      "search": "ASN, order, SKU, tracking number",
+      "spec-pending": "Specs to capture",
+      "no-tracking": "No tracking number",
+      "goods-count": "{lines} SKUs · {quantity} units"
     }
   },
   "sorting": {
@@ -1148,7 +1426,8 @@
       "packing-info": "Packing Info",
       "special-handling": "Special Handling",
       "transportation": "Transportation",
-      "order-no": "Order No."
+      "order-no": "Order No.",
+      "transportation-mode": "Transport mode"
     },
     "form": {
       "placeholders": {
@@ -1381,6 +1660,17 @@
         "created": "Created",
         "updated": "Updated"
       }
+    },
+    "form-ui": {
+      "change-warehouse": "Change warehouse",
+      "clear-items": "Changing the warehouse clears added items. Continue?",
+      "use-formatted": "Use formatted address",
+      "use-recipient": "Use recipient address",
+      "address-fields": "Edit address fields",
+      "shipping": "Shipping details",
+      "readonly": "This order cannot be edited with its current status or your permissions",
+      "over-stock": "{count} items exceed available stock; adjust quantities",
+      "warehouse-date": "Warehouse and date"
     }
   },
   "picking": {
@@ -2966,7 +3256,8 @@
         "WAYBILL_EXISTS": "The waybill has been created or exported, so these can't be changed. Cancel the waybill (or discard the export) first",
         "DN_SHIPPED": "Already shipped; they can't be changed"
       }
-    }
+    },
+    "stage-label": "Stage"
   },
   "address": {
     "title": "Address",
@@ -3538,5 +3829,579 @@
       "close": "Close",
       "delete": "Delete"
     }
+  },
+  "items-import": {
+    "title": "Add items in bulk",
+    "source": "Input method",
+    "paste": "Paste items",
+    "file": "Upload file",
+    "help": "Columns: goods code, quantity, remark. Blank quantity defaults to 1. Separate with commas or tabs.",
+    "placeholder": "G001,2,Remark",
+    "file-hint": "CSV or Excel (.xlsx), up to 10 MB",
+    "first-sheet": "First worksheet",
+    "sheet": "Worksheet",
+    "header": "First row contains headers",
+    "csv-template": "Download CSV template",
+    "xlsx-template": "Download Excel template",
+    "preview": "Preview",
+    "line": "Line",
+    "available": "Available",
+    "result": "Result",
+    "low-stock": "Exceeds available stock; adjust before saving",
+    "kept": "Keep existing quantity",
+    "merged": "Combine quantities",
+    "new": "New item",
+    "existing": "Existing items",
+    "add": "Add quantities and combine remarks",
+    "keep": "Keep existing quantities and remarks",
+    "limit": "Up to 500 goods; quantities must be integers from 1 to 2147483647.",
+    "summary": "{valid} valid, {errors} invalid",
+    "apply": "Add valid items",
+    "download-error": "Template download failed. Please retry.",
+    "errors": {
+      "CODE_INVALID": "Goods code is empty or longer than 50 characters",
+      "QUANTITY_INVALID": "Quantity must be a valid positive integer",
+      "EXTRA_COLUMNS": "Only code, quantity and remark columns are allowed",
+      "NOT_FOUND": "Goods not found",
+      "INACTIVE": "Goods are inactive",
+      "TOO_LARGE": "File exceeds the size limit",
+      "TOO_MANY_ROWS": "Up to 10000 rows are allowed",
+      "EMPTY": "No readable item data",
+      "HEADER_INVALID": "Invalid header setting",
+      "NOT_CSV": "Invalid CSV",
+      "FORMAT_INVALID": "Only CSV or XLSX is supported",
+      "UNKNOWN_ENCODING": "Unknown encoding; use UTF-8 or Shift_JIS",
+      "NOT_UTF8": "Invalid UTF-8 text",
+      "NOT_SHIFT_JIS": "Invalid Shift_JIS text",
+      "NOT_XLSX": "Invalid Excel file",
+      "SHEET_NOT_FOUND": "Worksheet not found",
+      "TOO_MANY_CODES": "Preview up to 1000 goods at a time"
+    }
+  },
+  "ledger": {
+    "title": "Ledger",
+    "time": "Time",
+    "movement": "Movement",
+    "document": "Document",
+    "stock-type": "Stock type",
+    "change": "Change",
+    "balance": "Balance",
+    "balances": "Balances",
+    "search": "Product name or code",
+    "from": "Start date",
+    "to": "End date",
+    "reset": "Reset filters",
+    "movements": {
+      "opening": "Opening",
+      "reconcile": "Reconcile",
+      "sort_in": "Sorting receipt",
+      "putaway": "Putaway",
+      "removal": "Removal",
+      "transfer": "Transfer",
+      "pick": "Pick",
+      "pack": "Pack",
+      "pack_short_return": "Packing short return",
+      "dn_cancel_return": "Cancellation return",
+      "ship": "Ship",
+      "sign": "Sign",
+      "adjust_gain": "Adjustment gain",
+      "adjust_loss": "Adjustment loss",
+      "lot_relabel": "Lot relabel",
+      "correction": "Correction"
+    },
+    "types": {
+      "onhand": "On hand",
+      "damaged": "Damaged",
+      "return": "Returns",
+      "pending": "Pending good",
+      "pending_damaged": "Pending damaged",
+      "picked": "Picked",
+      "packed": "Packed",
+      "in_transit": "In transit"
+    },
+    "all-warehouses": "All warehouses",
+    "document-type": "Document type",
+    "documents": {
+      "asn": "ASN",
+      "dn": "Delivery note",
+      "putaway": "Putaway",
+      "removal": "Removal",
+      "transfer": "Transfer",
+      "picking_task": "Picking task",
+      "packing_task": "Packing task",
+      "adjustment": "Stock adjustment"
+    },
+    "ranges": {
+      "today": "Today",
+      "week": "Last 7 days",
+      "month": "This month",
+      "previous": "Last month",
+      "custom": "Custom"
+    },
+    "overview-title": "Period summary",
+    "overview-help": "Default balance includes shelf, pending, picked and packed stock, excluding shipped stock in transit. Picking, packing and internal transfers only change stock state; shipment counts as an issue. A selected stock type shows flows into and out of that type.",
+    "trend": "Balance trend",
+    "day-end": "Day end / live today",
+    "overview-scope": "Summary uses booking time and goods, lot, location and stock-type scope across all matching records. Document and movement filters apply only to detail lines.",
+    "no-lot": "No lot",
+    "balance-help": "Balance for this warehouse, product and stock type across all lots and locations, in booking order."
+  },
+  "threshold": {
+    "daily": "Daily outbound",
+    "current": "Current thresholds",
+    "scope": "Scope: {count} selected products",
+    "fixed": "Fixed values",
+    "suggest": "Based on outbound",
+    "window": "Window days",
+    "cover": "Coverage days",
+    "overstock": "Overstock days",
+    "minimum": "Minimum quantity",
+    "preview": "Row preview",
+    "refresh": "Refresh preview",
+    "stale": "Parameters changed. Refresh the preview before saving.",
+    "no-outbound": "No outbound; no suggestion",
+    "keep": "Leave blank to keep each current value."
+  },
+  "operations": {
+    "ui": {
+      "progress": "Progress",
+      "review": "Verification",
+      "damage": "Damaged",
+      "boxes": "Cartons",
+      "time-operator": "Time · operator",
+      "next": "Next step",
+      "process": "Process",
+      "view": "View",
+      "full-flow": "Full workflow",
+      "new-good": "Good units now",
+      "new-damage": "Damaged units now",
+      "variance": "Variance",
+      "this-entry": "This entry",
+      "records": "Sorting records",
+      "status-records": "Status history",
+      "select-location": "Choose location",
+      "picking-records": "Picking records",
+      "packing-records": "Packing records",
+      "scope": "Scope",
+      "location-goods": "Location · goods",
+      "unrecorded": "Not recorded",
+      "this-page": "This page"
+    }
+  },
+  "auth-design": {
+    "subtitle": "Keep warehouse operations organised, from receiving to shipping.",
+    "language": "Interface language",
+    "show-password": "Show password",
+    "hide-password": "Hide password"
+  },
+  "print-design": {
+    "prepared": "Prepared by",
+    "checked": "Checked by",
+    "received": "Received by",
+    "signature": "Signature",
+    "date": "Date",
+    "language": "Print language",
+    "arrival": "Arrival",
+    "packages": "Packages received",
+    "condition": "Outer condition",
+    "good": "Good",
+    "damaged": "Damaged"
+  },
+  "dashboard-design": {
+    "title": "Work overview",
+    "pending": "Work to process",
+    "outbound": "Outbound progress",
+    "inbound": "Inbound progress",
+    "stock": "Inventory alerts",
+    "all": "View all",
+    "scope": "Current warehouse scope · All open documents",
+    "low": "Below reorder threshold",
+    "putaway": "Waiting for putaway",
+    "overdue": "Waiting for putaway over 3 days",
+    "empty": "No work to process"
+  },
+  "stock-report": {
+    "by-month": "By month",
+    "previous-year": "Previous year",
+    "next-year": "Next year",
+    "title": "Stock movement summary",
+    "from": "Start date",
+    "to": "End date",
+    "opening": "Opening",
+    "inbound": "Inbound",
+    "outbound": "Outbound",
+    "closing": "Closing",
+    "total": "Page total",
+    "hint": "Summarized by posting time; internal warehouse movements are not counted twice.",
+    "scope-total": "Scope totals",
+    "period-ledger": "Period stock ledger",
+    "dimension": "Group by",
+    "category": "Category",
+    "brand": "Brand",
+    "unassigned": "Unassigned",
+    "expand-all": "Expand all",
+    "collapse-all": "Collapse all",
+    "load-more": "Load more / retry",
+    "subtotal": "Total"
+  },
+  "inventory-analysis": {
+    "stock-trend": "On-hand stock trend",
+    "stock-trend-help": "Last 90 days of end-of-day on-hand stock; today is live. Historical coverage follows the stock ledger. Gaps indicate unavailable history, not zero stock.",
+    "title": "Inventory analysis",
+    "asof": "As of",
+    "no-snapshot": "No daily snapshot yet. Data will appear after the inventory daily close job.",
+    "stocked": "SKUs with stock",
+    "moving": "Moving SKUs in 30 days",
+    "dead": "Dead SKUs",
+    "moving-rate": "Moving rate",
+    "age": "Stock age distribution",
+    "abc": "Movement ABC",
+    "out90": "Outbound in 90 days",
+    "unknown": "Unknown",
+    "days": "days",
+    "turnover": "Turnover days",
+    "supply": "Days of supply",
+    "normal": "Normal",
+    "empty": "No stock",
+    "all": "All",
+    "hint": "Age uses FIFO estimates. Dead stock has no outbound in 90 days and an oldest layer over 90 days. ABC uses cumulative 90-day outbound shares.",
+    "scope": "Charts cover the entire selected warehouse. Filters apply only to the table below.",
+    "goods": "Goods details",
+    "quantity": "Quantity",
+    "pieces": "pcs",
+    "average-age": "Average stock age",
+    "no-outbound": "No outbound data",
+    "out30": "Outbound · 30 days",
+    "oldest-age": "Oldest stock age",
+    "unknown-age": "Quantity with unknown age",
+    "stock90": "End-of-day stock · 90 days",
+    "inbound-date": "Received at",
+    "age-days": "Age (days)",
+    "last-in": "Last inbound",
+    "last-out": "Last outbound",
+    "layers": "Stock age layers"
+  },
+  "document-report": {
+    "daily": "Daily trend",
+    "daily-hint": "Grouped by actual carrier handover date. Open a note from its tile or select a date to filter records. Up to 20 tiles per day; select the remaining count for more. Grey bands mark weekends.",
+    "unscheduled": "No planned date",
+    "inbound": "Receiving analysis",
+    "outbound": "Shipping analysis",
+    "scope-asn": "By scheduled arrival date, excluding closed documents",
+    "scope-dn": "By carrier handover date, excluding closed documents",
+    "select-warehouse": "Select a warehouse",
+    "documents": "Documents",
+    "actual": "Actual units",
+    "on_time_rate": "On-time rate",
+    "difference_rate": "Receiving discrepancy rate",
+    "damage": "Damaged units",
+    "expected": "Expected units",
+    "received": "Received documents",
+    "difference": "Discrepant units",
+    "previous": "Previous month, corresponding dates",
+    "arrivals": "Arrivals",
+    "arrival-hint": "Scheduled arrival vs actual receipt; one notice per row",
+    "document": "Document",
+    "planned": "Scheduled date",
+    "actual-date": "Actual date",
+    "late": "Late",
+    "on-time": "On time",
+    "waiting": "Awaiting arrival",
+    "details": "Document details",
+    "daily-unit": "One tile per delivery note",
+    "view-table": "View table",
+    "view-chart": "View chart",
+    "late-shipment": "Late shipment",
+    "distribution": "Distribution",
+    "current": "Current period",
+    "by-carrier": "By carrier",
+    "by-country": "By destination country",
+    "by-source": "By source system",
+    "unknown-carrier": "Carrier not recorded",
+    "unknown-country": "Country not recorded",
+    "unknown-source": "API source not recorded",
+    "distribution-help": "Counts use actual carrier handover dates; markers show the corresponding previous-month period. Select a row to filter documents and clear the filter using the chip above. Countries come from document address snapshots.",
+    "lead-title": "Order processing time",
+    "lead-unit": "Days · by stage",
+    "lead-help": "Only documents handed to the carrier in this period. Includes waiting and non-working days. Picking and packing use the last completion of all active tasks. Missing or invalid timestamps are excluded, with valid sample counts shown.",
+    "stage": "Stage",
+    "median": "Median",
+    "previous-median": "Previous median",
+    "samples": "Valid samples",
+    "stage-pick": "Created → picked",
+    "stage-pack": "Picked → packed",
+    "stage-handover": "Packed → handover",
+    "stage-total": "Created → handover",
+    "slowest": "Slowest document in period",
+    "lead-page": "Bars show the current detail page; reference lines and slowest document cover the entire period.",
+    "missing-stages": "Incomplete stage times",
+    "on-time-title": "On-time shipping",
+    "six-months": "Last 6 months",
+    "on-time-help": "Six months through the selected end date, capped at today. Compares planned and carrier handover dates in warehouse time; unscheduled documents are excluded. The final month is partial.",
+    "late-limit": "The first 20 late shipments are shown; use date-filtered details for the remainder."
+  },
+  "layout": {
+    "title": "Warehouse layout",
+    "new-floor": "Floor {n}",
+    "saved": "Draft saved",
+    "published": "Published v{n}",
+    "revision": "Draft revision {n}",
+    "version": "Published v{n}",
+    "save-first": "Save or discard draft changes first",
+    "draft": "Current draft",
+    "publish": "Publish",
+    "unsaved": "Unsaved",
+    "floors": "Floors and buildings",
+    "objects": "objects",
+    "add-floor": "Add floor",
+    "no-floor": "Add or select a floor",
+    "units": "Positions and dimensions in metres",
+    "properties": "Object properties",
+    "floor-settings": "Floor settings",
+    "x": "Position X",
+    "y": "Position Y",
+    "width": "Width",
+    "height": "Depth",
+    "rotate": "Rotate",
+    "pick-face": "Picking face",
+    "front": "Front",
+    "back": "Back",
+    "both": "Both",
+    "target": "Connect to",
+    "select-target": "Select connector",
+    "travel-seconds": "Travel time (seconds)",
+    "kind": {
+      "rack": "Rack",
+      "wall": "Wall",
+      "zone": "Zone",
+      "door": "Door",
+      "connector": "Connector",
+      "station": "Station"
+    },
+    "discard": "Discard changes",
+    "snap": "Snap to 0.5 m grid",
+    "show-labels": "Show rack labels",
+    "undo": "Undo",
+    "redo": "Redo",
+    "load-more": "Load more locations",
+    "view-map": "View in layout",
+    "delete-floor": "Delete floor",
+    "delete-floor-hint": "Remove “{name}”, its shapes and connector links from this draft. Actual locations and published versions are retained. You can undo this change."
+  },
+  "location-label": {
+    "title": "Location labels",
+    "copies": "Copies",
+    "offset": "Start position",
+    "hint": "Print at actual size (100%) without headers or footers; A4 labels, 2 columns × 5 rows.",
+    "invalid": "Copies must be 1–100 and start position 1–10.",
+    "code-error": "Unable to generate a QR code for this location"
+  },
+  "goods-label": {
+    "title": "Print barcode",
+    "hint": "Use {width} × {height} mm label stock at 100% scale with headers and footers off. Product names and codes retain their original text; the screen preview is enlarged.",
+    "invalid": "Check label dimensions, margins and font size. Copies must be a whole number from 1 to 100.",
+    "company-template": "Company product label template",
+    "company-hint": "Employees in this company share the defaults. Changes apply only to this print job until saved as company defaults.",
+    "restore": "Restore company defaults",
+    "save-default": "Save company defaults",
+    "paper-size": "Label size",
+    "custom": "Custom",
+    "width_mm": "Width",
+    "height_mm": "Height",
+    "margin_mm": "Margin",
+    "name_font_pt": "Product name font size",
+    "barcode-format": "Barcode format",
+    "auto": "Automatic",
+    "show-name": "Show product name",
+    "saved": "Company defaults saved",
+    "temporary": "Temporary changes; company defaults have not changed.",
+    "conflict": "Another user changed the company template. Reload before saving.",
+    "lot": "LOT",
+    "expiry": "EXP",
+    "content-overflow": "Content exceeds the label bounds. Increase the label size, reduce margins or adjust the font size before printing.",
+    "reference-layout": "Use reference layout",
+    "no-lot": "No lot on label",
+    "register-lot": "Register lot",
+    "register-note": "Register the product lot and dates. This creates master data only; it does not receive or adjust stock.",
+    "lot-required": "Enter a lot number.",
+    "invalid-dates": "Expiry must not precede production.",
+    "duplicate-lot": "This lot already exists for the product. Select the existing record."
+  },
+  "warehouse-scope": {
+    "select-top": "Select a warehouse in the top bar to view this analysis"
+  },
+  "count-print": {
+    "title": "Stock count sheet",
+    "blind": "Blind count",
+    "standard": "Standard count",
+    "planned": "Planned date",
+    "mode": "Count mode",
+    "lines": "Lines",
+    "by-location": "Count lines by location",
+    "lot": "Lot",
+    "expiry": "Expiry",
+    "exceptions": "Exceptions",
+    "counted": "Counted by",
+    "reviewed": "Reviewed by",
+    "print": "Print count sheet",
+    "number": "Count number"
+  },
+  "pick-print": {
+    "title": "Picking list",
+    "handling": "Special handling",
+    "suggestion": "Location suggestions",
+    "record": "Picked record",
+    "suggestion-help": "Sorted by location code, remaining unpicked quantities only. Suggestions use current unbatched stock in standard locations, less in-progress picked allocations. Printing does not reserve stock; recheck when picking.",
+    "record-help": "Actual picks for a completed task; quantities are not outstanding picks.",
+    "shortage": "Insufficient available location stock; review required",
+    "picked": "Picked by",
+    "checked": "Checked by",
+    "quantity": "Quantity",
+    "total": "Total",
+    "mode": "Print contents",
+    "by-location": "Pick lines · by location"
+  },
+  "operator-chart": {
+    "task-title": "Each task",
+    "axes": "Quantity × elapsed time",
+    "minutes": "Minutes",
+    "chart": "Chart",
+    "table": "Table",
+    "everyone": "All operators",
+    "task-median": "Task median (units / hour)",
+    "no-timed": "No timed completed tasks",
+    "coverage": "Showing latest {shown} / {total} timed tasks; {untimed} tasks have no elapsed time.",
+    "task": "Task",
+    "daily": "Daily · units",
+    "daily-help": "By task completion date ({zone}); darker cells mean more units.",
+    "no-daily": "No completed tasks in this period",
+    "people-page": "Heatmap shows the current operator page; change pages to see other operators.",
+    "help": "Each point is a completed task; time includes pauses. The line is the median task throughput; points above it are slower."
+  },
+  "operator-overview": {
+    "hours": "hours",
+    "untimed-help": "Units counted; excluded from throughput",
+    "by-person": "By operator",
+    "units-hour": "units / h",
+    "phase": "Operation",
+    "completed": "Completed",
+    "task-help": "Units are recorded by this operator. Elapsed time spans the whole task, including pauses. Untimed tasks are also listed."
+  },
+  "inbound-spec": {
+    "title": "Specification coverage",
+    "collect": "Collect specs",
+    "help": "Unique goods actually received in this period, using current product specifications, not historical receipt snapshots. Missing goods are ranked by received units.",
+    "complete": "Weight and all dimensions · {complete} / {total} goods",
+    "weight": "Weight",
+    "dimensions": "Dimensions",
+    "missing": "Missing specifications: {count} goods · by received units",
+    "received": "{count} units received",
+    "limit": "Showing first {count} goods",
+    "all-complete": "All received goods have complete specifications",
+    "empty": "No goods with recorded received quantities in this period"
+  },
+  "count-accuracy": {
+    "title": "Inventory accuracy",
+    "help": "Counts completed in this period ({zone}), using recorded system-quantity snapshots. Lines without valid snapshots are excluded from accuracy.",
+    "by-line": "By line",
+    "by-quantity": "By unit",
+    "lines": "{different} / {total} lines differ",
+    "quantities": "Difference {different} / system {total} units",
+    "tasks": "Completed counts",
+    "unverified": "{count} lines lack valid snapshots",
+    "months": "Six-month line accuracy",
+    "months-help": "The lighter final month runs through the selected end date or today. Months without valid count lines show —.",
+    "difference": "Difference: {count} units"
+  },
+  "inventory-age": {
+    "measure": "Measure",
+    "quantity": "Units",
+    "skus": "SKUs",
+    "chart": "View chart",
+    "table": "View table",
+    "share": "Unit share",
+    "sku-count": "{count} SKUs",
+    "sku-help": "A SKU may appear in multiple age buckets. SKU bars scale to the largest bucket.",
+    "oldest": "Over 180 days · most units",
+    "no-aged": "No stock with a known age over 180 days",
+    "average": "Average age {days} days",
+    "last-out": "Last outbound {date}"
+  },
+  "inventory-abc": {
+    "help": "Outbound means shipping completed. Ranked by 90-day outbound units; ABC uses the recorded daily classification. Select a class to filter the goods below.",
+    "y": "Cumulative outbound share",
+    "x": "Cumulative SKU share (outbound descending)",
+    "count": "SKU count",
+    "quantity": "Outbound units",
+    "select": "Filter class {group}",
+    "unclassified": "Unclassified",
+    "unclassified-help": "{count} SKUs have no outbound classification and are shown separately from class C."
+  },
+  "task-list": {
+    "print": "Pick sheet",
+    "picking": {
+      "pending": "To pick",
+      "in_progress": "Picking",
+      "completed": "Completed"
+    },
+    "packing": {
+      "pending": "To verify",
+      "in_progress": "Verifying",
+      "completed": "Verified"
+    },
+    "goods": "{count} SKUs",
+    "units": "{count} units total"
+  },
+  "delivery-list": {
+    "date-from": "Scheduled from"
+  },
+  "outbound-freight": {
+    "title": "Freight",
+    "help": "Carrier-returned net charges on active waybills for orders handed over in the period, separated by original currency without conversion. Invoice amounts and billable weight are unavailable; these are not reconciled charges or per-kg rates.",
+    "count": "With amount",
+    "average": "Net per shipment",
+    "total": "Total net",
+    "previous": "Prior",
+    "empty": "No carrier net charges for either period",
+    "missing": "{count} shipments lack an active waybill amount or currency and are excluded from the average.",
+    "unknown-carrier": "Carrier not recorded"
+  },
+  "api-key-review": {
+    "signed": "Signing configured",
+    "unsigned": "Signing not configured",
+    "document-events": "Receipt and dispatch status events",
+    "document-events-help": "Document status events go to the system that created the document; no additional subscription is required.",
+    "subscribed": "Subscribed",
+    "unsubscribed": "Not subscribed",
+    "no-url": "No webhook URL configured",
+    "recent": "Recent activity",
+    "call-unrecorded": "API call time: not recorded",
+    "latest-event": "Latest event",
+    "no-events": "No webhook events",
+    "failed": "Failed events",
+    "no-log-permission": "No permission to view webhook logs"
+  },
+  "role-review": {
+    "other": "Other"
+  },
+  "location-zones": {
+    "title": "Zones",
+    "all": "All zones",
+    "help": "Zones use the code segment before the first hyphen, e.g. A-01-1 belongs to A. Codes without a separator or starting with a hyphen remain whole. Counts follow the global warehouse and active status, before search and type filters."
+  },
+  "receipt-differences": {
+    "title": "Receipt differences",
+    "summary": "{units} units · {count} / {received} documents",
+    "help": "Received notices within the scheduled-arrival period. Shortages and overages are calculated per product; damage is separate. Totals cover the whole cohort before pagination. Rejections are not recorded separately and must not be treated as zero.",
+    "short": "Short",
+    "over": "Over",
+    "damage": "Damaged",
+    "chart": "Chart view",
+    "table": "Table view",
+    "units": "Units",
+    "documents": "{count} notices",
+    "rejection-unavailable": "Rejections: separate data unavailable; no rejection breakdown is included.",
+    "empty": "No recorded quantity or damage differences on received notices",
+    "coverage": "Showing {shown} of {total} notices with differences (scheduled-date order; up to 20)"
   }
 }

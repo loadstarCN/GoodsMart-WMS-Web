@@ -183,7 +183,7 @@ const historyKey = computed(() => (view.customsView.value?.current_documents || 
 
     <DnShipToEditModal v-model:open="shipToOpen" :dn-id="dnId" @saved="refreshAll" />
     <CustomsSnapshotEditor v-if="view.customsView.value" v-model:open="editorOpen" :dn-id="dnId" :customs="view.customsView.value.customs"
-      :lines="view.customsView.value.lines" :fallback-consignee="view.customsView.value.consignee" @saved="refreshAll" />
+      :lines="view.customsView.value.lines" :recipient-tax-defaults="view.customsView.value.recipient_tax_defaults" :fallback-consignee="view.customsView.value.consignee" @saved="refreshAll" />
     <WDrawer v-model:open="historyOpen" :title="t('customs.operations.history')" width="760px">
       <CustomsDocumentHistory v-if="historyOpen" :dn-id="dnId" :active="historyOpen" :reload-key="historyKey" />
     </WDrawer>
