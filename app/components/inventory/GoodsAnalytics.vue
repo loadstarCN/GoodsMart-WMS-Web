@@ -1,14 +1,19 @@
 <script setup lang="ts">
+import GoodsStockDistribution from './GoodsStockDistribution.vue'
+import GoodsStockTrend from './GoodsStockTrend.vue'
+import GoodsReplenishment from './GoodsReplenishment.vue'
+import GoodsFlowDistribution from './GoodsFlowDistribution.vue'
+import GoodsAgeLayers from './GoodsAgeLayers.vue'
 const props = defineProps<{ goodsId: string | number }>()
-const { t, locale } = useI18n(), route = useRoute(), router = useRouter(), warehouses = useWarehouseStore()
-const { $dayjs } = useNuxtApp()
+const { t, locale } = useI18n(), warehouses = useWarehouseStore()
 const { bizErrorMessage } = useBizError()
 const data = ref<any>(null), loading = ref(false), error = ref('')
+const thresholds=ref<{low:number;high:number}|null>(null)
 const warehouseId = computed(() => warehouses.currentWarehouse?.id || null)
 let generation = 0
 const load = async () => {
   const seq = ++generation
-  data.value = null; error.value = ''; loading.value = false
+  data.value = null; error.value = ''; loading.value = false;thresholds.value=null
   if (!warehouseId.value) return
   loading.value = true
   const result = await httpRequest<any>('/api/warehouse/inventory/metrics/goods/' + props.goodsId, {
@@ -20,6 +25,8 @@ const load = async () => {
 watch([warehouseId, () => props.goodsId], load)
 onMounted(async () => { await warehouses.fetchWarehouses(); load() })
 onBeforeUnmount(() => generation++)
+const liveLayers=computed(()=>data.value?.lot_age_layers||data.value?.layers||[])
+const unknownAge=computed(()=>data.value?.lot_age_layers?liveLayers.value.filter((row:any)=>row.age_days==null).reduce((sum:number,row:any)=>sum+row.quantity,0):data.value?.age_unknown)
 const metric = computed(() => data.value?.latest_metrics)
 const number = (value: any) => value == null ? '—' : Number(value).toLocaleString(locale.value, { maximumFractionDigits: 1 })
 const cards = computed(() => [
@@ -29,17 +36,10 @@ const cards = computed(() => [
   { label: 'supply', value: metric.value?.days_of_supply, days: true },
   { label: 'abc', text: metric.value?.abc_class || '—' },
   { label: 'average-age', value: metric.value?.weighted_age_days, days: true },
-  { label: 'oldest-age', value: data.value?.layers?.length ? Math.max(...data.value.layers.map((row: any) => row.age_days)) : null, days: true },
-  { label: 'unknown-age', value: data.value?.age_unknown },
+  { label: 'oldest-age', value: !unknownAge.value && liveLayers.value.length ? Math.max(...liveLayers.value.map((row: any) => row.age_days)) : null, days: true },
+  { label: 'unknown-age', value: unknownAge.value },
 ])
 const daily = computed(() => data.value?.daily || [])
-const maximum = computed(() => Math.max(1, ...daily.value.map((row: any) => Number(row.stock))))
-const points = computed(() => daily.value.map((row: any, index: number) => `${index * 600 / Math.max(1, daily.value.length - 1)},${90 - Number(row.stock) / maximum.value * 80}`).join(' '))
-const columns = computed(() => [
-  { key: 'in_at', label: t('inventory-analysis.inbound-date'), value: (row: any) => row.in_at ? $dayjs(row.in_at, 'YYYY-MM-DD HH:mm', { warehouse_id: warehouseId.value }) : '—' },
-  { key: 'quantity', label: t('common.fields.quantity'), type: 'qty' as const, keepZero: true },
-  { key: 'age_days', label: t('inventory-analysis.age-days'), type: 'qty' as const, keepZero: true },
-])
 </script>
 
 <template>
@@ -52,11 +52,14 @@ const columns = computed(() => [
       <WAlert v-if="!metric" tone="info" :title="t('inventory-analysis.no-snapshot')" />
       <div class="w-goods-analytics__metrics"><div v-for="card in cards" :key="card.label"><span>{{ t('inventory-analysis.'+card.label) }}</span><strong>{{ card.text ?? number(card.value) }}<small v-if="card.days && card.value!=null"> {{ t('inventory-analysis.days') }}</small></strong></div></div>
       <div class="w-goods-analytics__details">
-        <div class="w-goods-analytics__trend"><h3>{{ t('inventory-analysis.stock90') }}</h3><svg viewBox="0 0 600 110" role="img" :aria-label="t('inventory-analysis.stock90')"><g v-for="tick in [0,.5,1]" :key="tick"><line x1="0" x2="600" :y1="90-tick*80" :y2="90-tick*80" stroke="#EDEFF3"/><text x="0" :y="86-tick*80">{{number(maximum*tick)}}</text></g><polygon v-if="daily.length" :points="'0,90 '+points+' 600,90'" fill="#7855FE" fill-opacity=".1"/><polyline :points="points" fill="none" stroke="#7855FE" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><div class="w-goods-analytics__dates"><span>{{ daily[0]?.date }}</span><span>{{ daily[daily.length-1]?.date }}</span></div></div>
-        <dl><div><dt>{{t('inventory-analysis.last-in')}}</dt><dd>{{metric?.last_in_at?$dayjs(metric.last_in_at,'YYYY-MM-DD',{warehouse_id:warehouseId}):'—'}}</dd></div><div><dt>{{t('inventory-analysis.last-out')}}</dt><dd>{{metric?.last_out_at?$dayjs(metric.last_out_at,'YYYY-MM-DD',{warehouse_id:warehouseId}):'—'}}</dd></div><div><dt>{{t('inventory-analysis.unknown-age')}}</dt><dd>{{number(data.age_unknown)}}</dd></div></dl>
+        <GoodsStockTrend :days="daily" :goods-id="goodsId" :thresholds="thresholds" />
+        <dl><div><dt>{{t('inventory-analysis.last-in')}}</dt><dd>{{metric?.last_in_at?$dayjs(metric.last_in_at,'YYYY-MM-DD',{warehouse_id:warehouseId}):'—'}}</dd></div><div><dt>{{t('inventory-analysis.last-out')}}</dt><dd>{{metric?.last_out_at?$dayjs(metric.last_out_at,'YYYY-MM-DD',{warehouse_id:warehouseId}):'—'}}</dd></div><div><dt>{{t('inventory-analysis.unknown-age')}}</dt><dd>{{number(unknownAge)}}</dd></div></dl>
       </div>
       <p>{{ t('inventory-analysis.hint') }}</p>
-      <div class="w-goods-analytics__layers"><h3>{{t('inventory-analysis.layers')}}</h3><WTable :rows="data.layers" :columns="columns" /></div>
+      <GoodsStockDistribution :rows="data.distribution||[]" :goods-id="Number(goodsId)" />
+      <GoodsReplenishment :goods-id="Number(goodsId)" :warehouse-id="warehouseId" @loaded="row=>thresholds=row?{low:row.current_low,high:row.current_high}:null" />
+      <GoodsFlowDistribution v-if="data.flow_distribution" :data="data.flow_distribution" />
+      <GoodsAgeLayers :rules="data.lot_rules" :rows="liveLayers" :warehouse-id="warehouseId" :today="daily[daily.length-1]?.date||''" />
     </template>
   </section>
 </template>
@@ -73,7 +76,7 @@ header span { font-size:13px; line-height:20px; color:var(--w-text-3); }
 .w-goods-analytics__metrics span,h3 { font-size:12px; line-height:18px; font-weight:500; color:var(--w-text-2); }
 .w-goods-analytics__metrics strong { font-size:16px; line-height:24px; font-weight:600; }
 .w-goods-analytics__metrics small { font-size:12px; font-weight:400; }
-.w-goods-analytics__details { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:24px; }
+.w-goods-analytics__details { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
 h3 { margin:0 0 8px; }
 svg { display:block; width:100%; height:110px; overflow:visible; }
 svg text { fill:var(--w-text-3); font-size:10px; font-family:var(--w-font); }

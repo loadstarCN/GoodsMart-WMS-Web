@@ -5,25 +5,31 @@ const editing=computed(()=>!!props.supplierId),canEdit=computed(()=>staff.hasPer
 const record=ref<Record<string,any>>({name:'',contact:'',phone:'',email:'',zip_code:'',address:'',is_active:true})
 const fields=['name','contact','phone','email','zip_code','address','is_active']
 const loading=ref(false),busy=ref(false),error=ref(''),errors=ref<Record<string,string>>({}),asns=ref<PaginationData|null>(null)
-let original='',generation=0
+const original=ref('');let generation=0
+const recentError=ref(''),recentLoading=ref(false)
+let recentGeneration=0
+const loadRecent=async()=>{
+ const seq=++recentGeneration;recentError.value='';asns.value=null
+ if(!props.supplierId||!staff.hasPermission('asn_read'))return
+ recentLoading.value=true
+ const recent=await httpRequest<PaginationData>('/api/warehouse/asn/',{params:{supplier_id:props.supplierId,per_page:5},onError:e=>{if(seq===recentGeneration)recentError.value=bizErrorMessage(e)}})
+ if(seq===recentGeneration){asns.value=recent;recentLoading.value=false}
+}
 const payload=()=>Object.fromEntries(fields.map(key=>[key,record.value[key]]))
-const dirty=computed(()=>JSON.stringify(payload())!==original)
-const title=computed(()=>editing.value?record.value.name:t('supplier.ui.create'))
+const dirty=computed(()=>JSON.stringify(payload())!==original.value)
+const title=computed(()=>editing.value?(record.value.name||t('supplier.entity')):t('supplier.ui.create'))
 useHead({title})
 const load=async()=>{
  const seq=++generation;error.value=''
- if(!props.supplierId){original=JSON.stringify(payload());return}
+ if(!props.supplierId){original.value=JSON.stringify(payload());return}
  loading.value=true
  const result=await httpRequest<any>('/api/warehouse/supplier/'+props.supplierId,{onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
  if(seq!==generation)return
- if(result){record.value=result;original=JSON.stringify(payload())}
+ if(result){record.value=result;original.value=JSON.stringify(payload())}
  loading.value=false
- if(result&&staff.hasPermission('asn_read')){
-  const recent=await httpRequest<PaginationData>('/api/warehouse/asn/',{params:{supplier_id:props.supplierId,per_page:5}})
-  if(seq===generation)asns.value=recent
- }
+ if(result)await loadRecent()
 }
-watch(()=>props.supplierId,load);onMounted(load);onBeforeUnmount(()=>generation++)
+watch(()=>props.supplierId,load);onMounted(load);onBeforeUnmount(()=>{generation++;recentGeneration++})
 const save=async()=>{
  if(busy.value||!canEdit.value)return
  errors.value={};error.value=''
@@ -33,22 +39,23 @@ const save=async()=>{
  busy.value=true
  try{
   if(!staff.staffInfo)await staff.getCurrentStaffInfo()
-  const previous=original?JSON.parse(original):{}
+  const previous=original.value?JSON.parse(original.value):{}
   const body=editing.value?Object.fromEntries(Object.entries(payload()).filter(([key,value])=>value!==previous[key])):{...payload(),company_id:staff.staffInfo?.company_id}
   if(!Object.keys(body).length)return
   let success=false
   await httpRequest('/api/warehouse/supplier/'+(props.supplierId||''),{method:editing.value?'PUT':'POST',body,onSuccess:()=>{success=true},onError:err=>{error.value=bizErrorMessage(err)}})
-  if(success){original=JSON.stringify(payload());showToast(t('action-results.success'),'success');await router.push('/supplier')}
+  if(success){original.value=JSON.stringify(payload());showToast(t('action-results.success'),'success');await router.push('/supplier')}
  }finally{busy.value=false}
 }
 const columns=computed(()=>[
  {key:'id',label:t('asn.entity')},{key:'stage',label:t('asn.list.stage')},{key:'expected_arrival_date',label:t('asn.list.arrival')},{key:'warehouse',label:t('common.entities.warehouse'),value:(row:any)=>row.warehouse?.name},{key:'total_quantity',label:t('common.fields.quantity'),type:'qty' as const,strong:true,keepZero:true}
 ])
+useUnsavedForm(()=>canEdit.value&&!loading.value&&!!original.value&&JSON.stringify(payload())!==original.value,()=>busy.value)
 </script>
 <template>
  <div class="w-supplier-form w-scope">
-  <header><nav><NuxtLink class="w-supplier-breadcrumb" to="/supplier">{{t('nav.supplier')}}</NuxtLink><span>/</span><span>{{title}}</span></nav><div class="w-supplier-heading"><h1>{{title}}</h1><WStatus v-if="editing" variant="pill" :tone="record.is_active?'ok':'none'">{{t(record.is_active?'supplier.ui.enabled':'supplier.ui.disabled')}}</WStatus></div><div v-if="editing&&record.created_at" class="w-supplier-meta"><span>{{t('common.dates.created')}} {{ $dayjs(record.created_at) }} · {{record.creator?.user_name}}</span><span>{{t('common.dates.updated')}} {{$dayjs(record.updated_at)}}</span></div></header>
-  <WAlert v-if="error" tone="block" :title="error" />
+  <header><nav><NuxtLink class="w-supplier-breadcrumb" to="/supplier">{{t('nav.supplier')}}</NuxtLink><span>/</span><span>{{title}}</span></nav><div class="w-supplier-heading"><h1>{{title}}</h1><WStatus v-if="editing&&record.id" variant="pill" :tone="record.is_active?'ok':'none'">{{t(record.is_active?'supplier.ui.enabled':'supplier.ui.disabled')}}</WStatus></div><div v-if="editing&&record.created_at" class="w-supplier-meta"><span>{{t('common.dates.created')}} {{ $dayjs(record.created_at) }} · {{record.creator?.user_name}}</span><span>{{t('common.dates.updated')}} {{$dayjs(record.updated_at)}}</span></div></header>
+  <WAlert v-if="error" tone="block" :title="error"><template v-if="editing&&!record.id" #actions><WButton :disabled="loading" @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
   <WCard v-if="loading"><WEmptyState :title="t('common.status.loading')" /></WCard>
   <WCard v-else-if="!editing||record.id" flush><form @submit.prevent="save">
    <WFormSection :title="t('supplier.ui.basic')"><WFormGrid><WField :label="t('supplier.fields.name')" :error="errors.name"><WInput v-model="record.name" :disabled="busy||!canEdit" maxlength="100" /></WField></WFormGrid></WFormSection>
@@ -57,7 +64,7 @@ const columns=computed(()=>[
    <WFormSection :title="t('common.fields.status')"><div class="w-supplier-state"><WSwitch v-model="record.is_active" :label="t('supplier.ui.enable')" :disabled="busy||!canEdit" /><WHelp :text="t('supplier.ui.status-help')" /></div></WFormSection>
    <footer><span v-if="dirty&&canEdit" class="w-supplier-dirty"><i />{{t('supplier.ui.unsaved')}}</span><WButton to="/supplier" :disabled="busy">{{t('button.cancel')}}</WButton><WButton v-if="canEdit" type="submit" variant="primary" :disabled="!dirty" :loading="busy">{{t('button.save')}}</WButton></footer>
   </form></WCard>
-  <WCard v-if="editing&&asns" flush><div class="w-supplier-recent"><h2>{{t('supplier.ui.recent')}}</h2><NuxtLink class="w-supplier-all" :to="{path:'/asn',query:{supplier_id:props.supplierId}}">{{t('supplier.ui.all-asns',{count:asns.total})}} →</NuxtLink></div><WTable :rows="asns.items" :columns="columns" inset><template #cell-id="{row}"><NuxtLink class="w-supplier-record" :to="'/asn/detail/'+row.id">ASN-{{row.id}}</NuxtLink></template><template #cell-stage="{row}"><WStatus muted :tone="row.inbound_stage==='completed'?'ok':row.inbound_stage==='exception'?'bad':['in_transit','sorting'].includes(row.inbound_stage)?'info':['putaway','receiving'].includes(row.inbound_stage)?'warn':'none'">{{t('asn.flow.stage.'+row.inbound_stage)}}</WStatus></template></WTable></WCard>
+  <WAlert v-if="recentError" tone="block" :title="recentError"><template #actions><WButton :loading="recentLoading" @click="loadRecent">{{t('dn.list.retry')}}</WButton></template></WAlert><WCard v-if="editing&&asns" flush><div class="w-supplier-recent"><h2>{{t('supplier.ui.recent')}}</h2><NuxtLink class="w-supplier-all" :to="{path:'/asn',query:{supplier_id:props.supplierId}}">{{t('supplier.ui.all-asns',{count:asns.total})}} →</NuxtLink></div><WTable :rows="asns.items" :columns="columns" inset><template #cell-id="{row}"><NuxtLink class="w-supplier-record" :to="'/asn/detail/'+row.id">ASN-{{row.id}}</NuxtLink></template><template #cell-stage="{row}"><WStatus muted :tone="row.inbound_stage==='completed'?'ok':row.inbound_stage==='exception'?'bad':['in_transit','sorting'].includes(row.inbound_stage)?'info':['putaway','receiving'].includes(row.inbound_stage)?'warn':'none'">{{t('asn.flow.stage.'+row.inbound_stage)}}</WStatus></template></WTable></WCard>
  </div>
 </template>
 <style scoped>

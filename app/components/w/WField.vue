@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<{
   error?: string | null
   span?: number
   id?: string
+  group?: boolean
 }>(), {
   optional: false,
   span: 12,
@@ -37,13 +38,15 @@ provide(W_FIELD_KEY, {
   describedBy,
   invalid,
   required: computed(() => !props.optional),
+  group: computed(() => !!props.group),
 })
 </script>
 
 <template>
-  <div class="w-field" :class="spanClass">
+  <div class="w-field" :class="spanClass" :role="group ? 'group' : undefined" :aria-labelledby="group ? `${controlId}-label` : undefined">
     <div class="w-field__label-row">
-      <label class="w-field__label" :for="controlId">{{ label }}</label>
+      <span v-if="group" :id="`${controlId}-label`" class="w-field__label">{{ label }}</span>
+      <label v-else class="w-field__label" :for="controlId">{{ label }}</label>
       <span v-if="optional" class="w-field__optional">{{ t('w.field.optional') }}</span>
       <WHelp v-if="help" :text="help" />
     </div>

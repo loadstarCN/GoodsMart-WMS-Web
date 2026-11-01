@@ -38,6 +38,8 @@ const inResults = computed(() => props.query !== null)
 /** 面板对齐的元素：按钮或结果页的输入框 */
 const searchAnchor = computed(() => (inResults.value ? searchBox.value : searchButton.value) ?? null)
 const isMac = ref(false)
+const mobileTitle = ref('')
+let titleObserver: MutationObserver | undefined
 const shortcut = computed(() => (isMac.value ? '⌘ K' : 'Ctrl K'))
 
 const toggleLabel = computed(() => {
@@ -73,10 +75,14 @@ const onKeydown = (event: KeyboardEvent) => {
   }
 }
 onMounted(() => {
+  const updateTitle = () => { mobileTitle.value = document.title }
+  updateTitle()
+  titleObserver = new MutationObserver(updateTitle)
+  titleObserver.observe(document.head, { childList: true, subtree: true, characterData: true })
   isMac.value = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
   window.addEventListener('keydown', onKeydown)
 })
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+onBeforeUnmount(() => { window.removeEventListener('keydown', onKeydown); titleObserver?.disconnect() })
 </script>
 
 <template>
@@ -106,6 +112,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       <SearchPanel :anchor="searchAnchor" />
     </template>
 
+    <span class="w-topbar__mobile-title" :title="mobileTitle">{{ mobileTitle }}</span>
     <div class="w-topbar__spacer" />
 
     <template v-if="variant === 'wms'">
@@ -113,7 +120,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       <span class="w-topbar__sep" aria-hidden="true" />
     </template>
 
-    <ShellLanguageMenu />
+    <ShellLanguageMenu class="w-topbar__language" />
 
     <button v-if="SHELL_FEATURES.themeToggle" type="button" class="w-topbar__icon-btn" :aria-label="t('shell.theme.dark')"
       :aria-pressed="theme === 'dark'" @click="setTheme(theme === 'dark' ? 'light' : 'dark')">
@@ -237,6 +244,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   box-shadow: none;
 }
 .w-topbar__spacer { flex: 1 1 0; }
+.w-topbar__mobile-title{display:none}
 .w-topbar__sep {
   width: 1px;
   height: 24px;
@@ -247,5 +255,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 @media (max-width: 767.98px) {
   .w-topbar { padding: 0 8px; gap: 4px; }
   .w-topbar__search, .w-topbar__sep { display: none; }
+  .w-topbar__spacer,.w-topbar__language{display:none}
+  .w-topbar__mobile-title{display:block;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px;font-weight:500}
 }
 </style>

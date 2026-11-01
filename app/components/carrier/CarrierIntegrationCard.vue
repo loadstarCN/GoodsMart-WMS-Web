@@ -64,6 +64,9 @@ const { t, te, localeProperties } = useI18n()
 const { bizErrorMessage } = useBizError()
 
 const loading = ref(true)
+const loadError=ref('')
+let loadGeneration=0
+onBeforeUnmount(()=>loadGeneration++)
 const saving = ref(false)
 const testing = ref(false)
 const plugins = ref<IntegrationPlugin[]>([])
@@ -134,28 +137,31 @@ const resetForm = (adapter: string) => {
 }
 
 const load = async () => {
+  const seq=++loadGeneration
+  loadError.value=''
   loading.value = true
   await Promise.all([
     httpRequest<IntegrationPlugin[]>('/api/warehouse/carrier/integrations', {
       method: 'GET',
       onSuccess: (data) => {
-        plugins.value = Array.isArray(data) ? data : []
+        if(seq===loadGeneration)plugins.value = Array.isArray(data) ? data : []
       },
       onError: (error) => {
-        showToast(bizErrorMessage(error), 'error')
+        if(seq===loadGeneration)loadError.value=bizErrorMessage(error)
       },
     }),
     httpRequest<IntegrationState | null>(`/api/warehouse/carrier/${props.carrierId}/integration`, {
       method: 'GET',
       onSuccess: (data) => {
-        current.value = data && typeof data === 'object' && (data as any).adapter ? data : null
+        if(seq===loadGeneration)current.value = data && typeof data === 'object' && (data as any).adapter ? data : null
       },
       onError: (error) => {
-        showToast(bizErrorMessage(error), 'error')
+        if(seq===loadGeneration)loadError.value=bizErrorMessage(error)
       },
     }),
   ])
-  resetForm(current.value?.adapter || '')
+  if(seq!==loadGeneration)return
+  if(!loadError.value)resetForm(current.value?.adapter || '')
   loading.value = false
 }
 
@@ -201,7 +207,7 @@ const showFieldError = (error: any) => {
 }
 
 const save = async () => {
-  if (!props.editable || saving.value) return
+  if (!props.editable || saving.value || testing.value || loading.value || loadError.value) return
   saving.value = true
   fieldErrors.value = {}
   await httpRequest<IntegrationState | null>(`/api/warehouse/carrier/${props.carrierId}/integration`, {
@@ -223,7 +229,7 @@ const save = async () => {
 }
 
 const remove = async () => {
-  if (!props.editable || !current.value) return
+  if (!props.editable || !current.value || saving.value || testing.value || loading.value || loadError.value) return
   const confirmed = await showConfirm(
     t('carrier.integration.remove-confirm-title'),
     t('carrier.integration.remove-confirm', { name: current.value.name }),
@@ -238,7 +244,7 @@ const remove = async () => {
 }
 
 const test = async () => {
-  if (!form.adapter || testing.value) return
+  if (!props.editable || !form.adapter || testing.value || saving.value || loading.value || loadError.value) return
   testing.value = true
   testResult.value = null
   fieldErrors.value = {}
@@ -271,10 +277,11 @@ const dirty = computed(() => {
   if (Object.values(form.secrets).some((v) => !!v)) return true
   return Object.entries(form.settings).some(([k, v]) => (current.value?.settings?.[k] ?? '') !== (v ?? ''))
 })
+useUnsavedForm(() => props.editable && !loading.value && dirty.value, () => saving.value || testing.value)
 </script>
 
 <template>
- <WFormSection class="w-carrier-integration" :title="t('carrier.integration.title')"><div class="w-integration-body"><WEmptyState v-if="loading" :title="t('common.status.loading')" /><template v-else><WStatus :tone="current?.enabled?(current?.ready?'ok':'warn'):'none'">{{badge.text}}</WStatus><p>{{t('carrier.integration.intro')}}</p><WFormGrid><WField :span="6" :label="t('carrier.integration.adapter')"><WSelect :model-value="form.adapter" :options="[{value:'',label:t('carrier.integration.none')},...plugins.map(p=>({value:p.code,label:p.name}))]" :disabled="!editable||saving||testing" @update:model-value="value=>resetForm(String(value||''))" /></WField><div v-if="form.adapter" class="w-span-6 w-integration-enabled"><WSwitch v-model="form.enabled" :label="t('carrier.integration.enabled')" :disabled="!editable||saving||testing" /></div></WFormGrid><div v-if="capabilities.length" class="w-integration-caps"><span>{{t('carrier.integration.capabilities.title')}}</span><WStatus v-for="cap in capabilities" :key="cap" tone="ok">{{cap}}</WStatus></div>
+ <WFormSection class="w-carrier-integration" :title="t('carrier.integration.title')"><div class="w-integration-body"><WEmptyState v-if="loading" :title="t('common.status.loading')" /><WAlert v-else-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert><template v-else><WStatus :tone="current?.enabled?(current?.ready?'ok':'warn'):'none'">{{badge.text}}</WStatus><p>{{t('carrier.integration.intro')}}</p><WFormGrid><WField :span="6" :label="t('carrier.integration.adapter')"><WSelect :model-value="form.adapter" :options="[{value:'',label:t('carrier.integration.none')},...plugins.map(p=>({value:p.code,label:p.name}))]" :disabled="!editable||saving||testing" @update:model-value="value=>resetForm(String(value||''))" /></WField><div v-if="form.adapter" class="w-span-6 w-integration-enabled"><WSwitch v-model="form.enabled" :label="t('carrier.integration.enabled')" :disabled="!editable||saving||testing" /></div></WFormGrid><div v-if="capabilities.length" class="w-integration-caps"><span>{{t('carrier.integration.capabilities.title')}}</span><WStatus v-for="cap in capabilities" :key="cap" tone="ok">{{cap}}</WStatus></div>
  <section v-for="g in groups" :key="g.group" class="w-integration-group"><h3>{{groupTitle(g.group)}}</h3><WFormGrid><WField v-for="field in g.fields" :key="field.key" :label="localized(field.label)" :span="6" :optional="!field.required" :hint="localized(field.help)" :error="fieldErrors[field.key]"><WSwitch v-if="field.kind==='boolean'" v-model="form.settings[field.key]" :label="localized(field.label)" :disabled="!editable||saving||testing" /><WSelect v-else-if="field.kind==='select'" v-model="form.settings[field.key]" :options="(field.options||[]).map(o=>({value:o.value,label:localized(o.label)}))" :disabled="!editable||saving||testing" /><WInput v-else-if="field.kind==='secret'" v-model="form.secrets[field.key]" type="password" autocomplete="new-password" :disabled="!editable||saving||testing" :placeholder="current?.adapter===form.adapter&&current?.secrets?.[field.key]?t('carrier.integration.secret-saved'):''" /><WInput v-else v-model="form.settings[field.key]" :disabled="!editable||saving||testing" :placeholder="localized(field.placeholder)" /></WField></WFormGrid></section>
  <WAlert v-for="(problem,index) in current&&current.adapter===form.adapter?current.problems:[]" :key="index" tone="warn" :title="problemText(problem)" /><WAlert v-if="testResult" :tone="testResult.ok?'ok':'block'" :title="testResult.message">{{testResult.detail}}</WAlert><footer v-if="editable"><WButton v-if="current" variant="danger" :disabled="saving||testing" @click="remove">{{t('carrier.integration.remove')}}</WButton><span /><WButton :disabled="!form.adapter||saving" :loading="testing" @click="test">{{t('carrier.integration.test')}}</WButton><WButton variant="primary" :disabled="!dirty||testing" :loading="saving" @click="save">{{t('button.save')}}</WButton></footer></template></div></WFormSection>
 </template>

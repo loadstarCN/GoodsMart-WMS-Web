@@ -1,67 +1,42 @@
-<script lang="ts" setup>
-
-definePageMeta({
-  layout: 'admin',
-  middleware: 'admin'
-});
-
-const { t } = useI18n();
-
-const dataToPass = computed(() => ({
-  current: t('admin.nav.dashboard'),
-  list: [t('admin.title')]
-}));
-
-let loading = ref(true);
-
-interface DashboardStats {
-  tenants: { total: number };
-  users: { total: number };
-  roles: { total: number };
+<script setup lang="ts">
+definePageMeta({layout:'admin',middleware:'admin'})
+const {t}=useI18n(),{bizErrorMessage}=useBizError()
+const data=ref<any>(null),loading=ref(true),error=ref('')
+let generation=0
+const load=async()=>{
+ const seq=++generation;loading.value=true;error.value='';data.value=null
+ const result=await httpRequest('/api/warehouse/company/platform-overview',{onError:e=>{if(seq===generation)error.value=bizErrorMessage(e)}})
+ if(seq!==generation)return
+ data.value=result;loading.value=false
 }
-
-let stats = ref<DashboardStats>({
-  tenants: { total: 0 },
-  users: { total: 0 },
-  roles: { total: 0 },
-});
-
-const fetchStats = async () => {
-  loading.value = true;
-
-  const [companies, users, roles] = await Promise.all([
-    httpRequest<any>('/api/warehouse/company/', {
-      method: 'GET',
-      params: { per_page: 1 },
-    }),
-    httpRequest<any>('/api/system/user/users', {
-      method: 'GET',
-      params: { per_page: 1 },
-    }),
-    httpRequest<any>('/api/system/user/roles', {
-      method: 'GET',
-      params: { per_page: 1 },
-    }),
-  ]);
-
-  if (companies) {
-    stats.value.tenants.total = companies.total || 0;
-  }
-  if (users) {
-    stats.value.users.total = users.total || 0;
-  }
-  if (roles) {
-    stats.value.roles.total = roles.total || 0;
-  }
-
-  loading.value = false;
-};
-
-onMounted(() => {
-  fetchStats();
-});
-useHead({title:()=>t('admin.nav.dashboard')})
+onBeforeUnmount(()=>generation++)
+onMounted(load)
+useHead({title:()=>t('platform-overview.title')})
+const metrics=computed(()=>[
+ {key:'tenants',to:'/admin/tenants',value:data.value?.tenants?.total,sub:data.value?t('platform-overview.active-counts',data.value.tenants):''},
+ {key:'users',to:'/admin/users',value:data.value?.users?.total,sub:data.value?t('platform-overview.user-counts',data.value.users):''},
+ {key:'roles',to:'/admin/roles',value:data.value?.roles?.total,sub:data.value?t('platform-overview.active-counts',data.value.roles):''},
+ {key:'documents',to:'#volume',value:data.value?.documents?.total,sub:data.value?t('platform-overview.document-counts',data.value.documents):''}
+])
+const volumeColumns=computed(()=>[{key:'name',label:t('admin.nav.tenants'),wrap:true},{key:'dn',label:t('nav.DN'),type:'qty' as const,keepZero:true},{key:'asn',label:t('nav.ASN'),type:'qty' as const,keepZero:true},{key:'shipped',label:t('platform-overview.shipped'),type:'qty' as const,keepZero:true},{key:'share',label:t('platform-overview.share')}])
+const volumeRows=computed(()=>data.value?[...data.value.volume,...(data.value.other_tenants?[{...data.value.other_volume,name:t('platform-overview.others',{count:data.value.other_tenants})}]:[])]:[])
+const share=(row:any)=>data.value?.documents.total?row.total/data.value.documents.total*100:0
+const errorColumns=computed(()=>[{key:'actor',label:t('platform-overview.source'),wrap:true},{key:'endpoint',label:t('platform-overview.request'),wrap:true},{key:'status',label:t('common.fields.status')},{key:'count',label:t('platform-overview.count'),type:'qty' as const},{key:'last_at',label:t('platform-overview.last')},{key:'actions',label:t('common.fields.action')}])
+const errorLogLink=(row:any)=>({path:'/admin/logs',query:{keyword:row.endpoint||undefined,actor:row.actor||undefined,ip_address:row.ip||undefined,status_code:row.status,page:1,created_at:new Date(Date.now()-24*60*60*1000).toISOString()}})
+const errorSummary=computed(()=>{const counts=data.value?.errors.status_counts||{};return [401,403,429,500].map(code=>({code,count:code===500?Object.entries(counts).reduce((sum,[key,value])=>sum+(Number(key)>=500?Number(value):0),0):Number(counts[code]||0)}))})
 </script>
-
-<template><div class="w-admin-home w-scope"><header><h1>{{t('admin.nav.dashboard')}}</h1></header><div class="metrics"><WCard v-for="key in ['tenants','users','roles'] as const" :key="key"><span>{{t('admin.dashboard.total-'+key)}}</span><strong>{{loading?'—':stats[key].total}}</strong><NuxtLink class="w-metric-link" :to="'/admin/'+key">{{t('admin.dashboard.view-all')}}<WIcon name="chevron-right" :size="14"/></NuxtLink></WCard></div></div></template>
-<style scoped>.w-admin-home{display:flex;flex-direction:column;gap:16px}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.metrics :deep(.w-card__body){display:flex;flex-direction:column;gap:8px}.metrics span{font-size:13px;line-height:20px;color:var(--w-text-2)}.metrics strong{display:block;font-size:28px;line-height:36px;font-weight:600;margin:8px 0 16px}.w-metric-link{display:flex;gap:4px;align-items:center;font-size:13px;line-height:20px;color:var(--w-link);text-decoration:none}@media(max-width:700px){.metrics{grid-template-columns:minmax(0,1fr)}}</style>
+<template>
+ <div class="w-platform-home w-scope">
+  <header><div><h1>{{t('platform-overview.title')}}</h1><p v-if="data">{{data.day}} · {{data.timezone}}</p></div><div class="actions"><WButton :loading="loading" @click="load">{{t('delivery.pickup.operations.refresh')}}</WButton><WButton variant="primary" to="/admin/tenants/add">{{t('admin.tenants.operations.add')}}</WButton></div></header>
+  <WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
+  <WCard flush><div class="metrics"><NuxtLink v-for="metric in metrics" :key="metric.key" :to="metric.to"><span>{{t('platform-overview.'+metric.key)}}</span><strong>{{loading?'—':metric.value??'—'}}</strong><small>{{metric.sub}}</small></NuxtLink></div></WCard>
+  <div class="overview-grid">
+   <WCard id="volume" flush><div class="section-heading"><h2>{{t('platform-overview.volume')}} <small v-if="data">{{data.documents.total}}</small></h2><NuxtLink to="/admin/tenants">{{t('admin.dashboard.view-all')}} →</NuxtLink></div><WTable :columns="volumeColumns" :rows="volumeRows" :loading="loading" inset><template #cell-name="{row}"><NuxtLink v-if="row.id" :to="'/admin/tenants/'+row.id">{{row.name}}</NuxtLink><span v-else>{{row.name}}</span></template><template #cell-share="{row}"><span class="share"><i><b :style="{width:share(row)+'%'}"/></i><small>{{share(row).toFixed(1)}}%</small></span></template></WTable><p class="hint">{{t('platform-overview.day-scope',{zone:data?.timezone||'—'})}}</p></WCard>
+   <WCard flush><div class="section-heading"><h2>{{t('platform-overview.expiring')}} <small>{{data?.expiring_count??'—'}}</small></h2><NuxtLink to="/admin/tenants">{{t('admin.nav.tenants')}} →</NuxtLink></div><WEmptyState v-if="data&&!loading&&!data.expiring.length" :title="t('w.table.empty')"/><ul class="expiring"><li v-for="tenant in data?.expiring||[]" :key="tenant.id"><NuxtLink :to="'/admin/tenants/'+tenant.id">{{tenant.name}}</NuxtLink><WStatus :tone="tenant.expired?'bad':tenant.remaining_days<10?'warn':'none'">{{tenant.expired?t('platform-overview.expired'):t('platform-overview.remaining',{count:tenant.remaining_days})}}</WStatus><small>{{$dayjs(tenant.expired_at,'MM/DD HH:mm',data.timezone)}} · {{data.timezone}}</small></li></ul><p class="hint">{{t('platform-overview.expiry-scope')}}</p></WCard>
+  </div>
+  <WCard flush><div class="section-heading"><h2>{{t('platform-overview.errors')}} <small>{{data?.errors.total??'—'}}</small></h2><NuxtLink to="/admin/logs">{{t('admin.nav.logs')}} →</NuxtLink></div><div class="error-summary"><span v-for="item in errorSummary" :key="item.code"><WStatus :tone="item.code>=500?'bad':'warn'">{{item.code===500?'5xx':item.code}}</WStatus><b>{{data?item.count:'\u2014'}}</b></span></div><WTable :columns="errorColumns" :rows="data?.errors.items||[]" :loading="loading" inset><template #cell-actor="{row}"><strong>{{row.ip||'—'}}</strong><small class="sub">{{row.actor||'—'}}</small></template><template #cell-endpoint="{row}"><code>{{row.method}}</code> {{row.endpoint}}</template><template #cell-status="{row}"><WStatus :tone="row.status>=500?'bad':'warn'">{{row.status}}</WStatus></template><template #cell-last_at="{row}">{{$dayjs(row.last_at,'MM/DD HH:mm',data.timezone)}}</template><template #cell-actions="{row}"><WButton size="sm" :to="errorLogLink(row)">{{t('admin.nav.logs')}}</WButton></template></WTable><p v-if="data" class="hint">{{t('platform-overview.error-scope',{count:data?.errors.groups||0})}}</p></WCard>
+ </div>
+</template>
+<style scoped>
+.w-platform-home{display:flex;flex-direction:column;gap:24px;min-width:0}header,.section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}header p{margin:4px 0 0;font-size:13px;color:var(--w-text-3)}.actions{display:flex;gap:8px;flex-wrap:wrap}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.metrics>a{display:flex;flex-direction:column;gap:4px;padding:20px 24px;color:var(--w-text-1);text-decoration:none}.metrics>a+a{border-left:1px solid var(--w-line)}.metrics span,small{font-size:13px;line-height:20px;color:var(--w-text-3)}.metrics strong{color:var(--w-text-1);font-size:28px;line-height:36px;font-weight:600;margin:4px 0}.overview-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}.overview-grid>*{min-width:0}.section-heading{padding:16px 24px}.section-heading h2{font-size:16px;line-height:24px;font-weight:600;margin:0}.section-heading h2 small{margin-left:8px;font-weight:400}a{color:var(--w-link);text-decoration:none}.section-heading>a{font-size:13px;white-space:nowrap}.share{display:flex;gap:8px;align-items:center;min-width:110px}.share>i{height:6px;width:72px;background:var(--w-line);border-radius:4px;overflow:hidden}.share b{display:block;height:100%;background:var(--w-pri)}.expiring{list-style:none;padding:0 24px;margin:0}.expiring li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 0}.expiring li+li{border-top:1px solid var(--w-line)}.expiring a{font-size:14px;overflow-wrap:anywhere}.expiring small{grid-column:1/-1}.hint{font-size:12px;line-height:18px;color:var(--w-text-3);margin:12px 24px 16px}.error-summary{display:flex;gap:12px;flex-wrap:wrap;margin:0 24px 16px}.error-summary>span{display:flex;align-items:center;gap:10px;border:1px solid var(--w-border);border-radius:20px;padding:4px 12px;font-size:13px}.sub{display:block}code{font-size:12px}.w-platform-home :deep(.w-table){min-width:550px}.w-platform-home :deep(.w-table td){max-width:280px;white-space:normal;overflow-wrap:anywhere}@media(max-width:1100px){.overview-grid{grid-template-columns:minmax(0,1fr)}}@media(max-width:650px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metrics>a{padding:16px}.metrics>a:nth-child(3){border-left:0}.metrics>a:nth-child(n+3){border-top:1px solid var(--w-line)}}
+</style>

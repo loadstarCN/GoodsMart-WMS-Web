@@ -11,6 +11,7 @@ export interface WFieldContext {
   describedBy: ComputedRef<string | undefined>
   invalid: ComputedRef<boolean>
   required: ComputedRef<boolean>
+  group?: ComputedRef<boolean>
 }
 
 export const W_FIELD_KEY: InjectionKey<WFieldContext> = Symbol('w-field')

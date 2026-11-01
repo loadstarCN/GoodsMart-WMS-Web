@@ -81,16 +81,19 @@ useWOverlay(open, panel, close)
   justify-content: space-between;
   gap: var(--w-sp-12);
   min-height: var(--w-topbar-h);
-  padding: 0 var(--w-sp-24);
+  padding: var(--w-sp-12) var(--w-sp-24);
   border-bottom: 1px solid var(--w-line);
 }
 .w-drawer__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin: 0;
   font-size: var(--w-fs-16);
   line-height: var(--w-lh-16);
   font-weight: var(--w-fw-semibold);
 }
 .w-drawer__close {
+  flex: none;
   display: grid;
   place-items: center;
   width: 28px;

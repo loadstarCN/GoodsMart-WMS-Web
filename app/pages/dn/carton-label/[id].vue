@@ -1,0 +1,43 @@
+<script setup lang="ts">
+definePageMeta({layout:'custom'})
+const route=useRoute(),staff=useStaffStore(),{t}=useI18n(),{bizErrorMessage}=useBizError()
+const dn=ref<any>(null),packages=ref<any[]>([]),loading=ref(true),error=ref(''),chosen=ref('all')
+const company=computed(()=>staff.staffInfo?.company as any)
+const address=computed(()=>dn.value?.ship_to_effective||dn.value?.ship_to||{})
+const destination=computed(()=>String(address.value.country||dn.value?.recipient?.country||'').toUpperCase())
+const labels=computed(()=>chosen.value==='all'?packages.value:packages.value.filter(row=>String(row.package_no)===chosen.value))
+const barcode=(row:any)=>`DN-${dn.value.id}-${String(row.package_no).padStart(2,'0')}`
+const layoutOverflow=ref(false)
+const paper=useTemplateRef<HTMLElement>('paper')
+let generation=0
+const measure=async()=>{
+ await nextTick();await document.fonts.ready
+ layoutOverflow.value=Array.from(paper.value?.querySelectorAll<HTMLElement>('.label')||[]).some(el=>el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)
+}
+const load=async()=>{
+ const seq=++generation,id=String(route.params.id);loading.value=true;error.value='';dn.value=null;packages.value=[];chosen.value='all';layoutOverflow.value=false
+ const current=await staff.getCurrentStaffInfo();if(seq!==generation)return
+ if(!current){error.value=t('common.validation.company-required');loading.value=false;return}
+ const fail=(e:any)=>{if(seq===generation)error.value=bizErrorMessage(e)}
+ const result=await Promise.all([httpRequest<any>('/api/warehouse/dn/'+id,{onError:fail}),httpRequest<any>('/api/warehouse/dn/'+id+'/packages',{onError:fail})])
+ if(seq!==generation)return
+ if(!error.value){dn.value=result[0];packages.value=result[1]?.packages||[]}
+ loading.value=false;await measure()
+}
+const print=async()=>{if(loading.value||error.value||!labels.value.length)return;await measure();if(!layoutOverflow.value)window.print()}
+onMounted(load)
+watch(()=>route.params.id,load)
+watch(chosen,measure)
+onBeforeUnmount(()=>generation++)
+useHead({title:()=>t('carton-label.title')+' · DN-'+route.params.id})
+</script>
+<template><div class="carton-print w-scope" :class="{'has-overflow':layoutOverflow}"><header class="toolbar"><NuxtLink :to="'/dn/detail/'+route.params.id">DN-{{route.params.id}}</NuxtLink><span>4 × 6 in · 101.6 × 152.4 mm</span><WSelect v-model="chosen" :aria-label="t('carton-label.carton')" :options="[{value:'all',label:t('carton-label.all')},...packages.map(row=>({value:String(row.package_no),label:String(row.package_no)+' / '+packages.length}))]"/><WButton icon="printer" :disabled="loading||!!error||layoutOverflow||!labels.length" @click="print">{{t('button.print-to-pdf')}}</WButton></header><p class="hint">{{t('carton-label.hint')}}</p><WAlert v-if="error" tone="block" :title="error"><WButton @click="load">{{t('dn.list.retry')}}</WButton></WAlert><WEmptyState v-if="loading||(!error&&!packages.length)" :title="t(loading?'common.status.loading':'customs.packages.empty')"/><WAlert v-if="layoutOverflow" tone="block" :title="t('carton-label.overflow')"/><div ref="paper" class="paper-scroll"><section v-for="row in labels" :key="row.package_no" class="label" :aria-label="barcode(row)">
+ <div class="sender"><div><small>FROM</small><b>{{company?.legal_name_en||company?.name}} · {{dn.warehouse?.name}}</b><span>{{dn.warehouse?.address_en||dn.warehouse?.address||company?.address_en||company?.address}}</span></div><div><small>SHIP VIA</small><b>{{dn.carrier?.name||'—'}}</b></div></div>
+ <div class="recipient"><div><small>SHIP TO</small><strong>{{address.name||dn.recipient?.name}}</strong><b>{{address.organization}}</b><template v-if="address.address_line1"><span>{{address.address_line1}}</span><span>{{address.address_line2}}</span><b>{{[address.locality,address.admin_area,address.postal_code].filter(Boolean).join(' ')}}</b></template><span v-else>{{dn.shipping_address}}</span><b>{{destination}}</b><span class="phone" v-if="address.phone||dn.recipient?.phone">TEL {{address.phone||dn.recipient?.phone}}</span></div><div class="destination"><small>DEST.</small><strong>{{destination||'—'}}</strong></div></div>
+ <div class="carton"><div><small>CARTON</small><strong>{{row.package_no}}<span>/</span>{{packages.length}}</strong></div><dl><dt>G.W.</dt><dd>{{row.gross_weight_kg}} kg</dd><dt v-if="row.contents">QTY</dt><dd v-if="row.contents">{{row.contents.reduce((sum:number,item:any)=>sum+item.quantity,0)}} PCS</dd><dt>DIMS</dt><dd>{{row.length_mm/10}} × {{row.width_mm/10}} × {{row.height_mm/10}} cm</dd></dl></div>
+ <div class="barcode-area"><Barcode :value="barcode(row)" :options="{displayValue:false,height:82,width:2,margin:10}"/><strong>{{barcode(row)}}</strong><span v-if="dn.order_number">ORDER NO. {{dn.order_number}}</span></div>
+ <div class="contents"><small>CONTENTS</small><template v-if="row.contents"><div v-for="item in row.contents.slice(0,row.contents.length>4?3:4)" :key="item.goods_id+':'+item.lot_id" class="content-line"><span>{{item.goods_code}}</span><span>{{item.goods_name}}<template v-if="item.lot_no"> &middot; {{item.lot_no}}</template></span><b>&times; {{item.quantity}}</b></div><span v-if="row.contents.length>4">+ {{row.contents.length-3}} MORE</span></template><span v-else>{{t('carton-label.unknown-contents')}}</span><span v-if="row.remark">{{row.remark}}</span></div>
+ <footer><span>DN-{{dn.id}}</span><span>{{dn.packed_at?$dayjs(dn.packed_at,'YYYY-MM-DD HH:mm',dn):''}}</span></footer>
+ </section></div></div></template>
+<style scoped>.carton-print{min-height:100vh;padding:24px;background:#F6F7FA;color:#151923}.toolbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:900px;margin:0 auto 12px}.toolbar>.w-select{width:140px}.toolbar>a{font-weight:600;color:var(--w-pri)}.toolbar>span,.hint{font-size:12px;color:#656C7A}.hint{max-width:900px;margin:0 auto 16px}.paper-scroll{overflow:auto}.label{box-sizing:border-box;width:101.6mm;height:152.4mm;padding:10px 12px 8px;background:white;display:flex;flex-direction:column;font-family:Inter,'Noto Sans SC','Noto Sans JP',sans-serif;font-size:9px;line-height:1.3;margin:0 auto 20px;overflow:hidden}.label small{display:block;font-size:8px;font-weight:800;letter-spacing:.1em}.sender{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;border-bottom:2px solid #151923;padding-bottom:6px}.sender>div,.recipient>div:first-child{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}.sender>div:last-child{text-align:right;max-width:100px}.recipient{display:grid;grid-template-columns:minmax(0,1fr) 78px;gap:10px;padding:8px 0 10px;border-bottom:2px solid #151923;font-size:13px}.recipient strong{font-size:16px}.recipient .phone{font-size:10px;margin-top:3px}.destination{align-self:center;border:2px solid #151923;text-align:center;padding:12px 3px}.destination strong{font-size:40px;font-weight:900}.carton{display:flex;align-items:center;gap:14px;padding:8px 0 10px;border-bottom:2px solid #151923}.carton strong{font-size:58px;font-weight:900;line-height:1;white-space:nowrap;letter-spacing:-.04em}.carton strong span{font-size:30px;margin:0 4px}.carton dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 8px;border-left:1px solid #151923;padding-left:12px;margin:0;min-width:0}.carton dt{font-size:8px;font-weight:800}.carton dd{margin:0;font-size:12px;font-weight:700}.barcode-area{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 0 10px;border-bottom:2px solid #151923}.barcode-area :deep(svg){max-width:100%;height:82px}.barcode-area strong{font-size:16px;letter-spacing:.12em}.barcode-area span{overflow-wrap:anywhere}.content-line{display:grid;grid-template-columns:75px minmax(0,1fr) auto;gap:6px}.content-line>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.contents{display:flex;flex-direction:column;gap:4px;padding-top:8px;overflow-wrap:anywhere}.label footer{display:flex;justify-content:space-between;gap:8px;font-size:8px;margin-top:auto;padding-top:4px;border-top:1px solid #151923}@media(max-width:500px){.carton-print{padding:16px}.label{margin-left:0}}@media print{.carton-print{padding:0;background:white;min-height:0}.toolbar,.hint,.w-alert{display:none}.paper-scroll{overflow:visible}.label{margin:0;break-after:page;break-inside:avoid}.label:last-child{break-after:auto}.has-overflow .paper-scroll{display:none}.has-overflow .w-alert{display:block}}</style>
+<style>@page{size:101.6mm 152.4mm;margin:0;@bottom-right{content:none}}@media print{html,body{margin:0!important;background:white!important}.nuxt-devtools-panel,.nuxt-devtools-toggle{display:none!important}}</style>

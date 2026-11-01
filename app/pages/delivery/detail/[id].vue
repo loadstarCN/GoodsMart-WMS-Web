@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { formatAddressLines } from '~/composables/address/structuredAddress'
+import { countryName } from '~/data/countries'
 import OperationsCompactFlow from "~/components/operations/CompactFlow.vue"
 /**
  * 配送任务详情：任务资料（运费、承运商、运输方式、备注）在本页填；运单号、揽收、完成发货、跟踪、签收都在下面的发货流程（compact）里办，
@@ -8,16 +10,20 @@ import OperationsCompactFlow from "~/components/operations/CompactFlow.vue"
 import { dnTransportationModesOptions } from '~/data/selectOptions'
 
 // 定义页面元数据
-definePageMeta({
-});
+definePageMeta({ key: route => route.path });
 
 let loading = ref(true);
+const loadError=ref('');
+let loadGeneration=0;
+onBeforeUnmount(()=>loadGeneration++);
 const route = useRoute();
 const taskId = String(route.params.id);
 
 const itemData = ref<any>(null);
+const effectiveShipTo = computed(() => itemData.value?.dn?.ship_to_effective || null)
+const deliveryAddressLines = computed(() => formatAddressLines(effectiveShipTo.value, {style:'local',withNames:true,withCountry:true,countryLabel:(code:string)=>countryName(code,locale.value)}))
 const activeTab = ref('details');
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const { translateOption } = useOptionLabel();
 const { bizErrorMessage } = useBizError();
 // 计算属性转换
@@ -26,6 +32,11 @@ const dataToPass = computed(() => ({
   list: [t('nav.warehouse'), t('nav.delivery')]
 }));
 const staffStore = useStaffStore()
+const ready=ref(false)
+const allowed=(...permissions:string[])=>ready.value&&staffStore.hasPermission(...permissions)
+const savedDraft=ref('')
+const draftSnapshot=()=>JSON.stringify([itemData.value?.shipping_cost,itemData.value?.transportation_mode,itemData.value?.remark])
+useUnsavedForm(()=>!!itemData.value&&taskEditable.value&&draftSnapshot()!==savedDraft.value,()=>savingCarrier.value||processing.value)
 
 
 // 配置化选项集合
@@ -44,26 +55,32 @@ const flowRef = ref<{ reload: () => Promise<void> } | null>(null);
 const savedCarrierId = ref<number | null>(null);
 
 const fetchData = async () => {
-    loading.value = true;
+    const generation=++loadGeneration;
+    loading.value = true; loadError.value=''; itemData.value=null;ready.value=false;
+    const current=await staffStore.getCurrentStaffInfo();
+    if(generation!==loadGeneration)return;
+    if(!current){loadError.value=t('common.permissions-unavailable');loading.value=false;return}
+    ready.value=true;
     const data = await httpRequest(`/api/warehouse/delivery/${taskId}`, {
         method: 'GET',
-        params: route.query,
         onSuccess: (data) => {
+          if(generation!==loadGeneration)return;
           itemData.value = data;
           // 任务自己的币种优先；没有时才用公司默认币种（以前每次读取都改成默认币种，覆盖了任务的币种）
           if (!itemData.value.currency) {
             itemData.value.currency = staffStore.staffInfo?.company?.default_currency || 'JPY';
           }         
+          savedDraft.value=draftSnapshot();
           savedCarrierId.value = itemData.value?.carrier_id ?? null;
           selectedCarrier.value = itemData.value?.carrier_id
             ? itemData.value?.carrier
             : null;
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            if(generation===loadGeneration)loadError.value=bizErrorMessage(error);
         },
         onFinally: () => {
-            loading.value = false;
+            if(generation===loadGeneration)loading.value = false;
         }
     })
     return data;   
@@ -101,6 +118,7 @@ const taskEditable = computed(() => ['pending', 'in_progress'].includes(String(i
  * 运单号不在这里：在流程的「运单」一步保存（完成发货时后端沿用已存的运单号）
  */
 const completeExtras = (): Record<string, any> | null => {
+  if(!canEdit.value||savingCarrier.value)return null;
   errors.value = {
     carrier: itemData.value?.carrier_id ? null : t('delivery.validation.carrier-required'),
     transportation_mode: itemData.value?.transportation_mode ? null : t('delivery.validation.transportation-required'),
@@ -177,7 +195,7 @@ const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092];
  */
 const savingCarrier = ref(false);
 const saveCarrier = async (carrier: any) => {
-  if (savingCarrier.value) return;
+  if (!canEdit.value || savingCarrier.value) return;
   savingCarrier.value = true;
   const previous = itemData.value?.carrier ?? null;
   await httpRequest<any>(`/api/warehouse/delivery/${taskId}/tracking`, {
@@ -229,14 +247,14 @@ const syncFromTask = async () => {
 
 
 const processing=ref(false)
-const start=async()=>{if(processing.value)return;processing.value=true;try{await processTask()}finally{processing.value=false}}
-const canEdit=computed(()=>taskEditable.value&&staffStore.hasPermission('delivery_edit'))
+const start=async()=>{if(!canEdit.value||processing.value)return;processing.value=true;try{await processTask()}finally{processing.value=false}}
+const canEdit=computed(()=>!!staffStore.staffInfo&&!loading.value&&!loadError.value&&taskEditable.value&&allowed('delivery_edit'))
 const carrierValue=computed({get:()=>selectedCarrier.value?.id??null,set:(id:number|null)=>{selectedCarrier.value=carrierSelectedOptions.value.find(row=>row.id===id)||selectedCarrier.value}})
-const searchCarriers=async(query:string)=>{const result=await httpRequest<PaginationData>('/api/warehouse/carrier/',{params:{name:query,all:true,is_active:true}});carrierSelectedOptions.value=result?.items||[];return carrierSelectedOptions.value.map(row=>({value:row.id,label:row.name}))}
+const searchCarriers=async(query:string)=>{if(!allowed('carrier_read'))return [];const result=await httpRequest<PaginationData>('/api/warehouse/carrier/',{params:{name:query,all:true,is_active:true}});carrierSelectedOptions.value=result?.items||[];return carrierSelectedOptions.value.map(row=>({value:row.id,label:row.name}))}
 const columns=computed(()=>[{key:'goods',label:t('nav.goods')},{key:'quantity',label:t('common.fields.quantity'),type:'qty' as const},{key:'picked_quantity',label:t('common.quantities.picked'),type:'qty' as const},{key:'packed_quantity',label:t('common.quantities.packed'),type:'qty' as const}])
 useHead({title:()=>`DEL-${taskId}`})
 </script>
-<template><div class="w-delivery-detail w-scope"><header><nav><NuxtLink class="w-delivery-muted" to="/delivery">{{t('nav.delivery')}}</NuxtLink><span>/</span><span>DEL-{{taskId}}</span></nav><div class="title"><h1>DEL-{{taskId}}</h1><WStatus v-if="itemData" variant="pill" :tone="itemData.status==='signed'?'ok':itemData.status==='pending'?'none':'warn'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus></div><div v-if="itemData" class="meta"><NuxtLink class="w-delivery-link" :to="'/dn/detail/'+itemData.dn_id">DN-{{itemData.dn_id}}</NuxtLink><span>{{itemData.dn?.order_number}}</span><span>{{itemData.dn?.warehouse?.name}}</span><span>{{t('dn.fields.scheduled-date')}} {{$dayjs(itemData.expected_shipping_date,'YYYY-MM-DD',itemData)}}</span></div></header><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')"/></WCard><template v-if="itemData"><OperationsCompactFlow :key="itemData.status" :document-id="itemData.dn_id" kind="dn" current="handover"/><div class="detail-grid"><div class="main-column"><WCard v-if="itemData.status==='pending'&&canEdit"><div class="start"><h2>{{t('delivery.entity')}}</h2><WButton variant="primary" :loading="processing" @click="start">{{t('button.process')}}</WButton></div></WCard><DnShippingFlow v-if="itemData.dn_id" ref="flowRef" :dn-id="itemData.dn_id" mode="compact" :warehouse-id="itemData.dn?.warehouse_id??null" :complete-extras="completeExtras" @changed="syncFromTask"/><WCard flush><div class="section-title"><h3>{{t('delivery.fields.items')}}</h3></div><WTable :columns="columns" :rows="itemData.dn?.details||[]" inset><template #cell-goods="{row}"><NuxtLink class="w-delivery-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><small>{{row.goods?.code}}</small></template></WTable></WCard><WCard v-if="itemData.dn?.special_handling||itemData.dn?.packaging_info||itemData.dn?.remark"><h3>{{t('dn.fields.special-handling')}}</h3><p>{{itemData.dn?.special_handling}}</p><p>{{itemData.dn?.packaging_info}}</p><p>{{itemData.dn?.remark}}</p></WCard></div><aside><WCard><h3>{{t('delivery.fields.detail-info')}}</h3><div class="field-stack"><WField :label="t('common.entities.carrier')" required :error="errors.carrier"><WCombobox v-model="carrierValue" :search="searchCarriers" :selected-label="selectedCarrier?.name||''" :disabled="!canEdit||savingCarrier"/></WField><WField :label="t('dn.fields.transportation')" required :error="errors.transportation_mode"><WSelect v-model="itemData.transportation_mode" :options="selectOptions.transportation_modes.map(value=>({value,label:translateOption(value,'dn.transportation')}))" :disabled="!canEdit"/></WField><WField :label="t('common.fields.tracking-number')"><span class="tracking">{{itemData.tracking_number||'—'}}</span></WField></div></WCard><WCard><h3>{{t('common.fields.shipping-cost')}} <span>{{itemData.currency}}</span></h3><WInput v-model="itemData.shipping_cost" type="number" min="0" step="0.01" :aria-label="t('common.fields.shipping-cost')" :disabled="!canEdit"/><small v-if="taskEditable">{{t('delivery.tips.complete-in-flow')}}</small></WCard><WCard><h3>{{t('dn.fields.shipping-address')}}</h3><p class="recipient">{{itemData.recipient?.name}}</p><p>{{itemData.recipient?.phone}}</p><p>{{itemData.shipping_address}}</p></WCard><WCard><WField :label="t('common.fields.remark')"><WTextarea v-model="itemData.remark" :rows="3" :disabled="!canEdit"/></WField></WCard><WCard><h3>{{t('common.fields.task-logs')}}</h3><ol><li v-for="log in itemData.status_logs" :key="log.id"><span>{{t('common.status.'+log.new_status.replaceAll('_','-'))}}</span><small>{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</small></li></ol></WCard></aside></div></template></div></template>
+<template><div class="w-delivery-detail w-scope"><header><nav><NuxtLink class="w-delivery-muted" to="/delivery">{{t('nav.delivery')}}</NuxtLink><span>/</span><span>DEL-{{taskId}}</span></nav><div class="title"><h1>DEL-{{taskId}}</h1><WStatus v-if="itemData" variant="pill" :tone="itemData.status==='signed'?'ok':itemData.status==='pending'?'none':'warn'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus></div><div v-if="itemData" class="meta"><NuxtLink v-if="allowed('dn_read')" class="w-delivery-link" :to="'/dn/detail/'+itemData.dn_id">DN-{{itemData.dn_id}}</NuxtLink><span v-else>DN-{{itemData.dn_id}}</span><span>{{itemData.dn?.order_number}}</span><span>{{itemData.dn?.warehouse?.name}}</span><span>{{t('dn.fields.scheduled-date')}} {{$dayjs(itemData.expected_shipping_date,'YYYY-MM-DD',itemData)}}</span></div></header><WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData">{{t('dn.list.retry')}}</WButton></template></WAlert><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')"/></WCard><template v-if="itemData"><OperationsCompactFlow :key="itemData.status" :document-id="itemData.dn_id" kind="dn" current="handover"/><div class="detail-grid"><div class="main-column"><WCard v-if="itemData.status==='pending'&&canEdit"><div class="start"><h2>{{t('delivery.entity')}}</h2><WButton variant="primary" :loading="processing" @click="start">{{t('button.process')}}</WButton></div></WCard><DnShippingFlow v-if="itemData.dn_id" ref="flowRef" :dn-id="itemData.dn_id" mode="compact" :warehouse-id="itemData.dn?.warehouse_id??null" :complete-extras="completeExtras" @changed="syncFromTask"/><WCard flush><div class="section-title"><h3>{{t('delivery.fields.items')}}</h3></div><WTable :columns="columns" :rows="itemData.dn?.details||[]" inset><template #cell-goods="{row}"><NuxtLink v-if="allowed('goods_read')" class="w-delivery-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else class="w-delivery-goods">{{row.goods?.name}}</span><small>{{row.goods?.code}}</small></template></WTable></WCard><WCard v-if="itemData.dn?.special_handling||itemData.dn?.packaging_info||itemData.dn?.remark"><h3>{{t('dn.fields.special-handling')}}</h3><p>{{itemData.dn?.special_handling}}</p><p>{{itemData.dn?.packaging_info}}</p><p>{{itemData.dn?.remark}}</p></WCard></div><aside><WCard><h3>{{t('delivery.fields.detail-info')}}</h3><div class="field-stack"><WField :label="t('common.entities.carrier')" required :error="errors.carrier"><WCombobox v-model="carrierValue" :search="searchCarriers" :selected-label="selectedCarrier?.name||''" :disabled="!canEdit||savingCarrier||!allowed('carrier_read')"/></WField><WField :label="t('dn.fields.transportation')" required :error="errors.transportation_mode"><WSelect v-model="itemData.transportation_mode" :options="selectOptions.transportation_modes.map(value=>({value,label:translateOption(value,'dn.transportation')}))" :disabled="!canEdit"/></WField><WField :label="t('common.fields.tracking-number')"><span class="tracking">{{itemData.tracking_number||'—'}}</span></WField></div></WCard><WCard><h3>{{t('common.fields.shipping-cost')}} <span>{{itemData.currency}}</span></h3><WInput v-model="itemData.shipping_cost" type="number" min="0" step="0.01" :aria-label="t('common.fields.shipping-cost')" :disabled="!canEdit"/><small v-if="taskEditable">{{t('delivery.tips.complete-in-flow')}}</small></WCard><WCard><h3>{{t('dn.fields.shipping-address')}}</h3><template v-if="deliveryAddressLines.length"><p v-for="(line,index) in deliveryAddressLines" :key="index">{{line}}</p><p v-if="effectiveShipTo?.phone">{{effectiveShipTo.phone}}</p><p v-if="effectiveShipTo?.email">{{effectiveShipTo.email}}</p></template><template v-else><p class="recipient">{{itemData.recipient?.name}}</p><p>{{itemData.recipient?.phone}}</p><p>{{itemData.shipping_address}}</p></template></WCard><WCard><WField :label="t('common.fields.remark')"><WTextarea v-model="itemData.remark" :rows="3" :disabled="!canEdit"/></WField></WCard><WCard><h3>{{t('common.fields.task-logs')}}</h3><ol><li v-for="log in itemData.status_logs" :key="log.id"><span>{{t('common.status.'+log.new_status.replaceAll('_','-'))}}</span><small>{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</small></li></ol></WCard></aside></div></template></div></template>
 <style scoped>
 .w-delivery-detail{display:flex;flex-direction:column;gap:16px;max-width:1216px}header{display:flex;flex-direction:column;gap:8px}nav{display:flex;gap:8px;font-size:13px;line-height:20px;color:var(--w-text-2)}.w-delivery-muted{color:var(--w-text-3);text-decoration:none}.title{display:flex;align-items:center;gap:12px}h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.meta{display:flex;flex-wrap:wrap;gap:4px 24px;font-size:13px;line-height:20px;color:var(--w-text-3)}.w-delivery-link{color:var(--w-link);text-decoration:none}.detail-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;align-items:start;gap:16px}.main-column,aside,.field-stack{display:flex;flex-direction:column;gap:16px}h2{margin:0;font-size:20px;line-height:28px;font-weight:600}h3{font-size:14px;line-height:22px;font-weight:600;margin:0 0 12px}h3>span{color:var(--w-text-3);font-weight:400}.section-title{padding:16px 24px;border-bottom:1px solid var(--w-line)}.section-title h3{font-size:16px;line-height:24px;margin:0}.start{display:flex;justify-content:space-between;align-items:center;gap:16px}.w-delivery-detail :deep(.w-table){min-width:560px}.w-delivery-detail :deep(.w-table td){padding-top:12px;padding-bottom:12px}.w-delivery-goods{font-size:14px;font-weight:500;color:var(--w-text-1);text-decoration:none}small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}p{margin:0 0 4px;font-size:13px;line-height:20px;overflow-wrap:anywhere}.recipient{font-weight:600}.tracking{font-size:13px;overflow-wrap:anywhere}ol{list-style:none;padding:0;margin:0}li{font-size:13px;line-height:20px;padding:10px 0;border-bottom:1px solid var(--w-line)}li:last-child{border-bottom:0}@media(max-width:1100px){.detail-grid{grid-template-columns:minmax(0,1fr)}}
 </style>

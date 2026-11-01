@@ -14,6 +14,8 @@ const dataToPass = computed(() => ({
   list: [t('nav.warehouse'), t('nav.cyclecount')]
 }));
 
+const actor=useStaffStore(),ready=ref(false),saved=ref(false),initialError=ref(''),saveError=ref('')
+const canCreate=computed(()=>ready.value&&!!actor.staffInfo&&actor.hasPermission('cycle_count_edit'))
 const warehouseStore = useWarehouseStore()
 const router = useRouter()
 
@@ -48,6 +50,9 @@ watch(
     if (newVal) {
       selectWareshouse.value = newVal
       selectOptions.warehouses = [warehouseStore.currentWarehouse]
+    } else {
+      selectWareshouse.value = null
+      selectOptions.warehouses = warehouseStore.warehouses
     }
   },
   { immediate: true } // 立即执行以处理初始值
@@ -68,7 +73,8 @@ watch(
 );
 
 
-onMounted(async () => {
+const initialize=async () => {
+  ready.value=false;initialError.value='';const current=await actor.getCurrentStaffInfo();if(!current){initialError.value=t('common.validation.company-required');return}ready.value=true
   // 确保仓库数据已加载
   if (warehouseStore.warehouses.length === 0) {
     await warehouseStore.fetchWarehouses(); // 等待异步加载完成
@@ -91,15 +97,15 @@ onMounted(async () => {
   
   // 完全移除所有 asnItem.value.warehouse_id 的手动设置
   // 因为 watch 监听器会自动处理这个同步
-});
-
+};
+onMounted(initialize)
 
 // ------------------ 提交保存 ----------------------
 const { bizErrorMessage } = useBizError()
 // 防重复提交：请求期间禁用按钮；成功后跳转离开，不再解锁
 const submitting = ref(false)
 const addCycleCount = async () => {
-  if (submitting.value) return
+  if (submitting.value||!canCreate.value) return
   errors.value = {
     wareshouse: !taskItem.value.warehouse_id ? t('common.validation.warehouse-required') : null,
     
@@ -113,7 +119,7 @@ const addCycleCount = async () => {
   const zone = resolveTimeZone(taskItem.value.warehouse_id)
   const scheduledAt = scheduledDay ? parseDateTime(scheduledDay, zone) : null
 
-  submitting.value = true
+  submitting.value = true;saveError.value=''
   await httpRequest('/api/warehouse/cyclecount/', {
     method: 'POST',
     // 用表单里选的仓库作为请求的仓库（页头选「全部仓库」时也能正确建单）
@@ -121,10 +127,11 @@ const addCycleCount = async () => {
     body: { ...taskItem.value, scheduled_date: scheduledAt ? toOffsetIsoString(scheduledAt, zone) : null },
     onSuccess: async () => {
       showToast(t('action-results.success'), 'success')
+      saved.value=true
       await router.push('/cyclecount/')
     },
     onError: (error) => {
-      submitting.value = false
+      submitting.value = false;saveError.value=bizErrorMessage(error)
       showToast(bizErrorMessage(error), 'error')
     }
   })
@@ -137,8 +144,13 @@ const addCycleCount = async () => {
 // 组件中调用
 const { state: goodsSearch, fetchGoodsLocation, resetSelection,resetState } = useUseGoodsLocationSearch();
 watch(() => selectWareshouse.value?.id, () => resetState());
+const scopeMode=ref('goods'),expiryScope=ref('')
+watch(scopeMode,()=>{expiryScope.value='';resetState()})
+const searchPlaceholder=computed(()=>t(scopeMode.value==='goods'?'cyclecount.scope.query':scopeMode.value==='lot'?'cyclecount.scope.lot-query':'common.entities.location'))
 const handleSearch = () => {
-  if (goodsSearch.code.trim()) {
+  if(!canCreate.value||submitting.value)return
+  if(!goodsSearch.code.trim()&&!expiryScope.value){resetState();return}
+  if (goodsSearch.code.trim()||expiryScope.value) {
     // 库位库存按仓库查：还没选仓库时先提示选仓库（否则 selectWareshouse.value 为 null 直接报错）
     const warehouse: any = selectWareshouse.value;
     if (!warehouse?.id) {
@@ -146,25 +158,29 @@ const handleSearch = () => {
       showToast(t('common.validation.warehouse-required'), 'error');
       return;
     }
-    fetchGoodsLocation(warehouse.id);
+    fetchGoodsLocation(warehouse.id,{goods_code:undefined,[scopeMode.value==='goods'?'goods_query':scopeMode.value==='location'?'location_code':'lot_no']:goodsSearch.code.trim()||undefined,expiry_scope:expiryScope.value||undefined,quantity_min:1});
     resetSelection();
   }
 }
 
 
 const addtaskItem = () => {
+  if(!canCreate.value||submitting.value||goodsSearch.loading)return
 
   if (goodsSearch.selected.length === 0) {
     return;
   }
   // 添加到task_details
   goodsSearch.selected.forEach((item:any) => {
-    const existingItem = taskItem.value.task_details.find((detail:any) => detail.goods_id === item.goods_id && detail.location_id === item.location_id);
+    const existingItem = taskItem.value.task_details.find((detail:any) => detail.goods_id === item.goods_id && detail.location_id === item.location_id && (detail.lot_id??null) === (item.lot_id??null));
     if (!existingItem) {
       taskItem.value.task_details.push({
         goods: item.goods,
-        id: `${item.goods_id}-${item.location_id}`,
-        location_code: item.location_code,
+        id: `${item.goods_id}-${item.location_id}-${item.lot_id??'unassigned'}`,
+        location_code: item.location?.code || item.location_code,
+        lot_id: item.lot_id??null,
+        lot_no: item.lot_no,
+        expiry_date: item.expiry_date,
         goods_id: item.goods_id,
         location_id: item.location_id
       });
@@ -187,12 +203,20 @@ const deleteItem = (detail:any) => {
 
 
 const warehouseId=computed({get:()=>selectWareshouse.value?.id??null,set:value=>{selectWareshouse.value=selectOptions.warehouses.find(row=>row.id===value)||null}})
+const dirty=computed(()=>!saved.value&&(!!taskItem.value.task_name?.trim()||!!taskItem.value.scheduled_date||taskItem.value.task_details.length>0))
+useUnsavedForm(()=>dirty.value,()=>submitting.value)
+const chooseWarehouse=async(value:any)=>{
+ if(value===warehouseId.value||submitting.value)return
+ if(dirty.value&&!await showConfirm(t('unsaved-form.title'),t('unsaved-form.message'),t('unsaved-form.leave'),t('unsaved-form.stay')))return
+ warehouseId.value=value
+}
+onBeforeUnmount(resetState)
 const selectedIds=computed({get:()=>goodsSearch.selected.map((row:any)=>row.id),set:(ids:(string|number)[])=>{goodsSearch.selected=goodsSearch.results.filter((row:any)=>ids.includes(row.id))}})
-const columns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},{key:'location',label:t('nav.location')},{key:'quantity',label:t('common.fields.quantity'),type:'qty' as const}])
+const columns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},{key:'location',label:t('nav.location')},{key:'quantity',label:t('common.fields.quantity'),type:'qty' as const,keepZero:true}])
 useHead({title:()=>t('cyclecount.operations.add')})
 </script>
 
-<template><div class="w-count-form w-scope"><header><nav><NuxtLink class="w-count-link" to="/cyclecount">{{t('nav.cyclecount')}}</NuxtLink><span>/</span><span>{{t('cyclecount.operations.add')}}</span></nav><h1>{{t('cyclecount.operations.add')}}</h1></header><WCard flush><form @submit.prevent="addCycleCount"><WFormSection :title="t('recipient.ui.basic')"><WFormGrid><WField :span="4" :label="t('nav.warehouse')" :error="errors.wareshouse"><WSelect v-model="warehouseId" :options="selectOptions.warehouses.map(row=>({value:row.id,label:row.name}))" :placeholder="t('common.validation.warehouse-required')" :disabled="submitting||shouldDisableWarehouseSelect" /></WField><WField :span="4" :label="t('cyclecount.fields.scheduled-date')" :hint="warehouseId?resolveTimeZone(warehouseId):''" optional><WInput v-model="taskItem.scheduled_date" type="date" :disabled="submitting" /></WField><WField :label="t('common.fields.name')" optional><WInput v-model="taskItem.task_name" :disabled="submitting" /></WField></WFormGrid></WFormSection><WFormSection :title="t('operations.ui.scope')"><div class="w-count-scope"><div class="w-count-results"><div class="w-count-search"><WInput v-model="goodsSearch.code" type="search" :disabled="!warehouseId||submitting" :aria-label="t('common.search')" :placeholder="t('goods.fields.code')" @keydown.enter.prevent="handleSearch" @change="handleSearch"><template #prefix><WIcon name="search" :size="16" /></template></WInput></div><WTable v-model:selected="selectedIds" :rows="goodsSearch.results" :columns="columns" selectable :loading="goodsSearch.loading" inset><template #cell-goods="{row}"><strong>{{row.goods?.name}}</strong><span class="w-count-sub">{{row.goods?.code}}</span></template><template #cell-location="{row}">{{row.location?.code}}</template></WTable><div class="w-count-selected"><span>{{t('inventory.ui.selected',{count:selectedIds.length})}}</span><WButton :disabled="!selectedIds.length||submitting" @click="addtaskItem">{{t('goods.operations.add')}}</WButton></div></div><WAlert v-if="errors.task_details" tone="block" :title="errors.task_details" /><WTable v-if="taskItem.task_details.length" :rows="taskItem.task_details" :columns="[...columns.filter(col=>col.key!=='quantity'),{key:'action',label:t('common.fields.action')}]" row-key="id"><template #cell-goods="{row}">{{row.goods?.name}}<span class="w-count-sub">{{row.goods?.code}}</span></template><template #cell-location="{row}">{{row.location_code}}</template><template #cell-action="{row}"><WButton variant="text" icon="trash" icon-only size="sm" :aria-label="t('button.delete')" :disabled="submitting" @click="taskItem.task_details=taskItem.task_details.filter((item:any)=>item!==row)" /></template></WTable></div></WFormSection><footer><WButton to="/cyclecount" :disabled="submitting">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="submitting">{{t('button.save')}}</WButton></footer></form></WCard></div></template>
+<template><div class="w-count-form w-scope"><header><nav><NuxtLink class="w-count-link" to="/cyclecount">{{t('nav.cyclecount')}}</NuxtLink><span>/</span><span>{{t('cyclecount.operations.add')}}</span></nav><h1>{{t('cyclecount.operations.add')}}</h1></header><WAlert v-if="initialError" tone="block" :title="initialError"><template #actions><WButton @click="initialize">{{t('dn.list.retry')}}</WButton></template></WAlert><WAlert v-if="ready&&actor.staffInfo&&!canCreate" tone="warn" :title="t('inventory-create.denied')"/><WCard v-else-if="canCreate" flush><form @submit.prevent="addCycleCount"><WFormSection :title="t('recipient.ui.basic')"><WFormGrid><WField :span="4" :label="t('nav.warehouse')" :error="errors.wareshouse"><WSelect :model-value="warehouseId" @update:model-value="chooseWarehouse" :options="selectOptions.warehouses.map(row=>({value:row.id,label:row.name}))" :placeholder="t('common.validation.warehouse-required')" :disabled="submitting||shouldDisableWarehouseSelect" /></WField><WField :span="4" :label="t('cyclecount.fields.scheduled-date')" :hint="warehouseId?resolveTimeZone(warehouseId):''" optional><WInput v-model="taskItem.scheduled_date" type="date" :disabled="submitting" /></WField><WField :label="t('common.fields.name')" optional><WInput v-model="taskItem.task_name" :disabled="submitting" /></WField></WFormGrid></WFormSection><WFormSection :title="t('operations.ui.scope')"><div class="w-count-scope"><WSegmented v-model="scopeMode" :label="t('operations.ui.scope')" :options="['goods','location','lot'].map(value=>({value,label:t('cyclecount.scope.'+value),disabled:submitting}))"/><WSelect v-if="scopeMode==='lot'" v-model="expiryScope" :disabled="submitting" :options="['','warning','below_shipping'].map(value=>({value,label:t('cyclecount.scope.'+(value==='below_shipping'?'below-shipping':value||'all'))}))" @update:model-value="handleSearch"/><div class="w-count-results"><div class="w-count-search"><WInput v-model="goodsSearch.code" type="search" :disabled="!warehouseId||submitting" :aria-label="t('common.search')" :placeholder="searchPlaceholder" @keydown.enter.prevent="handleSearch" @change="handleSearch"><template #prefix><WIcon name="search" :size="16" /></template></WInput></div><WAlert v-if="goodsSearch.error" tone="block" :title="goodsSearch.error"><template #actions><WButton @click="handleSearch">{{t('dn.list.retry')}}</WButton></template></WAlert><WTable v-model:selected="selectedIds" :rows="goodsSearch.results" :columns="columns" selectable :loading="goodsSearch.loading" inset><template #cell-goods="{row}"><strong>{{row.goods?.name}}</strong><span class="w-count-sub">{{row.goods?.code}}</span></template><template #cell-location="{row}">{{row.location?.code}}<span class="w-count-sub">{{row.lot_no||t('lot-rules.unassigned')}}<template v-if="row.expiry_date"> &middot; {{row.expiry_date}}</template></span></template></WTable><div class="w-count-selected"><span>{{t('inventory.ui.selected',{count:selectedIds.length})}}</span><WButton :disabled="!selectedIds.length||submitting" @click="addtaskItem">{{t('goods.operations.add')}}</WButton></div></div><WAlert v-if="errors.task_details" tone="block" :title="errors.task_details" /><WTable v-if="taskItem.task_details.length" :rows="taskItem.task_details" :columns="[...columns.filter(col=>col.key!=='quantity'),{key:'action',label:t('common.fields.action')}]" row-key="id"><template #cell-goods="{row}">{{row.goods?.name}}<span class="w-count-sub">{{row.goods?.code}}</span></template><template #cell-location="{row}">{{row.location_code}}<span class="w-count-sub">{{row.lot_no||t('lot-rules.unassigned')}}<template v-if="row.expiry_date"> &middot; {{row.expiry_date}}</template></span></template><template #cell-action="{row}"><WButton variant="text" icon="trash" icon-only size="sm" :aria-label="t('button.delete')" :disabled="submitting" @click="taskItem.task_details=taskItem.task_details.filter((item:any)=>item!==row)" /></template></WTable></div></WFormSection><WAlert v-if="saveError" tone="block" :title="saveError"/><footer><WButton to="/cyclecount" :disabled="submitting">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="submitting">{{t('button.save')}}</WButton></footer></form></WCard></div></template>
 <style scoped>
 .w-count-form{display:flex;flex-direction:column;gap:16px}.w-count-form header{display:flex;flex-direction:column;gap:8px}.w-count-form nav{display:flex;gap:8px;font-size:13px;color:var(--w-text-2)}.w-count-link{color:var(--w-text-3);text-decoration:none}.w-count-form h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.w-count-scope{display:flex;flex-direction:column;gap:16px}.w-count-results{border:1px solid var(--w-border);border-radius:10px;overflow:hidden}.w-count-search{padding:12px 16px;border-bottom:1px solid var(--w-line)}.w-count-sub{display:block;font-size:12px;line-height:18px;color:var(--w-text-3)}.w-count-scope :deep(.w-table){min-width:500px}.w-count-scope strong{font-weight:500}.w-count-selected{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:12px 16px;border-top:1px solid var(--w-line)}.w-count-form footer{padding:16px 24px;border-top:1px solid var(--w-border);display:flex;justify-content:flex-end;gap:8px}
 </style>

@@ -1,13 +1,17 @@
 <script lang="ts" setup>
-const staff=useStaffStore(),actionBusy=ref(false)
-const canEdit=computed(()=>staff.hasPermission('cyclecount_edit'))
-const runAction=async(action:()=>Promise<any>)=>{if(actionBusy.value||saving.value||!canEdit.value)return;actionBusy.value=true;try{await action()}finally{actionBusy.value=false}}
+import CountSupplement from '~/components/operations/CountSupplement.vue'
+const staff=useStaffStore(),actionBusy=ref(false),ready=ref(false),supplementBusy=ref(false),supplementDraft=ref(false)
+const allowed=(...permissions:string[])=>ready.value&&!!staff.staffInfo&&staff.hasPermission(...permissions)
+const canEdit=computed(()=>allowed('cycle_count_execute','cycle_count_edit'))
+const runAction=async(action:()=>Promise<any>)=>{if(actionBusy.value||saving.value||supplementBusy.value||supplementDraft.value||!canEdit.value)return;actionBusy.value=true;try{await action()}finally{actionBusy.value=false}}
 
 // 定义页面元数据
-definePageMeta({
-});
+definePageMeta({key:route=>route.path});
 
 let loading = ref(true);
+const loadError = ref('');
+let loadGeneration=0
+onBeforeUnmount(()=>loadGeneration++)
 const route = useRoute();
 const taskId = route.params.id;
 
@@ -60,18 +64,24 @@ const totalDifferenceInProgress = computed<number>(() =>
 
 
 const fetchData = async () => {
+    const seq=++loadGeneration
     loading.value = true;
+    loadError.value = '';
+    itemData.value = null;ready.value=false;
+    const current=await staff.getCurrentStaffInfo();if(seq!==loadGeneration)return
+    if(!current){loadError.value=t('common.validation.company-required');loading.value=false;return}
+    ready.value=true;
     const data = await httpRequest(`/api/warehouse/cyclecount/${taskId}`, {
         method: 'GET',
         params: route.query,
         onSuccess: (data) => {
-          itemData.value = data;
+          if(seq===loadGeneration)itemData.value = data;
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            if(seq===loadGeneration)loadError.value = bizErrorMessage(error)
         },
         onFinally: () => {
-            loading.value = false;
+            if(seq===loadGeneration)loading.value = false;
         }
     })
     return data;   
@@ -97,19 +107,21 @@ const markTouched = (item: any) => {
 };
 
 const resetTask = () => {
-    itemData.value.task_details.forEach((item:any) => {
+    itemData.value?.task_details.forEach((item:any) => {
         item.new_cyclecount_quantity = undefined;
         item.touched = false;
     });
 };
 
+const resetWithConfirm=async()=>{if(saving.value||actionBusy.value)return;if(hasUnsavedChanges.value&&!await showConfirm(t('unsaved-form.title'),t('unsaved-form.message'),t('unsaved-form.leave'),t('unsaved-form.stay')))return;resetTask()}
+
 const saveTask = async () => {
-  if (saving.value||actionBusy.value||!canEdit.value) return;
+  if (saving.value||actionBusy.value||supplementBusy.value||supplementDraft.value||!canEdit.value||itemData.value?.status!=='in_progress') return;
   // 只提交本次录入过且未完成的行（含增量 0：盘到 0 件也要提交），没动过的行不提交：
   // 先过滤再映射（映射后的对象没有录入标记）；整单提交会按打开页面时的旧值覆盖别人刚录的结果；已完成的行后端也会拒绝
   const touchedItems = (itemData.value?.task_details ?? []).filter((item: any) => isTouched(item));
   // 打开了录入框却没填数：不提交（盘到 0 件要明确填 0）
-  if (touchedItems.some((item: any) => !hasInput(item)||!Number.isInteger(Number(item.new_cyclecount_quantity))||Number(item.new_cyclecount_quantity)<0)) {
+  if (touchedItems.some((item: any) => !hasInput(item)||!Number.isSafeInteger(Number(item.new_cyclecount_quantity))||Number(item.new_cyclecount_quantity)<0)) {
     showToast(t('cyclecount.validation.no-quantity'), 'error');
     return;
   }
@@ -163,6 +175,7 @@ const saveTask = async () => {
 };
 
 const processTask = async () => {
+    if(!canEdit.value||itemData.value?.status!=='pending')return
     const data = await httpRequest(`/api/warehouse/cyclecount/${taskId}/process/`, {
         method: 'PUT',
         onSuccess: async(data) => {
@@ -178,6 +191,7 @@ const processTask = async () => {
 };
 
 const completeTask = async () => {
+    if(!canEdit.value||itemData.value?.status!=='in_progress'||hasUnsavedChanges.value)return
   // 检查是否存在未保存的有效分拣数据
     const data = await httpRequest(`/api/warehouse/cyclecount/${taskId}/complete/`, {
         method: 'PUT',
@@ -201,6 +215,7 @@ const completeTask = async () => {
 };
 
 const completeItem = async (item:any) => {
+    if(!canEdit.value||itemData.value?.status!=='in_progress'||hasUnsavedChanges.value)return
     const data = await httpRequest(`/api/warehouse/cyclecount/${taskId}/details/${item.id}/complete/`, {
         method: 'PUT',
         onSuccess: async(data) => {
@@ -225,7 +240,10 @@ const allItemsRecorded = computed(() => {
   return itemData.value?.task_details?.every((item: any) => isRecorded(item)) ?? false
 })
 
+useUnsavedForm(()=>hasUnsavedChanges.value,()=>saving.value||actionBusy.value)
+
 function completeFn() {
+  if(!canEdit.value||saving.value||actionBusy.value||itemData.value?.status!=='in_progress')return
 
   // 强制获取最新计算值
   if (hasUnsavedChanges.value) {
@@ -254,7 +272,7 @@ const validDetails = computed(() => {
     ?? []
 })
 const carete_adjustmentFn = async () => {
-  if (creatingAdjustment.value || adjustmentCreated.value) return null
+  if (creatingAdjustment.value || adjustmentCreated.value||!allowed('adjustment_edit')||itemData.value?.status!=='completed') return null
   // 如果无有效记录，直接提示并返回
   if (validDetails.value.length === 0) {
     showToast(t('cyclecount.validation.no-valid-records'), 'warning')
@@ -276,7 +294,7 @@ const carete_adjustmentFn = async () => {
 
 const carete_adjustment = async () => {
   // 提交锁：连点只生成一张调整单（同一盘点单重复生成后端返回 409）
-  if (creatingAdjustment.value || adjustmentCreated.value) return null
+  if (creatingAdjustment.value || adjustmentCreated.value||!allowed('adjustment_edit')||itemData.value?.status!=='completed') return null
   creatingAdjustment.value = true
   // 在回调里赋值：用 as 声明，避免 TS 把它收窄成 null
   let createdId = null as number | string | null
@@ -312,12 +330,23 @@ onMounted(async() => {
   await fetchData();
 });
 
-const columns=computed(()=>[{key:'goods',label:t('operations.ui.location-goods'),wrap:true},{key:'system_quantity',label:t('common.quantities.system'),type:'qty' as const},{key:'actual',label:t('common.quantities.actual')},{key:'difference',label:t('operations.ui.variance')},{key:'entry',label:t('operations.ui.this-entry')},{key:'action',label:t('common.fields.action')}])
+const removeSupplement=async(row:any)=>{
+ if(hasUnsavedChanges.value||supplementBusy.value||supplementDraft.value||saving.value||!allowed('cycle_count_edit'))return
+ if(!await showConfirm(t('cyclecount.supplement.remove'),t('action-results.delete-confirm',{entity:t('cyclecount.supplement.badge')}),t('button.confirm'),t('button.cancel')))return
+ await httpRequest(`/api/warehouse/cyclecount/${taskId}/supplements/${row.id}`,{method:'DELETE',onSuccess:()=>fetchData(),onError:e=>showToast(bizErrorMessage(e),'error')})
+}
+const columns=computed(()=>[{key:'goods',label:t('operations.ui.location-goods'),wrap:true},{key:'system_quantity',label:t('common.quantities.system'),type:'qty' as const,keepZero:true},{key:'actual',label:t('common.quantities.actual')},{key:'difference',label:t('operations.ui.variance')},{key:'entry',label:t('operations.ui.this-entry')},{key:'action',label:t('common.fields.action')}])
+const varianceSummary=computed(()=>{
+ const rows=itemData.value?.task_details||[]
+ const differences=rows.map(rowDifference).filter((value:any)=>value!==null&&value!==0) as number[]
+ return {locations:new Set(rows.map((row:any)=>row.location_id)).size,count:differences.length,
+ gain:differences.filter(value=>value>0).reduce((sum,value)=>sum+value,0),loss:-differences.filter(value=>value<0).reduce((sum,value)=>sum+value,0)}
+})
 const recordedCount=computed(()=>(itemData.value?.task_details||[]).filter(isRecorded).length)
 const remaining=computed(()=>Math.max(0,(itemData.value?.task_details?.length||0)-recordedCount.value))
 useHead({title:()=>`CC-${taskId}`})
 </script>
-<template><div class="w-cycle-detail w-scope"><header><nav><NuxtLink class="w-cycle-muted" to="/cyclecount">{{t('nav.cyclecount')}}</NuxtLink><span>/</span><span>CC-{{taskId}}</span></nav><div class="w-cycle-heading"><h1>CC-{{taskId}}</h1><WStatus v-if="itemData" :tone="itemData.status==='completed'?'ok':itemData.status==='in_progress'?'warn':'none'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus><span>{{itemData?.task_name}}</span><WButton v-if="itemData" class="w-count-print-link" icon="printer" :to="'/cyclecount/print/'+taskId">{{t('count-print.print')}}</WButton></div><div v-if="itemData" class="w-cycle-meta"><span>{{itemData.warehouse?.name}}</span><span>{{$dayjs(itemData.scheduled_date,'YYYY-MM-DD',itemData)}}</span></div></header><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard><div v-if="itemData" class="w-cycle-layout"><WCard flush><div class="w-cycle-section"><h2>{{t('common.fields.task-details')}} <small>{{itemData.task_details?.length}}</small></h2><span>{{recordedCount}} / {{itemData.task_details?.length}}</span></div><WTable :columns="columns" :rows="itemData.task_details||[]" inset><template #cell-goods="{row}"><NuxtLink class="w-cycle-name" :to="'/location/detail/'+row.location_id">{{row.location?.code}}</NuxtLink><NuxtLink class="w-cycle-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span class="w-cycle-sub">{{row.goods?.code}}</span></template><template #cell-actual="{row}"><WInput v-if="canEdit&&itemData.status==='in_progress'&&row.status!=='completed'" :model-value="hasInput(row)?row.new_cyclecount_quantity:isRecorded(row)?row.actual_quantity:''" type="number" min="0" step="1" align="right" size="sm" :invalid="unrecordedIds.includes(row.id)" :aria-label="row.goods?.code+' '+row.location?.code+' '+t('common.quantities.actual')" :disabled="saving||actionBusy" @update:model-value="value=>{row.new_cyclecount_quantity=value;markTouched(row)}" /><span v-else>{{isRecorded(row)?row.actual_quantity:'—'}}</span></template><template #cell-difference="{row}"><span v-if="rowDifference(row)!==null" :class="{'w-cycle-warning':rowDifference(row)!==0}">{{(rowDifference(row)||0)>0?'+':''}}{{rowDifference(row)}}</span><span v-else>—</span></template><template #cell-entry="{row}"><WStatus :tone="isRecorded(row)?'ok':'none'">{{t(isRecorded(row)?'cyclecount.fields.recorded':'operations.ui.unrecorded')}}</WStatus><span class="w-cycle-sub">{{row.operator?.user_name}}</span><span v-if="isRecorded(row)" class="w-cycle-sub">{{$dayjs(row.updated_at,'MM/DD HH:mm',itemData)}}</span></template><template #cell-action="{row}"><WButton v-if="canEdit&&itemData.status==='in_progress'&&row.status!=='completed'&&isRecorded(row)" size="sm" :disabled="saving||actionBusy||isTouched(row)" @click="runAction(()=>completeItem(row))">{{t('button.complete')}}</WButton></template></WTable><footer v-if="canEdit"><WButton v-if="itemData.status==='pending'" variant="primary" :loading="actionBusy" @click="runAction(processTask)">{{t('button.process')}}</WButton><template v-if="itemData.status==='in_progress'"><WButton :disabled="saving||actionBusy" @click="resetTask">{{t('button.reset')}}</WButton><WButton :disabled="!hasUnsavedChanges||actionBusy" :loading="saving" @click="saveTask">{{t('button.save')}}</WButton><WButton variant="primary" :disabled="hasUnsavedChanges||saving||!allItemsRecorded" :loading="actionBusy" @click="completeFn">{{t('button.complete')}}</WButton></template></footer></WCard><aside><WCard><h3>{{t('operations.ui.variance')}}</h3><div class="w-cycle-summary"><strong>{{totalDifferenceInProgress>0?'+':''}}{{totalDifferenceInProgress}}</strong><span>{{t('operations.ui.unrecorded')}} {{remaining}}</span></div><WButton v-if="itemData.status==='completed'&&staff.hasPermission('adjustment_edit')" :disabled="!validDetails.length||adjustmentCreated" :loading="creatingAdjustment" variant="primary" block @click="carete_adjustmentFn">{{t('adjustment.operations.add')}}</WButton></WCard><WCard><h3>{{t('operations.ui.status-records')}}</h3><ol><li v-for="log in itemData.status_logs" :key="log.id"><span class="w-cycle-sub">{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</span>{{t('common.status.'+String(log.new_status).replaceAll('_','-'))}}</li></ol></WCard></aside></div></div></template>
+<template><div class="w-cycle-detail w-scope"><header><nav><NuxtLink class="w-cycle-muted" to="/cyclecount">{{t('nav.cyclecount')}}</NuxtLink><span>/</span><span>CC-{{taskId}}</span></nav><div class="w-cycle-heading"><h1>CC-{{taskId}}</h1><WStatus v-if="itemData" :tone="itemData.status==='completed'?'ok':itemData.status==='in_progress'?'warn':'none'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus><span>{{itemData?.task_name}}</span><WButton v-if="itemData" class="w-count-print-link" icon="printer" :to="'/cyclecount/print/'+taskId">{{t('count-print.print')}}</WButton></div><div v-if="itemData" class="w-cycle-meta"><span>{{itemData.warehouse?.name}}</span><span>{{$dayjs(itemData.scheduled_date,'YYYY-MM-DD',itemData)}}</span></div></header><WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData">{{t('dn.list.retry')}}</WButton></template></WAlert><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard><div v-if="itemData" class="w-cycle-layout"><WCard flush><div class="w-cycle-section"><h2>{{t('common.fields.task-details')}} <small>{{itemData.task_details?.length}}</small></h2><span>{{recordedCount}} / {{itemData.task_details?.length}}</span></div><WTable :columns="columns" :rows="itemData.task_details||[]" inset><template #cell-goods="{row}"><WStatus v-if="row.is_supplemental" tone="warn">{{t('cyclecount.supplement.badge')}}</WStatus><NuxtLink v-if="allowed('location_read')" class="w-cycle-name" :to="'/location/detail/'+row.location_id">{{row.location?.code}}</NuxtLink><span v-else class="w-cycle-name">{{row.location?.code}}</span><NuxtLink v-if="allowed('goods_read')" class="w-cycle-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else class="w-cycle-goods">{{row.goods?.name}}</span><span class="w-cycle-sub">{{row.goods?.code}}</span><span class="w-cycle-sub">{{row.lot_no||t('lot-rules.unassigned')}}<template v-if="row.expiry_date"> &middot; {{row.expiry_date}}</template></span></template><template #cell-actual="{row}"><WInput v-if="canEdit&&itemData.status==='in_progress'&&row.status!=='completed'" :model-value="hasInput(row)?row.new_cyclecount_quantity:isRecorded(row)?row.actual_quantity:''" type="number" min="0" step="1" align="right" size="sm" :invalid="unrecordedIds.includes(row.id)" :aria-label="row.goods?.code+' '+row.location?.code+' '+(row.lot_no||t('lot-rules.unassigned'))+' '+t('common.quantities.actual')" :disabled="saving||actionBusy||supplementBusy||supplementDraft" @update:model-value="value=>{row.new_cyclecount_quantity=value;markTouched(row)}" /><span v-else>{{isRecorded(row)?row.actual_quantity:'—'}}</span></template><template #cell-difference="{row}"><span v-if="rowDifference(row)!==null" :class="{'w-cycle-warning':rowDifference(row)!==0}">{{(rowDifference(row)||0)>0?'+':''}}{{rowDifference(row)}}</span><span v-else>—</span></template><template #cell-entry="{row}"><WStatus :tone="isRecorded(row)?'ok':'none'">{{t(isRecorded(row)?'cyclecount.fields.recorded':'operations.ui.unrecorded')}}</WStatus><span class="w-cycle-sub">{{row.operator?.user_name}}</span><span v-if="isRecorded(row)" class="w-cycle-sub">{{$dayjs(row.updated_at,'MM/DD HH:mm',itemData)}}</span></template><template #cell-action="{row}"><WButton v-if="row.is_supplemental&&row.status!=='completed'&&itemData.status==='in_progress'&&allowed('cycle_count_edit')" variant="text" size="sm" :disabled="saving||actionBusy||supplementBusy||supplementDraft||hasUnsavedChanges" @click="runAction(()=>removeSupplement(row))">{{t('cyclecount.supplement.remove')}}</WButton><WButton v-if="canEdit&&itemData.status==='in_progress'&&row.status!=='completed'&&isRecorded(row)" size="sm" :disabled="saving||actionBusy||supplementBusy||supplementDraft||hasUnsavedChanges" @click="runAction(()=>completeItem(row))">{{t('button.complete')}}</WButton></template></WTable><footer v-if="canEdit"><WButton v-if="itemData.status==='pending'" variant="primary" :loading="actionBusy" @click="runAction(processTask)">{{t('button.process')}}</WButton><template v-if="itemData.status==='in_progress'"><WButton :disabled="saving||actionBusy||supplementBusy||supplementDraft" @click="resetWithConfirm">{{t('button.reset')}}</WButton><WButton :disabled="!hasUnsavedChanges||actionBusy||supplementBusy||supplementDraft" :loading="saving" @click="saveTask">{{t('button.save')}}</WButton><WButton variant="primary" :disabled="hasUnsavedChanges||saving||supplementBusy||supplementDraft||!allItemsRecorded" :loading="actionBusy" @click="completeFn">{{t('button.complete')}}</WButton></template></footer></WCard><aside><CountSupplement v-if="itemData.status==='in_progress'&&allowed('cycle_count_edit')" :task-id="String(taskId)" :disabled="hasUnsavedChanges||saving||actionBusy" @busy="supplementBusy=$event" @draft="supplementDraft=$event" @saved="fetchData"/><WCard><h3>{{t('operations.ui.variance')}}</h3><div class="w-cycle-summary"><strong>{{totalDifferenceInProgress>0?'+':''}}{{totalDifferenceInProgress}}</strong><span>{{t('operations.ui.unrecorded')}} {{remaining}}</span><span>{{t('nav.location')}} {{varianceSummary.locations}} &middot; {{t('operations.ui.variance')}} {{varianceSummary.count}}</span><span>{{t('ledger.movements.adjust_gain')}} +{{varianceSummary.gain}} / {{t('ledger.movements.adjust_loss')}} -{{varianceSummary.loss}}</span></div><WButton v-if="itemData.status==='completed'&&allowed('adjustment_edit')" :disabled="!validDetails.length||adjustmentCreated" :loading="creatingAdjustment" variant="primary" block @click="carete_adjustmentFn">{{t('adjustment.operations.add')}}</WButton></WCard><WCard><h3>{{t('operations.ui.status-records')}}</h3><ol><li v-for="log in itemData.status_logs" :key="log.id"><span class="w-cycle-sub">{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</span>{{t('common.status.'+String(log.new_status).replaceAll('_','-'))}}</li></ol></WCard></aside></div></div></template>
 <style scoped>
-.w-cycle-detail{display:flex;flex-direction:column;gap:24px}.w-cycle-detail header{display:flex;flex-direction:column;gap:8px}.w-cycle-detail nav{display:flex;gap:8px;color:var(--w-text-2);font-size:13px;line-height:20px}.w-cycle-muted{color:var(--w-text-3);text-decoration:none}.w-cycle-heading{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.w-cycle-heading h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.w-count-print-link{margin-left:auto}.w-cycle-meta{display:flex;gap:24px;font-size:13px;color:var(--w-text-3)}.w-cycle-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:start}.w-cycle-layout aside{display:flex;flex-direction:column;gap:16px}.w-cycle-section{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--w-line);font-size:13px}.w-cycle-section h2{margin:0;font-size:16px;line-height:24px;font-weight:600}.w-cycle-section small{font-size:13px;font-weight:400;color:var(--w-text-3)}.w-cycle-detail :deep(.w-table){min-width:740px}.w-cycle-detail :deep(.w-table td){padding-top:14px;padding-bottom:14px;vertical-align:top}.w-cycle-detail :deep(.w-input){min-width:72px;max-width:96px}.w-cycle-name{display:block;font-size:14px;font-weight:600;color:var(--w-text-1);text-decoration:none}.w-cycle-goods{display:block;font-size:13px;color:var(--w-text-2);text-decoration:none}.w-cycle-sub{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.w-cycle-warning{color:#B87400}.w-cycle-detail footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--w-border)}.w-cycle-detail h3{margin:0 0 12px;font-size:14px;line-height:22px;font-weight:600}.w-cycle-summary{display:flex;flex-direction:column;gap:8px;font-size:13px;margin-bottom:16px}.w-cycle-summary strong{font-size:24px;line-height:32px;font-weight:600}.w-cycle-detail ol{list-style:none;padding:0;margin:0}.w-cycle-detail li{border-top:1px solid var(--w-line);padding:12px 0;font-size:13px}@media(max-width:1100px){.w-cycle-layout{grid-template-columns:minmax(0,1fr)}}
+.w-cycle-detail{display:flex;flex-direction:column;gap:24px}.w-cycle-detail header{display:flex;flex-direction:column;gap:8px}.w-cycle-detail nav{display:flex;gap:8px;color:var(--w-text-2);font-size:13px;line-height:20px}.w-cycle-muted{color:var(--w-text-3);text-decoration:none}.w-cycle-heading{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.w-cycle-heading>span{overflow-wrap:anywhere;min-width:0}.w-cycle-heading h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.w-count-print-link{margin-left:auto}.w-cycle-meta{display:flex;gap:24px;font-size:13px;color:var(--w-text-3)}.w-cycle-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:start}.w-cycle-layout aside{display:flex;flex-direction:column;gap:16px}.w-cycle-section{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--w-line);font-size:13px}.w-cycle-section h2{margin:0;font-size:16px;line-height:24px;font-weight:600}.w-cycle-section small{font-size:13px;font-weight:400;color:var(--w-text-3)}.w-cycle-detail :deep(.w-table){min-width:740px}.w-cycle-detail :deep(.w-table td){padding-top:14px;padding-bottom:14px;vertical-align:top}.w-cycle-detail :deep(.w-table .w-input){min-width:72px;max-width:96px}.w-cycle-name{display:block;font-size:14px;font-weight:600;color:var(--w-text-1);text-decoration:none}.w-cycle-goods{display:block;font-size:13px;color:var(--w-text-2);text-decoration:none}.w-cycle-sub{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.w-cycle-warning{color:#B87400}.w-cycle-detail footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--w-border)}.w-cycle-detail h3{margin:0 0 12px;font-size:14px;line-height:22px;font-weight:600}.w-cycle-summary{display:flex;flex-direction:column;gap:8px;font-size:13px;margin-bottom:16px}.w-cycle-summary strong{font-size:24px;line-height:32px;font-weight:600}.w-cycle-detail ol{list-style:none;padding:0;margin:0}.w-cycle-detail li{border-top:1px solid var(--w-line);padding:12px 0;font-size:13px}@media(max-width:1100px){.w-cycle-layout{grid-template-columns:minmax(0,1fr)}}
 </style>

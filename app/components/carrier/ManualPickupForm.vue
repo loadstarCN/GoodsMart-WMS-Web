@@ -92,7 +92,7 @@ watch(() => props.active, (active: boolean) => {
   form.remarks = ''
 }, { immediate: true })
 
-const canSubmit = computed(() => !submitting.value && !timeProblem.value && !!form.pickup_date && chosen.value.length > 0 && !!props.carrierId)
+const canSubmit = computed(() => props.active && !submitting.value && !timeProblem.value && !!form.pickup_date && chosen.value.length > 0 && !!props.carrierId)
 
 const submit = async () => {
   if (!canSubmit.value) return

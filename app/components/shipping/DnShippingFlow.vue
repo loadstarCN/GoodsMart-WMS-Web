@@ -47,6 +47,7 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const staffStore = useStaffStore()
 const { busyDocId, viewDoc, downloadRawDoc } = useCustomsPdfActions()
 
 const view = useShippingFlowView({
@@ -265,7 +266,7 @@ defineExpose({ reload })
         <TimeZoneBadge v-if="flow" :zone="flowTimeZone" />
       </div>
       <div class="d-flex align-items-center gap-2">
-        <NuxtLink :to="dnLink" class="fs-12" v-if="mode === 'compact' && !onDnPage">
+        <NuxtLink :to="dnLink" class="fs-12" v-if="mode === 'compact' && !onDnPage && staffStore.hasPermission('dn_read')">
           {{ t('shipping.view-on-dn') }}<i class="ri-arrow-right-s-line align-middle"></i>
         </NuxtLink>
         <button type="button" class="btn btn-sm btn-icon btn-light" :disabled="loading" :title="t('shipping.refresh')"

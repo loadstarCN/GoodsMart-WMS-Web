@@ -1,12 +1,14 @@
 <script setup lang="ts">
-const props=defineProps<{rows:any[];loading?:boolean;compact?:boolean;hideGoods?:boolean}>()
-const {t}=useI18n()
+const props=defineProps<{rows:any[];loading?:boolean;compact?:boolean;hideGoods?:boolean;timeField?:'occurred'|'posted'}>()
+const {t}=useI18n(),staff=useStaffStore()
+const canRead=(permission:string)=>staff.refreshed&&!!staff.staffInfo&&staff.hasPermission(permission)
 const documentLink=(row:any)=>{
  const paths:Record<string,string>={asn:'/asn/detail/',dn:'/dn/detail/',adjustment:'/adjustment/detail/',picking_task:'/picking/detail/',packing_task:'/packing/detail/'}
- return row.doc_id&&paths[row.doc_type]?paths[row.doc_type]+row.doc_id:null
+ const permissions:Record<string,string>={asn:'asn_read',dn:'dn_read',adjustment:'adjustment_read',picking_task:'picking_read',packing_task:'packing_read'}
+ return row.doc_id&&paths[row.doc_type]&&canRead(permissions[row.doc_type]||'')?paths[row.doc_type]+row.doc_id:null
 }
 const columns=computed(()=>[
- {key:'occurred_at',label:t('ledger.time')},{key:'movement_type',label:t('ledger.movement')},
+ {key:'occurred_at',label:t('ledger.'+(props.timeField||'occurred'))},{key:'movement_type',label:t('ledger.movement')},
  {key:'document',label:t('ledger.document')},...(!props.hideGoods?[{key:'goods',label:t('nav.goods'),wrap:true}]:[]),
  ...(!props.compact?[{key:'lot_no',label:t('goods-label.lot')},{key:'location',label:t('nav.location')},{key:'stock_type',label:t('ledger.stock-type')}]:[]),
  {key:'quantity',label:t('ledger.change'),type:'qty' as const,strong:true,keepZero:true},
@@ -15,12 +17,12 @@ const columns=computed(()=>[
 ])
 </script>
 <template><WTable class="w-ledger-table" :class="{'is-compact':compact}" :rows="rows" :columns="columns" :loading="loading" inset>
- <template #cell-occurred_at="{row}">{{$dayjs(row.occurred_at,compact?'MM/DD HH:mm':'YYYY/MM/DD HH:mm',row)}}</template>
+ <template #cell-occurred_at="{row}">{{$dayjs(timeField==='posted'?row.posted_at:row.occurred_at,compact?'MM/DD HH:mm':'YYYY/MM/DD HH:mm',row)}}</template>
  <template #cell-movement_type="{row}">{{t('ledger.movements.'+row.movement_type)}}</template>
  <template #cell-document="{row}"><NuxtLink v-if="documentLink(row)" class="w-ledger-link" :to="documentLink(row)!">{{row.doc_type.toUpperCase()}}-{{row.doc_id}}</NuxtLink><span v-else>{{row.doc_type?row.doc_type.toUpperCase()+'-'+row.doc_id:'—'}}</span><span class="w-ledger-sub">{{row.doc_no||row.reason}}</span></template>
- <template #cell-goods="{row}"><NuxtLink class="w-ledger-link" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span class="w-ledger-sub">{{row.goods?.code}}</span></template>
+ <template #cell-goods="{row}"><NuxtLink v-if="canRead('goods_read')" class="w-ledger-link" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else>{{row.goods?.name}}</span><span class="w-ledger-sub">{{row.goods?.code}}</span></template>
  <template #cell-lot_no="{row}">{{row.lot_no||t('ledger.no-lot')}}</template>
- <template #cell-location="{row}"><NuxtLink v-if="row.location" class="w-ledger-link" :to="'/location/detail/'+row.location.id">{{row.location.code}}</NuxtLink></template>
+ <template #cell-location="{row}"><NuxtLink v-if="row.location&&canRead('location_read')" class="w-ledger-link" :to="'/location/detail/'+row.location.id">{{row.location.code}}</NuxtLink><span v-else-if="row.location">{{row.location.code}}</span></template>
  <template #cell-stock_type="{row}">{{t('ledger.types.'+row.stock_type)}}</template>
  <template #cell-quantity="{row}"><strong>{{row.quantity>0?'+':''}}{{row.quantity}}</strong></template>
  <template #cell-operator="{row}">{{row.operator?.user_name||row.source}}</template>

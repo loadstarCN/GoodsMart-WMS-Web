@@ -35,6 +35,8 @@ export function useWOverlay(open: Ref<boolean>, panel: Ref<HTMLElement | null | 
 
   const onKeydown = (event: KeyboardEvent) => {
     if (stack[stack.length - 1] !== token) return
+    // A confirmation opened from a drawer owns keyboard focus until it closes.
+    if (document.querySelector('.swal2-container .swal2-popup')) return
     if (event.key === 'Escape') {
       event.stopPropagation()
       onClose()
@@ -64,6 +66,9 @@ export function useWOverlay(open: Ref<boolean>, panel: Ref<HTMLElement | null | 
     lockScroll()
     document.addEventListener('keydown', onKeydown)
     await nextTick()
+    await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
+    await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
+    if(!open.value||stack[stack.length-1]!==token)return
     // 优先聚焦带 autofocus 的元素，其次面板本身（读屏先读标题），不直接跳到第一个按钮
     const auto = panel.value?.querySelector<HTMLElement>('[autofocus]')
     ;(auto || panel.value)?.focus()

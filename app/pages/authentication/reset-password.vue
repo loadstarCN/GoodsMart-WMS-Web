@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import PasswordInput from '~/components/common/SecurePasswordInput.vue'
 
 // 工具库
 
@@ -133,9 +134,9 @@ useHead({title:()=>t('nav.reset-password')})
   <div class="w-password-page w-scope">
     <header><h1>{{t('nav.reset-password')}}</h1></header>
     <WCard flush><form @submit.prevent="handleSubmit"><WFormSection :title="t('nav.reset-password')"><div class="w-password-fields">
-      <WField :label="t('profile.current-password')" required :error="errors.current_password"><WInput v-model="formState.currentPassword" type="password" autocomplete="current-password" :disabled="saving" /></WField>
-      <WField :label="t('profile.new-password')" required :error="errors.new_password" :hint="t('common.validation.password-policy',passwordPolicyParams())"><WInput v-model="formState.newPassword" type="password" autocomplete="new-password" :disabled="saving" /></WField>
-      <WField :label="t('profile.confirm-password')" required :error="errors.confirm_password"><WInput v-model="formState.confirmPassword" type="password" autocomplete="new-password" :disabled="saving" /></WField>
+      <WField :label="t('profile.current-password')" required :error="errors.current_password"><PasswordInput v-model="formState.currentPassword" autocomplete="current-password" :disabled="saving" /></WField>
+      <WField :label="t('profile.new-password')" required :error="errors.new_password" :hint="t('common.validation.password-policy',passwordPolicyParams())"><PasswordInput v-model="formState.newPassword" autocomplete="new-password" :disabled="saving" /></WField>
+      <WField :label="t('profile.confirm-password')" required :error="errors.confirm_password"><PasswordInput v-model="formState.confirmPassword" autocomplete="new-password" :disabled="saving" /></WField>
     </div></WFormSection><footer><WButton type="submit" variant="primary" :loading="saving">{{t('button.submit')}}</WButton></footer></form></WCard>
   </div>
 </template>

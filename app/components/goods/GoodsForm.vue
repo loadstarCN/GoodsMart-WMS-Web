@@ -10,15 +10,19 @@ const editing=computed(()=>!!props.goodsId),title=computed(()=>t(editing.value?'
 useHead({title})
 const record=ref<Record<string,any>>({name:'',code:'',unit:'pcs',currency:staff.staffInfo?.company?.default_currency||'JPY',tags:[],origin_country:null})
 const loading=ref(false),busy=ref(false),error=ref(''),errors=ref<Record<string,string>>({}),tag=ref('')
-let original:Record<string,any>|null=null,descriptionTouched=false,generation=0
-const image=computed({get:()=>record.value.image_url,set:value=>{record.value.image_url=value;record.value.thumbnail_url=value}})
+const canEdit=computed(()=>staff.refreshed&&!!staff.staffInfo&&staff.hasPermission('goods_edit')&&!loading.value&&(!editing.value||!!record.value.id))
+let original:Record<string,any>|null=null,descriptionTouched=false,generation=0,savedSuccessfully=false
+const image=computed({get:()=>record.value.image_url??null,set:value=>{record.value.image_url=value;record.value.thumbnail_url=value}})
 const options=(values:string[],label=(value:string)=>value)=>values.map(value=>({value,label:label(value)}))
 const tags=computed<string[]>(()=>Array.isArray(record.value.tags)?record.value.tags:[])
 const addTag=()=>{const next=tag.value.trim();if(next&&!tags.value.includes(next))record.value.tags=[...tags.value,next];tag.value=''}
 const touchDescription=()=>{if(!descriptionTouched&&original)original.description=record.value.description;descriptionTouched=true}
 const load=async()=>{
- if(!props.goodsId)return
- const seq=++generation;loading.value=true
+ const seq=++generation;loading.value=true;error.value='';original=null
+ await staff.getCurrentStaffInfo()
+ if(seq!==generation)return
+ if(!props.goodsId){original=snapshotGoodsForm(record.value);loading.value=false;return}
+ record.value.id=undefined
  const data=await httpRequest<any>('/api/warehouse/goods/'+props.goodsId,{onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
  if(seq!==generation)return
  if(data){record.value={...data,tags:convert_tags_to_array(data.tags)};original=snapshotGoodsForm(record.value)}
@@ -27,7 +31,7 @@ const load=async()=>{
 onMounted(load)
 onBeforeUnmount(()=>{generation++})
 const save=async()=>{
- if(busy.value)return
+ if(busy.value||!canEdit.value)return
  errors.value={};error.value=''
  if(!String(record.value.name||'').trim())errors.value.name=t('common.validation.name-required',{entity:t('goods.entity')})
  if(!String(record.value.code||'').trim())errors.value.code=t('goods.validation.code-required')
@@ -37,37 +41,38 @@ const save=async()=>{
  if(editing.value&&!Object.keys(body).length){showToast(t('goods.form.tips.no-changes'),'warning');return}
  if(!editing.value){if(!staff.staffInfo?.company?.id)await staff.getCurrentStaffInfo();body.company_id=staff.staffInfo?.company?.id;if(!body.company_id){error.value=t('goods.tips.company-missing');return}}
  busy.value=true;let saved=false
- try{const result=await httpRequest<any>(editing.value?'/api/warehouse/goods/'+props.goodsId:'/api/warehouse/goods/',{method:editing.value?'PUT':'POST',body,onError:err=>{error.value=bizErrorMessage(err)}});if(result){saved=true;showToast(t('action-results.success'),'success');await router.push('/goods/detail/'+(result.id||props.goodsId))}}finally{if(!saved)busy.value=false}
+ try{const result=await httpRequest<any>(editing.value?'/api/warehouse/goods/'+props.goodsId:'/api/warehouse/goods/',{method:editing.value?'PUT':'POST',body,onError:err=>{error.value=bizErrorMessage(err)}});if(result){saved=true;savedSuccessfully=true;showToast(t('action-results.success'),'success');await router.push('/goods/detail/'+(result.id||props.goodsId))}}finally{if(!saved)busy.value=false}
 }
+useUnsavedForm(()=>canEdit.value&&!savedSuccessfully&&!!original&&(!!tag.value.trim()||Object.keys(buildGoodsUpdatePayload(original,descriptionTouched?record.value:{...record.value,description:original.description})).length>0),()=>busy.value)
 </script>
 <template>
  <div class="w-goods-form w-scope">
   <header><nav><NuxtLink class="w-breadcrumb-link" to="/goods">{{t('nav.goods')}}</NuxtLink><span>/</span>{{title}}</nav><h1>{{title}}</h1></header>
-  <WAlert v-if="error" tone="block" :title="error" />
+  <WAlert v-if="error" tone="block" :title="error"><template v-if="editing&&!record.id" #actions><WButton :disabled="loading" @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
   <WCard v-if="loading"><span role="status">{{t('common.status.loading')}}</span></WCard>
-  <form v-else class="w-goods-form__card" @submit.prevent="save">
+  <form v-else-if="!editing||record.id" class="w-goods-form__card" @submit.prevent="save">
    <WFormSection :title="t('goods.form.basic-info')"><WFormGrid>
-    <WField :label="t('goods.fields.name')" :error="errors.name"><WTextarea v-model="record.name" :rows="2" :maxlength="100" :disabled="busy" /></WField>
-    <WField :label="t('goods.fields.code')" :span="6" :error="errors.code"><WInput v-model="record.code" maxlength="50" :disabled="busy" /></WField>
-    <WField :label="t('goods.fields.category')" :span="6" optional><WSelect v-model="record.category" :options="options(categoriesOptions,categoryLabel)" :disabled="busy" placeholder="—" /></WField>
-    <WField v-for="key in ['brand','manufacturer']" :key="key" :label="t('goods.fields.'+key)" :span="6" optional><WInput v-model="record[key]" maxlength="255" :disabled="busy" /></WField>
-    <WField :label="t('goods.fields.tags')" optional><div class="w-goods-form__tags"><span v-for="value in tags" :key="value">{{value}}<button type="button" :disabled="busy" :aria-label="t('button.delete')+' '+value" @click="record.tags=tags.filter(item=>item!==value)">×</button></span><input v-model="tag" :disabled="busy" :aria-label="t('goods.form.placeholders.tag-add')" :placeholder="t('goods.form.placeholders.tag-add')" @keydown.enter.prevent="addTag" @blur="addTag"></div></WField>
+    <WField :label="t('goods.fields.name')" :error="errors.name"><WTextarea v-model="record.name" :rows="2" :maxlength="100" :disabled="busy||!canEdit" /></WField>
+    <WField :label="t('goods.fields.code')" :span="6" :error="errors.code"><WInput v-model="record.code" maxlength="50" :disabled="busy||!canEdit" /></WField>
+    <WField :label="t('goods.fields.category')" :span="6" optional><WSelect v-model="record.category" :options="options(categoriesOptions,categoryLabel)" :disabled="busy||!canEdit" placeholder="—" /></WField>
+    <WField v-for="key in ['brand','manufacturer']" :key="key" :label="t('goods.fields.'+key)" :span="6" optional><WInput v-model="record[key]" maxlength="255" :disabled="busy||!canEdit" /></WField>
+    <WField :label="t('goods.fields.tags')" optional><div class="w-goods-form__tags"><span v-for="value in tags" :key="value">{{value}}<button type="button" :disabled="busy||!canEdit" :aria-label="t('button.delete')+' '+value" @click="record.tags=tags.filter(item=>item!==value)">×</button></span><input v-model="tag" :disabled="busy||!canEdit" :aria-label="t('goods.form.placeholders.tag-add')" :placeholder="t('goods.form.placeholders.tag-add')" @keydown.enter.prevent="addTag" @blur="addTag"></div></WField>
    </WFormGrid></WFormSection>
    <WFormSection :title="t('goods.fields.price')"><WFormGrid>
-    <WField v-for="key in ['price','discount_price']" :key="key" :label="t('goods.fields.'+key.replace('_','-'))" :span="4" optional><WInput v-model="record[key]" type="number" min="0" step="0.01" :disabled="busy" /></WField>
-    <WField :label="t('goods.fields.currency')" :span="4"><WSelect v-model="record.currency" :options="options(currenciesOptions)" :disabled="busy" /></WField>
+    <WField v-for="key in ['price','discount_price']" :key="key" :label="t('goods.fields.'+key.replace('_','-'))" :span="4" optional><WInput v-model="record[key]" type="number" min="0" step="0.01" :disabled="busy||!canEdit" /></WField>
+    <WField :label="t('goods.fields.currency')" :span="4"><WSelect v-model="record.currency" :options="options(currenciesOptions)" :disabled="busy||!canEdit" /></WField>
    </WFormGrid></WFormSection>
    <WFormSection :title="t('goods.form.specs')"><WFormGrid>
-    <WField :label="t('goods.fields.unit')" :span="4"><WSelect v-model="record.unit" :options="options(unitsOptions,unitOptionLabel)" :disabled="busy" /></WField>
-    <WField :label="t('goods.fields.weight')+' kg'" :span="4" optional><WInput v-model="record.weight" type="number" min="0" step="any" :disabled="busy" /></WField>
+    <WField :label="t('goods.fields.unit')" :span="4"><WSelect v-model="record.unit" :options="options(unitsOptions,unitOptionLabel)" :disabled="busy||!canEdit" /></WField>
+    <WField :label="t('goods.fields.weight')+' kg'" :span="4" optional><WInput v-model="record.weight" type="number" min="0" step="any" :disabled="busy||!canEdit" /></WField>
     <div class="w-span-4" />
-    <WField v-for="key in ['length','width','height']" :key="key" :label="t('goods.fields.'+key)+' mm'" :span="4" optional><WInput v-model="record[key]" type="number" min="0" step="1" :disabled="busy" /></WField>
+    <WField v-for="key in ['length','width','height']" :key="key" :label="t('goods.fields.'+key)+' mm'" :span="4" optional><WInput v-model="record[key]" type="number" min="0" step="1" :disabled="busy||!canEdit" /></WField>
    </WFormGrid></WFormSection>
-   <WFormSection :title="t('goods.fields.origin-country')"><WField :label="t('goods.fields.origin-country')" optional :hint="t('goods.form.tips.origin-country')"><CountryCombobox v-model="record.origin_country" :disabled="busy" /></WField></WFormSection>
-   <WFormSection :title="t('goods.fields.image')"><div class="w-goods-form__image" :inert="busy"><ImageUploader v-model="image" upload-url="/api/warehouse/goods/image/upload" :size="96" shape="square" /></div></WFormSection>
-   <WFormSection :title="t('goods.fields.description')"><div class="w-goods-form__editor" :inert="busy" @keydown.capture="touchDescription" @paste.capture="touchDescription" @drop.capture="touchDescription" @pointerdown.capture="touchDescription"><QuillEditor v-model:content="record.description" content-type="html" theme="snow" :toolbar="[['bold','italic','underline'],[{list:'ordered'},{list:'bullet'}],['link','clean']]" /></div></WFormSection>
-   <WFormSection :title="t('goods.form.dates')"><WFormGrid><WField v-for="key in ['production_date','expiration_date']" :key="key" :label="t(key==='production_date'?'goods.fields.product-date':'goods.fields.expiry-date')" :span="6" optional><WDatePicker v-model="record[key]" :disabled="busy" /></WField></WFormGrid></WFormSection>
-   <footer><WButton to="/goods" :disabled="busy">{{t('button.cancel')}}</WButton><WButton type="submit" variant="primary" :loading="busy">{{t('button.save')}}</WButton></footer>
+   <WFormSection :title="t('goods.fields.origin-country')"><WField :label="t('goods.fields.origin-country')" optional :hint="t('goods.form.tips.origin-country')"><CountryCombobox v-model="record.origin_country" :disabled="busy||!canEdit" /></WField></WFormSection>
+   <WFormSection :title="t('goods.fields.image')"><div class="w-goods-form__image" :inert="busy||!canEdit"><ImageUploader v-model="image" upload-url="/api/warehouse/goods/image/upload" :size="96" shape="square" /></div></WFormSection>
+   <WFormSection :title="t('goods.fields.description')"><div class="w-goods-form__editor" :inert="busy||!canEdit" @keydown.capture="touchDescription" @paste.capture="touchDescription" @drop.capture="touchDescription" @pointerdown.capture="touchDescription"><QuillEditor v-model:content="record.description" content-type="html" theme="snow" :toolbar="[['bold','italic','underline'],[{list:'ordered'},{list:'bullet'}],['link','clean']]" /></div></WFormSection>
+   <WFormSection :title="t('goods.form.dates')"><WFormGrid><WField v-for="key in ['production_date','expiration_date']" :key="key" :label="t(key==='production_date'?'goods.fields.product-date':'goods.fields.expiry-date')" :span="6" optional><WDatePicker v-model="record[key]" :disabled="busy||!canEdit" /></WField></WFormGrid></WFormSection>
+   <footer><WButton to="/goods" :disabled="busy">{{t('button.cancel')}}</WButton><WButton v-if="canEdit" type="submit" variant="primary" :loading="busy">{{t('button.save')}}</WButton></footer>
   </form>
  </div>
 </template>

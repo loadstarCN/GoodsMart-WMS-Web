@@ -29,7 +29,8 @@ export const PERMISSION_CATEGORIES: PermissionCategoryDef[] = [
   {
     label: 'admin.permissions.categories.global',
     modules: [
-      { label: 'admin.permissions.modules.global', perms: ['all_access', 'company_all_access'] },
+      { label: 'admin.permissions.modules.global', perms: ['all_access', 'company_all_access', 'warehouse_all_access'] },
+      { label: 'admin.permissions.modules.tasks', perms: ['operator'] },
       { label: 'admin.permissions.modules.tasks', perms: ['tasks_execute'] },
     ]
   },
@@ -51,11 +52,13 @@ export const PERMISSION_CATEGORIES: PermissionCategoryDef[] = [
     modules: [
       { label: 'admin.permissions.modules.company', prefix: 'company' },
       { label: 'admin.permissions.modules.staff', prefix: 'staff' },
+      { label: 'company-roles.title', prefix: 'company_roles', ops: ['read', 'edit'] },
       { label: 'admin.permissions.modules.department', prefix: 'department' },
       { label: 'admin.permissions.modules.warehouse', prefix: 'warehouse' },
       { label: 'admin.permissions.modules.location', prefix: 'location' },
       { label: 'admin.permissions.modules.supplier', prefix: 'supplier' },
       { label: 'admin.permissions.modules.carrier', prefix: 'carrier' },
+      { label: 'freight.title', prefix: 'freight', ops: ['read', 'edit'] },
       { label: 'admin.permissions.modules.recipient', prefix: 'recipient' },
     ]
   },

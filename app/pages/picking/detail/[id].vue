@@ -1,15 +1,19 @@
 <script lang="ts" setup>
+import PickingPrintHistory from '~/components/documents/PickingPrintHistory.vue'
 import CompactFlow from '~/components/operations/CompactFlow.vue'
 const staff=useStaffStore()
-const canEdit=computed(()=>staff.hasPermission('picking_edit'))
+const allowed = (permission:string) => !!(staff.refreshed && staff.staffInfo && staff.hasPermission(permission))
+const canEdit=computed(()=>!!staff.refreshed && !!staff.staffInfo && !loading.value && !loadError.value && staff.hasPermission('picking_edit'))
 const actionBusy=ref(false)
 const runAction=async(action:()=>Promise<any>)=>{if(actionBusy.value||submitting.value||!canEdit.value)return;actionBusy.value=true;try{await action()}finally{actionBusy.value=false}}
 
 // 定义页面元数据
-definePageMeta({
-});
+definePageMeta({ key: route => route.path });
 
 let loading = ref(true);
+const loadError = ref('');
+let loadGeneration = 0;
+onBeforeUnmount(() => { loadGeneration++ });
 const route = useRoute();
 const taskId = route.params.id;
 
@@ -47,11 +51,12 @@ const totalOldPicked = computed<number>(() => {
 
 
 const fetchData = async () => {
-    loading.value = true;
+    const generation = ++loadGeneration;
+    loading.value = true; loadError.value = ''; itemData.value = null;
     const data = await httpRequest(`/api/warehouse/picking/${taskId}`, {
         method: 'GET',
-        params: route.query,
         onSuccess: (data) => {
+          if (generation !== loadGeneration) return;
           itemData.value = data;
           if (itemData.value?.status !== 'in_progress') {
             return;
@@ -73,7 +78,7 @@ const fetchData = async () => {
               return acc;
             }, {});
           // 更新asn.details中的旧数量
-          itemData.value.dn.details.forEach((item:any) => {
+          (itemData.value?.dn?.details || []).forEach((item:any) => {
             const goodsId = item.goods_id;
             // 统计task_details中的数据（按goods_id聚合）
             // 使用可选链防止undefined错误
@@ -82,10 +87,10 @@ const fetchData = async () => {
           });
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            if (generation === loadGeneration) loadError.value = bizErrorMessage(error);
         },
         onFinally: () => {
-            loading.value = false;
+            if (generation === loadGeneration) loading.value = false;
         }
     })
     return data;   
@@ -107,13 +112,14 @@ const addPickedQTY = (item:any) => {
 };
 
 const resetTask = () => {
-    itemData.value.dn.details.forEach((item:any) => {
+    (itemData.value?.dn?.details || []).forEach((item:any) => {
         item.new_picked_quantity = undefined;
     });
 };
 
 const saveTask = async () => {
   if(!canEdit.value||actionBusy.value)return;
+  if (invalidTaskEntries('picking', itemData.value?.dn?.details || [])) { showToast(t('error.check-quantities'), 'error'); return; }
   const selectedItems = (itemData.value?.dn?.details ?? []).filter(
     (item: any) => (Number(item?.new_picked_quantity) || 0) > 0,
   );
@@ -152,6 +158,7 @@ const saveTask = async () => {
         goods_id: item?.goods_id ?? null,
         picked_quantity: newPicked,
         location_id: item?.location_id ?? null,
+        lot_id: item?.lot_id ?? null,
       };
     })
     .filter(Boolean) // 移除被标记为null的无效条目
@@ -239,12 +246,9 @@ const completeTask = async () => {
     return data;   
 };
 
-const hasUnsavedChanges = computed(() => {
-  return itemData.value?.dn?.details?.some((item: any) => {
-    const picked = Number(item?.new_picked_quantity) || 0
-    return picked > 0 
-  }) ?? false
-})
+const hasUnsavedChanges = computed(() => hasTaskEntry(itemData.value?.dn?.details || [], ['new_picked_quantity']))
+useUnsavedForm(() => hasUnsavedChanges.value, () => submitting.value || actionBusy.value)
+
 
 function completeFn() {
 
@@ -271,13 +275,20 @@ function completeFn() {
 
 
 const isLoading = ref(false);
+const locationError = ref('');
+let locationGeneration = 0;
+onBeforeUnmount(() => { locationGeneration++ });
 const selectedLocation = ref<any>(null);
 const locationSelectedOptions = ref<any[]>([]);
-const nameWithQuantity = (({ location,quantity }: any) => {
-  return `[${locationTypeLabel(location.location_type)}] ${location.code} (${quantity})`
+const nameWithQuantity = (({ location,quantity,lot_no,expiry_date }: any) => {
+  return `[${locationTypeLabel(location.location_type)}] ${location.code} (${quantity}) ${lot_no || t('lot-rules.unassigned')}${expiry_date ? ' / '+expiry_date : ''}`
 })
 const fetchLocationData = async (goods_id: number, targetRef: Ref<any[]>) => {
-  if (!goods_id) return;
+  if (!goods_id || !canEdit.value) return;
+  const generation = ++locationGeneration;
+  targetRef.value = [];
+  selectedLocation.value = null;
+  locationError.value = '';
   isLoading.value = true;
   
   const data = await httpRequest<PaginationData>('/api/warehouse/goods/locations/', {
@@ -285,16 +296,19 @@ const fetchLocationData = async (goods_id: number, targetRef: Ref<any[]>) => {
     // 只能从标准库位拣货（破损 / 退货库位的货提交时后端会拒：400 16162）：只请求标准库位
     params: {warehouse_id:itemData.value.dn?.warehouse_id, all: true, goods_id: goods_id, location_type: 'standard' },
     onSuccess: (data) => {
+      if (generation !== locationGeneration) return;
       // 库位类型已由后端筛好；数量为 0 的库位记录后端照样返回，这里不列出
-      targetRef.value = (data.items ?? []).filter((item: any) => Number(item.quantity) > 0);
+      targetRef.value = (data.items ?? []).filter((item: any) => Number(item.quantity) > 0 && item.pickable !== false);
     },
-    onError: (error) => showToast(error.message, 'error'),
-    onFinally: () => isLoading.value = false
+    onError: (error) => { if (generation === locationGeneration) locationError.value = bizErrorMessage(error) },
+    onFinally: () => { if (generation === locationGeneration) isLoading.value = false }
   });
 
   return data;
 };
 
+
+const retryLocations = () => fetchLocationData(currentItem.value?.goods_id, locationSelectedOptions)
 
 const addLocationFn = (item:any) => {
   currentItem.value = item;
@@ -308,6 +322,8 @@ const addLocation = (item:any) => {
     return;
   }
   item.location_id = selectedLocation.value.location_id;
+  item.lot_id = selectedLocation.value.lot_id;
+  item.lot_no = selectedLocation.value.lot_no;
   item.location = selectedLocation.value.location;
   item.location_available_quantity = Number(selectedLocation.value.quantity) || 0;
   const remaining = Math.max(
@@ -346,14 +362,26 @@ onMounted(async() => {
 });
 
 const saved=(row:any)=>(itemData.value?.task_details||[]).filter((line:any)=>line.goods_id===row.goods_id).reduce((sum:number,line:any)=>sum+Number(line.picked_quantity||0),0)
+const savedLocations = (row: any) => {
+  const locations = new Map<string, { code: string; quantity: number }>();
+  for (const line of itemData.value?.task_details || []) {
+    if (line.goods_id !== row.goods_id) continue;
+    const key = `${line.location_id}:${line.lot_id ?? 0}`;
+    const entry = locations.get(key) || { code: `${line.location?.code || `#${line.location_id}`} / ${line.lot_no || t('lot-rules.unassigned')}`, quantity: 0 };
+    entry.quantity += Number(line.picked_quantity || 0);
+    locations.set(key, entry);
+  }
+  return [...locations.values()];
+};
 const locationOpen=ref(false)
-const locationValue=computed({get:()=>selectedLocation.value?.location_id??null,set:value=>{selectedLocation.value=locationSelectedOptions.value.find(row=>row.location_id===value)||null}})
-const chooseLocation=(row:any)=>{locationSelectedOptions.value=[];addLocationFn(row);locationOpen.value=true}
-const confirmLocation=()=>{if(!selectedLocation.value)return;addLocation(currentItem.value);locationOpen.value=false}
+const locationValue=computed({get:()=>selectedLocation.value?.id??null,set:value=>{selectedLocation.value=locationSelectedOptions.value.find(row=>row.id===value)||null}})
+const chooseLocation=(row:any)=>{if(!canEdit.value||submitting.value||actionBusy.value)return;locationSelectedOptions.value=[];addLocationFn(row);locationOpen.value=true}
+const confirmLocation=()=>{if(!canEdit.value||isLoading.value||locationError.value||!selectedLocation.value)return;addLocation(currentItem.value);locationOpen.value=false}
+watch(locationOpen, open => { if(!open){locationGeneration++;isLoading.value=false;selectedLocation.value=null} })
 const goodsColumns=computed(()=>[{key:'location',label:t('nav.location')},{key:'goods',label:t('nav.goods'),wrap:true},{key:'quantity',label:t('common.quantities.expected'),type:'qty' as const},{key:'processed',label:t('common.quantities.picked'),type:'qty' as const},{key:'entry',label:t('operations.ui.this-entry')}])
 useHead({title:()=>`PICK-${taskId}`})
 </script>
-<template><div class="w-picking-detail w-scope"><header><nav><NuxtLink class="w-sort-muted" to="/picking">{{t('nav.picking')}}</NuxtLink><span>/</span><span>PICK-{{taskId}}</span></nav><div class="w-sort-heading"><h1>PICK-{{taskId}}</h1><WStatus v-if="itemData" :tone="itemData.status==='completed'?'ok':itemData.status==='in_progress'?'warn':'none'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus><NuxtLink v-if="itemData" :to="'/picking/print/'+taskId" class="w-sort-link">{{t('button.print-to-pdf')}}</NuxtLink></div><div v-if="itemData" class="w-sort-meta"><NuxtLink class="w-sort-link" :to="'/dn/detail/'+itemData.dn_id">DN-{{itemData.dn_id}}</NuxtLink><span>{{itemData.dn?.recipient?.name}}</span><span>{{$dayjs(itemData.started_at,undefined,itemData)}}</span></div></header><CompactFlow v-if="itemData" :key="itemData.status" :document-id="itemData.dn_id" kind="dn" current="picking" /><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard><div v-if="itemData" class="w-sort-layout"><div class="w-sort-main"><WCard flush><div class="w-sort-section"><div class="w-sort-section-heading"><h2>{{t('nav.goods')}} <small>{{itemData.dn?.details?.length}}</small></h2><span>{{t('common.quantities.picked')}} <strong>{{itemData.total_picked_quantity}}</strong> / {{itemData.expected_quantity}}</span></div><progress :value="itemData.total_picked_quantity" :max="Math.max(1,itemData.expected_quantity)" :aria-label="t('operations.ui.progress')" /></div><WTable :columns="goodsColumns" :rows="itemData.dn?.details||[]" inset><template #cell-goods="{row}"><NuxtLink class="w-sort-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span class="w-sort-sub">{{row.goods?.code}}</span><span class="w-sort-sub">{{row.remark}}</span></template><template #cell-processed="{row}">{{saved(row)}}</template><template #cell-entry="{row}"><WInput v-if="itemData.status==='in_progress'&&canEdit" v-model.number="row.new_picked_quantity" type="number" min="0" step="1" size="sm" align="right" :aria-label="row.goods?.code+' '+t('operations.ui.this-entry')" :disabled="submitting||actionBusy" /><span v-else>—</span></template><template #cell-location="{row}"><div class="w-location-action"><span class="w-location-code">{{row.location?.code||'—'}}</span><WButton v-if="canEdit&&itemData.status==='in_progress'" size="sm" :disabled="submitting||actionBusy" @click="chooseLocation(row)">{{t('operations.ui.select-location')}}</WButton></div></template></WTable><footer v-if="canEdit"><WButton v-if="itemData.status==='pending'" variant="primary" :loading="actionBusy" @click="runAction(processTask)">{{t('button.process')}}</WButton><template v-if="itemData.status==='in_progress'"><span class="w-sort-sub">{{t('operations.ui.this-entry')}} {{totalNewPicked}}</span><WButton :disabled="submitting||actionBusy" @click="resetTask">{{t('button.reset')}}</WButton><WButton :disabled="!hasUnsavedChanges||actionBusy" :loading="submitting" @click="saveTask">{{t('button.save')}}</WButton><WButton variant="primary" :disabled="hasUnsavedChanges||submitting" :loading="actionBusy" @click="completeFn">{{t('button.complete')}}</WButton></template></footer></WCard></div><aside><WCard><h3>{{t('nav.DN')}}</h3><dl><dt>{{t('nav.recipient')}}</dt><dd>{{itemData.dn?.recipient?.name}}</dd><dt>{{t('dn.fields.order-no')}}</dt><dd>{{itemData.dn?.order_number||'—'}}</dd><dt>{{t('nav.warehouse')}}</dt><dd>{{itemData.dn?.warehouse?.name}}</dd><dt>{{t('common.fields.remark')}}</dt><dd>{{itemData.dn?.remark||'—'}}</dd></dl></WCard><WCard><h3>{{t('operations.ui.picking-records')}} <small>{{itemData.batches?.length||0}}</small></h3><ol class="w-sort-records"><li v-for="batch in itemData.batches" :key="batch.id"><strong>#{{batch.id}}</strong><span class="w-sort-sub">{{$dayjs(batch.operation_time,'MM/DD HH:mm',itemData)}} · {{batch.operator?.user_name}}</span><div v-for="line in batch.details" :key="line.id" class="w-sort-record-line"><span>{{line.goods?.name}}</span><span>{{line.picked_quantity}}</span><WButton v-if="canEdit&&itemData.status==='in_progress'" icon="trash" icon-only variant="danger" size="sm" :aria-label="t('button.delete')" :disabled="actionBusy||submitting" @click="runAction(()=>deleteDetailItem(line.id))" /></div></li></ol></WCard><WCard><h3>{{t('operations.ui.status-records')}}</h3><ol class="w-sort-records"><li v-for="log in itemData.status_logs" :key="log.id"><span class="w-sort-sub">{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</span>{{t('common.status.'+String(log.new_status).replaceAll('_','-'))}}</li></ol></WCard></aside></div><WModal v-model:open="locationOpen" :title="t('operations.ui.select-location')"><WCombobox v-model="locationValue" :options="locationSelectedOptions.map(row=>({value:row.location_id,label:nameWithQuantity(row)}))" :loading="isLoading" :aria-label="t('nav.location')" /><template #footer><WButton @click="locationOpen=false">{{t('button.cancel')}}</WButton><WButton variant="primary" :disabled="!selectedLocation||isLoading" @click="confirmLocation">{{t('button.confirm')}}</WButton></template></WModal></div></template>
+<template><div class="w-picking-detail w-scope"><header><nav><NuxtLink class="w-sort-muted" to="/picking">{{t('nav.picking')}}</NuxtLink><span>/</span><span>PICK-{{taskId}}</span></nav><div class="w-sort-heading"><h1>PICK-{{taskId}}</h1><WStatus v-if="itemData" :tone="itemData.status==='completed'?'ok':itemData.status==='in_progress'?'warn':'none'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus><NuxtLink v-if="itemData" :to="'/picking/route/'+taskId" class="w-sort-link">{{t('pick-route.title')}}</NuxtLink><NuxtLink v-if="itemData" :to="'/picking/print/'+taskId" class="w-sort-link">{{t('button.print-to-pdf')}}</NuxtLink></div><div v-if="itemData" class="w-sort-meta"><NuxtLink v-if="allowed('dn_read')" class="w-sort-link" :to="'/dn/detail/'+itemData.dn_id">DN-{{itemData.dn_id}}</NuxtLink><span v-else>DN-{{itemData.dn_id}}</span><span>{{itemData.dn?.recipient?.name}}</span><span>{{$dayjs(itemData.started_at,undefined,itemData)}}</span></div></header><CompactFlow v-if="itemData" :key="itemData.status" :document-id="itemData.dn_id" kind="dn" current="picking" /><PickingPrintHistory v-if="itemData" :records="itemData.print_requests||[]" :document="itemData"/><WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData">{{t('dn.list.retry')}}</WButton></template></WAlert><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard><div v-if="itemData" class="w-sort-layout"><div class="w-sort-main"><WCard flush><div class="w-sort-section"><div class="w-sort-section-heading"><h2>{{t('nav.goods')}} <small>{{itemData.dn?.details?.length}}</small></h2><span>{{t('common.quantities.picked')}} <strong>{{itemData.total_picked_quantity}}</strong> / {{itemData.expected_quantity}}</span></div><progress :value="itemData.total_picked_quantity" :max="Math.max(1,itemData.expected_quantity)" :aria-label="t('operations.ui.progress')" /></div><WTable :columns="goodsColumns" :rows="itemData.dn?.details||[]" inset><template #cell-goods="{row}"><NuxtLink v-if="allowed('goods_read')" class="w-sort-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else class="w-sort-goods">{{row.goods?.name}}</span><span class="w-sort-sub">{{row.goods?.code}}</span><span class="w-sort-sub">{{row.remark}}</span></template><template #cell-processed="{row}">{{saved(row)}}</template><template #cell-entry="{row}"><WInput v-if="itemData.status==='in_progress'&&canEdit" v-model.number="row.new_picked_quantity" type="number" min="0" step="1" size="sm" align="right" :aria-label="row.goods?.code+' '+t('operations.ui.this-entry')" :disabled="submitting||actionBusy" /><span v-else>—</span></template><template #cell-location="{row}"><div class="w-location-action"><div><span v-if="row.location" class="w-location-code">{{row.location.code}} / {{row.lot_no || t('lot-rules.unassigned')}}</span><span v-for="location in savedLocations(row)" :key="location.code" class="w-sort-sub">{{location.code}} × {{location.quantity}}</span><span v-if="!row.location && !savedLocations(row).length">—</span></div><WButton v-if="canEdit&&itemData.status==='in_progress'" size="sm" :disabled="submitting||actionBusy" @click="chooseLocation(row)">{{t('operations.ui.select-location')}}</WButton></div></template></WTable><footer v-if="canEdit"><WButton v-if="itemData.status==='pending'" variant="primary" :loading="actionBusy" @click="runAction(processTask)">{{t('button.process')}}</WButton><template v-if="itemData.status==='in_progress'"><span class="w-sort-sub">{{t('operations.ui.this-entry')}} {{totalNewPicked}}</span><WButton :disabled="submitting||actionBusy" @click="resetTask">{{t('button.reset')}}</WButton><WButton :disabled="!hasUnsavedChanges||actionBusy" :loading="submitting" @click="saveTask">{{t('button.save')}}</WButton><WButton variant="primary" :disabled="hasUnsavedChanges||submitting" :loading="actionBusy" @click="completeFn">{{t('button.complete')}}</WButton></template></footer></WCard></div><aside><WCard><h3>{{t('nav.DN')}}</h3><dl><dt>{{t('nav.recipient')}}</dt><dd>{{itemData.dn?.recipient?.name}}</dd><dt>{{t('dn.fields.order-no')}}</dt><dd>{{itemData.dn?.order_number||'—'}}</dd><dt>{{t('nav.warehouse')}}</dt><dd>{{itemData.dn?.warehouse?.name}}</dd><dt>{{t('common.fields.remark')}}</dt><dd>{{itemData.dn?.remark||'—'}}</dd></dl></WCard><WCard><h3>{{t('operations.ui.picking-records')}} <small>{{itemData.batches?.length||0}}</small></h3><ol class="w-sort-records"><li v-for="batch in itemData.batches" :key="batch.id"><strong>#{{batch.id}}</strong><span class="w-sort-sub">{{$dayjs(batch.operation_time,'MM/DD HH:mm',itemData)}} · {{batch.operator?.user_name}}</span><div v-for="line in batch.details" :key="line.id" class="w-sort-record-line"><span>{{line.goods?.name}}<span class="w-sort-sub">{{line.location?.code || (line.location_id ? '#'+line.location_id : '—')}} / {{line.lot_no || t('lot-rules.unassigned')}}</span></span><span>{{line.picked_quantity}}</span><WButton v-if="canEdit&&itemData.status==='in_progress'" icon="trash" icon-only variant="danger" size="sm" :aria-label="t('button.delete')" :disabled="actionBusy||submitting" @click="runAction(()=>deleteDetailItem(line.id))" /></div></li></ol></WCard><WCard><h3>{{t('operations.ui.status-records')}}</h3><ol class="w-sort-records"><li v-for="log in itemData.status_logs" :key="log.id"><span class="w-sort-sub">{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</span>{{t('common.status.'+String(log.new_status).replaceAll('_','-'))}}</li></ol></WCard></aside></div><WModal v-model:open="locationOpen" :title="t('operations.ui.select-location')"><WAlert v-if="locationError" tone="block" :title="locationError"><template #actions><WButton @click="retryLocations">{{t('dn.list.retry')}}</WButton></template></WAlert><WCombobox v-model="locationValue" :options="locationSelectedOptions.map(row=>({value:row.id,label:nameWithQuantity(row)}))" :loading="isLoading" :aria-label="t('nav.location')" /><template #footer><WButton @click="locationOpen=false">{{t('button.cancel')}}</WButton><WButton variant="primary" :disabled="!selectedLocation||isLoading" @click="confirmLocation">{{t('button.confirm')}}</WButton></template></WModal></div></template>
 <style scoped>
 .w-location-action{display:flex;align-items:center;gap:12px;min-height:28px}
 .w-location-code{font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}

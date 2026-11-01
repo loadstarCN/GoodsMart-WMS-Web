@@ -2,14 +2,12 @@
 /**
  * 搜索结果页（设计稿 SearchResults.dc.html）：/search?q=&type=&scope=&page=（参数见 utils/searchRoutes）。
  * - 关键词显示在顶栏搜索框里（ShellTopbar 的 query），改了回车刷新；页面里没有第二个搜索框
- * - 标题「搜索「…」」+ 结果数；页签：全部 + 有查看权限、有结果的各类（数量灰字）——可搜的类型有 11 种，0 条的都列出来
- *   会把有结果的挤到滚动区外，所以 0 条的不显示（设计稿是灰显不能点；正停在某一类上时这一类照常显示）；
- *   右侧范围切换「当前仓库｜全部仓库」（只在可访问多个仓库、页头选了某个仓库时出现）
+ * - 标题、结果数与有权限的类型页签；无结果类型仅在当前选中时保留。
+ * - 仓库范围统一使用顶部选择，旧 URL 的 scope 参数不能覆盖它。
  * - 全部：最佳匹配卡片置顶，下面按类型分组，每组前 5 条 +「查看全部」（最佳匹配不在组里重复）
  * - 单类型页签：表格（后端只搜一类时给的 columns）+ 分页
  * 页签上的数量取自不带 types 的请求（只搜一类时 counts 只有那一类）；换页签时它不重新请求。
  */
-import type { WSegmentedOption } from '~/components/w/WSegmented.vue'
 import type { WTabItem } from '~/components/w/WTabs.vue'
 import type { GlobalSearchGroup, GlobalSearchItem, GlobalSearchResult, GlobalSearchScope, GlobalSearchType } from '~/utils/globalSearch'
 
@@ -27,7 +25,7 @@ const warehouseStore = useWarehouseStore()
 const uid = useId()
 const panelId = `${uid}-panel`
 
-const params = computed(() => parseSearchPageQuery(route.query))
+const params = computed(() => ({...parseSearchPageQuery(route.query),scope:(warehouseStore.currentWarehouse?'warehouse':'all') as GlobalSearchScope}))
 
 // ---- 数据：overview = 不带 types 的请求（页签数量、「全部」的分组）；detail = 单类型的一页 ----
 const overview = ref<GlobalSearchResult | null>(null)
@@ -65,6 +63,7 @@ const loadOverview = async (force: boolean) => {
   const seq = ++overviewSeq
   overviewKey.value = key
   overviewFailed.value = false
+  overview.value = null
   bestDetail.value = null
   if (!q) {
     overview.value = null
@@ -102,6 +101,7 @@ const loadDetail = async (force: boolean) => {
   const seq = ++detailSeq
   detailKey.value = key
   detailFailed.value = false
+  detail.value = null
   detailLoading.value = true
   try {
     const data = await fetchGlobalSearch({ q, scope, types: [type], page, perPage: PER_PAGE })
@@ -122,6 +122,8 @@ const load = (force = false) => {
 }
 watch(() => route.query, () => load(), { immediate: true })
 watch(search.refreshTick, () => load(true))
+onBeforeUnmount(()=>{overviewSeq++;detailSeq++})
+watch(()=>warehouseStore.currentWarehouse?.id,()=>{overviewKey.value='';detailKey.value='';go({page:1});load(true)})
 
 // 没有这一类的查看权限（地址里手写的 type）→ 回到全部
 watch(overview, (data) => {
@@ -152,17 +154,6 @@ const activeTab = computed({
 })
 
 const currentWarehouse = computed(() => warehouseStore.currentWarehouse)
-/** 范围切换：可访问多个仓库、页头选了某个仓库时才有（选「全部仓库」时本来就搜全部） */
-const showScope = computed(() => warehouseStore.warehouses.length > 1 && !!currentWarehouse.value)
-const scopeOptions = computed<WSegmentedOption<GlobalSearchScope>[]>(() => [
-  { value: 'warehouse', label: t('search.scope.warehouse', { name: currentWarehouse.value?.name || '' }) },
-  { value: 'all', label: t('common.all-warehouse') },
-])
-const scope = computed({
-  get: () => params.value.scope,
-  set: (value: GlobalSearchScope) => go({ type: params.value.type, scope: value }),
-})
-
 // ---- 「全部」页签的分组 ----
 const groups = computed(() => {
   const data = overview.value
@@ -188,7 +179,6 @@ const detailPage = computed({
 const emptyText = computed(() => (params.value.scope === 'all'
   ? t('search.empty.all', { q: params.value.q })
   : t('search.empty.warehouse', { q: params.value.q, warehouse: currentWarehouse.value?.name || t('common.all-warehouse') })))
-const canSearchAll = computed(() => showScope.value && params.value.scope === 'warehouse')
 const pageTitle = computed(() => (params.value.q ? t('search.title', { q: params.value.q }) : t('search.page-title')))
 useHead({ title: pageTitle })
 </script>
@@ -217,7 +207,6 @@ useHead({ title: pageTitle })
       <div class="w-search__bar">
         <WTabs v-model="activeTab" class="w-search__tabs" :items="tabs" :label="t('search.tabs-label')" :panel-id="panelId" />
         <div class="w-search__scope">
-          <WSegmented v-if="showScope" v-model="scope" :options="scopeOptions" :label="t('search.scope.label')" />
           <WHelp :text="t('search.help')" placement="bottom" />
         </div>
       </div>
@@ -239,9 +228,7 @@ useHead({ title: pageTitle })
                   {{ emptyText }}
                   <WHelp :text="t('search.help')" />
                 </template>
-                <template v-if="canSearchAll" #action>
-                  <WButton size="sm" @click="go({ scope: 'all' })">{{ t('search.empty.search-all') }}</WButton>
-                </template>
+
               </WEmptyState>
             </WCard>
             <template v-else>

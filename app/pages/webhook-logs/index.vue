@@ -6,6 +6,9 @@ definePageMeta({})
 // 获取国际化方法
 const { t, te } = useI18n()
 const staffStore = useStaffStore()
+const ready=ref(false)
+let disposed=false,keyGeneration=0
+const allowed=(permission:string)=>ready.value&&!!staffStore.staffInfo&&staffStore.hasPermission(permission)
 
 // 面包屑
 const dataToPass = computed(() => ({
@@ -21,14 +24,17 @@ let pageData = ref<PaginationData | null>(null)
 // 筛选条件
 let keyword = ref('')
 let eventTypeFilter = ref('')
-let statusFilter = ref('')
+const createdFrom = ref<string | null>(null)
+const createdBefore = ref<string | null>(null)
+const rangeError = ref('')
 
 // ==================== 列表数据 ====================
 let loadGeneration=0
 const loadError=ref('')
 const {bizErrorMessage}=useBizError()
-onBeforeUnmount(()=>loadGeneration++)
+onBeforeUnmount(()=>{loadGeneration++;keyGeneration++;disposed=true})
 const fetchData = async () => {
+  if(!ready.value){await initialize();return}
   const generation=++loadGeneration
   loadError.value=''
   pageData.value=null
@@ -48,17 +54,20 @@ const fetchData = async () => {
   })
 }
 
+const syncFilters = () => {
+  keyword.value = String(route.query.keyword || '')
+  eventTypeFilter.value = String(route.query.event_type || '')
+  createdFrom.value = String(route.query.created_from || '') || null
+  createdBefore.value = String(route.query.created_before || '') || null
+  rangeError.value = ''
+}
 watch(() => route.query, async () => {
+  syncFilters()
   await fetchData()
 })
 
-onMounted(async () => {
-  // 从 URL 恢复筛选状态
-  keyword.value = (route.query.keyword as string) || ''
-  eventTypeFilter.value = (route.query.event_type as string) || ''
-  statusFilter.value = (route.query.status as string) || ''
-  await Promise.all([fetchData(), fetchApiKeys()])
-})
+const initialize=async()=>{const seq=++loadGeneration;ready.value=false;loading.value=true;loadError.value='';pageData.value=null;const current=await staffStore.getCurrentStaffInfo();if(disposed||seq!==loadGeneration)return;if(!current){loading.value=false;loadError.value=t('action-results.failed');return}ready.value=true;syncFilters();await Promise.all([fetchData(),fetchApiKeys()])}
+onMounted(initialize)
 
 // ==================== 目标系统（API Key 的系统名） ====================
 // 推送日志只带 api_key_id：按本公司的 API Key 列表换成系统名（含已停用的）；没有 API 密钥查看权限 / 读不到时显示 #ID
@@ -74,8 +83,9 @@ const apiKeyOptions = computed(() => {
   return [{value:'',label:t('webhook-logs.status.all')},...options]
 })
 const fetchApiKeys = async () => {
-  if (!staffStore.staffInfo) await staffStore.getCurrentStaffInfo()
-  if (!staffStore.hasPermission('api_keys_read')) return
+  const generation=++keyGeneration
+  apiKeyNames.value={}
+  if (!allowed('api_keys_read')) return
   const companyId = staffStore.staffInfo?.company_id
   if (!companyId) return
   keyLoadError.value = ''
@@ -86,12 +96,13 @@ const fetchApiKeys = async () => {
     await httpRequest<PaginationData>('/api/system/third-party/api-keys', {
       method:'GET', params:{company_id:companyId,per_page:100,page},
       onSuccess:data=>{
+        if(disposed||generation!==keyGeneration)return
         for (const key of data.items||[]) if (key.id!=null && key.system_name) names[String(key.id)]=key.system_name
         pages=Math.ceil((data.total||0)/100)
       },
-      onError:error=>{failed=true;keyLoadError.value=bizErrorMessage(error)},
+      onError:error=>{failed=true;if(!disposed&&generation===keyGeneration)keyLoadError.value=bizErrorMessage(error)},
     })
-    if(failed) return
+    if(failed||disposed||generation!==keyGeneration) return
     page++
   } while(page<=pages)
   apiKeyNames.value=names
@@ -156,6 +167,11 @@ const setEventTypeFilter = () => {
 
 // ==================== 搜索 ====================
 async function search() {
+  rangeError.value = ''
+  if (createdFrom.value && createdBefore.value && Date.parse(createdFrom.value) >= Date.parse(createdBefore.value)) {
+    rangeError.value = t('webhook-logs.filters.invalid-range')
+    return
+  }
   const query: Record<string, any> = { ...route.query }
   if (keyword.value.trim()) {
     query.keyword = keyword.value.trim()
@@ -163,6 +179,8 @@ async function search() {
     delete query.keyword
   }
   query.page = '1'
+  query.created_from = createdFrom.value || undefined
+  query.created_before = createdBefore.value || undefined
   await router.push({ query })
 }
 
@@ -174,7 +192,7 @@ const retrying = ref<number | null>(null)
  * 其余（推送失败 / 待发送 / 已作废 / 推送中但租约已过期）都可以——重推会把尝试次数清零后立即推一次。
  */
 const canRetry = (item: any) => {
-  if (!item || item.status === 'sent') return false
+  if (!allowed('webhook_edit') || !item || item.status === 'sent') return false
   if (item.status === 'sending') {
     const lease = item.lease_expires_at ? parseDateTime(item.lease_expires_at, 'UTC') : null
     return !!lease && lease.getTime() <= Date.now()
@@ -183,14 +201,16 @@ const canRetry = (item: any) => {
 }
 
 const retryEvent = async (eventId: number) => {
-  if(retrying.value!==null)return
+  if(retrying.value!==null||!canRetry(detailItem.value?.id===eventId?detailItem.value:pageData.value?.items.find((row:any)=>row.id===eventId)))return
   retrying.value = eventId
   await httpRequest(`/api/system/webhook/${eventId}/retry`, {
     method: 'POST',
-    onSuccess: () => {
-      showToast(t('webhook-logs.operations.retry-success'), 'success')
+    onSuccess: (result:any) => {
+      if(disposed)return
+      if(result.status==='sent')showToast(t('webhook-logs.operations.retry-success'), 'success')
+      else showToast(result.last_error||t('webhook-logs.status.'+result.status), 'error')
       fetchData()
-      if(detailItem.value?.id===eventId)showDetailModal.value=false
+      if(detailItem.value?.id===eventId){detailItem.value=result;if(result.status==='sent')showDetailModal.value=false}
     },
     onError: (error) => {
       showToast(error.message, 'error')
@@ -235,11 +255,12 @@ const truncateError = (error: string | null, maxLen = 60) => {
 
 
 const tabs=computed(()=>statusTabs.map(key=>({key,label:t('webhook-logs.status.'+key)})))
-const columns=computed(()=>[{key:'event',label:t('webhook-logs.fields.event-type')},{key:'target',label:t('webhook-logs.fields.target-system')},{key:'status',label:t('common.fields.status')},{key:'attempts',label:t('webhook-logs.fields.attempts'),type:'qty' as const},{key:'created',label:t('webhook-logs.fields.created-at')},{key:'sent',label:t('webhook-logs.fields.sent-at')},{key:'action',label:t('common.fields.action'),align:'right' as const}])
+const columns=computed(()=>[{key:'event',label:t('webhook-logs.fields.event-type')},{key:'document',label:t('webhook-logs.fields.document')},{key:'target',label:t('webhook-logs.fields.target-system')},{key:'status',label:t('common.fields.status')},{key:'attempts',label:t('webhook-logs.fields.attempts'),type:'qty' as const,keepZero:true},{key:'created',label:t('webhook-logs.fields.created-at')},{key:'sent',label:t('webhook-logs.fields.sent-at')},{key:'action',label:t('common.fields.action'),align:'right' as const}])
 const tone=(status:string)=>status==='sent'?'ok' as const:status==='failed'?'bad' as const:status==='pending'||status==='sending'?'warn' as const:'none' as const
 useHead({title:()=>t('nav.webhook-logs')})
 </script>
-<template><div class="w-webhooks w-scope"><header><div><h1>{{t('nav.webhook-logs')}}</h1><span>{{pageData?.total}}</span></div><WButton v-if="staffStore.hasPermission('api_keys_read')" to="/apikeys">{{t('nav.apikeys')}}</WButton></header><WCard flush><WTabs :items="tabs" :model-value="activeTab" :label="t('common.fields.status')" inset @update:model-value="value=>setStatusFilter(value||'all')"/><form class="filters" @submit.prevent="search"><WInput v-model="keyword" type="search" :aria-label="t('common.search')" :placeholder="t('common.search-placeholder')"><template #prefix><WIcon name="search" :size="16"/></template></WInput><WButton type="submit">{{t('common.search')}}</WButton><WSelect v-model="eventTypeFilter" :aria-label="t('webhook-logs.fields.event-type')" :options="[{value:'',label:t('webhook-logs.filters.all-types')},...eventTypes.map(value=>({value,label:eventLabel(value)}))]" @change="setEventTypeFilter"/><WSelect v-if="staffStore.hasPermission('api_keys_read')||apiKeyFilter" v-model="apiKeyFilter" :aria-label="t('webhook-logs.fields.target-system')" :options="apiKeyOptions"/></form><WAlert v-if="keyLoadError" tone="warn" :title="keyLoadError"><template #actions><WButton @click="fetchApiKeys">{{t('dn.list.retry')}}</WButton></template></WAlert><WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData">{{t('dn.list.retry')}}</WButton></template></WAlert><WTable :columns="columns" :rows="pageData?.items||[]" :loading="loading" inset><template #head-action><span class="w-sr-only">{{t('common.fields.action')}}</span></template><template #cell-event="{row}"><button class="event-name" @click="openDetail(row)">{{eventLabel(row.event_type)}}</button><code>{{row.event_type}}</code></template><template #cell-target="{row}">{{targetSystemName(row.api_key_id)}}</template><template #cell-status="{row}"><WStatus :tone="tone(row.status)">{{t('webhook-logs.status.'+row.status)}}</WStatus><small v-if="row.next_retry_at">{{t('webhook-logs.fields.next-retry')}} {{formatDate(row.next_retry_at,row)}}</small><small v-if="row.last_error" :title="row.last_error" class="error">{{truncateError(row.last_error)}}</small></template><template #cell-created="{row}">{{formatDate(row.created_at,row)}}</template><template #cell-sent="{row}">{{formatDate(row.sent_at,row)}}</template><template #cell-action="{row}"><div class="actions"><WButton size="sm" @click="openDetail(row)">{{t('webhook-logs.operations.detail')}}</WButton><WButton v-if="canRetry(row)" size="sm" :disabled="retrying!==null" @click="retryEvent(row.id)">{{t('webhook-logs.operations.retry')}}</WButton></div></template></WTable><footer><WPagination :page="Number(route.query.page)||1" :page-size="pageData?.per_page||20" :total="pageData?.total" show-total @update:page="value=>router.push({query:{...route.query,page:value}})"/></footer></WCard><WDrawer v-model:open="showDetailModal" :title="t('webhook-logs.operations.detail')" width="560px"><div v-if="detailItem" class="detail"><dl><dt>{{t('common.fields.id')}}</dt><dd>{{detailItem.id}}</dd><dt>{{t('webhook-logs.fields.event-type')}}</dt><dd>{{eventLabel(detailItem.event_type)}}<code>{{detailItem.event_type}}</code></dd><dt>{{t('common.fields.status')}}</dt><dd><WStatus :tone="tone(detailItem.status)">{{t('webhook-logs.status.'+detailItem.status)}}</WStatus></dd><dt>{{t('webhook-logs.fields.attempts')}}</dt><dd>{{detailItem.attempts}}</dd><dt>{{t('webhook-logs.fields.created-at')}}</dt><dd>{{formatDate(detailItem.created_at,detailItem)}}</dd><dt>{{t('webhook-logs.fields.sent-at')}}</dt><dd>{{formatDate(detailItem.sent_at,detailItem)}}</dd><dt>{{t('webhook-logs.fields.next-retry')}}</dt><dd>{{formatDate(detailItem.next_retry_at,detailItem)}}</dd></dl><WAlert v-if="detailItem.last_error" tone="block" :title="t('webhook-logs.fields.last-error')">{{detailItem.last_error}}</WAlert><h3>{{t('webhook-logs.fields.payload')}}</h3><pre>{{JSON.stringify(detailItem.payload,null,2)}}</pre></div><template #footer><WButton @click="showDetailModal=false">{{t('button.close')}}</WButton><WButton v-if="canRetry(detailItem)" variant="primary" :loading="retrying===detailItem?.id" :disabled="retrying!==null" @click="retryEvent(detailItem.id)">{{t('webhook-logs.operations.retry')}}</WButton></template></WDrawer></div></template>
+<template><div class="w-webhooks w-scope"><header><div><h1>{{t('nav.webhook-logs')}}</h1><span>{{pageData?.total}}</span></div><WButton v-if="allowed('api_keys_read')" to="/apikeys">{{t('nav.apikeys')}}</WButton></header><WCard flush><WTabs :items="tabs" :model-value="activeTab" :label="t('common.fields.status')" inset @update:model-value="value=>setStatusFilter(value||'all')"/><form class="filters" @submit.prevent="search"><WInput v-model="keyword" type="search" :aria-label="t('common.search')" :placeholder="t('common.search-placeholder')"><template #prefix><WIcon name="search" :size="16"/></template></WInput><WButton type="submit">{{t('common.search')}}</WButton><WSelect v-model="eventTypeFilter" :aria-label="t('webhook-logs.fields.event-type')" :options="[{value:'',label:t('webhook-logs.filters.all-types')},...eventTypes.map(value=>({value,label:eventLabel(value)}))]" @change="setEventTypeFilter"/><WSelect v-if="allowed('api_keys_read')||apiKeyFilter" v-model="apiKeyFilter" :aria-label="t('webhook-logs.fields.target-system')" :options="apiKeyOptions"/><div class="time-filters"><label class="time-filter"><span>{{t('webhook-logs.filters.created-from')}}</span><WDatePicker v-model="createdFrom" mode="datetime" clearable :max="createdBefore" :aria-label="t('webhook-logs.filters.created-from')"/></label><label class="time-filter"><span>{{t('webhook-logs.filters.created-before')}}</span><WDatePicker v-model="createdBefore" mode="datetime" clearable :min="createdFrom" :aria-label="t('webhook-logs.filters.created-before')"/></label><WButton type="submit">{{t('webhook-logs.filters.apply')}}</WButton></div></form><WAlert v-if="rangeError" tone="warn" :title="rangeError"/><WAlert v-if="keyLoadError" tone="warn" :title="keyLoadError"><template #actions><WButton @click="fetchApiKeys">{{t('dn.list.retry')}}</WButton></template></WAlert><WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData">{{t('dn.list.retry')}}</WButton></template></WAlert><WTable :columns="columns" :rows="pageData?.items||[]" :loading="loading" inset><template #head-action><span class="w-sr-only">{{t('common.fields.action')}}</span></template><template #cell-event="{row}"><button class="event-name" @click="openDetail(row)">{{eventLabel(row.event_type)}}</button><code>{{row.event_type}}</code></template><template #cell-document="{row}"><template v-if="webhookReference(row)"><NuxtLink v-if="allowed(webhookReference(row)!.permission)" class="document-link" :to="webhookReference(row)!.to">{{webhookReference(row)!.label}}</NuxtLink><span v-else>{{webhookReference(row)!.label}}</span></template><span v-else>&mdash;</span></template><template #cell-target="{row}">{{targetSystemName(row.api_key_id)}}</template><template #cell-status="{row}"><WStatus :tone="tone(row.status)">{{t('webhook-logs.status.'+row.status)}}</WStatus><small v-if="row.next_retry_at">{{t('webhook-logs.fields.next-retry')}} {{formatDate(row.next_retry_at,row)}}</small><small v-if="row.last_error" :title="row.last_error" class="error">{{truncateError(row.last_error)}}</small></template><template #cell-created="{row}">{{formatDate(row.created_at,row)}}</template><template #cell-sent="{row}">{{formatDate(row.sent_at,row)}}</template><template #cell-action="{row}"><div class="actions"><WButton size="sm" @click="openDetail(row)">{{t('webhook-logs.operations.detail')}}</WButton><WButton v-if="canRetry(row)" size="sm" :disabled="retrying!==null" @click="retryEvent(row.id)">{{t('webhook-logs.operations.retry')}}</WButton></div></template></WTable><footer><WPagination :page="Number(route.query.page)||1" :page-size="pageData?.per_page||20" :total="pageData?.total" show-total @update:page="value=>router.push({query:{...route.query,page:value}})"/></footer></WCard><WDrawer v-model:open="showDetailModal" :title="t('webhook-logs.operations.detail')" width="560px"><div v-if="detailItem" class="detail"><dl><dt>{{t('common.fields.id')}}</dt><dd>{{detailItem.id}}</dd><dt>{{t('webhook-logs.fields.event-type')}}</dt><dd>{{eventLabel(detailItem.event_type)}}<code>{{detailItem.event_type}}</code></dd><dt>{{t('common.fields.status')}}</dt><dd><WStatus :tone="tone(detailItem.status)">{{t('webhook-logs.status.'+detailItem.status)}}</WStatus></dd><dt>{{t('webhook-logs.fields.attempts')}}</dt><dd>{{detailItem.attempts}}</dd><dt>{{t('webhook-logs.fields.created-at')}}</dt><dd>{{formatDate(detailItem.created_at,detailItem)}}</dd><dt>{{t('webhook-logs.fields.sent-at')}}</dt><dd>{{formatDate(detailItem.sent_at,detailItem)}}</dd><dt>{{t('webhook-logs.fields.next-retry')}}</dt><dd>{{formatDate(detailItem.next_retry_at,detailItem)}}</dd></dl><WAlert v-if="detailItem.last_error" tone="block" :title="t('webhook-logs.fields.last-error')">{{detailItem.last_error}}</WAlert><h3>{{t('webhook-logs.fields.payload')}}</h3><pre>{{JSON.stringify(detailItem.payload,null,2)}}</pre></div><template #footer><WButton @click="showDetailModal=false">{{t('button.close')}}</WButton><WButton v-if="canRetry(detailItem)" variant="primary" :loading="retrying===detailItem?.id" :disabled="retrying!==null" @click="retryEvent(detailItem.id)">{{t('webhook-logs.operations.retry')}}</WButton></template></WDrawer></div></template>
 <style scoped>
-.w-webhooks{display:flex;flex-direction:column;gap:16px}header,header>div{display:flex;align-items:center;gap:12px}header{justify-content:space-between;flex-wrap:wrap}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}header span{font-size:13px;color:var(--w-text-2)}.filters{display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px;border-bottom:1px solid var(--w-line)}.filters>.w-input{width:300px;max-width:100%}.filters>.w-select{width:200px}.w-webhooks :deep(.w-table){min-width:1060px}.w-webhooks :deep(.w-table-wrap.is-inset){--w-table-edge:20px}.w-webhooks :deep(.w-table th){height:auto;padding-top:10px;padding-bottom:8px;line-height:16px}.w-webhooks :deep(.w-table td){padding-top:12px;padding-bottom:12px;vertical-align:top}.event-name{border:0;background:none;padding:0;font:inherit;font-size:14px;line-height:20px;font-weight:500;color:var(--w-text-1);text-align:left}.event-name:hover{color:var(--w-link)}code{display:block;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:18px;color:var(--w-text-3)}small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.error{max-width:200px;white-space:normal;color:#B32322}.actions{display:flex;gap:8px;justify-content:flex-end}footer{padding:12px 20px;border-top:1px solid var(--w-border)}.detail{display:flex;flex-direction:column;gap:16px}.detail dl{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;font-size:13px;line-height:20px;margin:0}.detail dt{color:var(--w-text-3);font-weight:400}.detail dd{margin:0;overflow-wrap:anywhere}.detail h3{font-size:14px;line-height:22px;font-weight:600;margin:0}.detail pre{margin:0;padding:16px;border:1px solid var(--w-border);border-radius:6px;background:#F6F7FA;font-size:12px;line-height:18px;max-height:360px;overflow:auto}
+.w-webhooks{display:flex;flex-direction:column;gap:16px}header,header>div{display:flex;align-items:center;gap:12px}header{justify-content:space-between;flex-wrap:wrap}h1{font-size:24px;line-height:32px;font-weight:600;margin:0}header span{font-size:13px;color:var(--w-text-2)}.filters{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 20px;border-bottom:1px solid var(--w-line)}.filters>.w-input{width:300px;max-width:100%}.filters>.w-select{width:200px}.w-webhooks :deep(.w-table){min-width:1060px}.w-webhooks :deep(.w-table-wrap.is-inset){--w-table-edge:20px}.w-webhooks :deep(.w-table th){height:auto;padding-top:10px;padding-bottom:8px;line-height:16px}.w-webhooks :deep(.w-table td){padding-top:12px;padding-bottom:12px;vertical-align:top}.event-name{border:0;background:none;padding:0;font:inherit;font-size:14px;line-height:20px;font-weight:500;color:var(--w-text-1);text-align:left}.event-name:hover{color:var(--w-link)}code{display:block;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:18px;color:var(--w-text-3)}small{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.error{max-width:200px;white-space:normal;color:#B32322}.actions{display:flex;gap:8px;justify-content:flex-end}footer{padding:12px 20px;border-top:1px solid var(--w-border)}.detail{display:flex;flex-direction:column;gap:16px}.detail dl{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;font-size:13px;line-height:20px;margin:0}.detail dt{color:var(--w-text-3);font-weight:400}.detail dd{margin:0;overflow-wrap:anywhere}.detail h3{font-size:14px;line-height:22px;font-weight:600;margin:0}.detail pre{margin:0;padding:16px;border:1px solid var(--w-border);border-radius:6px;background:#F6F7FA;font-size:12px;line-height:18px;max-height:360px;overflow:auto}
+.time-filters{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px;width:100%}.time-filter{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:12px;color:var(--w-text-3);max-width:100%}.time-filter :deep(.w-date){width:240px;max-width:100%;min-width:0}.time-filter>span{white-space:nowrap}.document-link{font-weight:500;color:var(--w-link);white-space:nowrap}
 </style>

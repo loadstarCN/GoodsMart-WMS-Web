@@ -3,10 +3,13 @@ import LabelLotPicker from '~/components/goods/LabelLotPicker.vue'
 import ProductLabel from '~/components/goods/ProductLabel.vue'
 import QRCode from 'qrcode'
 import { goodsBarcodeFormat } from '~/utils/goodsBarcode'
-definePageMeta({ layout: 'custom' })
+definePageMeta({ layout: 'custom', key: route=>route.fullPath })
 const { t, locale } = useI18n(), route = useRoute(), { bizErrorMessage } = useBizError()
 const staff = useStaffStore()
 const record = ref<any>(null), loading = ref(true), error = ref(''), copies = ref(1), qr = ref(''), saving = ref(false), saved = ref(false), revision = ref(0), baseline = ref('')
+const failedLoad=ref(false),ready=ref(false)
+let loadGeneration=0
+onBeforeUnmount(()=>loadGeneration++)
 const settings = reactive({width_mm:60,height_mm:40,margin_mm:2,name_font_pt:8,show_name:true,barcode_format:'auto'})
 // Kana provides an explicit script cue; Han-only names follow the selected language.
 const japaneseName = computed(()=>/[\u3040-\u30ff]/.test(record.value?.name||'') || String(locale.value).startsWith('ja'))
@@ -21,15 +24,16 @@ const usableHeight = computed(()=>settings.height_mm-2*settings.margin_mm-nameHe
 const templateValid = computed(()=>dimensionsValid.value&&usableHeight.value>=12)
 const dirty = computed(()=>JSON.stringify(settings)!==baseline.value)
 const labelStyle = computed(()=>({'--label-width':settings.width_mm+'mm','--label-height':settings.height_mm+'mm','--label-margin':settings.margin_mm+'mm','--name-font':settings.name_font_pt+'pt','--name-height':Math.max(0,nameHeight.value-1)+'mm','--qr-size':Math.min(settings.width_mm-2*settings.margin_mm,usableHeight.value-4)+'mm'}))
-const loadTemplate = async()=>{
+const loadTemplate = async(seq:number)=>{
   if(!record.value?.company_id)return
-  const result=await httpRequest<any>('/api/warehouse/company/'+record.value.company_id+'/product-label',{onError:err=>error.value=bizErrorMessage(err)})
+  const result=await httpRequest<any>('/api/warehouse/company/'+record.value.company_id+'/product-label',{onError:err=>{if(seq===loadGeneration)error.value=bizErrorMessage(err)}})
+  if(seq!==loadGeneration)return
   if(result){Object.assign(settings,result.template);revision.value=result.revision;baseline.value=JSON.stringify(settings)}
 }
 const restoreDesign = ()=>{Object.assign(settings,{width_mm:50,height_mm:30,margin_mm:2.116667,name_font_pt:6,show_name:true,barcode_format:'auto'});customMode.value=false}
 const restore = ()=>{if(baseline.value){Object.assign(settings,JSON.parse(baseline.value));saved.value=false}}
 const saveDefault = async()=>{
-  if(saving.value||!templateValid.value||!baseline.value||!staff.hasPermission('company_edit'))return
+  if(saving.value||loading.value||failedLoad.value||!templateValid.value||!baseline.value||!ready.value||!staff.hasPermission('company_edit'))return
   saving.value=true;error.value='';saved.value=false
   const result=await httpRequest<any>('/api/warehouse/company/'+record.value.company_id+'/product-label',{method:'PUT',body:{revision:revision.value,template:{...settings}},onError:err=>error.value=err.status===409?t('goods-label.conflict'):bizErrorMessage(err)})
   if(result){revision.value=result.revision;baseline.value=JSON.stringify(result.template);saved.value=!dirty.value}
@@ -39,25 +43,40 @@ watch(settings,()=>{saved.value=false})
 const valid = computed(() => Number.isInteger(copies.value) && copies.value >= 1 && copies.value <= 100 && templateValid.value)
 const format = computed(() => settings.barcode_format==='qr'?'QR':goodsBarcodeFormat(String(record.value?.code || '')))
 
-onMounted(async () => {
-  record.value = await httpRequest<any>('/api/warehouse/goods/' + Number(route.params.id), { onError: err => error.value = bizErrorMessage(err) })
-  await loadTemplate()
-  if(record.value&&route.query.lot_id){selectedLot.value=await httpRequest<any>('/api/warehouse/goods/'+record.value.id+'/lots/'+Number(route.query.lot_id),{onError:err=>error.value=bizErrorMessage(err)})}
-  if (record.value) {
-    try { qr.value = await QRCode.toDataURL(String(record.value.code), { errorCorrectionLevel: 'M', margin: 4, width: 320 }) }
-    catch { error.value = t('location-label.code-error') }
+const load=async()=>{
+  const seq=++loadGeneration
+  loading.value=true;ready.value=false;error.value='';failedLoad.value=false;record.value=null;selectedLot.value=null;qr.value='';contentFits.value=false
+  const current=await staff.getCurrentStaffInfo();if(seq!==loadGeneration)return
+  if(!current){error.value=t('common.validation.company-required');failedLoad.value=true;loading.value=false;return}
+  ready.value=true
+  const onError=(err:any)=>{if(seq===loadGeneration)error.value=bizErrorMessage(err)}
+  const goods=await httpRequest<any>('/api/warehouse/goods/'+Number(route.params.id),{onError})
+  if(seq!==loadGeneration)return
+  record.value=goods
+  await loadTemplate(seq)
+  if(seq!==loadGeneration)return
+  if(goods&&route.query.lot_id){
+    const lot=await httpRequest<any>('/api/warehouse/goods/'+goods.id+'/lots/'+Number(route.query.lot_id),{onError})
+    if(seq!==loadGeneration)return
+    selectedLot.value=lot
   }
-  loading.value = false
-})
-const print = async () => { await document.fonts.ready; await nextTick(); await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame); if(valid.value&&contentFits.value&&!error.value)window.print() }
+  if(goods){
+    try { const result=await QRCode.toDataURL(String(goods.code),{errorCorrectionLevel:'M',margin:4,width:320});if(seq===loadGeneration)qr.value=result }
+    catch {if(seq===loadGeneration)error.value=t('location-label.code-error')}
+  }
+  if(seq===loadGeneration){failedLoad.value=!!error.value;loading.value=false}
+}
+onMounted(load)
+
+const print = async () => { await document.fonts.ready; await nextTick(); await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame); if(!loading.value&&record.value&&valid.value&&contentFits.value&&!error.value)window.print() }
 useHead(()=>({title:t('goods-label.title')+' · '+(record.value?.code||''),style:[{key:'goods-label-page-size',innerHTML:templateValid.value?'@page{size:'+settings.width_mm+'mm '+settings.height_mm+'mm;margin:0;@bottom-right{content:none}}':''}]}))
 </script>
 
 <template>
   <div class="w-goods-label-print w-scope">
-    <div class="toolbar"><NuxtLink class="w-goods-label-back" :to="'/goods/detail/'+route.params.id">{{ record?.name || t('nav.goods') }}</NuxtLink><span>{{settings.width_mm}} × {{settings.height_mm}} mm</span><WField :label="t('location-label.copies')"><WInput v-model.number="copies" type="number" min="1" max="100" /></WField><WButton icon="printer" :disabled="loading||!record||!valid||!contentFits||!!error||(format==='QR'&&!qr)" @click="print">{{ t('button.print-to-pdf') }}</WButton></div>
-    <section v-if="record&&!loading" class="settings"><header><div><h2>{{t('goods-label.company-template')}}</h2><p>{{t('goods-label.company-hint')}}</p></div><div class="settings-actions"><WButton :disabled="saving" @click="restoreDesign">{{t('goods-label.reference-layout')}}</WButton><WButton :disabled="!dirty||saving" @click="restore">{{t('goods-label.restore')}}</WButton><WButton v-if="staff.hasPermission('company_edit')" :disabled="!dirty||!templateValid||!baseline" :loading="saving" @click="saveDefault">{{t('goods-label.save-default')}}</WButton></div></header><fieldset class="settings-fields" :disabled="saving"><WField :label="t('goods-label.paper-size')"><WSelect v-model="preset" :options="[{value:'50x30',label:'50 × 30 mm'},{value:'60x40',label:'60 × 40 mm'},{value:'70x50',label:'70 × 50 mm'},{value:'100x60',label:'100 × 60 mm'},{value:'custom',label:t('goods-label.custom')}]" /></WField><WField v-for="field in ['width_mm','height_mm','margin_mm','name_font_pt'] as const" :key="field" :label="t('goods-label.'+field)"><WInput v-model.number="settings[field]" type="number" :min="field==='width_mm'?40:field==='height_mm'?25:field==='margin_mm'?1:6" :max="field==='margin_mm'?8:field==='name_font_pt'?14:150" step="0.5" :suffix="field==='name_font_pt'?'pt':'mm'" /></WField><WField :label="t('goods-label.barcode-format')"><WSelect v-model="settings.barcode_format" :options="[{value:'auto',label:t('goods-label.auto')},{value:'qr',label:'QR'}]" /></WField><WCheckbox v-model="settings.show_name" :label="t('goods-label.show-name')" /></fieldset><LabelLotPicker v-model="selectedLot" :goods-id="record.id" /><p v-if="saved" role="status" class="saved">{{t('goods-label.saved')}}</p><p v-else-if="dirty" class="temporary">{{t('goods-label.temporary')}}</p></section>
-    <WAlert v-if="error" tone="block" :title="error" />
+    <div class="toolbar"><ShellLanguageMenu/><NuxtLink class="w-goods-label-back" :to="'/goods/detail/'+route.params.id">{{ record?.name || t('nav.goods') }}</NuxtLink><span>{{settings.width_mm}} × {{settings.height_mm}} mm</span><WField :label="t('location-label.copies')"><WInput v-model.number="copies" type="number" min="1" max="100" /></WField><WButton icon="printer" :disabled="loading||!record||!valid||!contentFits||!!error||(format==='QR'&&!qr)" @click="print">{{ t('button.print-to-pdf') }}</WButton></div>
+    <section v-if="record&&!loading&&!failedLoad" class="settings"><header><div><h2>{{t('goods-label.company-template')}}</h2><p>{{t('goods-label.company-hint')}}</p></div><div class="settings-actions"><WButton :disabled="saving" @click="restoreDesign">{{t('goods-label.reference-layout')}}</WButton><WButton :disabled="!dirty||saving" @click="restore">{{t('goods-label.restore')}}</WButton><WButton v-if="ready&&staff.hasPermission('company_edit')" :disabled="!dirty||!templateValid||!baseline" :loading="saving" @click="saveDefault">{{t('goods-label.save-default')}}</WButton></div></header><fieldset class="settings-fields" :disabled="saving"><WField :label="t('goods-label.paper-size')"><WSelect v-model="preset" :options="[{value:'50x30',label:'50 × 30 mm'},{value:'60x40',label:'60 × 40 mm'},{value:'70x50',label:'70 × 50 mm'},{value:'100x60',label:'100 × 60 mm'},{value:'custom',label:t('goods-label.custom')}]" /></WField><WField v-for="field in ['width_mm','height_mm','margin_mm','name_font_pt'] as const" :key="field" :label="t('goods-label.'+field)"><WInput v-model.number="settings[field]" type="number" :min="field==='width_mm'?40:field==='height_mm'?25:field==='margin_mm'?1:6" :max="field==='margin_mm'?8:field==='name_font_pt'?14:150" step="0.5" :suffix="field==='name_font_pt'?'pt':'mm'" /></WField><WField :label="t('goods-label.barcode-format')"><WSelect v-model="settings.barcode_format" :options="[{value:'auto',label:t('goods-label.auto')},{value:'qr',label:'QR'}]" /></WField><WCheckbox v-model="settings.show_name" :label="t('goods-label.show-name')" /></fieldset><LabelLotPicker v-model="selectedLot" :goods-id="record.id" :disabled="saving" /><p v-if="saved" role="status" class="saved">{{t('goods-label.saved')}}</p><p v-else-if="dirty" class="temporary">{{t('goods-label.temporary')}}</p></section>
+    <WAlert v-if="error" tone="block" :title="error"><template v-if="failedLoad" #actions><WButton :loading="loading" @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
     <WAlert v-if="!valid" tone="block" :title="t('goods-label.invalid')" />
     <WEmptyState v-if="loading" :title="t('common.status.loading')" />
     <WAlert v-if="!loading&&record&&valid&&!error&&!contentFits" tone="block" :title="t('goods-label.content-overflow')" />

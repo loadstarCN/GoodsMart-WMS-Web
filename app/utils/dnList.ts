@@ -176,7 +176,7 @@ export function dnPlannedDate(value: string | null | undefined, today: string): 
 }
 
 /** 列表的筛选参数（URL 里的，不含页码、阶段）：页签数量按它请求 */
-export const DN_FILTER_KEYS = ['keyword', 'status', 'carrier_id', 'dn_type', 'recipient_id'] as const
+export const DN_FILTER_KEYS = ['keyword', 'status', 'carrier_id', 'dn_type', 'recipient_id', 'warehouse_todo_date', 'planned_start_date', 'planned_end_date'] as const
 
 export function dnFilterParams(query: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {}

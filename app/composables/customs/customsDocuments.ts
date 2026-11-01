@@ -31,6 +31,7 @@ export interface CustomsDocumentMeta {
 }
 
 export interface CustomsPackage {
+  contents?: Array<{goods_id:number;goods_code:string;goods_name:string;lot_id:number|null;lot_no:string|null;quantity:number}>|null
   id?: number
   package_no: number
   gross_weight_kg: number | null

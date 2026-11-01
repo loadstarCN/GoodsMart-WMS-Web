@@ -1,31 +1,46 @@
 <script setup lang="ts">
 const {t,locale}=useI18n(),route=useRoute(),router=useRouter(),staff=useStaffStore(),warehouse=useWarehouseStore(),{bizErrorMessage}=useBizError()
 useHead({title:()=>t('nav.location')})
+const ready=ref(false)
+const allowed=(...permissions:string[])=>ready.value&&staff.hasPermission(...permissions)
 const keyword=ref(String(route.query.code||'')),data=ref<PaginationData|null>(null),loading=ref(false),error=ref(''),busy=ref(false),counts=ref<Record<string,number>>({}),summaries=ref<Record<number,any>>({})
 const zones=ref<{zone:string;active:number;inactive:number}[]>([])
 const zoneError=ref('')
+const selected=ref<(string|number)[]>([]),batchErrors=ref<string[]>([])
+const selectedRows=computed(()=>(data.value?.items||[]).filter(row=>selected.value.includes(row.id)))
+const printSelected=()=>{if(selectedRows.value.length)router.push({path:'/location/label/'+selectedRows.value[0].id,query:{ids:selectedRows.value.map(row=>row.id).join(',')}})}
+const toggleSelected=async()=>{
+ if(busy.value||!allowed('location_edit'))return
+ const rows=[...selectedRows.value];if(!rows.length)return
+ busy.value=true;batchErrors.value=[];const failed:(string|number)[]=[]
+ try{for(const row of rows){let ok=false;await httpRequest('/api/warehouse/location/'+row.id,{method:'PUT',headers:warehouseHeaders(row.warehouse_id),body:{is_active:!row.is_active},onSuccess:()=>{ok=true},onError:e=>batchErrors.value.push(row.code+': '+bizErrorMessage(e))});if(!ok)failed.push(row.id)}await load();selected.value=failed;if(!failed.length)showToast(t('action-results.success'),'success')}finally{busy.value=false}
+}
+const mapView=computed(()=>route.query.view==='map')
+const mapFilters=computed(()=>({code:route.query.code,zone:route.query.zone,location_type:route.query.location_type,occupancy:allowed('inventory_read')?route.query.occupancy:undefined,is_active:active.value}))
+const occupancyOptions=computed(()=>['occupied','empty'].map(value=>({value,label:t('location-map.'+value)})))
 const active=computed(()=>route.query.is_active==='false'?'false':'true'),page=computed(()=>Math.max(1,Number(route.query.page)||1))
 const tabs=computed(()=>[{key:'true',label:t('recipient.ui.enable'),count:counts.value.true},{key:'false',label:t('recipient.ui.disable'),count:counts.value.false}])
 const {locationTypeLabel}=useOptionLabel()
 const types=computed(()=>['standard','damaged','return'].map(value=>({value,label:locationTypeLabel(value)})))
-const columns=computed(()=>[{key:'code',label:t('location.fields.code')},{key:'location_type',label:t('location.fields.location-type'),format:locationTypeLabel},{key:'status',label:t('common.fields.status')},...(staff.hasPermission('inventory_read')?[{key:'goods',label:t('nav.goods'),align:'right' as const},{key:'volume',label:t('location.ui.utilization')}]:[]),{key:'updated_at',label:t('common.dates.updated')},{key:'actions',label:t('common.fields.action'),align:'right' as const}])
+const columns=computed(()=>[{key:'code',label:t('location.fields.code')},{key:'location_type',label:t('location.fields.location-type'),format:locationTypeLabel},{key:'status',label:t('common.fields.status')},...(allowed('inventory_read')?[{key:'goods',label:t('nav.goods'),align:'right' as const},{key:'volume',label:t('location.ui.utilization')}]:[]),{key:'updated_at',label:t('common.dates.updated')},{key:'actions',label:t('common.fields.action'),align:'right' as const}])
 const go=(patch:Record<string,any>,keepPage=false)=>{const query:Record<string,any>={...route.query,...patch};if(!keepPage)delete query.page;for(const key of Object.keys(query))if(query[key]==null||query[key]==='')delete query[key];router.push({query})}
 let generation=0
 const load=async()=>{
- const seq=++generation;loading.value=true;error.value='';summaries.value={};counts.value={};data.value=null;zones.value=[];zoneError.value=''
- const params={...route.query,warehouse_id:warehouse.currentWarehouse?.id,is_active:active.value,per_page:20,page:page.value};const headers=warehouseHeaders(warehouse.currentWarehouse?.id)
+ if(!ready.value)return
+ const seq=++generation;selected.value=[];loading.value=true;error.value='';summaries.value={};counts.value={};data.value=null;zones.value=[];zoneError.value=''
+ const params={...route.query,occupancy:allowed('inventory_read')?route.query.occupancy:undefined,warehouse_id:warehouse.currentWarehouse?.id,is_active:active.value,per_page:20,page:page.value};const headers=warehouseHeaders(warehouse.currentWarehouse?.id)
  const [result,other,zoneResult]=await Promise.all([httpRequest<PaginationData>('/api/warehouse/location/',{params,headers,onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}}),httpRequest<PaginationData>('/api/warehouse/location/',{headers,params:{...params,is_active:active.value==='true'?'false':'true',per_page:1,page:1}}),httpRequest<{items:{zone:string;active:number;inactive:number}[]}>('/api/warehouse/location/zones',{params:{warehouse_id:warehouse.currentWarehouse?.id},headers,onError:e=>{if(seq===generation)zoneError.value=bizErrorMessage(e)}})])
  if(seq!==generation)return
  data.value=result;zones.value=zoneResult?.items||[];loading.value=false
  if(result)counts.value[active.value]=result.total
  if(other)counts.value[active.value==='true'?'false':'true']=other.total
- if(result?.items.length&&staff.hasPermission('inventory_read'))await Promise.all(result.items.map(async row=>{
+ if(!mapView.value&&result?.items.length&&allowed('inventory_read'))await Promise.all(result.items.map(async row=>{
   const summary=await httpRequest<any>('/api/warehouse/inventory/by-location',{params:{location_id:row.id,include_inactive:true},headers:warehouseHeaders(row.warehouse_id)})
   if(seq===generation&&summary?.items[0])summaries.value[row.id]=summary.items[0]
  }))
 }
 const act=async(row:any,action:'toggle'|'delete')=>{
- if(busy.value)return
+ if(busy.value||!allowed(action==='delete'?'location_delete':'location_edit'))return
  busy.value=true
  try{
   if(action==='delete'&&!await wConfirm({title:t('action-results.delete-confirm-title'),message:t('action-results.delete-confirm',{entity:row.code}),confirmText:t('button.delete'),cancelText:t('button.cancel')}))return
@@ -34,26 +49,29 @@ const act=async(row:any,action:'toggle'|'delete')=>{
   if(success){showToast(t('action-results.success'),'success');await load()}
  }finally{busy.value=false}
 }
-watch(()=>warehouse.currentWarehouse?.id,()=>{data.value=null;summaries.value={};if(route.query.zone||route.query.warehouse_id||(route.query.page&&Number(route.query.page)!==1))go({page:1,warehouse_id:undefined,zone:undefined},true);else load()});watch(()=>route.query,()=>{keyword.value=String(route.query.code||'');load()});onMounted(load);onBeforeUnmount(()=>generation++)
+const initialize=async()=>{const seq=++generation;ready.value=false;loading.value=true;error.value='';data.value=null;const current=await staff.getCurrentStaffInfo();if(seq!==generation)return;if(!current){error.value=t('common.validation.company-required');loading.value=false;return}await warehouse.fetchWarehouses();if(seq!==generation)return;ready.value=true;await load()}
+watch(()=>warehouse.currentWarehouse?.id,()=>{data.value=null;summaries.value={};if(route.query.zone||route.query.warehouse_id||(route.query.page&&Number(route.query.page)!==1))go({page:1,warehouse_id:undefined,zone:undefined},true);else load()});watch(()=>route.query,()=>{keyword.value=String(route.query.code||'');load()});onMounted(initialize);onBeforeUnmount(()=>generation++)
 </script>
 <template>
  <div class="w-location-list w-scope">
-  <header><div><h1>{{t('nav.location')}}</h1><span>{{data?.total?.toLocaleString(locale)}}</span></div><WButton v-if="staff.hasPermission('location_edit')" variant="primary" icon="plus" to="/location/add">{{t('location.ui.create')}}</WButton></header>
-  <div class="location-grid"><nav class="zone-nav" :aria-label="t('location-zones.title')"><h2>{{t('location-zones.title')}}<WHelp :text="t('location-zones.help')"/></h2><button type="button" :class="{selected:!route.query.zone}" @click="go({zone:undefined})"><span>{{t('location-zones.all')}}</span><span>{{zones.reduce((total,row)=>total+(active==='true'?row.active:row.inactive),0)}}</span></button><button v-for="zone in zones" :key="zone.zone" type="button" :class="{selected:route.query.zone===zone.zone}" :aria-pressed="route.query.zone===zone.zone" @click="go({zone:zone.zone})"><span>{{zone.zone}}</span><span>{{active==='true'?zone.active:zone.inactive}}</span></button><WAlert v-if="zoneError" tone="warn" :title="zoneError"><template #actions><WButton @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert></nav><WCard flush><WTabs inset :model-value="active" :items="tabs" :label="t('common.fields.status')" @update:model-value="value=>go({is_active:value})" />
-   <form class="w-location-list__filters" @submit.prevent="go({code:keyword.trim()})"><WInput v-model="keyword" type="search" :placeholder="t('location.fields.code')" :aria-label="t('common.search')" @change="go({code:keyword.trim()})"><template #prefix><WIcon name="search" :size="16" /></template></WInput><WFilterSelect :model-value="String(route.query.location_type||'')||null" :label="t('location.fields.location-type')" :options="types" @change="value=>go({location_type:value})" /></form>
-   <WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
-   <WTable :rows="data?.items||[]" :columns="columns" :loading="loading" inset><template #head-actions><span class="w-sr-only">{{t('common.fields.action')}}</span></template>
+  <header><div><h1>{{t('nav.location')}}</h1><span>{{data?.total?.toLocaleString(locale)}}</span></div><WButton v-if="allowed('location_edit')" variant="primary" icon="plus" to="/location/add">{{t('location.ui.create')}}</WButton></header>
+  <div class="location-grid"><nav class="zone-nav" :aria-label="t('location-zones.title')"><h2>{{t('location-zones.title')}}<WHelp :text="t('location-zones.help')"/></h2><button type="button" :class="{selected:!route.query.zone}" @click="go({zone:undefined})"><span>{{t('location-zones.all')}}</span><span>{{zones.reduce((total,row)=>total+(active==='true'?row.active:row.inactive),0)}}</span></button><button v-for="zone in zones" :key="zone.zone" type="button" :class="{selected:route.query.zone===zone.zone}" :aria-pressed="route.query.zone===zone.zone" @click="go({zone:zone.zone})"><span>{{zone.zone}}</span><span>{{active==='true'?zone.active:zone.inactive}}</span></button><WAlert v-if="zoneError" tone="warn" :title="zoneError"><template #actions><WButton @click="ready?load():initialize()">{{t('dn.list.retry')}}</WButton></template></WAlert></nav><WCard flush><WTabs inset :model-value="active" :items="tabs" :label="t('common.fields.status')" @update:model-value="value=>go({is_active:value})" />
+   <div class="view-switch"><WButton size="sm" :variant="mapView?'text':'secondary'" @click="go({view:undefined})">{{t('location-map.list')}}</WButton><WButton v-if="warehouse.currentWarehouse&&allowed('warehouse_read')" size="sm" :variant="mapView?'secondary':'text'" @click="go({view:'map'})">{{t('layout.view-map')}}</WButton></div><form class="w-location-list__filters" @submit.prevent="go({code:keyword.trim()})"><WInput v-model="keyword" type="search" :placeholder="t('location.fields.code')" :aria-label="t('common.search')" @change="go({code:keyword.trim()})"><template #prefix><WIcon name="search" :size="16" /></template></WInput><WFilterSelect :model-value="String(route.query.location_type||'')||null" :label="t('location.fields.location-type')" :options="types" @change="value=>go({location_type:value})" /><WFilterSelect v-if="allowed('inventory_read')" :model-value="String(route.query.occupancy||'')||null" :label="t('location-map.occupancy')" :options="occupancyOptions" @change="value=>go({occupancy:value})" /></form>
+   <WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="ready?load():initialize()">{{t('dn.list.retry')}}</WButton></template></WAlert>
+   <LocationWarehouseMap v-if="mapView&&warehouse.currentWarehouse&&allowed('warehouse_read')" :warehouse-id="warehouse.currentWarehouse.id" :filters="mapFilters"/><template v-else><div v-if="selected.length" class="batch-actions"><span>{{t('location-map.selected',{n:selected.length})}}</span><WButton size="sm" :disabled="busy" @click="printSelected">{{t('location-label.title')}}</WButton><WButton v-if="allowed('location_edit')" size="sm" :loading="busy" @click="toggleSelected">{{t(active==='true'?'recipient.ui.disable':'recipient.ui.enable')}}</WButton></div><WAlert v-for="message in batchErrors" :key="message" tone="block" :title="message"/><WTable selectable v-model:selected="selected" :row-selectable="()=>!busy" :rows="data?.items||[]" :columns="columns" :loading="loading" inset><template #head-actions><span class="w-sr-only">{{t('common.fields.action')}}</span></template>
     <template #cell-code="{row}"><NuxtLink class="w-location-list__name" :to="'/location/detail/'+row.id">{{row.code}}</NuxtLink><span class="w-location-list__sub">{{warehouse.warehouses.find(w=>w.id===row.warehouse_id)?.name||row.warehouse_name||'—'}}</span></template>
     <template #cell-status="{row}"><WStatus muted :tone="row.is_active?'ok':'none'">{{t(row.is_active?'recipient.ui.enabled':'recipient.ui.disabled')}}</WStatus></template>
     <template #cell-goods="{row}"><strong v-if="summaries[row.id]">{{summaries[row.id].quantity.toLocaleString(locale)}}</strong><span v-if="summaries[row.id]" class="w-location-list__sub">{{t('warehouse.ui.goods-count',{count:summaries[row.id].goods_count})}}</span></template>
     <template #cell-volume="{row}"><div v-if="summaries[row.id]?.volume_utilization!=null" class="w-location-utilization"><progress :value="summaries[row.id].volume_utilization" max="1" /><span>{{Math.round(summaries[row.id].volume_utilization*100)}}%</span></div><span v-else class="w-location-list__sub">—</span></template>
     <template #cell-updated_at="{row}">{{$dayjs(row.updated_at)}}</template>
-    <template #cell-actions="{row}"><WDropdown v-if="staff.hasPermission('location_edit')||staff.hasPermission('location_delete')" :label="t('common.fields.action')" placement="bottom-end" width="180px"><template #trigger="{attrs}"><WButton class="location-more" v-bind="attrs" variant="text" icon="more" icon-only size="sm" :aria-label="t('common.fields.action')" /></template><NuxtLink v-if="staff.hasPermission('location_edit')" role="menuitem" class="w-menu-item" :to="'/location/edit/'+row.id">{{t('button.edit')}}</NuxtLink><button v-if="staff.hasPermission('location_edit')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'toggle')">{{t(row.is_active?'recipient.ui.disable':'recipient.ui.enable')}}</button><button v-if="staff.hasPermission('location_delete')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'delete')">{{t('button.delete')}}</button></WDropdown></template>
-   </WTable><footer><WPagination :page="page" :page-size="20" :total="data?.total" show-total @update:page="value=>go({page:value},true)" /></footer>
+    <template #cell-actions="{row}"><WDropdown v-if="allowed('location_edit')||allowed('location_delete')" :label="t('common.fields.action')" placement="bottom-end" width="180px"><template #trigger="{attrs}"><WButton class="location-more" v-bind="attrs" variant="text" icon="more" icon-only size="sm" :aria-label="t('common.fields.action')" /></template><NuxtLink v-if="allowed('location_edit')" role="menuitem" class="w-menu-item" :to="'/location/edit/'+row.id">{{t('button.edit')}}</NuxtLink><button v-if="allowed('location_edit')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'toggle')">{{t(row.is_active?'recipient.ui.disable':'recipient.ui.enable')}}</button><button v-if="allowed('location_delete')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'delete')">{{t('button.delete')}}</button></WDropdown></template>
+   </WTable><footer><WPagination :page="page" :page-size="20" :total="data?.total" show-total @update:page="value=>go({page:value},true)" /></footer></template>
   </WCard></div>
  </div>
 </template>
 <style scoped>
+.batch-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 20px;font-size:13px;border-bottom:1px solid var(--w-line)}
+.view-switch{display:flex;gap:4px;padding:12px 20px 0}
 .w-location-list { display:flex; flex-direction:column; gap:16px; }
 .location-grid{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;align-items:start}.zone-nav{border:1px solid var(--w-border);background:white;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px}.zone-nav h2{display:flex;align-items:center;gap:6px;padding:4px 8px 8px;margin:0;font-size:12px;line-height:18px;font-weight:500;color:var(--w-text-3)}.zone-nav>button{border:0;background:transparent;border-radius:6px;padding:7px 10px;display:flex;justify-content:space-between;gap:8px;text-align:left;font:inherit;font-size:14px;line-height:20px;color:var(--w-text-1)}.zone-nav>button span:first-child{overflow-wrap:anywhere}.zone-nav>button span:last-child{font-size:12px;color:var(--w-text-3)}.zone-nav>button.selected{background:#F5F4FF;color:#4E1DBC;font-weight:600}.zone-nav>button:hover{background:#F6F7FA}.zone-nav>button:focus-visible{outline:2px solid var(--w-pri);outline-offset:-2px}@media(max-width:1100px){.location-grid{grid-template-columns:minmax(0,1fr)}.zone-nav{max-height:220px;overflow:auto}}
 .w-location-list header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }

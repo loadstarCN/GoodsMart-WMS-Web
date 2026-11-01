@@ -38,6 +38,21 @@ export const isDamagedLocation = (locationType: unknown): boolean => locationTyp
 export const putawayLimit = (pending: PendingPutaway, locationType: unknown): number =>
   isDamagedLocation(locationType) ? pending.total : pending.good
 
+/** Remaining capacity after other rows consuming the same receipt/lot. */
+export const putawaySplitLimit = (
+  pending: PendingPutaway, locationType: unknown,
+  others: {quantity:number;locationType:unknown}[],
+): number => {
+  const quantity = (value:number) => Number.isFinite(value) && value > 0 ? value : 0
+  const damagedDestination = others.filter(row => isDamagedLocation(row.locationType))
+    .reduce((sum,row) => sum + quantity(row.quantity),0)
+  const goodDestination = others.filter(row => !isDamagedLocation(row.locationType))
+    .reduce((sum,row) => sum + quantity(row.quantity),0)
+  const total = pending.total - damagedDestination - goodDestination
+  const good = pending.good - goodDestination - Math.max(0,damagedDestination-pending.damaged)
+  return Math.max(0, isDamagedLocation(locationType) ? total : Math.min(total,good))
+}
+
 /**
  * 上架数量超出时，返回与后端同样的业务错误（交给 useBizError 出三语文案）；没超出 / 不知道库存时 null。
  * - 超出待上架合计 → 15007

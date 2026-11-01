@@ -8,43 +8,55 @@ const id = computed(() => String(route.params.id))
 const { t, locale } = useI18n()
 useHead({ title: () => `ASN-${id.value}` })
 const staff = useStaffStore()
+const allowed = (permission: string) => !!(staff.refreshed && staff.staffInfo && staff.hasPermission(permission))
 const { bizErrorMessage } = useBizError()
 const { busy, run } = useAsnActions()
 const record = ref<any>(null)
 const supplier = ref<any>(null)
+const supplierError = ref('')
 const loading = ref(true)
 const error = ref('')
 const flow = ref<InboundFlow | null>(null)
 const selectedStep = ref<string | null>(null)
 const flowRef = ref<{ reload: () => Promise<void> } | null>(null)
 let generation = 0
+const loadSupplier = async (seq = generation) => {
+  const current = record.value
+  if (!current?.supplier_id || !allowed('supplier_read')) return
+  supplierError.value = ''
+  await httpRequest<any>('/api/warehouse/supplier/' + current.supplier_id, {
+    headers: warehouseHeaders(current.warehouse_id),
+    onSuccess: value => { if (seq === generation) supplier.value = value },
+    onError: err => { if (seq === generation) supplierError.value = bizErrorMessage(err) },
+  })
+}
 const load = async () => {
   const seq = ++generation
-  loading.value = true; error.value = ''
+  loading.value = true; error.value = ''; record.value = null; supplier.value = null; supplierError.value = ''; flow.value = null
+  await staff.getCurrentStaffInfo()
+  if (seq !== generation) return
   await httpRequest<any>(`/api/warehouse/asn/${id.value}`, {
     onSuccess: data => {
       if (seq !== generation) return
       record.value = data
       supplier.value = data.supplier
-      if (data.supplier_id && staff.hasPermission('supplier_read')) httpRequest<any>('/api/warehouse/supplier/' + data.supplier_id, {
-        onSuccess: value => { if (seq === generation) supplier.value = value },
-      })
+      loadSupplier(seq)
     },
     onError: err => { if (seq === generation) error.value = bizErrorMessage(err) },
     onFinally: () => { if (seq === generation) loading.value = false },
   })
 }
-const act = async (action: 'receive' | 'close' | 'cancel') => { if (await run(id.value, action)) await Promise.all([load(), flowRef.value?.reload()]) }
+const act = async (action: 'receive' | 'close' | 'cancel') => { if (!allowed('asn_edit') || busy.value || loading.value || !record.value) return; if (await run(id.value, action)) await Promise.all([load(), flowRef.value?.reload()]) }
 watch(id, () => { record.value = null; flow.value = null; selectedStep.value = null; load() })
 onMounted(load)
 onBeforeUnmount(() => { generation++ })
 const columns = computed(() => [
   { key: 'goods', label: t('asn.form-ui.goods-specs'), wrap: true },
   { key: 'quantity', label: t('asn.form-ui.expected'), type: 'qty' as const, keepZero: true, strong: true },
-  { key: 'actual_quantity', label: t('common.quantities.actual'), type: 'qty' as const, keepZero: true, value: (row: any) => record.value?.status === 'pending' ? null : row.actual_quantity },
+  { key: 'actual_quantity', label: t('common.quantities.actual'), type: 'qty' as const, keepZero: true, value: (row: any) => record.value?.status === 'completed' ? row.actual_quantity : null },
   { key: 'sorted_quantity', label: t('common.quantities.sorted'), type: 'qty' as const },
   { key: 'damage_quantity', label: t('common.quantities.damaged'), type: 'qty' as const },
-  { key: 'rejected_quantity', label: t('asn.form-ui.rejected'), type: 'qty' as const },
+  { key: 'rejected_quantity', label: t('asn.form-ui.rejected'), type: 'qty' as const, keepZero: true },
   { key: 'weight', label: `${t('goods.fields.weight')} (kg)`, type: 'qty' as const },
   { key: 'volume', label: `${t('goods.fields.volume')} (m³)`, type: 'qty' as const },
   { key: 'remark', label: t('common.fields.remark'), wrap: true },
@@ -55,14 +67,14 @@ const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.v
   <div class="asn-detail w-scope">
     <div class="asn-detail__top">
     <nav :aria-label="t('nav.ASN')"><NuxtLink class="w-breadcrumb-link" to="/asn">{{ t('nav.ASN') }}</NuxtLink> / ASN-{{ id }}</nav>
-    <header><div class="asn-detail__heading"><h1>ASN-{{ id }}</h1><WStatus v-if="record" :tone="tone" variant="pill">{{ flow ? t('asn.flow.stage.' + flow.stage) : t('common.status.' + record.status) }}</WStatus><span class="asn-detail__type" v-if="record">{{ t('asn.type.' + record.asn_type) }}<template v-if="record.carrier"> · {{ record.carrier.name }}</template></span></div>
+    <header><div class="asn-detail__heading"><h1>ASN-{{ id }}</h1><WStatus v-if="record" :tone="tone" variant="pill">{{ flow ? t('asn.flow.stage.' + flow.stage) : t('common.status.' + record.status) }}</WStatus><span class="asn-detail__type" v-if="record">{{ t('asn.type.' + record.asn_type) }}<template v-if="record.carrier?.name"> · {{ record.carrier.name }}</template></span></div>
       <div v-if="record" class="asn-detail__summary"><span>{{ t('common.entities.supplier') }} <b>{{ record.supplier?.name }}</b></span><span v-if="record.order_number">{{ t('dn.fields.order-no') }} <b>{{ record.order_number }}</b></span><span v-if="record.expected_arrival_date">{{ t('asn.fields.expected-arrival-date') }} <b>{{ record.expected_arrival_date }}</b></span></div>
       <div v-if="record" class="asn-detail__actions">
         <WButton :to="`/asn/print/${id}`" target="_blank">{{ t('button.print') }}</WButton>
-        <WButton v-if="record.status === 'pending' && staff.hasPermission('asn_edit')" :to="`/asn/edit/${id}`">{{ t('button.edit') }}</WButton>
-        <WButton v-if="record.status === 'received' && staff.hasPermission('sorting_read')" :to="`/sorting?asn_id=${id}`">{{ t('asn.operations.sorting') }}</WButton>
-        <WButton variant="danger" v-if="record.status === 'pending' && staff.hasPermission('asn_edit')" :disabled="busy" @click="act('close')">{{ t('button.close') }}</WButton>
-        <WButton v-if="record.status === 'received' && staff.hasPermission('asn_edit')" variant="text" :disabled="busy" @click="act('cancel')">{{ t('asn.operations.cancel') }}</WButton>
+        <WButton v-if="record.status === 'pending' && allowed('asn_edit')" :to="`/asn/edit/${id}`">{{ t('button.edit') }}</WButton>
+        <WButton v-if="record.status === 'received' && allowed('sorting_read')" :to="`/sorting?asn_id=${id}`">{{ t('asn.operations.sorting') }}</WButton>
+        <WButton variant="danger" v-if="record.status === 'pending' && allowed('asn_edit')" :disabled="busy" @click="act('close')">{{ t('button.close') }}</WButton>
+        <WButton v-if="record.status === 'received' && allowed('asn_edit')" variant="text" :disabled="busy" @click="act('cancel')">{{ t('asn.operations.cancel') }}</WButton>
       </div>
     </header>
     </div>
@@ -75,13 +87,13 @@ const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.v
         <WCard class="asn-detail__items" :title="t('common.entities.goods')" :subtitle="t('dn.list.goods', { kinds: record.detail_count, qty: record.total_quantity })" flush>
           <template #actions><WStatus v-if="record.spec_pending_count" tone="warn">{{ t('asn.form-ui.pending-specs', { count: record.spec_pending_count }) }}</WStatus></template>
           <WTable :rows="record.details || []" :columns="columns" row-key="id" inset>
-            <template #cell-goods="{ row }"><div class="asn-detail__goods"><NuxtLink class="w-record-link" :to="'/goods/detail/' + row.goods_id">{{ row.goods?.name }}</NuxtLink><div>{{ row.goods?.code }}</div><div class="asn-detail__specs">{{ [row.goods?.weight ? row.goods.weight + ' kg' : '', row.goods?.length && row.goods?.width && row.goods?.height ? [row.goods.length, row.goods.width, row.goods.height].map(value => value / 10).join(' × ') + ' cm' : '', row.goods?.origin_country ? countryName(row.goods.origin_country, locale) : ''].filter(Boolean).join(' · ') }}</div></div></template>
-            <template #foot><tr><th>{{ t('asn.form-ui.total') }}</th><td>{{ record.total_quantity }}</td><td>{{ record.status === 'pending' ? '' : record.total_actual_quantity }}</td><td>{{ record.total_sorted_quantity || '' }}</td><td>{{ record.total_damage_quantity || '' }}</td><td>{{ record.total_rejected_quantity || '' }}</td><td>{{ record.total_weight || '' }}</td><td>{{ record.total_volume || '' }}</td><td /></tr></template>
+            <template #cell-goods="{ row }"><div class="asn-detail__goods"><NuxtLink v-if="allowed('goods_read')" class="w-record-link" :to="'/goods/detail/' + row.goods_id">{{ row.goods?.name }}</NuxtLink><span v-else>{{ row.goods?.name }}</span><div>{{ row.goods?.code }}</div><div class="asn-detail__specs">{{ [row.goods?.weight ? row.goods.weight + ' kg' : '', row.goods?.length && row.goods?.width && row.goods?.height ? [row.goods.length, row.goods.width, row.goods.height].map(value => value / 10).join(' × ') + ' cm' : '', row.goods?.origin_country ? countryName(row.goods.origin_country, locale) : ''].filter(Boolean).join(' · ') }}</div><div v-if="row.announced_lots?.length" class="asn-detail__announced"><b>{{t('announced-lots.title')}}</b><span v-for="(lot,index) in row.announced_lots" :key="Number(index)">{{lot.lot_code}} / {{lot.expiry_date||'—'}} / {{lot.quantity}}</span></div><AsnSpecCapture :asn="record" :line="row" :disabled="busy" @saved="load" /></div></template>
+            <template #foot><tr><th>{{ t('asn.form-ui.total') }}</th><td>{{ record.total_quantity }}</td><td>{{ record.status === 'completed' ? record.total_actual_quantity : '—' }}</td><td>{{ record.total_sorted_quantity || '' }}</td><td>{{ record.total_damage_quantity || '' }}</td><td>{{ record.total_rejected_quantity ?? '—' }}</td><td>{{ record.total_weight || '' }}</td><td>{{ record.total_volume || '' }}</td><td /></tr></template>
           </WTable>
         </WCard>
       </div>
       <aside :aria-label="t('asn.fields.details')">
-        <section class="asn-detail__aside-card"><h3>{{ t('common.entities.supplier') }}</h3><div class="asn-detail__supplier"><NuxtLink class="w-record-link" v-if="supplier" :to="'/supplier/detail/' + supplier.id">{{ supplier.name }}</NuxtLink><span v-if="supplier?.address">{{ supplier.address }}</span></div><p v-if="supplier?.phone || supplier?.contact">{{ [supplier.phone, supplier.contact].filter(Boolean).join(' · ') }}</p></section>
+        <section class="asn-detail__aside-card"><h3>{{ t('common.entities.supplier') }}</h3><WAlert v-if="supplierError" tone="warn" :title="supplierError"><template #actions><WButton @click="loadSupplier()">{{ t('dn.list.retry') }}</WButton></template></WAlert><div class="asn-detail__supplier"><NuxtLink class="w-record-link" v-if="supplier && allowed('supplier_read')" :to="'/supplier/detail/' + supplier.id">{{ supplier.name }}</NuxtLink><span v-else>{{ supplier?.name }}</span><span v-if="supplier?.address">{{ supplier.address }}</span></div><p v-if="supplier?.phone || supplier?.contact">{{ [supplier.phone, supplier.contact].filter(Boolean).join(' · ') }}</p></section>
         <section class="asn-detail__aside-card"><h3>{{ t('asn.form-ui.document-info') }}</h3>
           <dl class="asn-detail__facts">
             <dt>{{ t('common.entities.warehouse') }}</dt><dd>{{ record.warehouse?.name }}</dd>
@@ -100,6 +112,8 @@ const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.v
 .asn-detail { display: flex; flex-direction: column; gap: 24px; max-width: 1216px; padding-bottom: 24px; }
 .asn-detail__top { display: flex; flex-direction: column; gap: 8px; }
 .asn-detail__summary { display: flex; flex-wrap: wrap; gap: 4px 24px; font-size: 13px; line-height: 20px; color: var(--w-text-3); order: 3; flex-basis: 100%; margin-top: -6px; }
+.asn-detail__summary > span { min-width: 0; overflow-wrap: anywhere; }
+.asn-detail__supplier, .asn-detail__aside-card p, .asn-detail__type { overflow-wrap: anywhere; }
 .asn-detail__summary b { color: var(--w-text-1); font-weight: 500; }
 .asn-detail__type { font-size: 13px; line-height: 20px; color: var(--w-text-2); }
 .asn-detail nav { display: flex; gap: 8px; font-size: 13px; line-height: 20px; color: var(--w-text-2); }
@@ -127,3 +141,5 @@ const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.v
 .asn-detail__goods img { object-fit: contain; }
 @media (max-width: 1100px) { .asn-detail__layout { grid-template-columns: minmax(0, 1fr); } }
 </style>
+
+<style scoped>.asn-detail__announced{display:flex;flex-direction:column;gap:3px;font-size:12px;overflow-wrap:anywhere;margin-top:6px}</style>

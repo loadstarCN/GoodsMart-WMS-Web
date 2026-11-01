@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import PasswordInput from '~/components/common/SecurePasswordInput.vue'
 import AuthFrame from "~/components/auth/AuthFrame.vue"
 import { languages } from '~/data/headerData.js'
 import type { HttpRequestError } from '~/utils/http'
@@ -56,6 +57,7 @@ const sendCode = async () => {
   loading.value = true;
   // 成功时无论邮箱是否存在都只显示通用文案，避免账号枚举
   await httpRequest('/api/system/user/forgot-password', {
+    authenticated: false,
     method: 'POST',
     body: { email: email.value.trim() },
     onSuccess: () => {
@@ -77,6 +79,7 @@ const resendCode = async () => {
   if (countdown.value > 0) return;
   loading.value = true;
   await httpRequest('/api/system/user/forgot-password', {
+    authenticated: false,
     method: 'POST',
     body: { email: email.value.trim() },
     onSuccess: () => {
@@ -113,6 +116,7 @@ const resetPassword = async () => {
   }
   loading.value = true;
   await httpRequest('/api/system/user/reset-password', {
+    authenticated: false,
     method: 'POST',
     body: {
       email: email.value.trim(),
@@ -140,4 +144,5 @@ onUnmounted(() => {
   document.body.classList.remove('bg-white');
   if (timer) clearInterval(timer);
 });
-</script><template><AuthFrame><form @submit.prevent="step===1?sendCode():resetPassword()"><h2>{{t('forgot-password.title')}}</h2><p>{{t('forgot-password.subtitle')}}</p><WField v-if="step===1" :label="t('common.fields.email')"><WInput v-model="email" type="email" autocomplete="email" required :disabled="loading" :placeholder="t('forgot-password.email-placeholder')"/></WField><template v-else><WField :label="t('forgot-password.verification-code')" :hint="t('forgot-password.code-sent-to',{email})"><div class="code"><WInput v-model="code" maxlength="6" autocomplete="one-time-code" required :disabled="loading" :placeholder="t('forgot-password.code-placeholder')"/><WButton :disabled="loading||countdown>0" @click="resendCode">{{countdown>0?countdown+'s':t('forgot-password.resend')}}</WButton></div></WField><WField :label="t('forgot-password.new-password')"><WInput v-model="newPassword" type="password" autocomplete="new-password" required :disabled="loading"/></WField><WField :label="t('forgot-password.confirm-password')"><WInput v-model="confirmPassword" type="password" autocomplete="new-password" required :disabled="loading"/></WField></template><WButton type="submit" variant="primary" block :loading="loading">{{t(step===1?'forgot-password.send-code':'forgot-password.reset-btn')}}</WButton><NuxtLink class="back" to="/auth/login">{{t('forgot-password.back-to-login')}}</NuxtLink></form></AuthFrame></template><style scoped>.code{display:flex;gap:8px;align-items:center}.code>.w-input{flex:1;min-width:0}.back{text-align:center}</style>
+useHead({title:()=>t('forgot-password.title')})
+</script><template><AuthFrame><form @submit.prevent="step===1?sendCode():resetPassword()"><h2>{{t('forgot-password.title')}}</h2><p>{{t(step===1?'forgot-password.subtitle':'forgot-password.code-subtitle')}}</p><WField v-if="step===1" :label="t('common.fields.email')"><WInput v-model="email" type="email" autocomplete="email" required :disabled="loading" :placeholder="t('forgot-password.email-placeholder')"/></WField><template v-else><WField :label="t('forgot-password.verification-code')" :hint="t('forgot-password.code-sent-to',{email})"><div class="code"><WInput v-model="code" maxlength="6" autocomplete="one-time-code" required :disabled="loading" :placeholder="t('forgot-password.code-placeholder')"/><WButton :disabled="loading||countdown>0" @click="resendCode">{{countdown>0?countdown+'s':t('forgot-password.resend')}}</WButton></div></WField><WField :label="t('forgot-password.new-password')" :hint="t('common.validation.password-policy',passwordPolicyParams())"><PasswordInput v-model="newPassword" autocomplete="new-password" required :disabled="loading"/></WField><WField :label="t('forgot-password.confirm-password')"><PasswordInput v-model="confirmPassword" autocomplete="new-password" required :disabled="loading"/></WField></template><WButton type="submit" variant="primary" block :loading="loading">{{t(step===1?'forgot-password.send-code':'forgot-password.reset-btn')}}</WButton><NuxtLink class="back" to="/auth/login">{{t('forgot-password.back-to-login')}}</NuxtLink></form></AuthFrame></template><style scoped>.code{display:flex;gap:8px;align-items:center}.code>.w-input{flex:1;min-width:0}.back{text-align:center}</style>

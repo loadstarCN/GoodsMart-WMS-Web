@@ -10,11 +10,11 @@
 import { httpRequest } from '~/utils/http'
 import { normalizeServiceOptions, type ServiceOption } from '~/composables/shipping/carrierFile'
 
-/** 承运商声明的服务选项；没有承运商 / 读取失败为 [] */
-export const loadCarrierServiceOptions = async (carrierId: number | string | null | undefined): Promise<ServiceOption[]> => {
+/** 没有承运商为 []；读取失败为 null，不能当成没有服务选项。 */
+export const loadCarrierServiceOptions = async (carrierId: number | string | null | undefined, headers?: Record<string, string>, onError?: (error: any) => void): Promise<ServiceOption[] | null> => {
   if (carrierId === null || carrierId === undefined || carrierId === '') return []
-  const data = await httpRequest<any>(`/api/warehouse/carrier/${carrierId}`, { method: 'GET' })
-  return normalizeServiceOptions(data?.service_options)
+  const data = await httpRequest<any>(`/api/warehouse/carrier/${carrierId}`, { method: 'GET', headers, onError })
+  return data ? normalizeServiceOptions(data.service_options) : null
 }
 
 const toFormValue = (v: unknown): string => (v === null || v === undefined ? '' : String(v))

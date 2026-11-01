@@ -48,3 +48,15 @@ export function invalidItemQuantity(item: DocumentItem): boolean {
 export function itemExceedsStock(item: DocumentItem): boolean {
   return typeof item.max_qty === 'number' && Number(item.quantity) > item.max_qty
 }
+
+/** Existing documents may contain several lines reserving the same goods. */
+export function goodsExceedingStock(items: DocumentItem[]): Set<number> {
+  const totals = new Map<number, { quantity: number; limit: number }>()
+  for (const item of items) {
+    const total = totals.get(item.goods_id) || { quantity: 0, limit: Infinity }
+    total.quantity += Number(item.quantity)
+    if (typeof item.max_qty === 'number') total.limit = Math.min(total.limit, item.max_qty)
+    totals.set(item.goods_id, total)
+  }
+  return new Set([...totals].filter(([, value]) => value.quantity > value.limit).map(([id]) => id))
+}

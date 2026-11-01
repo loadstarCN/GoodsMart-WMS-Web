@@ -37,7 +37,7 @@ const columns = computed<Column[]>(() => {
   switch (props.type) {
     case 'dn':
       return [
-        { key: 'main', label: t('search.columns.dn-main') },
+        { key: 'main', wrap:true, label: t('search.columns.dn-main') },
         { key: 'carrier', label: t('search.columns.carrier'), width: '200px' },
         { key: 'date', label: t('search.columns.shipping-date'), width: '120px' },
         status,
@@ -45,15 +45,15 @@ const columns = computed<Column[]>(() => {
       ]
     case 'asn':
       return [
-        { key: 'main', label: t('search.columns.asn-main') },
-        { key: 'tracking', label: t('search.columns.tracking'), width: '180px' },
+        { key: 'main', wrap:true, label: t('search.columns.asn-main') },
+        { key: 'tracking', wrap:true, label: t('search.columns.tracking'), width: '180px' },
         { key: 'date', label: t('search.columns.arrival-date'), width: '120px' },
         status,
         ...warehouse,
       ]
     case 'goods':
       return [
-        { key: 'main', label: t('search.columns.goods') },
+        { key: 'main', wrap:true, label: t('search.columns.goods') },
         { key: 'available', label: t('search.columns.available'), type: 'qty', strong: true, keepZero: true, width: '96px',
           value: (row) => col(row, 'available_stock_for_sale') },
         { key: 'onhand', label: t('search.columns.onhand'), type: 'qty', muted: true, keepZero: true, width: '96px',
@@ -61,7 +61,7 @@ const columns = computed<Column[]>(() => {
       ]
     case 'location':
       return [
-        { key: 'main', label: t('search.columns.location-code') },
+        { key: 'main', wrap:true, label: t('search.columns.location-code') },
         { key: 'location_type', label: t('search.columns.location-type'), muted: true, width: '140px',
           value: (row) => locationTypeLabel(col(row, 'location_type')) },
         ...warehouse,
@@ -73,7 +73,7 @@ const columns = computed<Column[]>(() => {
       ]
     case 'recipient':
       return [
-        { key: 'main', label: t('search.columns.recipient') },
+        { key: 'main', wrap:true, label: t('search.columns.recipient') },
         { key: 'locality', label: t('search.columns.locality'), muted: true, value: (row) => col(row, 'locality') },
         { key: 'admin_area', label: t('search.columns.admin-area'), muted: true, value: (row) => col(row, 'admin_area') },
         { key: 'country', label: t('search.columns.country'), muted: true,
@@ -81,7 +81,7 @@ const columns = computed<Column[]>(() => {
       ]
     default:
       return [
-        { key: 'main', label: t('search.columns.task') },
+        { key: 'main', wrap:true, label: t('search.columns.task') },
         ...(props.type === 'cyclecount' ? [] : [{ key: 'related', label: t('search.columns.related'), width: '140px' }]),
         status,
         ...warehouse,
@@ -207,3 +207,5 @@ const relatedOf = (row: GlobalSearchItem) => {
 .w-st-link:hover { color: var(--w-link-hover); }
 .w-st-link:focus-visible { outline: none; border-radius: 2px; box-shadow: var(--w-focus-ring); }
 </style>
+
+<style scoped>.w-st-main,.w-st-two{overflow-wrap:anywhere;white-space:normal}</style>

@@ -61,7 +61,9 @@ const isBlock = computed(() => props.tone === 'block')
 .w-alert--warn { --w-alert-stripe: var(--w-warn-dot); --w-alert-lead: var(--w-warn-text); }
 .w-alert--ok { --w-alert-stripe: var(--w-ok-dot); --w-alert-lead: var(--w-ok-text); }
 .w-alert__lead {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: var(--w-fw-semibold);
   color: var(--w-alert-lead);
 }

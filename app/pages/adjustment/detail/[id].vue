@@ -2,9 +2,13 @@
 
 // 定义页面元数据
 definePageMeta({
+  key: route => route.path,
 });
 
 let loading = ref(true);
+const loadError = ref('');
+let loadGeneration=0
+onBeforeUnmount(()=>loadGeneration++)
 const route = useRoute();
 const taskId = route.params.id;
 
@@ -15,6 +19,8 @@ const { t } = useI18n();
 const { categoryLabel } = useOptionLabel();
 // 按权限显示审批 / 完成 / 取消按钮（鉴权仍以后端为准）
 const staffStore = useStaffStore();
+const ready=ref(false);
+const allowed=(permission:string)=>ready.value&&!!staffStore.staffInfo&&staffStore.hasPermission(permission);
 const { bizErrorMessage } = useBizError();
 /**
  * 调整原因：从盘点单生成的调整单，后端写的是固定英文「Adjustment by CycleCountTask ID: 12」→ 显示「按盘点单 CC-12 生成」；
@@ -39,24 +45,31 @@ const dataToPass = computed(() => ({
 
 
 const fetchData = async () => {
+    const seq=++loadGeneration
     loading.value = true;
+    loadError.value = '';
+    itemData.value = null;ready.value=false;
+    const current=await staffStore.getCurrentStaffInfo();if(seq!==loadGeneration)return
+    if(!current){loadError.value=t('common.validation.company-required');loading.value=false;return}
+    ready.value=true;
     const data = await httpRequest(`/api/warehouse/adjustment/${taskId}`, {
         method: 'GET',
         params: route.query,
         onSuccess: (data) => {
-          itemData.value = data;
+          if(seq===loadGeneration)itemData.value = data;
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            if(seq===loadGeneration)loadError.value = bizErrorMessage(error)
         },
         onFinally: () => {
-            loading.value = false;
+            if(seq===loadGeneration)loading.value = false;
         }
     })
     return data;   
 };
 
 const approveTask = async () => {
+    if(!allowed('adjustment_approve')||ownApproval.value||itemData.value?.status!=='pending'||cancelled.value)return
     const data = await httpRequest(`/api/warehouse/adjustment/${taskId}/approve/`, {
         method: 'PUT',
         onSuccess: (data) => {
@@ -76,6 +89,7 @@ const approveTask = async () => {
 };
 
 const completeTask = async () => {
+    if(!allowed('adjustment_edit')||itemData.value?.status!=='approved'||cancelled.value)return
   // 检查是否存在未保存的有效分拣数据
     const data = await httpRequest(`/api/warehouse/adjustment/${taskId}/complete/`, {
         method: 'PUT',
@@ -99,31 +113,20 @@ const completeTask = async () => {
 // ------------------ 取消调整单（待审批 / 已审批；需要审批权限）----------------------
 const canceling = ref(false);
 const cancelAdjustment = async () => {
-    if (canceling.value) return;
-    const confirmed = await showConfirm(
-        t('adjustment.tips.cancel-confirm-title'),
-        t('adjustment.tips.cancel-confirm', { id: taskId }),
-        t('adjustment.operations.cancel'),
-        t('button.dont-cancel'),
-    );
-    if (!confirmed) return;
-    canceling.value = true;
-    await httpRequest(`/api/warehouse/adjustment/${taskId}/cancel/`, {
-        method: 'PUT',
-        onSuccess: (data) => {
-            itemData.value = data;
-            showToast(t('action-results.success'), 'success');
-        },
-        onError: (error) => {
-            // 16111 已取消 / 16112 状态不能取消：按最新状态显示
-            showToast(bizErrorMessage(error), 'error');
-            if (error.status === 409) fetchData();
-        },
-    });
-    canceling.value = false;
+    if(canceling.value||actionBusy.value||!allowed('adjustment_approve')||cancelled.value||!['pending','approved'].includes(itemData.value?.status))return
+    canceling.value=true
+    try{
+      const confirmed=await showConfirm(t('adjustment.tips.cancel-confirm-title'),t('adjustment.tips.cancel-confirm',{id:taskId}),t('adjustment.operations.cancel'),t('button.dont-cancel'))
+      if(!confirmed)return
+      await httpRequest(`/api/warehouse/adjustment/${taskId}/cancel/`,{
+        method:'PUT',onSuccess:data=>{itemData.value=data;showToast(t('action-results.success'),'success')},
+        onError:error=>{showToast(bizErrorMessage(error),'error');if(error.status===409)fetchData()}
+      })
+    }finally{canceling.value=false}
 };
 
 function completeFn() {
+  if(actionBusy.value||canceling.value||!allowed('adjustment_edit')||itemData.value?.status!=='approved'||cancelled.value)return
 
   // 使用封装的确认对话框
   showConfirm(
@@ -159,9 +162,9 @@ const delta=(row:any)=>Number(row.actual_quantity||0)-Number(row.system_quantity
 const totalDelta=computed(()=>Number(itemData.value?.total_actual_quantity||0)-Number(itemData.value?.total_system_quantity||0))
 const columns=computed(()=>[
  {key:'goods',label:t('nav.goods'),wrap:true},{key:'location',label:t('common.entities.location')},
- {key:'system_quantity',label:t('common.quantities.system'),type:'qty' as const},
+ {key:'system_quantity',label:t('common.quantities.system'),type:'qty' as const,keepZero:true},
  {key:'difference',label:t('common.quantities.adjusted'),type:'qty' as const},
- {key:'actual_quantity',label:t('common.quantities.actual'),type:'qty' as const}
+ {key:'actual_quantity',label:t('common.quantities.actual'),type:'qty' as const,keepZero:true}
 ])
 useHead({title:()=>`ADJ-${taskId}`})
 </script>
@@ -169,15 +172,15 @@ useHead({title:()=>`ADJ-${taskId}`})
  <div class="w-adjustment-detail w-scope">
   <header>
    <nav><NuxtLink class="w-adjust-breadcrumb" to="/adjustment">{{t('nav.adjustment')}}</NuxtLink><span>/</span><span>ADJ-{{taskId}}</span></nav>
-   <div class="heading"><div><div class="title"><h1>ADJ-{{taskId}}</h1><WStatus variant="pill" :tone="cancelled?'none':itemData?.status==='completed'?'ok':'warn'">{{stateLabel}}</WStatus></div><div class="meta"><span v-if="sourceCyclecountId">{{t('adjustment.fields.source-cyclecount')}} <NuxtLink :to="'/cyclecount/detail/'+sourceCyclecountId">CC-{{sourceCyclecountId}}</NuxtLink></span><span>{{t('adjustment.fields.adjustment-reason')}} <b>{{adjustmentReasonText||'—'}}</b></span><span>{{t('common.entities.warehouse')}} {{itemData?.warehouse?.name}}</span></div></div><WButton v-if="['pending','approved'].includes(itemData?.status)&&!cancelled&&staffStore.hasPermission('adjustment_approve')" variant="danger" :loading="canceling" :disabled="actionBusy" @click="cancelAdjustment">{{t('adjustment.operations.cancel')}}</WButton></div>
+   <div class="heading"><div><div class="title"><h1>ADJ-{{taskId}}</h1><WStatus v-if="itemData" variant="pill" :tone="cancelled?'none':itemData?.status==='completed'?'ok':'warn'">{{stateLabel}}</WStatus></div><div v-if="itemData" class="meta"><span v-if="sourceCyclecountId">{{t('adjustment.fields.source-cyclecount')}} <NuxtLink v-if="allowed('cycle_count_read')" :to="'/cyclecount/detail/'+sourceCyclecountId">CC-{{sourceCyclecountId}}</NuxtLink><span v-else>CC-{{sourceCyclecountId}}</span></span><span>{{t('adjustment.fields.adjustment-reason')}} <b>{{adjustmentReasonText||'—'}}</b></span><span>{{t('common.entities.warehouse')}} {{itemData?.warehouse?.name}}</span></div></div><WButton v-if="['pending','approved'].includes(itemData?.status)&&!cancelled&&allowed('adjustment_approve')" variant="danger" :loading="canceling" :disabled="actionBusy" @click="cancelAdjustment">{{t('adjustment.operations.cancel')}}</WButton></div>
   </header>
-  <WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard>
+  <WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData">{{t('dn.list.retry')}}</WButton></template></WAlert><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard>
   <template v-if="itemData">
    <section class="progress-card"><ol><li v-for="(step,index) in steps" :key="index" :class="{done:step.done,current:index===currentStep&&!cancelled}"><div class="step-track"><i :class="{hidden:index===0,done:index<=currentStep}"/><span class="step-dot"><WIcon v-if="step.done" name="check" :size="12"/><span v-else-if="index===currentStep&&!cancelled" class="inner-dot"/><template v-else>{{index+1}}</template></span><i :class="{hidden:index===2,done:index<currentStep}"/></div><strong>{{step.label}}</strong><small>{{step.time?$dayjs(step.time,'MM/DD HH:mm',itemData):'—'}}</small></li></ol></section>
    <div class="detail-grid"><div class="main-column">
-    <WCard flush class="action-card"><div class="section-title"><h2>{{stateLabel}}</h2></div><div class="action-body"><dl><div><dt>{{t('common.users.creator')}}</dt><dd>{{itemData.creator?.user_name||'—'}}<small>{{$dayjs(itemData.created_at,'MM/DD HH:mm',itemData)}}</small></dd></div><div><dt>{{t('common.users.approver')}}</dt><dd>{{itemData.approver?.user_name||'—'}}<small>{{itemData.approved_at?$dayjs(itemData.approved_at,'MM/DD HH:mm',itemData):'—'}}</small></dd></div><div><dt>{{t('common.quantities.total-difference')}}</dt><dd><b>{{totalDelta>0?'+':''}}{{totalDelta}}</b></dd></div></dl><WButton v-if="itemData.status==='pending'&&!cancelled&&staffStore.hasPermission('adjustment_approve')" variant="primary" :loading="actionBusy" :disabled="canceling||ownApproval" :title="ownApproval?t('adjustment.tips.independent-approval'):undefined" @click="runAction(approveTask)">{{t('button.approved')}}</WButton><WButton v-if="itemData.status==='approved'&&!cancelled&&staffStore.hasPermission('adjustment_edit')" variant="primary" :loading="actionBusy" :disabled="canceling" @click="completeFn">{{t('button.complete')}}</WButton></div></WCard>
-    <WCard flush><div class="section-title"><h3>{{t('adjustment.ui.info')}} <small>{{itemData.details?.length}}</small></h3></div><WTable :columns="columns" :rows="itemData.details||[]" inset><template #cell-goods="{row}"><div class="goods-cell"><img :src="row.goods?.thumbnail_url||'/images/goods/default.png'" alt=""/><div><NuxtLink class="w-adjust-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><small>{{row.goods?.code}}</small></div></div></template><template #cell-location="{row}"><NuxtLink class="w-adjust-location" :to="'/location/detail/'+row.location_id">{{row.location?.code}}</NuxtLink><small>{{t('common.locations.'+row.location?.location_type)}}</small></template><template #cell-difference="{row}"><b>{{delta(row)>0?'+':''}}{{delta(row)}}</b></template></WTable><div class="totals"><span>{{t('common.quantities.total-system')}} <b>{{itemData.total_system_quantity}}</b></span><span>{{t('common.quantities.total-difference')}} <b>{{totalDelta>0?'+':''}}{{totalDelta}}</b></span><span>{{t('common.quantities.total-actual')}} <b>{{itemData.total_actual_quantity}}</b></span></div></WCard>
-   </div><aside><WCard><h3>{{t('adjustment.ui.info')}}</h3><dl class="info"><dt>{{t('common.entities.warehouse')}}</dt><dd>{{itemData.warehouse?.name}}</dd><dt>{{t('adjustment.fields.source-cyclecount')}}</dt><dd><NuxtLink v-if="sourceCyclecountId" :to="'/cyclecount/detail/'+sourceCyclecountId">CC-{{sourceCyclecountId}}</NuxtLink><template v-else>—</template></dd><dt>{{t('adjustment.fields.adjustment-reason')}}</dt><dd>{{adjustmentReasonText||'—'}}</dd><dt>{{t('common.users.creator')}}</dt><dd>{{itemData.creator?.user_name||'—'}}</dd><dt>{{t('common.dates.created')}}</dt><dd>{{$dayjs(itemData.created_at,'MM/DD HH:mm',itemData)}}</dd><dt>{{t('common.users.approver')}}</dt><dd>{{itemData.approver?.user_name||'—'}}</dd><dt>{{t('common.users.operator')}}</dt><dd>{{itemData.operator?.user_name||'—'}}</dd><dt>{{t('common.dates.completed')}}</dt><dd>{{itemData.completed_at?$dayjs(itemData.completed_at,'MM/DD HH:mm',itemData):'—'}}</dd></dl></WCard></aside></div>
+    <WCard flush class="action-card"><div class="section-title"><h2>{{stateLabel}}</h2></div><div class="action-body"><dl><div><dt>{{t('common.users.creator')}}</dt><dd>{{itemData.creator?.user_name||'—'}}<small>{{$dayjs(itemData.created_at,'MM/DD HH:mm',itemData)}}</small></dd></div><div><dt>{{t('common.users.approver')}}</dt><dd>{{itemData.approver?.user_name||'—'}}<small>{{itemData.approved_at?$dayjs(itemData.approved_at,'MM/DD HH:mm',itemData):'—'}}</small></dd></div><div><dt>{{t('common.quantities.total-difference')}}</dt><dd><b>{{totalDelta>0?'+':''}}{{totalDelta}}</b></dd></div></dl><WButton v-if="itemData.status==='pending'&&!cancelled&&allowed('adjustment_approve')" variant="primary" :loading="actionBusy" :disabled="canceling||ownApproval" :title="ownApproval?t('adjustment.tips.independent-approval'):undefined" @click="runAction(approveTask)">{{t('button.approved')}}</WButton><WButton v-if="itemData.status==='approved'&&!cancelled&&allowed('adjustment_edit')" variant="primary" :loading="actionBusy" :disabled="canceling" @click="completeFn">{{t('button.complete')}}</WButton></div></WCard>
+    <WCard flush><div class="section-title"><h3>{{t('adjustment.ui.info')}} <small>{{itemData.details?.length}}</small></h3></div><WTable :columns="columns" :rows="itemData.details||[]" inset><template #cell-goods="{row}"><div class="goods-cell"><img :src="row.goods?.thumbnail_url||'/images/goods/default.png'" alt=""/><div><NuxtLink v-if="allowed('goods_read')" class="w-adjust-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else class="w-adjust-goods">{{row.goods?.name}}</span><small>{{row.goods?.code}}</small></div></div></template><template #cell-location="{row}"><NuxtLink v-if="allowed('location_read')" class="w-adjust-location" :to="'/location/detail/'+row.location_id">{{row.location?.code}}</NuxtLink><span v-else class="w-adjust-location">{{row.location?.code}}</span><small>{{row.lot_no||t('lot-rules.unassigned')}}</small><small>{{t('common.locations.'+row.location?.location_type)}}</small></template><template #cell-difference="{row}"><b>{{delta(row)>0?'+':''}}{{delta(row)}}</b></template></WTable><div class="totals"><span>{{t('common.quantities.total-system')}} <b>{{itemData.total_system_quantity}}</b></span><span>{{t('common.quantities.total-difference')}} <b>{{totalDelta>0?'+':''}}{{totalDelta}}</b></span><span>{{t('common.quantities.total-actual')}} <b>{{itemData.total_actual_quantity}}</b></span></div></WCard>
+   </div><aside><WCard><h3>{{t('adjustment.ui.info')}}</h3><dl class="info"><dt>{{t('common.entities.warehouse')}}</dt><dd>{{itemData.warehouse?.name}}</dd><dt>{{t('adjustment.fields.source-cyclecount')}}</dt><dd><NuxtLink v-if="sourceCyclecountId&&allowed('cycle_count_read')" :to="'/cyclecount/detail/'+sourceCyclecountId">CC-{{sourceCyclecountId}}</NuxtLink><span v-else-if="sourceCyclecountId">CC-{{sourceCyclecountId}}</span><template v-else>—</template></dd><dt>{{t('adjustment.fields.adjustment-reason')}}</dt><dd>{{adjustmentReasonText||'—'}}</dd><dt>{{t('common.users.creator')}}</dt><dd>{{itemData.creator?.user_name||'—'}}</dd><dt>{{t('common.dates.created')}}</dt><dd>{{$dayjs(itemData.created_at,'MM/DD HH:mm',itemData)}}</dd><dt>{{t('common.users.approver')}}</dt><dd>{{itemData.approver?.user_name||'—'}}</dd><dt>{{t('common.users.operator')}}</dt><dd>{{itemData.operator?.user_name||'—'}}</dd><dt>{{t('common.dates.completed')}}</dt><dd>{{itemData.completed_at?$dayjs(itemData.completed_at,'MM/DD HH:mm',itemData):'—'}}</dd></dl></WCard></aside></div>
   </template>
  </div>
 </template>

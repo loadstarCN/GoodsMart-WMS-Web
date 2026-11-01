@@ -19,6 +19,8 @@ export const warehouseHeaders = (warehouseId: number | string | null | undefined
   warehouseId === null || warehouseId === undefined || warehouseId === '' ? {} : { 'X-WAREHOUSE-ID': String(warehouseId) }
 
 interface RequestConfig<T = any> {
+  /** Public authentication flows must work without an existing session. */
+  authenticated?: boolean
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   params?: Record<string, any>
   body?: T
@@ -34,6 +36,7 @@ export const httpRequest = async <T = any, K = any>(
   config: RequestConfig<K> = {}
 ): Promise<T | null> => {
   const {
+    authenticated = true,
     method = 'GET',
     params,
     body,
@@ -80,7 +83,9 @@ export const httpRequest = async <T = any, K = any>(
     // URL构建
     const url = `${endpoint}${params ? `?${queryParams}` : ''}`
 
-    const response = await authFetch(url, requestConfig)
+    const response = authenticated
+      ? await authFetch(url, requestConfig)
+      : await fetch(url, { ...requestConfig, credentials: 'omit' })
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => null)

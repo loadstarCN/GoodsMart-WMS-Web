@@ -72,7 +72,7 @@ const onMenuKeydown = (event: KeyboardEvent) => {
   else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); hide(true) }
   else if (event.key === 'Tab') hide()
 }
-const onMenuClick = (event: MouseEvent) => {
+const guardMenuClick = (event: MouseEvent) => {
   const item = (event.target as HTMLElement).closest<HTMLElement>('[role^="menuitem"]')
   if (!item) return
   if (item.getAttribute('aria-disabled') === 'true') {
@@ -80,7 +80,12 @@ const onMenuClick = (event: MouseEvent) => {
     event.stopPropagation()
     return
   }
-  if (!item.hasAttribute('data-keep-open')) hide(true)
+}
+// Close after the item's own handler. Closing during capture unmounts child
+// components before their click handler can emit its action.
+const onMenuClick = (event: MouseEvent) => {
+  const item = (event.target as HTMLElement).closest<HTMLElement>('[role^="menuitem"]')
+  if (item && item.getAttribute('aria-disabled') !== 'true' && !item.hasAttribute('data-keep-open')) hide(true)
 }
 
 const onDocumentPointer = (event: PointerEvent) => {
@@ -105,7 +110,7 @@ defineExpose({ show, hide })
     <slot name="trigger" :attrs="triggerAttrs" :open="open" />
     <Transition name="w-dropdown">
       <div v-if="open" :id="menuId" ref="menu" class="w-dropdown__menu w-scope" :class="`is-${placement}`"
-        :style="{ width: props.width }" role="menu" :aria-label="label" @keydown="onMenuKeydown" @click.capture="onMenuClick">
+        :style="{ width: props.width }" role="menu" :aria-label="label" @keydown="onMenuKeydown" @click.capture="guardMenuClick" @click="onMenuClick">
         <slot :close="hide" />
       </div>
     </Transition>

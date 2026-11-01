@@ -64,7 +64,8 @@ const problems = computed<CustomsProblem[]>(() => {
   return all.filter((p: CustomsProblem) => !CUSTOMS_WORKFLOW_PROBLEMS.includes(p.code))
 })
 const errorCount = computed(() => problems.value.filter((p: CustomsProblem) => p.level === 'error').length)
-const canEditCustoms = computed(() => !locked.value && !!props.view?.customs && staffStore.hasPermission('dn_edit'))
+const permissionsReady = computed(() => staffStore.refreshed && !!staffStore.staffInfo)
+const canEditCustoms = computed(() => permissionsReady.value && !locked.value && !!props.view && !props.loading && !props.loadError && staffStore.hasPermission('dn_edit'))
 const hasSnapshotProblems = computed(() => problems.value.some((p: CustomsProblem) => CUSTOMS_SNAPSHOT_PROBLEMS.includes(p.code)))
 const originMissingLines = computed<CustomsLine[]>(() =>
   (props.view?.lines || []).filter((line: CustomsLine) => !line.origin_country && !!line.goods_id))
@@ -75,7 +76,7 @@ const outdated = computed(() => !locked.value && !!props.view?.documents_outdate
 
 // ------------------ 签发 ----------------------
 const issueAction = computed(() => flowActionOf(props.step, 'issue_documents'))
-const canIssue = computed(() => flowActionEnabled(props.step, 'issue_documents', !locked.value && isPacked.value && ready.value))
+const canIssue = computed(() => permissionsReady.value && staffStore.hasPermission('packing_edit','delivery_edit') && !props.loading && !props.loadError && !locked.value && isPacked.value && ready.value && flowActionEnabled(props.step, 'issue_documents', true))
 const issueHint = computed(() => {
   if (locked.value) return ''
   if (issueAction.value && !issueAction.value.enabled) return flowActionReasonText(issueAction.value, t, te, { carrier: t('customs.carrier.carrier-fallback') })
@@ -129,9 +130,11 @@ const docTypeText = (type: string) => {
 // ------------------ 缺原产国：就地补录（写入商品主数据） ----------------------
 const originDraft = reactive<Record<string, string | null>>({})
 const originSaving = reactive<Record<string, boolean>>({})
+const canEditOrigin = computed(() => permissionsReady.value && !locked.value && !!props.view && !props.loading && !props.loadError && staffStore.hasPermission('goods_edit'))
+useUnsavedForm(() => Object.values(originDraft).some(Boolean), () => issuing.value || Object.values(originSaving).some(Boolean))
 
 const saveOrigin = async (line: CustomsLine) => {
-  if (!line.goods_id) return
+  if (!line.goods_id || !canEditOrigin.value || originSaving[String(line.goods_id)]) return
   const key = String(line.goods_id)
   const code = originDraft[key]
   if (!code) return
@@ -183,7 +186,7 @@ defineExpose({ run })
           :can-edit-customs="canEditCustoms" @edit-customs="emit('edit-customs')" />
 
         <!-- 缺原产国：就地补录到商品主数据 -->
-        <div v-if="!locked && originMissingLines.length > 0" class="w-flow-docs__origins">
+        <div v-if="canEditOrigin && originMissingLines.length > 0" class="w-flow-docs__origins">
           <div v-for="line in originMissingLines" :key="line.goods_code" class="w-flow-docs__origin">
             <span class="w-flow-docs__origin-goods">
               <span class="w-flow-docs__mono">{{ line.goods_code }}</span>

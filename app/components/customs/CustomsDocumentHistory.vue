@@ -33,29 +33,25 @@ const { busyDocId, viewDoc, downloadDoc, downloadRawDoc } = useCustomsPdfActions
 const loading = ref(false)
 const history = ref<CustomsDocumentMeta[]>([])
 
+const error = ref('')
+let generation = 0
 const load = async () => {
-  loading.value = true
-  await httpRequest<any>(`/api/warehouse/dn/${props.dnId}/customs-documents/`, {
+  const seq = ++generation
+  loading.value = true; error.value = ''; history.value = []
+  const result = await httpRequest<any>(`/api/warehouse/dn/${props.dnId}/customs-documents/`, {
     method: 'GET',
-    onSuccess: (data) => {
-      history.value = normalizeDocumentList(data)
-        .slice()
-        .sort((a, b) => (Number(b.version) - Number(a.version)) || String(a.doc_type).localeCompare(String(b.doc_type)))
-    },
-    onError: (error) => {
-      showToast(bizErrorMessage(error), 'error')
-    },
-    onFinally: () => {
-      loading.value = false
-    },
+    onError: (failure) => { if (seq === generation) error.value = bizErrorMessage(failure) },
   })
+  if (seq !== generation) return
+  if (result) history.value = normalizeDocumentList(result).slice().sort((a, b) =>
+    (Number(b.version) - Number(a.version)) || String(a.doc_type).localeCompare(String(b.doc_type)))
+  loading.value = false
 }
-watch(() => props.active, (active: boolean) => {
-  if (active) load()
-}, { immediate: true })
-watch(() => props.reloadKey, () => {
+watch(() => [props.active, props.dnId, props.reloadKey], () => {
   if (props.active) load()
-})
+  else { generation++; loading.value = false }
+}, { immediate: true })
+onBeforeUnmount(() => generation++)
 
 const docTypeText = (type: string) => (te(`customs.doc-types.${type}`) ? t(`customs.doc-types.${type}`) : type)
 const voidReasonText = (reason: string | null | undefined) => {
@@ -69,10 +65,10 @@ defineExpose({ load })
 </script>
 
 <template>
-  <div class="w-cdoc-history">
+  <div class="w-cdoc-history"><WAlert v-if="error" tone="block" :title="error"><template #actions><WButton :disabled="loading" @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
     <div v-if="loading && !history.length" class="w-cdoc-history__loading" aria-busy="true"><span /><span /></div>
-    <p v-else-if="!history.length" class="w-cdoc-history__empty">{{ t('customs.tips.no-documents') }}</p>
-    <div v-else class="w-cdoc-history__table">
+    <p v-else-if="!error && !history.length" class="w-cdoc-history__empty">{{ t('customs.tips.no-documents') }}</p>
+    <div v-else-if="history.length" class="w-cdoc-history__table">
       <table class="w-cdoc-history__grid">
         <thead>
           <tr>

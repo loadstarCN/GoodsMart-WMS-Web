@@ -1,0 +1,20 @@
+<script setup lang="ts">
+const props=defineProps<{warehouseId:number;filters?:Record<string,any>}>()
+const {t,locale}=useI18n(),{bizErrorMessage}=useBizError()
+const rows=ref<any[]>([]),loading=ref(false),error=ref('')
+const groups=[{key:'below_low_threshold',label:'inventory-analysis.below',tone:'#E99B1A'},{key:'above_high_threshold',label:'inventory-analysis.above',tone:'#656C7A'}]
+let generation=0
+const load=async()=>{
+ const seq=++generation;rows.value=[];loading.value=true;error.value=''
+ const values=await Promise.all(groups.map(group=>httpRequest<any>('/api/warehouse/inventory/',{headers:warehouseHeaders(props.warehouseId),params:{...props.filters,[group.key]:true,per_page:5},onError:e=>{if(seq===generation)error.value=bizErrorMessage(e)}})))
+ if(seq===generation){rows.value=values;loading.value=false}
+}
+watch(()=>props.warehouseId,load,{immediate:true});onBeforeUnmount(()=>generation++)
+const number=(value:number)=>Number(value).toLocaleString(locale.value)
+const width=(row:any,value:number)=>Math.max(0,Math.min(100,value/Math.max(1,row.available_stock_for_sale*1.1,row.low_stock_threshold*1.2,row.high_stock_threshold*1.15)*100))+'%'
+const threshold=(value:number)=>value<0?t('inventory-analysis.threshold-unset'):number(value)
+</script>
+<template><WCard><section class="threshold-analysis"><h2>{{t('inventory.ui.thresholds')}}</h2><p>{{t('inventory-analysis.threshold-scope')}}</p><WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert><WEmptyState v-if="loading" compact :title="t('common.status.loading')"/><template v-else><section v-for="(group,index) in groups" :key="group.key" class="threshold-group"><header><h3>{{t(group.label)}} <span>{{rows[index]?.total??'—'}}</span></h3><NuxtLink :to="{path:'/inventory',query:{...props.filters,[group.key]:'true'}}">{{t('inventory-analysis.view-matches')}} →</NuxtLink></header><WEmptyState v-if="rows[index]&&!rows[index].items.length" compact :title="t('common.status.nothing-show')"/><NuxtLink v-for="row in rows[index]?.items||[]" :key="row.goods_id" class="threshold-row" :to="{path:'/inventory',query:{...props.filters,goods_id:row.goods_id,[group.key]:'true'}}"><div><strong>{{row.goods.name}}</strong><small>{{row.goods.code}}</small></div><div class="bullet"><div class="track"><i :style="{width:width(row,row.available_stock_for_sale),background:group.tone}"/><b v-if="row.low_stock_threshold>=0" :style="{left:width(row,row.low_stock_threshold)}"/><b v-if="row.high_stock_threshold>=0" :style="{left:width(row,row.high_stock_threshold)}"/></div><small>{{t('goods.ui.available')}} {{number(row.available_stock_for_sale)}} · {{t('inventory.ui.low')}} {{threshold(row.low_stock_threshold)}} · {{t('inventory.ui.high')}} {{threshold(row.high_stock_threshold)}}</small></div></NuxtLink></section></template></section></WCard></template>
+<style scoped>
+.threshold-analysis{display:flex;flex-direction:column;gap:12px}h2{margin:0;font-size:16px;line-height:24px;font-weight:600}p,small,header a{margin:0;font-size:12px;line-height:18px;color:var(--w-text-3)}header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}h3{font-size:14px;font-weight:600;margin:0}h3 span{font-weight:400;color:var(--w-text-3)}header a{color:var(--w-pri)}.threshold-group{display:flex;flex-direction:column;gap:12px;padding:12px 0;border-top:1px solid var(--w-line)}.threshold-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:24px;text-decoration:none;color:var(--w-text-1);padding:8px 0}.threshold-row strong{font-size:13px;font-weight:500;overflow-wrap:anywhere}.threshold-row small{display:block}.threshold-row:focus-visible{outline:2px solid var(--w-pri)}.threshold-row:hover strong{text-decoration:underline}.track{position:relative;height:18px;background:#EDEFF3;margin:3px 0 6px}.track i{display:block;height:100%}.track b{position:absolute;top:-3px;height:24px;width:2px;background:var(--w-text-2)}@media(max-width:600px){.threshold-row{grid-template-columns:minmax(0,1fr);gap:8px}}
+</style>

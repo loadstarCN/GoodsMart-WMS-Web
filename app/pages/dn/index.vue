@@ -67,6 +67,7 @@ const hasFilters = computed(() => Object.keys(filters.value).length > 0)
 /** 改 URL 参数（undefined / '' 去掉）；除翻页外都回到第 1 页 */
 const go = (patch: Record<string, string | number | null | undefined>, keepPage = false) => {
   const query: Record<string, any> = { ...route.query, ...patch }
+  delete query.warehouse_id
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === '') delete query[key]
   }
@@ -76,18 +77,23 @@ const go = (patch: Record<string, string | number | null | undefined>, keepPage 
 
 // ------------------ 列表 ----------------------
 const pageData = ref<PaginationData | null>(null)
+const ready = ref(false)
 const loading = ref(true)
 const loadError = ref<string | null>(null)
 let listSeq = 0
 
 const fetchList = async () => {
+  if(!ready.value)return
   const seq = ++listSeq
   loading.value = true
   loadError.value = null
+  pageData.value = null
+  selected.value = []
   const params: Record<string, any> = { ...filters.value, page: page.value, per_page: perPage.value }
   if (stage.value !== 'all') params.shipping_stage = stage.value
   await httpRequest<PaginationData>('/api/warehouse/dn/', {
     method: 'GET',
+    headers: warehouseHeaders(warehouseStore.currentWarehouse?.id),
     params,
     onSuccess: (data) => {
       if (seq === listSeq) pageData.value = data
@@ -104,21 +110,27 @@ const rows = computed<any[]>(() => pageData.value?.items || [])
 
 // ------------------ 页签数量（每个阶段一个 per_page=1 的请求；筛选变了才重新请求） ----------------------
 const counts = ref<Record<string, number | null>>({})
+const countError=ref('')
 let countsKey = ''
 let countsSeq = 0
 const fetchCounts = async (force = false) => {
-  const key = JSON.stringify(filters.value)
+  if(!ready.value)return
+  const warehouseId=warehouseStore.currentWarehouse?.id
+  const key = JSON.stringify([warehouseId,filters.value])
   if (!force && key === countsKey) return
   countsKey = key
   const seq = ++countsSeq
+  countError.value=''
   const result: Record<string, number | null> = {}
   await Promise.all(['all', ...DN_STAGE_TABS].map((s) => httpRequest<PaginationData>('/api/warehouse/dn/', {
     method: 'GET',
+    headers: warehouseHeaders(warehouseId),
     params: { ...filters.value, page: 1, per_page: 1, ...(s === 'all' ? {} : { shipping_stage: s }) },
     onSuccess: (data) => {
       result[s] = Number(data?.total) || 0
     },
-    onError: () => {
+    onError: (error) => {
+      if(seq===countsSeq)countError.value=bizErrorMessage(error)
       result[s] = null
     },
   })))
@@ -126,6 +138,7 @@ const fetchCounts = async (force = false) => {
 }
 
 const refresh = async () => {
+  if(!ready.value){await initialize();return}
   await Promise.all([fetchList(), fetchCounts(true)])
 }
 
@@ -136,11 +149,9 @@ watch(() => route.query, () => {
   fetchList()
   fetchCounts()
 }, { deep: true })
-onMounted(() => {
-  fetchList()
-  fetchCounts()
-  loadCarriers()
-})
+const initialize=async()=>{const seq=++listSeq;ready.value=false;loading.value=true;loadError.value=null;pageData.value=null;counts.value={};const current=await staffStore.getCurrentStaffInfo();if(seq!==listSeq)return;if(!current){loading.value=false;loadError.value=t('action-results.failed');return}ready.value=true;await refresh()}
+onMounted(initialize)
+watch(()=>warehouseStore.currentWarehouse?.id,()=>{selected.value=[];counts.value={};if(page.value>1)go({});else refresh()})
 
 const tabs = computed<WTabItem[]>(() => [
   { key: 'all', label: t('common.status.all'), count: counts.value.all ?? null },
@@ -181,6 +192,7 @@ watch(keyword, () => {
 })
 onBeforeUnmount(() => {
   if (keywordTimer) clearTimeout(keywordTimer)
+  listSeq++;countsSeq++;carriersSeq++;recipientSeq++
 })
 
 const statusOptions = computed<WFilterOption<string>[]>(() =>
@@ -193,11 +205,20 @@ const statusFilter = computed({
 // 承运商（筛选选项、每行的运单 / 揽收方式、文件方式的批量操作）
 const carriers = ref<DnCarrierInfo[]>([])
 const carrierNames = ref<Record<number, string>>({})
+const canReadCarriers=computed(()=>ready.value&&staffStore.refreshed&&!!staffStore.staffInfo&&staffStore.hasPermission('carrier_read'))
+const canReadRecipients=computed(()=>ready.value&&staffStore.refreshed&&!!staffStore.staffInfo&&staffStore.hasPermission('recipient_read'))
+const carrierError=ref(''),carrierLoading=ref(false),recipientError=ref('')
+let carriersSeq=0,recipientSeq=0
 const loadCarriers = async () => {
+  const seq=++carriersSeq
+  carrierError.value='';carriers.value=[];carrierNames.value={};carrierLoading.value=false
+  if(!canReadCarriers.value)return
+  carrierLoading.value=true
   await httpRequest<any>('/api/warehouse/carrier/', {
     method: 'GET',
     params: { all: true },
     onSuccess: (data) => {
+      if(seq!==carriersSeq)return
       const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
       carriers.value = items.map((c: any) => ({
         id: Number(c.id),
@@ -209,8 +230,11 @@ const loadCarriers = async () => {
       }))
       carrierNames.value = Object.fromEntries(items.map((c: any) => [Number(c.id), String(c.name || c.code || c.id)]))
     },
+    onError:error=>{if(seq===carriersSeq)carrierError.value=bizErrorMessage(error)},
+    onFinally:()=>{if(seq===carriersSeq)carrierLoading.value=false},
   })
 }
+watch(canReadCarriers,loadCarriers,{immediate:true})
 const carrierOf = (id: unknown): DnCarrierInfo | null =>
   (id === null || id === undefined ? null : carriers.value.find((c) => c.id === Number(id)) || null)
 const carrierOptions = computed<WFilterOption<number>[]>(() =>
@@ -235,9 +259,13 @@ const recipientFilter = computed({
 })
 const recipientLabel = ref('')
 const searchRecipients = async (q: string): Promise<WComboboxOption<number>[]> => {
+  const seq=++recipientSeq;recipientError.value=''
+  if(!canReadRecipients.value)return []
   const data = await httpRequest<PaginationData>('/api/warehouse/recipient/', {
     method: 'GET', params: { per_page: 20, keyword: q || undefined },
+    onError:error=>{if(seq===recipientSeq)recipientError.value=bizErrorMessage(error)},
   })
+  if(seq!==recipientSeq)return []
   return (data?.items || []).map((r: any) => ({ value: Number(r.id), label: String(r.name || r.id) }))
 }
 const onRecipient = (option: WComboboxOption<number> | null) => {
@@ -245,12 +273,13 @@ const onRecipient = (option: WComboboxOption<number> | null) => {
 }
 const clearFilters = () => {
   keyword.value = ''
-  go({ keyword: undefined, status: undefined, carrier_id: undefined, dn_type: undefined, recipient_id: undefined })
+  go({ keyword: undefined, status: undefined, carrier_id: undefined, dn_type: undefined, recipient_id: undefined, warehouse_todo_date: undefined, planned_start_date: undefined, planned_end_date: undefined })
 }
 
 // ------------------ 文件方式的批量操作 ----------------------
 /** 导出 / 导回要发货的权限（与建运单相同：打包或配送的编辑权限） */
-const canShipEdit = computed(() => staffStore.hasPermission('packing_edit', 'delivery_edit'))
+const canShipEdit = computed(() => ready.value&&staffStore.refreshed&&!!staffStore.staffInfo&&staffStore.hasPermission('packing_edit', 'delivery_edit'))
+const canDnEdit = computed(() => ready.value&&staffStore.refreshed&&!!staffStore.staffInfo&&staffStore.hasPermission('dn_edit'))
 /** 运单方式 = 文件的承运商（启用中的） */
 const fileCarriers = computed<FileCarrierOption[]>(() => carriers.value
   .filter((c: any) => c.waybill_method === 'file' && c.is_active !== false)
@@ -284,7 +313,7 @@ const selectionContext = computed(() =>
 const exporting = ref(false)
 const exportProblems = ref<ExportProblemRow[]>([])
 const exportRows = async (list: any[]) => {
-  if (exporting.value || !list.length) return
+  if (exporting.value || !list.length || !canShipEdit.value || carrierLoading.value || carrierError.value) return
   exportProblems.value = []
   const title = t('shipping.file.batch-export-title')
   const { carrierId, missing, mixed } = dnExportCarrier(list)
@@ -329,6 +358,7 @@ const importOpen = ref(false)
 const importCarrierId = ref<number | null>(null)
 const importWarehouseId = ref<number | null>(null)
 const openImport = (carrierId: number | null = null, warehouseId: number | null = null) => {
+  if(!canShipEdit.value||carrierLoading.value||carrierError.value)return
   importCarrierId.value = carrierId ?? selectedCarrier.value?.id ?? (fileCarriers.value.length === 1 ? fileCarriers.value[0]!.id : null)
   importWarehouseId.value = warehouseId ?? selectedWarehouse.value?.id ?? null
   importOpen.value = true
@@ -375,7 +405,7 @@ const nextOf = (row: any): DnNextStep => dnNextStep(row, carrierOf(rowCarrierId(
 /** 下一步要这个人能做才给按钮：开始作业要 dn_edit；导出 / 导回要打包或配送的编辑权限；其余进详情去做 */
 const nextRun = (row: any): DnNextStep['run'] | null => {
   const step = nextOf(row)
-  if (step.run === 'progress') return staffStore.hasPermission('dn_edit') ? 'progress' : null
+  if (step.run === 'progress') return canDnEdit.value ? 'progress' : null
   if (step.run === 'export' || step.run === 'import') return canShipEdit.value ? step.run : 'open'
   return step.run ?? null
 }
@@ -426,7 +456,7 @@ const rangeText = computed(() => {
       </div>
       <div class="w-dnl__actions">
         <WButton v-if="fileMode" icon="asn" @click="openImport()">{{ t('shipping.actions.import_numbers') }}</WButton>
-        <WButton v-if="staffStore.hasPermission('dn_edit')" variant="primary" icon="plus" to="/dn/add">{{ t('dn.list.new') }}</WButton>
+        <WButton v-if="canDnEdit" variant="primary" icon="plus" to="/dn/add">{{ t('dn.list.new') }}</WButton>
       </div>
     </div>
 
@@ -439,17 +469,21 @@ const rangeText = computed(() => {
           <template #prefix><WIcon name="search" :size="16" /></template>
         </WInput>
         <WFilterSelect v-model="statusFilter" :label="t('shipping.dn.status-filter')" :options="statusOptions" />
-        <WFilterSelect v-model="carrierFilter" :label="t('common.entities.carrier')" :options="carrierOptions" />
+        <WFilterSelect v-if="canReadCarriers&&!carrierLoading&&!carrierError" v-model="carrierFilter" :label="t('common.entities.carrier')" :options="carrierOptions" />
+        <WField :label="t('dn.list.columns.date')+' \u00b7 '+t('inventory-task-list.start')"><WDatePicker :model-value="filters.planned_start_date||''" :max="filters.planned_end_date||''" :aria-label="t('inventory-task-list.start')" clearable @update:model-value="value=>go({planned_start_date:value})"/></WField><WField :label="t('dn.list.columns.date')+' \u00b7 '+t('inventory-task-list.end')"><WDatePicker :model-value="filters.planned_end_date||''" :min="filters.planned_start_date||''" :aria-label="t('inventory-task-list.end')" clearable @update:model-value="value=>go({planned_end_date:value})"/></WField>
         <WButton variant="text" :aria-expanded="moreOpen" @click="moreOpen = !moreOpen">
           {{ moreOpen ? t('dn.list.fewer-filters') : t('dn.list.more-filters') }}<template v-if="moreCount && !moreOpen"> · {{ moreCount }}</template>
         </WButton>
+        <WButton v-if="filters.warehouse_todo_date" variant="secondary" @click="go({warehouse_todo_date:undefined})">{{ t('warehouse.ui.dispatch-today') }} · {{ filters.warehouse_todo_date }} ×</WButton>
         <WButton v-if="hasFilters" variant="text" @click="clearFilters">{{ t('dn.list.clear-filters') }}</WButton>
         <span class="w-dnl__spacer" />
         <WButton v-if="showRecentFiles && !selected.length" variant="text" @click="batchesOpen = true">{{ t('shipping.file.recent-files') }}</WButton>
       </div>
+      <WAlert v-if="carrierError" tone="block" :title="carrierError" class="w-dnl__error"><template #actions><WButton :disabled="carrierLoading" @click="loadCarriers">{{t('dn.list.retry')}}</WButton></template></WAlert>
+      <WAlert v-if="recipientError&&moreOpen" tone="block" :title="recipientError" class="w-dnl__error"/>
       <div v-if="moreOpen" class="w-dnl__filters w-dnl__filters--more">
         <WFilterSelect v-model="typeFilter" :label="t('dn.fields.type')" :options="typeOptions" />
-        <div class="w-dnl__recipient">
+        <div v-if="canReadRecipients" class="w-dnl__recipient">
           <WCombobox v-model="recipientFilter" :search="searchRecipients" :selected-label="recipientLabel || (recipientFilter ? `#${recipientFilter}` : '')"
             clearable :placeholder="t('dn.list.recipient-placeholder')" :aria-label="t('common.entities.recipient')"
             @select="onRecipient" />
@@ -475,7 +509,7 @@ const rangeText = computed(() => {
       </div>
 
       <div :id="panelId" role="tabpanel" :aria-labelledby="undefined">
-        <WAlert v-if="loadError && !loading" tone="block" :title="loadError" class="w-dnl__error">
+        <WAlert v-if="(loadError||countError) && !loading" tone="block" :title="loadError||countError" class="w-dnl__error">
           <template #actions><WButton size="sm" @click="refresh">{{ t('dn.list.retry') }}</WButton></template>
         </WAlert>
         <WTable v-else v-model:selected="selected" :columns="columns" :rows="rows" :loading="loading && !pageData"
@@ -538,7 +572,7 @@ const rangeText = computed(() => {
               <template v-if="hasFilters" #action><WButton size="sm" @click="clearFilters">{{ t('dn.list.clear-filters') }}</WButton></template>
             </WEmptyState>
             <WEmptyState v-else :title="t('dn.list.empty')" icon="dn" compact>
-              <template v-if="staffStore.hasPermission('dn_edit')" #action>
+              <template v-if="canDnEdit" #action>
                 <WButton size="sm" variant="primary" to="/dn/add">{{ t('dn.list.new') }}</WButton>
               </template>
             </WEmptyState>
@@ -631,7 +665,7 @@ const rangeText = computed(() => {
   white-space: nowrap;
 }
 .w-dnl__dn:hover { color: var(--w-link); }
-.w-dnl__name { font-weight: var(--w-fw-medium); white-space: nowrap; }
+.w-dnl__name { font-weight: var(--w-fw-medium); white-space: normal; overflow-wrap:anywhere; max-width:240px; }
 .w-dnl__sub {
   font-size: var(--w-fs-12);
   line-height: var(--w-lh-12);

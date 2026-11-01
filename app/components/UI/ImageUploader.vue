@@ -31,11 +31,13 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: string | null]
+  uploading: [value: boolean]
 }>()
 
 const inputId = `img-upload-${useId()}`
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
+watch(uploading, value => emit('uploading', value), { flush: 'sync' })
 const previewUrl = ref<string | null>(null) // Local preview before upload completes
 const dragOver = ref(false)
 const imgLoadError = ref(false) // Track if the remote image failed to load

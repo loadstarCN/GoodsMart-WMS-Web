@@ -133,7 +133,7 @@ const copyTracking = async () => {
 const freight = computed(() => {
   const s = shipment.value
   if (!s || !isActiveShipment(s) || s.net_charge === null || s.net_charge === undefined || s.net_charge === '') return null
-  return { amount: Number(s.net_charge), currency: s.currency || 'JPY' }
+  return { amount: Number(s.net_charge), currency: s.currency || '' }
 })
 
 // ------------------ 报关单证 ----------------------
@@ -235,16 +235,7 @@ const userText = (u: any) => formatUserRef(u, t)
     </WCard>
 
     <!-- 运费：在线建单时承运商给的预估 -->
-    <WCard v-if="freight" :heading-level="3">
-      <template #header>
-        <h3 class="w-dnaside__card-title">{{ t('dn.detail.aside.freight') }} <span class="w-faint">{{ freight.currency }}</span></h3>
-      </template>
-      <div class="w-dnaside__freight">
-        <span class="w-dnaside__sub">{{ t('dn.detail.aside.estimate') }}</span>
-        <span class="w-dnaside__amount">{{ formatMoney(freight.amount, freight.currency) }}</span>
-        <span class="w-dnaside__sub">{{ t('dn.detail.aside.estimate-source', { carrier: view.carrier.value?.name || '' }) }}</span>
-      </div>
-    </WCard>
+    <DnFreightSummary :dn-id="dn.id" :warehouse-id="dn.warehouse_id" :version="view.version.value" :estimate="freight"/>
 
     <!-- 报关单证 -->
     <WCard v-if="showCustoms" :heading-level="3">
@@ -261,8 +252,8 @@ const userText = (u: any) => formatUserRef(u, t)
           <dt>{{ t('customs.fields.incoterm') }}</dt>
           <dd :class="{ 'is-empty': !customs.incoterm }">{{ customs.incoterm ? `${customs.incoterm}${recipientCountry ? ` ${recipientCountry}` : ''}` : dash }}</dd>
           <dt>{{ t('dn.detail.aside.declared') }}</dt>
-          <dd :class="{ 'is-empty': customsView?.totals?.invoice_total === null || customsView?.totals?.invoice_total === undefined }">
-            {{ customsView?.totals?.invoice_total !== null && customsView?.totals?.invoice_total !== undefined
+          <dd :class="{ 'is-empty': !customsView?.customs || customsView?.totals?.invoice_total === null || customsView?.totals?.invoice_total === undefined }">
+            {{ customsView?.customs && customsView?.totals?.invoice_total !== null && customsView?.totals?.invoice_total !== undefined
               ? formatMoney(customsView.totals.invoice_total, customsCurrency) : dash }}
           </dd>
           <dt>{{ t('customs.fields.insurance') }}</dt>

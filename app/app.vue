@@ -11,6 +11,11 @@
 <script setup lang="ts">
 import { startTokenRefreshMonitor } from '~/utils/auth';
 
+const {data:presentation,refresh:refreshPresentation}=usePresentation();
+let presentationTimer:ReturnType<typeof setInterval>|undefined;
+onMounted(()=>{refreshPresentation();presentationTimer=setInterval(refreshPresentation,60000)});
+onUnmounted(()=>clearInterval(presentationTimer));
+useHead(()=>({link:presentation.value.brand?.favicon?[{rel:'icon',href:presentation.value.brand.favicon}]:[]}));
 const stopTokenMonitor = startTokenRefreshMonitor();
 onUnmounted(stopTokenMonitor);
 
@@ -30,6 +35,9 @@ useHead({
 })
 </script>
 <style>
+@media print {
+  .nuxt-loading-indicator { display: none !important; }
+}
 .me-5 {
   margin-inline-end: 3rem !important;
 }

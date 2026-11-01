@@ -1,8 +1,7 @@
 <script setup lang="ts">
-const props = defineProps<{ rows: any[]; goodsId: string | number; unit?: string }>()
+const props = defineProps<{ rows: any[]; goodsId?: string | number; unit?: string; filters?:Record<string,any> }>()
 const { t, locale } = useI18n()
 const warehouseStore = useWarehouseStore()
-const route = useRoute()
 const fields = [
   ['onhand_stock', 'goods.ui.onhand'],
   ['available_stock_for_sale', 'goods.ui.available'],
@@ -14,6 +13,7 @@ const fields = [
   ['sorted_stock', 'goods.ui.pending'],
   ['damage_stock', 'inventory.fields.damage'],
   ['asn_stock', 'inventory.fields.asn'],
+  ['unshippable_stock', 'lot-rules.unshippable'],
 ] as const
 const totals = computed(() => Object.fromEntries(fields.map(([key]) => [key, props.rows.reduce((sum, row) => sum + Number(row[key] || 0), 0)])))
 const labels = computed(() => Object.fromEntries(fields.map(([key, label]) => [key, t(label)])))
@@ -21,10 +21,11 @@ const parts = computed(() => [
   { key: 'available_stock_for_sale', color: '#5F1FE6' },
   { key: 'dn_stock', color: '#B6A1F2' },
   { key: 'locked_stock', color: '#E99A0C' },
+  ...(Number(totals.value.unshippable_stock)>0?[{key:'unshippable_stock',color:'#C54B57'}]:[]),
 ].map(part => ({ ...part, value: totals.value[part.key] || 0 })))
 const qty = (key: string) => Number(totals.value[key] || 0).toLocaleString(locale.value)
 const scope = computed(() => {
-  const id = Number(route.query.warehouse_id) || warehouseStore.currentWarehouse?.id
+  const id = warehouseStore.currentWarehouse?.id
   return id ? warehouseStore.warehouses.find(row => row.id === id)?.name || props.rows.find(row => row.warehouse_id === id)?.warehouse?.name || '—' : t('common.all-warehouse')
 })
 const formula = computed(() => `${labels.value.onhand_stock} ${qty('onhand_stock')} = ${parts.value.map(part => `${labels.value[part.key]} ${qty(part.key)}`).join(' + ')}`)
@@ -34,7 +35,7 @@ const formula = computed(() => `${labels.value.onhand_stock} ${qty('onhand_stock
   <section class="w-goods-composition" :aria-label="t('inventory.ui.composition')">
     <header>
       <div class="w-goods-composition__title"><strong>{{ t('inventory.ui.composition') }}</strong><span>{{ formula }}</span></div>
-      <div class="w-goods-composition__scope"><span>{{ [scope, unit].filter(Boolean).join(' · ') }}</span><NuxtLink class="w-goods-composition__link" :to="{path:'/inventory',query:{goods_id:String(goodsId),warehouse_id:route.query.warehouse_id}}">{{ t('goods.operations.view-inventory') }} →</NuxtLink></div>
+      <div class="w-goods-composition__scope"><span>{{ [scope, unit].filter(Boolean).join(' · ') }}</span><NuxtLink class="w-goods-composition__link" :to="{path:'/inventory',query:{...filters,...(goodsId?{goods_id:String(goodsId)}:{})}}">{{ t('goods.operations.view-inventory') }} →</NuxtLink></div>
     </header>
     <div class="w-goods-composition__bar" role="img" :aria-label="formula"><span v-for="part in parts.filter(part=>part.value>0)" :key="part.key" :style="{flex:part.value,background:part.color}" /></div>
     <div class="w-goods-composition__legend"><span v-for="part in parts" :key="part.key"><i :style="{background:part.color}" />{{ labels[part.key] }} <b>{{ qty(part.key) }}</b></span></div>

@@ -23,7 +23,8 @@ const attrs = useAttrs()
 const field = useWField()
 const inputRef = useTemplateRef<HTMLInputElement>('input')
 
-const inputId = computed(() => props.id || field?.id.value)
+const uid = useId()
+const inputId = computed(() => props.id || (field?.group?.value ? `${uid}-check` : field?.id.value))
 const wrapperAttrs = computed(() => ({ class: attrs.class, style: attrs.style as StyleValue }))
 const inputAttrs = computed(() => {
   const { class: _class, style: _style, ...rest } = attrs

@@ -162,11 +162,17 @@ const saveEmail = (value: string) => {
   }
 }
 
+let availabilityGeneration=0
+onBeforeUnmount(()=>availabilityGeneration++)
 const loadAvailability = async () => {
+  const seq=++availabilityGeneration
+  availability.value=null
+  availabilityError.value=null
   availabilityLoading.value = true
   await httpRequest<PickupAvailability>(`${PICKUPS_URL}/availability${carrierQuery()}`, {
     headers: headers.value,
     onSuccess: (data: PickupAvailability) => {
+      if(seq!==availabilityGeneration)return
       availability.value = data
       const first = (data.options || []).find((o: PickupOption) => o.available)
       if (first) {
@@ -175,16 +181,18 @@ const loadAvailability = async () => {
       }
     },
     onError: (error) => {
+      if(seq!==availabilityGeneration)return
       availabilityError.value = describePickupFailure(error, props.carrierName, t, bizErrorMessage, te).summary
     },
     onFinally: () => {
-      availabilityLoading.value = false
+      if(seq===availabilityGeneration)availabilityLoading.value = false
     },
   })
 }
 
 // 每次打开都从头来：默认勾选、表单、可约时间
-watch(() => props.active, (active: boolean) => {
+watch(() => [props.active,props.carrierId,props.warehouseId] as const, ([active]) => {
+  availabilityGeneration++
   if (!active) return
   chosen.value = props.initialSelected ? [...props.initialSelected] : props.shipments.map((r: PickupShipmentRow) => r.shipment_id)
   failure.value = null
@@ -198,7 +206,7 @@ watch(() => props.active, (active: boolean) => {
   loadAvailability()
 }, { immediate: true })
 
-const canSubmit = computed(() => !submitting.value && !availabilityLoading.value && !timeProblem.value
+const canSubmit = computed(() => props.active && !submitting.value && !availabilityLoading.value && !timeProblem.value
   && !!form.pickup_date && chosen.value.length > 0)
 /** 提交按钮上的说明：2 票 · 今天 13:00–17:00 */
 const submitSummary = computed(() => t('delivery.pickup.form.submit-summary', {
@@ -209,6 +217,7 @@ const submitSummary = computed(() => t('delivery.pickup.form.submit-summary', {
 
 const submit = async () => {
   if (!canSubmit.value) return
+  const scope=availabilityGeneration
   const confirmed = await wConfirm({
     title: t('delivery.pickup.confirm-title'),
     message: t('delivery.pickup.confirm', {
@@ -221,7 +230,7 @@ const submit = async () => {
     confirmText: t('delivery.pickup.modal.submit'),
     cancelText: t('button.cancel'),
   })
-  if (!confirmed) return
+  if (!confirmed || scope!==availabilityGeneration || !canSubmit.value) return
   submitting.value = true
   failure.value = null
   const email = form.notification_email.trim()
@@ -277,6 +286,7 @@ defineExpose({ submit, submitting, canSubmit, submitSummary })
           <span v-if="availabilityLoading" class="w-pickup-form__hint">{{ t('delivery.pickup.modal.loading-availability', { carrier: carrierName }) }}</span>
           <span v-else-if="availabilityError" class="w-pickup-form__hint is-warn">
             {{ t('delivery.pickup.modal.availability-failed', { message: availabilityError, carrier: carrierName }) }}
+            <WButton size="sm" variant="text" @click="loadAvailability">{{t('dn.list.retry')}}</WButton>
           </span>
           <span v-else-if="availability && !availableOptions.length" class="w-pickup-form__hint is-warn">
             {{ t('delivery.pickup.modal.no-options', { carrier: carrierName }) }}
@@ -409,7 +419,7 @@ defineExpose({ submit, submitting, canSubmit, submitSummary })
 .w-pickup-form__ship { align-items: flex-start; }
 .w-pickup-form__ship :deep(.w-check__label) { display: flex; flex-direction: column; font-size: var(--w-fs-13); line-height: var(--w-lh-13); }
 .w-pickup-form__ship-sub { font-size: var(--w-fs-12); color: var(--w-text-3); }
-.w-pickup-form__list { margin: 0; padding: 0; list-style: none; font-size: var(--w-fs-13); }
+.w-pickup-form__list { overflow-wrap:anywhere; margin: 0; padding: 0; list-style: none; font-size: var(--w-fs-13); }
 .w-pickup-form__total {
   padding-top: 8px;
   border-top: 1px solid var(--w-line);

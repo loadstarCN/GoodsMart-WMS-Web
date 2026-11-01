@@ -8,7 +8,7 @@ const LANGS: LangCode[] = ['zh', 'en', 'ja']
 
 const { t, setLocale, locales } = useI18n()
 const cookieLang = useCookie<string | null>('i18n_lang', { maxAge: 2592000 })
-const current = ref<LangCode>((LANGS as string[]).includes(cookieLang.value || '') ? cookieLang.value as LangCode : 'en')
+const current = computed<LangCode>(() => (LANGS as string[]).includes(cookieLang.value || '') ? cookieLang.value as LangCode : 'en')
 /** 语言名用各语言自己的写法（nuxt.config 的 i18n.locales[].name） */
 const names = computed(() => Object.fromEntries(
   locales.value.map((l) => (typeof l === 'string' ? [l, l] : [l.code, l.name || l.code]))) as Record<string, string>)
@@ -17,7 +17,6 @@ const choose = async (lang: LangCode) => {
   try {
     await setLocale(lang)
     cookieLang.value = lang
-    current.value = lang
   } catch (error) {
     console.error('Language switch failed:', error)
   }

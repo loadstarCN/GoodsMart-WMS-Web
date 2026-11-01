@@ -34,7 +34,7 @@ const emit = defineEmits<{
   /** 做了操作（流程已重读）：页面刷新自己的数据 */
   (e: 'changed'): void
   /** 读到流程（页头据此显示阶段） */
-  (e: 'loaded', flow: InboundFlow): void
+  (e: 'loaded', flow: InboundFlow | null): void
 }>()
 
 const { t, te, localeProperties } = useI18n()
@@ -49,7 +49,8 @@ const locale = computed(() => String(localeProperties.value?.iso || '') || undef
 const flowTimeZone = provideTimeZone(() => flow.value?.timezone, () => flow.value?.warehouse_id)
 const carrierName = computed(() => flow.value?.carrier?.name || t('customs.carrier.carrier-fallback'))
 // 收货、刷新跟踪：作业员的 asn_receive 或 asn_edit 任一（新建 / 修改 / 关闭 / 取消收货通知仍只认 asn_edit）
-const canReceive = computed(() => staffStore.hasPermission('asn_receive', 'asn_edit'))
+const allowed = (...permissions: string[]) => !!(staffStore.refreshed && staffStore.staffInfo && staffStore.hasPermission(...permissions))
+const canReceive = computed(() => allowed('asn_receive', 'asn_edit'))
 
 let loadGeneration = 0
 onBeforeUnmount(() => { loadGeneration++ })
@@ -57,6 +58,8 @@ const load = async () => {
   const generation = ++loadGeneration
   loading.value = true
   loadError.value = null
+  flow.value = null
+  emit('loaded', null)
   await httpRequest<any>(inboundFlowUrl(props.asnId), {
     method: 'GET',
     onSuccess: (data) => {
@@ -216,7 +219,7 @@ const summaryText = (step: InboundStep): string => {
     case 'putaway': {
       if (step.state === 'todo' || step.state === 'skipped') return ''
       const quantity = num(s.quantity) ?? 0
-      if (step.state === 'current') return t('asn.flow.summary.putaway-pending', { pending: num(s.pending_quantity) ?? 0, quantity })
+      if (step.state === 'current') return t(s.estimated ? 'asn.flow.summary.putaway-pending' : 'asn.flow.summary.putaway-pending-exact', { pending: num(s.pending_quantity) ?? 0, quantity })
       return quantity > 0 ? t('asn.flow.summary.putaway-done', { quantity }) : t('asn.flow.summary.putaway-nothing')
     }
     case 'completed': {
@@ -268,7 +271,7 @@ const shownSteps = computed(() => {
 })
 
 const receive = async () => {
-  if (receiving.value) return
+  if (receiving.value || loading.value || !flow.value || !canReceive.value) return
   receiving.value = true
   await httpRequest(`/api/warehouse/asn/${props.asnId}/receive/`, {
     method: 'PUT',
@@ -281,6 +284,7 @@ const receive = async () => {
 }
 
 const onHeaderAction = async (step: InboundStep, key: string) => {
+  if (loading.value || !flow.value || (RECEIVE_ACTIONS.includes(key) && !canReceive.value)) return
   if (key === 'receive') return receive()
   if (key === 'open_tracking') {
     const url = String(flowActionOf(step, 'open_tracking')?.url || step.summary?.tracking_url || '').trim()
@@ -330,12 +334,12 @@ defineExpose({ reload })
             <WTable :rows="step.summary.goods" row-key="goods_id" :columns="[
               { key: 'goods', label: t('common.entities.goods'), wrap: true },
               { key: 'quantity', label: t('asn.flow.putaway.quantity'), type: 'qty', keepZero: true },
-              { key: 'pending', label: t('asn.flow.putaway.pending'), type: 'qty', keepZero: true, strong: true }]">
-              <template #cell-goods="{ row }"><NuxtLink :to="'/goods/detail/' + row.goods_id">{{ row.name || row.code }}</NuxtLink><div class="w-muted">{{ row.code }}</div></template>
+              { key: 'pending', label: t(step.summary.estimated ? 'asn.flow.putaway.pending' : 'asn.flow.putaway.pending-exact'), type: 'qty', keepZero: true, strong: true }]">
+              <template #cell-goods="{ row }"><NuxtLink v-if="allowed('goods_read')" :to="'/goods/detail/' + row.goods_id">{{ row.name || row.code }}</NuxtLink><span v-else>{{ row.name || row.code }}</span><div class="w-muted">{{ row.code }}</div></template>
             </WTable>
-            <p class="asn-current__note">{{ t('asn.flow.putaway.estimated') }} <template v-if="step.summary.last_putaway_at">{{ t('asn.flow.putaway.last', { time: time(step.summary.last_putaway_at) }) }}</template></p>
+            <p class="asn-current__note">{{ t(step.summary.estimated?'asn.flow.putaway.estimated':'putaway-source.tracked') }} <template v-if="step.summary.last_putaway_at">{{ t('asn.flow.putaway.last', { time: time(step.summary.last_putaway_at) }) }}</template></p>
           </template>
-          <div v-if="step.key === 'sorting' && sortingTasks(step).length" class="asn-current__actions"><WButton v-for="task in sortingTasks(step)" :key="task.id" :to="'/sorting/detail/' + task.id">SORT-{{ task.id }} · {{ taskStatusText(task.status) }}</WButton></div>
+          <div v-if="step.key === 'sorting' && sortingTasks(step).length && allowed('sorting_read')" class="asn-current__actions"><WButton v-for="task in sortingTasks(step)" :key="task.id" :to="'/sorting/detail/' + task.id">SORT-{{ task.id }} · {{ taskStatusText(task.status) }}</WButton></div>
           <div class="asn-current__actions" v-if="step.key !== 'in_transit' && headerActions(step).length">
             <WButton v-for="action in headerActions(step)" :key="action.key" :variant="action.key === 'receive' ? 'primary' : 'secondary'" :loading="action.key === 'receive' && receiving" @click="onHeaderAction(step, action.key)">{{ actionText(action.key) }}</WButton>
           </div>

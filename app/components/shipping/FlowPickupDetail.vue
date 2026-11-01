@@ -56,6 +56,8 @@ const emit = defineEmits<{
 
 const { t, te } = useI18n()
 const { bizErrorMessage } = useBizError()
+const staff=useStaffStore()
+const canOperate=computed(()=>!!staff.refreshed&&!!staff.staffInfo&&staff.hasPermission('packing_edit','delivery_edit'))
 
 const method = computed(() => String(props.step.summary?.method || props.carrier?.methods.pickup || 'none'))
 const pickup = computed<PickupSummary | null>(() => {
@@ -75,17 +77,23 @@ const activeShipment = computed(() => {
   const s = props.shipment ?? fetchedShipment.value
   return isActiveShipment(s) ? s : null
 })
+const shipmentError=ref(''),shipmentLoading=ref(false)
+let shipmentGeneration=0
 const loadShipment = async () => {
-  if (props.shipment || props.locked) return
-  await httpRequest<any>(carrierShipmentUrl(props.dnId), {
-    method: 'GET',
-    onSuccess: (data) => {
-      fetchedShipment.value = normalizeCarrierStatus(data)?.shipment ?? null
-    },
+  const seq=++shipmentGeneration
+  fetchedShipment.value=null;shipmentError.value='';shipmentLoading.value=false
+  if(props.shipment||props.locked)return
+  shipmentLoading.value=true
+  await httpRequest<any>(carrierShipmentUrl(props.dnId),{
+    method:'GET',
+    onSuccess:data=>{if(seq===shipmentGeneration)fetchedShipment.value=normalizeCarrierStatus(data)?.shipment??null},
+    onError:error=>{if(seq===shipmentGeneration)shipmentError.value=bizErrorMessage(error)},
+    onFinally:()=>{if(seq===shipmentGeneration)shipmentLoading.value=false},
   })
 }
 onMounted(loadShipment)
-watch(() => props.step.summary?.pickup?.id, loadShipment)
+watch(()=>[props.dnId,props.shipment,props.locked,props.step.summary?.pickup?.id],loadShipment)
+onBeforeUnmount(()=>shipmentGeneration++)
 const scheduled = computed(() => pickup.value?.status === 'scheduled' && !pickup.value.past)
 const holds = computed(() => !!pickup.value?.holds_shipments)
 
@@ -133,12 +141,12 @@ const pageLink = computed(() => ({
 }))
 
 // ------------------ 能做的操作（后端没列出时按状态推断） ----------------------
-const canBook = computed(() => flowActionEnabled(props.step, 'book_pickup',
+const canBook = computed(() => canOperate.value && !props.locked && !shipmentError.value && flowActionEnabled(props.step, 'book_pickup',
   method.value === 'api' && !props.locked && !!activeShipment.value && !holds.value))
-const canRecord = computed(() => (method.value === 'manual' || method.value === 'api')
+const canRecord = computed(() => canOperate.value && !props.locked && !shipmentError.value && (method.value === 'manual' || method.value === 'api')
   && flowActionEnabled(props.step, 'record_pickup', method.value === 'manual' && !props.locked && !!activeShipment.value
     && !holds.value))
-const canCancel = computed(() => flowActionEnabled(props.step, 'cancel_pickup', !props.locked && scheduled.value))
+const canCancel = computed(() => canOperate.value && !props.locked && flowActionEnabled(props.step, 'cancel_pickup', !props.locked && scheduled.value))
 const actionText = (key: string) => (te(`shipping.actions.${key}`) ? t(`shipping.actions.${key}`) : key)
 
 // ------------------ 在线预约 ----------------------
@@ -157,7 +165,7 @@ const blockerText = (b: PickupBlocker) =>
 
 const book = async () => {
   const mineId = activeShipment.value?.id
-  if (preparing.value || !props.carrier?.id || !mineId) return
+  if (!canBook.value || preparing.value || !props.carrier?.id || !mineId) return
   preparing.value = true
   blockers.value = []
   await httpRequest<PickupOverview>(`${PICKUPS_URL}?carrier_id=${props.carrier.id}`, {
@@ -227,7 +235,7 @@ const onPickupDone = () => {
 const cancelling = ref(false)
 const cancel = async () => {
   const p = pickup.value
-  if (!p?.id || cancelling.value) return
+  if (!canCancel.value || !p?.id || cancelling.value) return
   const confirmed = await wConfirm({
     title: t('delivery.pickup.cancel-confirm-title'),
     message: t('delivery.pickup.cancel-confirm', { date: p.pickup_date, window: pickupTimeWindow(p), code: p.confirmation_code || '—' }),
@@ -235,7 +243,7 @@ const cancel = async () => {
     cancelText: t('delivery.pickup.keep'),
     danger: true,
   })
-  if (!confirmed) return
+  if (!confirmed || !canCancel.value || pickup.value?.id!==p.id) return
   cancelling.value = true
   await httpRequest(pickupUrl(p.id, 'cancel'), {
     method: 'POST',
@@ -264,7 +272,7 @@ defineExpose({ run })
 </script>
 
 <template>
-  <div class="w-flow-pickup">
+  <div class="w-flow-pickup"><WAlert v-if="shipmentError" tone="block" :title="shipmentError"><template #actions><WButton :loading="shipmentLoading" @click="loadShipment">{{t('dn.list.retry')}}</WButton></template></WAlert>
     <!-- 定期集荷 / 自送网点：不用逐票约 -->
     <template v-if="method === 'scheduled'">
       <div class="w-flow-pickup__big">
@@ -293,7 +301,7 @@ defineExpose({ run })
         <a v-if="contactIsUrl" :href="contact" target="_blank" rel="noopener" class="w-flow-pickup__link">{{ contact }}<WIcon name="external" :size="12" /></a>
         <span v-else>{{ contact }}</span>
       </div>
-      <p v-if="!activeShipment && !locked" class="w-flow-pickup__plain">{{ t('shipping.pickup.after-waybill') }}</p>
+      <p v-if="!activeShipment && !locked && !shipmentError && !shipmentLoading" class="w-flow-pickup__plain">{{ t('shipping.pickup.after-waybill') }}</p>
 
       <!-- 不能约的原因（点「预约揽收」时读到的） -->
       <WAlert v-if="blockers.length" tone="warn" :title="t('delivery.pickup.blockers.title')">
@@ -301,7 +309,7 @@ defineExpose({ run })
       </WAlert>
 
       <!-- 在线预约的表单：点了「预约揽收」后展开 -->
-      <div v-if="bookOpen && !locked" class="w-flow-pickup__form">
+      <div v-if="bookOpen && !locked && canOperate" class="w-flow-pickup__form">
         <CarrierPickupForm ref="bookForm" :active="bookOpen" :carrier-id="carrier?.id ?? null" :carrier-name="carrierName"
           :warehouse-id="warehouseId" :shipments="modalShipments" selectable :initial-selected="initialSelected"
           :location="overview?.pickup_location" :max-remarks="overview?.max_remarks" :today="overview?.today" :note="note"
@@ -321,7 +329,7 @@ defineExpose({ run })
       </div>
 
       <!-- 手工登记：手工方式直接展开；在线方式点「登记预约」后展开 -->
-      <div v-else-if="(recordInline || recordOpen) && !locked" class="w-flow-pickup__form">
+      <div v-else-if="(recordInline || recordOpen) && !locked && canOperate" class="w-flow-pickup__form">
         <ManualPickupForm ref="recordForm" :active="recordInline || recordOpen" :carrier-id="carrier?.id ?? null"
           :carrier-name="carrierName" :warehouse-id="warehouseId" :shipments="manualShipments" :contact="contact || null"
           @recorded="onPickupDone" @submitted="emit('changed')" />

@@ -65,6 +65,7 @@ useWOverlay(open, panel, close)
   inset: 0;
   z-index: var(--w-z-modal);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: var(--w-sp-24);
   background: var(--w-backdrop);
@@ -72,6 +73,8 @@ useWOverlay(open, panel, close)
 }
 .w-modal.is-top { z-index: calc(var(--w-z-modal) + 5); }
 .w-modal__panel {
+  min-width: 0;
+  box-sizing: border-box;
   width: 100%;
   max-width: 560px;
   display: flex;
@@ -118,6 +121,7 @@ useWOverlay(open, panel, close)
 .w-modal__close:hover { background: var(--w-surface-2); color: var(--w-text-1); }
 .w-modal__close:focus-visible { outline: none; box-shadow: var(--w-focus-ring); }
 .w-modal__body {
+  min-width: 0;
   font-size: var(--w-fs-14);
   line-height: var(--w-lh-14);
   color: var(--w-text-2);

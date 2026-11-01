@@ -1,8 +1,9 @@
 <script setup lang="ts">
 const props=defineProps<{documentId:number;kind:'asn'|'dn';current:string}>()
 const {t}=useI18n(),flow=ref<{steps:{key:string;state:string}[]}|null>(null)
+const staff=useStaffStore(),canRead=computed(()=>staff.refreshed&&!!staff.staffInfo&&staff.hasPermission(props.kind+'_read'))
 let generation=0
-watch(()=>[props.kind,props.documentId],async()=>{const seq=++generation;flow.value=null;if(!useStaffStore().hasPermission(props.kind+'_read'))return;const result=await httpRequest<any>('/api/warehouse/'+props.kind+'/'+props.documentId+(props.kind==='asn'?'/flow':'/shipping-flow'));if(seq===generation)flow.value=result},{immediate:true});onBeforeUnmount(()=>generation++)
+watch(()=>[props.kind,props.documentId,canRead.value],async()=>{const seq=++generation;flow.value=null;if(!canRead.value)return;const result=await httpRequest<any>('/api/warehouse/'+props.kind+'/'+props.documentId+(props.kind==='asn'?'/flow':'/shipping-flow'));if(seq===generation&&canRead.value)flow.value=result},{immediate:true});onBeforeUnmount(()=>generation++)
 </script>
 <template><div v-if="flow" class="w-compact-flow"><strong>{{kind.toUpperCase()}}-{{documentId}} {{t('operations.ui.progress')}}</strong><ol><li v-for="(step,index) in flow.steps" :key="step.key"><span v-if="step.key!==current" class="w-flow-dot" :class="step.state" :title="t((kind==='asn'?'asn.flow.steps.':'shipping.steps.')+step.key)" /><span v-if="step.key===current" class="w-flow-label" aria-current="step">{{t((kind==='asn'?'asn.flow.steps.':'shipping.steps.')+step.key)}} · {{t('operations.ui.this-page')}}</span><span v-if="index<flow.steps.length-1" class="w-flow-line" :class="{'is-done':step.state==='done'}" /></li></ol><NuxtLink class="w-flow-link" :to="'/'+kind+'/detail/'+documentId">{{t('operations.ui.full-flow')}} →</NuxtLink></div></template>
 <style scoped>

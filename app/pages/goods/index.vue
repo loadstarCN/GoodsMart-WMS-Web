@@ -3,7 +3,11 @@ import { categoriesOptions } from '~/data/selectOptions'
 const { t, locale } = useI18n()
 const { categoryLabel } = useOptionLabel()
 const { bizErrorMessage } = useBizError()
-const route = useRoute(), router = useRouter(), staff = useStaffStore()
+const route = useRoute(), router = useRouter(), staff = useStaffStore(), warehouse=useWarehouseStore()
+const ready=computed(()=>!!staff.refreshed&&!!staff.staffInfo)
+const allowed=(...permissions:string[])=>ready.value&&staff.hasPermission(...permissions)
+const filters=computed(()=>Object.fromEntries(Object.entries(route.query).filter(([key])=>key!=='warehouse_id')))
+const hasActions=computed(()=>!!staff.staffInfo&&allowed('goods_edit','goods_delete','inventory_read'))
 useHead({ title: () => t('nav.goods') })
 const data = ref<PaginationData | null>(null), loading = ref(true), error = ref(''), busy = ref(false)
 const keyword = ref(String(route.query.keyword || '')), brand = ref(String(route.query.brand || ''))
@@ -18,11 +22,11 @@ const stockKeys = ['onhand_stock','available_stock_for_sale','sorted_stock','sor
 const columns = computed(() => [
   {key:'goods',label:t('nav.goods'),wrap:true,width:'30%'}, {key:'brand',label:t('goods.ui.brand-maker'),wrap:true},
   {key:'price',label:t('goods.fields.price'),align:'right' as const},
-  ...(staff.hasPermission('inventory_read') ? stockKeys.slice(0,3).map((key,index)=>({key,label:t(['goods.ui.onhand','goods.ui.available','goods.ui.pending'][index]!),type:'qty' as const,strong:index===1,keepZero:index===1,value:(row:any)=>stocks.value?.[row.id]?.[key]})) : []),
-  {key:'info',label:t('goods.ui.info'),wrap:true}, {key:'actions',label:t('common.fields.action'),align:'right' as const},
+  ...(allowed('inventory_read') ? stockKeys.slice(0,3).map((key,index)=>({key,label:t(['goods.ui.onhand','goods.ui.available','goods.ui.pending'][index]!),type:'qty' as const,strong:index===1,keepZero:index===1,value:(row:any)=>stocks.value?.[row.id]?.[key]})) : []),
+  {key:'info',label:t('goods.ui.info'),wrap:true}, ...(hasActions.value?[{key:'actions',label:t('common.fields.action'),align:'right' as const}]:[]),
 ])
 const go = (patch:Record<string,any>, keepPage=false) => {
-  const query:Record<string,any> = {...route.query,...patch}
+  const query:Record<string,any> = {...filters.value,...patch}
   for(const key of Object.keys(query)) if(query[key] == null || query[key] === '') delete query[key]
   if(!keepPage) delete query.page
   router.push({query})
@@ -31,17 +35,18 @@ const toggle = (key:string) => go({[key]:route.query[key] === 'true' ? undefined
 const toggleSpec = (value:string) => go({spec_missing:(specMissing.value.includes(value) ? specMissing.value.filter(v=>v!==value) : [...specMissing.value,value]).join(',')})
 let generation=0
 const load = async () => {
-  const seq=++generation
-  loading.value=true;error.value='';stocks.value=null
-  const result=await httpRequest<PaginationData>('/api/warehouse/goods/',{params:{...route.query,per_page:50},onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
+  const seq=++generation,warehouseId=warehouse.currentWarehouse?.id
+  loading.value=true;error.value='';stocks.value=null;data.value=null
+  if(!allowed('goods_read')){loading.value=false;return}
+  const result=await httpRequest<PaginationData>('/api/warehouse/goods/',{params:{...filters.value,per_page:50},headers:warehouseHeaders(warehouseId),onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
   if(seq!==generation)return
   data.value=result;loading.value=false
-  if(!result?.items?.length || !staff.hasPermission('inventory_read'))return
+  if(!result?.items?.length || !allowed('inventory_read'))return
   const summary:Record<number,Record<string,number>>={}
   for(const goods of result.items) summary[goods.id]=Object.fromEntries(stockKeys.map(k=>[k,0]))
   let stockPage=1
   while(seq===generation){
-    const stock=await httpRequest<PaginationData>('/api/warehouse/inventory/',{params:{goods_codes:result.items.map((g:any)=>g.code).join(','),page:stockPage,per_page:100},onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
+    const stock=await httpRequest<PaginationData>('/api/warehouse/inventory/',{params:{goods_codes:result.items.map((g:any)=>g.code).join(','),page:stockPage,per_page:100},headers:warehouseHeaders(warehouseId),onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
     if(!stock || seq!==generation)return
     for(const row of stock.items) for(const key of stockKeys) if(summary[row.goods_id]) summary[row.goods_id]![key]!+=Number(row[key] || 0)
     if(stockPage >= stock.pages)break
@@ -50,7 +55,7 @@ const load = async () => {
   if(seq===generation)stocks.value=summary
 }
 const act = async(row:any, action:'delete'|'toggle')=>{
-  if(busy.value)return
+  if(busy.value||!staff.staffInfo||!allowed(action==='delete'?'goods_delete':'goods_edit'))return
   busy.value=true
   try{
     if(action==='delete' && !await wConfirm({title:t('action-results.delete-confirm-title'),message:t('action-results.delete-confirm',{entity:row.name}),confirmText:t('button.delete'),cancelText:t('button.cancel')}))return
@@ -62,15 +67,17 @@ const act = async(row:any, action:'delete'|'toggle')=>{
 const missing=(row:any)=>specOptions.value.filter(o=>o.value==='dimensions' ? !row.length||!row.width||!row.height : !row[o.value]).map(o=>o.label)
 const money=(value:any,currency:string)=>value==null?'':new Intl.NumberFormat(locale.value,{style:'currency',currency:currency||'JPY'}).format(value)
 watch(()=>route.query,()=>{keyword.value=String(route.query.keyword||'');brand.value=String(route.query.brand||'');load()})
+watch(()=>warehouse.currentWarehouse?.id,()=>{if(page.value>1)go({});else load()})
+watch(ready,load)
 onMounted(load)
 onBeforeUnmount(()=>{generation++})
 </script>
 <template>
   <div class="w-goods w-scope">
     <header class="w-goods__header"><h1>{{ t('nav.goods') }}<small>{{ data?.total?.toLocaleString(locale) }}</small></h1><div class="w-goods__actions">
-      <WButton :to="{path:'/goods/export',query:route.query}">{{ t('goods.ui.export') }}</WButton>
-      <WButton v-if="staff.hasPermission('goods_add','goods_edit')" to="/goods/upload">{{ t('goods.ui.import') }}</WButton>
-      <WButton v-if="staff.hasPermission('goods_edit')" to="/goods/add" variant="primary">{{ t('goods.operations.add') }}</WButton>
+      <WButton v-if="allowed('goods_read')" :to="{path:'/goods/export',query:filters}">{{ t('goods.ui.export') }}</WButton>
+      <WButton v-if="allowed('goods_edit')" to="/goods/upload">{{ t('goods.ui.import') }}</WButton>
+      <WButton v-if="allowed('goods_edit')" to="/goods/add" variant="primary">{{ t('goods.operations.add') }}</WButton>
     </div></header>
     <WCard flush>
       <WTabs inset :model-value="active" :items="tabs" :label="t('goods.title')" @update:model-value="value=>go({is_active:value})" />
@@ -91,10 +98,10 @@ onBeforeUnmount(()=>{generation++})
         <template #cell-price="{row}"><span>{{ money(row.price,row.currency) }}</span><span v-if="row.discount_price!=null" class="w-goods__sub">{{ money(row.discount_price,row.currency) }}</span></template>
         <template #cell-info="{row}"><WStatus v-if="!missing(row).length" tone="ok">{{ t('goods.ui.complete') }}</WStatus><WStatus v-else tone="warn" variant="pill">{{ t('goods.ui.missing',{fields:missing(row).join(' · ')}) }}</WStatus></template>
         <template #cell-actions="{row}"><WDropdown :label="t('common.fields.action')" width="180px" placement="bottom-end"><template #trigger="{attrs}"><WButton v-bind="attrs" size="sm" :aria-label="t('common.fields.action')">•••</WButton></template>
-          <NuxtLink v-if="staff.hasPermission('goods_edit')" class="w-menu-item" role="menuitem" :to="'/goods/edit/'+row.id">{{ t('button.edit') }}</NuxtLink>
-          <NuxtLink v-if="staff.hasPermission('inventory_read')" class="w-menu-item" role="menuitem" :to="'/inventory?goods_id='+row.id">{{ t('goods.operations.view-inventory') }}</NuxtLink>
-          <button v-if="staff.hasPermission('goods_edit')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'toggle')">{{ t(row.is_active?'goods.ui.deactivate':'goods.ui.activate') }}</button>
-          <button v-if="staff.hasPermission('goods_delete')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'delete')">{{ t('button.delete') }}</button>
+          <NuxtLink v-if="allowed('goods_edit')" class="w-menu-item" role="menuitem" :to="'/goods/edit/'+row.id">{{ t('button.edit') }}</NuxtLink>
+          <NuxtLink v-if="allowed('inventory_read')" class="w-menu-item" role="menuitem" :to="'/inventory?goods_id='+row.id">{{ t('goods.operations.view-inventory') }}</NuxtLink>
+          <button v-if="allowed('goods_edit')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'toggle')">{{ t(row.is_active?'goods.ui.deactivate':'goods.ui.activate') }}</button>
+          <button v-if="allowed('goods_delete')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'delete')">{{ t('button.delete') }}</button>
         </WDropdown></template>
       </WTable>
       <footer class="w-goods__footer"><WPagination :page="page" :page-size="50" :total="data?.total" show-total @update:page="value=>go({page:value},true)" /></footer>

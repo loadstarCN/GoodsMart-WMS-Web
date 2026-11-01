@@ -42,7 +42,8 @@ const SHIPPING_BLOCK_CODES = [16078, 16079, 16080, 16091, 16092]
 
 const done = computed(() => props.step.state === 'done')
 /** 后端没列出 complete_shipping 时：这一步轮到了（current / warning）才给 */
-const canComplete = computed(() => !!props.taskId && flowActionEnabled(props.step, 'complete_shipping',
+const staff=useStaffStore()
+const canComplete = computed(() => !!staff.staffInfo && staff.hasPermission('delivery_edit') && !props.locked && !!props.taskId && flowActionEnabled(props.step, 'complete_shipping',
   !props.locked && (props.step.state === 'current' || props.step.state === 'warning')))
 const autoByTracking = computed(() => props.carrier?.methods.tracking === 'api')
 

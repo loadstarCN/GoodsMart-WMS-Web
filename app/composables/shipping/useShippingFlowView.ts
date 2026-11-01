@@ -6,6 +6,7 @@
  * 状态不在界面推算，按后端给的；后端没列出某个操作时才按 DN 状态兜底。必须在组件 setup 里调用。
  */
 import type { InjectionKey, MaybeRefOrGetter } from 'vue'
+import { shippingActionAllowed } from '~/utils/shippingPermissions'
 import {
   CUSTOMS_WORKFLOW_PROBLEMS,
   DN_LOCKED_STATUSES,
@@ -59,7 +60,14 @@ export function useShippingFlowView(options: {
   const route = useRoute()
 
   const dnId = computed(() => toValue(options.dnId))
-  const flow = ref<ShippingFlow | null>(null)
+  const rawFlow = ref<ShippingFlow | null>(null)
+  const flow = computed<ShippingFlow | null>(() => rawFlow.value ? {
+    ...rawFlow.value,
+    steps: rawFlow.value.steps.map(step => ({
+      ...step,
+      actions: step.actions.map(action => ({ ...action, enabled: action.enabled && !loading.value && !loadError.value && !!staffStore.refreshed && !!staffStore.staffInfo && shippingActionAllowed(action.key, staffStore.hasPermission) })),
+    })),
+  } : null)
   const loading = ref(false)
   const loadError = ref<string | null>(null)
   let flowRequest = 0
@@ -97,7 +105,7 @@ export function useShippingFlowView(options: {
         if (current()) customsView.value = data
       },
       onError: (error) => {
-        if (current()) customsError.value = bizErrorMessage(error)
+        if (current()) { customsView.value = null; customsError.value = bizErrorMessage(error) }
       },
       onFinally: () => {
         if (current()) customsLoading.value = false
@@ -109,7 +117,7 @@ export function useShippingFlowView(options: {
     .filter((p: CustomsProblem) => !CUSTOMS_WORKFLOW_PROBLEMS.includes(p.code))
     .map((p: CustomsProblem) => p.code))
   /** 能补录报关快照：DN 未发货、有发货单编辑权限（PUT customs 需 dn_edit） */
-  const canEditCustoms = computed(() => !locked.value && !!customsView.value?.customs && staffStore.hasPermission('dn_edit'))
+  const canEditCustoms = computed(() => !!staffStore.refreshed && !!staffStore.staffInfo && !loading.value && !loadError.value && !locked.value && !!customsView.value && !customsLoading.value && !customsError.value && staffStore.hasPermission('dn_edit'))
 
   // ------------------ 读取 ----------------------
   const load = async () => {
@@ -118,16 +126,19 @@ export function useShippingFlowView(options: {
     const current = () => request === flowRequest && id === dnId.value
     loading.value = true
     loadError.value = null
+    const staff=await staffStore.getCurrentStaffInfo()
+    if(!current())return
+    if(!staff){rawFlow.value=null;customsRequest++;customsView.value=null;customsLoading.value=false;loadError.value=t('common.permissions-unavailable');loading.value=false;return}
     await httpRequest<any>(shippingFlowUrl(id), {
       method: 'GET',
       onSuccess: (data) => {
         if (!current()) return
         const next = normalizeShippingFlow(data)
-        flow.value = next
+        rawFlow.value = next
         if (next) options.onLoaded?.(next)
       },
       onError: (error) => {
-        if (current()) loadError.value = bizErrorMessage(error)
+        if (current()) { rawFlow.value = null; loadError.value = bizErrorMessage(error) }
       },
       onFinally: () => {
         if (current()) loading.value = false
@@ -150,13 +161,14 @@ export function useShippingFlowView(options: {
   const reset = () => {
     flowRequest++
     customsRequest++
-    flow.value = null
+    rawFlow.value = null
     customsView.value = null
     loading.value = false
     customsLoading.value = false
     loadError.value = null
     customsError.value = null
   }
+  onBeforeUnmount(reset)
 
   // ------------------ 各步的数据 ----------------------
   const packingStep = computed(() => stepOf('packing'))
@@ -165,7 +177,7 @@ export function useShippingFlowView(options: {
     const s = waybillStep.value?.summary?.shipment
     return s && typeof s === 'object' ? (s as CarrierShipment) : null
   })
-  const canEditPackages = computed(() => flowActionEnabled(packingStep.value, 'edit_packages',
+  const canEditPackages = computed(() => !!staffStore.refreshed && !loading.value && !loadError.value && !!staffStore.staffInfo && staffStore.hasPermission('packing_edit') && flowActionEnabled(packingStep.value, 'edit_packages',
     !locked.value && DN_PACKAGE_EDITABLE_STATUSES.includes(dnStatus.value)))
   const packagesReadonlyReason = computed(() => {
     const action = flowActionOf(packingStep.value, 'edit_packages')
@@ -174,7 +186,7 @@ export function useShippingFlowView(options: {
     }
     return locked.value ? t('customs.status.locked') : t('customs.packages.readonly-status')
   })
-  const canEnterTracking = computed(() => flowActionEnabled(waybillStep.value, 'enter_tracking', !!tasks.value.delivery && !locked.value))
+  const canEnterTracking = computed(() => !!staffStore.refreshed && !loading.value && !loadError.value && !!staffStore.staffInfo && staffStore.hasPermission('delivery_edit') && flowActionEnabled(waybillStep.value, 'enter_tracking', !!tasks.value.delivery && !locked.value))
   /** 运单方式不是 api：运单一步只填运单号 */
   const waybillManualOnly = computed(() => !!carrier.value && carrier.value.methods.waybill !== 'api'
     && !flowActionOf(waybillStep.value, 'create_waybill'))
@@ -346,6 +358,8 @@ export function useShippingFlowView(options: {
 
   // ------------------ 任务入口 ----------------------
   const taskLinks = (key: string): FlowTaskLink[] => {
+    const permission = key === 'handover' ? 'delivery_read' : `${key}_read`
+    if (!staffStore.staffInfo || !staffStore.hasPermission(permission)) return []
     const here = route.path.replace(/\/$/, '')
     let links: FlowTaskLink[] = []
     if (key === 'picking') links = tasks.value.picking.map((id: number) => ({ to: `/picking/detail/${id}`, text: `PICK-${id}` }))

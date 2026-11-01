@@ -10,9 +10,9 @@ const columns=computed(()=>[{key:'recipient',label:t('nav.recipient')},{key:'cou
 const go=(patch:Record<string,any>,keepPage=false)=>{const query:Record<string,any>={...route.query,...patch};if(!keepPage)delete query.page;for(const key of Object.keys(query))if(query[key]==null||query[key]==='')delete query[key];router.push({query})}
 let generation=0
 const load=async()=>{
- const seq=++generation;loading.value=true;error.value='';summaries.value={};counts.value={}
+ const seq=++generation;loading.value=true;error.value='';data.value=null;summaries.value={};counts.value={}
  const params={...route.query,per_page:20,page:page.value}
- const [result,other]=await Promise.all([httpRequest<PaginationData>('/api/warehouse/recipient/',{params,onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}}),httpRequest<PaginationData>('/api/warehouse/recipient/',{params:{...params,is_active:active.value==='true'?'false':'true',per_page:1,page:1}})])
+ const [result,other]=await Promise.all([httpRequest<PaginationData>('/api/warehouse/recipient/',{params,onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}}),httpRequest<PaginationData>('/api/warehouse/recipient/',{params:{...params,is_active:active.value==='true'?'false':'true',per_page:1,page:1},onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})])
  if(seq!==generation)return
  data.value=result;loading.value=false
  if(result)counts.value[active.value]=result.total
@@ -23,7 +23,7 @@ const load=async()=>{
  }
 }
 const act=async(row:any,action:'toggle'|'delete')=>{
- if(busy.value)return
+ if(busy.value||!staff.hasPermission(action==='delete'?'recipient_delete':'recipient_edit'))return
  busy.value=true
  try{
   if(action==='delete'&&!await wConfirm({title:t('action-results.delete-confirm-title'),message:t('action-results.delete-confirm',{entity:row.name}),confirmText:t('button.delete'),cancelText:t('button.cancel')}))return
@@ -48,7 +48,7 @@ watch(()=>route.query,()=>{keyword.value=String(route.query.keyword||'');load()}
     <template #cell-source="{row}"><span>{{t('recipient.ui.source-unrecorded')}}</span></template>
     <template #cell-dns="{row}">{{summaries[row.id]?.total?.toLocaleString(locale)}}</template>
     <template #cell-arrival="{row}">{{summaries[row.id]?.dispatched_at?$dayjs(summaries[row.id].dispatched_at,'MM/DD'):(summaries[row.id]?t('recipient.ui.no-dispatch'):'')}}</template>
-    <template #cell-actions="{row}"><WDropdown :label="t('common.fields.action')" placement="bottom-end" width="180px"><template #trigger="{attrs}"><WButton v-bind="attrs" class="list-more" variant="text" icon="more" icon-only size="sm" :aria-label="t('common.fields.action')" /></template><NuxtLink v-if="staff.hasPermission('recipient_edit')" role="menuitem" class="w-menu-item" :to="'/recipient/edit/'+row.id">{{t('button.edit')}}</NuxtLink><button v-if="staff.hasPermission('recipient_edit')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'toggle')">{{t(row.is_active?'recipient.ui.disable':'recipient.ui.enable')}}</button><button v-if="staff.hasPermission('recipient_delete')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'delete')">{{t('button.delete')}}</button></WDropdown></template>
+    <template #cell-actions="{row}"><WDropdown v-if="staff.hasPermission('recipient_edit','recipient_delete')" :label="t('common.fields.action')" placement="bottom-end" width="180px"><template #trigger="{attrs}"><WButton v-bind="attrs" class="list-more" variant="text" icon="more" icon-only size="sm" :aria-label="t('common.fields.action')" /></template><NuxtLink v-if="staff.hasPermission('recipient_edit')" role="menuitem" class="w-menu-item" :to="'/recipient/edit/'+row.id">{{t('button.edit')}}</NuxtLink><button v-if="staff.hasPermission('recipient_edit')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'toggle')">{{t(row.is_active?'recipient.ui.disable':'recipient.ui.enable')}}</button><button v-if="staff.hasPermission('recipient_delete')" class="w-menu-item" role="menuitem" :disabled="busy" @click="act(row,'delete')">{{t('button.delete')}}</button></WDropdown></template>
    </WTable><footer><WPagination :page="page" :page-size="20" :total="data?.total" show-total @update:page="value=>go({page:value},true)" /></footer>
   </WCard>
  </div>

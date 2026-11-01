@@ -45,7 +45,8 @@ export async function fetchGlobalSearch(params: GlobalSearchParams): Promise<Glo
     params: {
       q: params.q,
       types: params.types?.length ? params.types.join(',') : undefined,
-      scope: params.scope === 'all' ? 'all' : undefined,
+      // Let the API use the same warehouse header/cookie scope as every list,
+      // including the initial render before the warehouse store has hydrated.
       limit: params.limit,
       page: params.page,
       per_page: params.perPage,

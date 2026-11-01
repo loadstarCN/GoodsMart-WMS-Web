@@ -120,6 +120,7 @@ const { timeZone: panelTimeZone, format: formatZoned } = useTimeZone()
 const zonedTime = (value: unknown, pattern: string) => formatZoned(value, pattern, { withZone: false })
 const { busyDocId, viewDoc, downloadDoc, downloadRawDoc, fetchFile } = useCustomsPdfActions()
 const staffStore = useStaffStore()
+const canManageShipment = computed(() => !!staffStore.refreshed && !!staffStore.staffInfo && staffStore.hasPermission('packing_edit', 'delivery_edit'))
 
 const loading = ref(false)
 const loadError = ref<string | null>(null)
@@ -205,19 +206,24 @@ const applyStatus = (next: CarrierShipmentStatus | null): boolean => {
 }
 
 /** 重新读取状态；返回是否因运单变化通知了父组件 */
+let statusGeneration=0
 const load = async (): Promise<boolean> => {
+  const seq=++statusGeneration
   loading.value = true
   loadError.value = null
   let notified = false
   await httpRequest<CarrierShipmentStatus>(carrierShipmentUrl(props.dnId), {
     method: 'GET',
     onSuccess: (data) => {
+      if(seq!==statusGeneration)return
       notified = applyStatus(normalizeCarrierStatus(data))
       unsupported.value = false
       const defaultFormat = toLabelFormat(status.value?.default_label_format)
       if (!labelFormatChosen && defaultFormat) labelFormat.value = defaultFormat
     },
     onError: (error) => {
+      if(seq!==statusGeneration)return
+      status.value=null
       if (error.status === 404 && (error.code === undefined || error.code === null)) {
         unsupported.value = true
         status.value = null
@@ -226,9 +232,10 @@ const load = async (): Promise<boolean> => {
       loadError.value = bizErrorMessage(error)
     },
     onFinally: () => {
-      loading.value = false
+      if(seq===statusGeneration)loading.value = false
     },
   })
+  if(seq!==statusGeneration)return false
   await loadTradeRequirements()
   return notified
 }
@@ -327,13 +334,13 @@ const trackingTone = computed<'bad' | 'ok' | 'info' | 'none'>(() => {
   return 'none'
 })
 const trackingRefreshing = ref(false)
-const canRefreshTracking = computed(() => props.trackingRefresh && trackingVisible.value)
+const canRefreshTracking = computed(() => !!staffStore.refreshed && !!staffStore.staffInfo && staffStore.hasPermission('delivery_edit') && props.trackingRefresh && trackingVisible.value)
 /**
  * 立即查一次跟踪；揽收 / 送达了会当场自动完成发货 / 签收。定时任务也可能早就做了（这次 shipped = 0），
  * 所以刷新完总是通知父组件重读发货任务（父组件按任务状态有没有变决定要不要整页重读）
  */
 const refreshTracking = async () => {
-  if (trackingRefreshing.value || busy.value) return
+  if (!canRefreshTracking.value || trackingRefreshing.value || busy.value) return
   trackingRefreshing.value = true
   let result: any = null
   await httpRequest<any>(`${carrierShipmentUrl(props.dnId)}/track`, {
@@ -373,13 +380,13 @@ const unresolvedCancelling = computed(() => unresolvedInProgress.value && unreso
 /** 取消结果不明（cancelling 且没有在进行）：承运商那边可能还有效，要重试取消或核对后确认作废 */
 const unresolvedCancelUnknown = computed(() =>
   !!unresolved.value && !unresolvedInProgress.value && unresolved.value.status === 'cancelling')
-const canDismiss = computed(() => !!unresolved.value && !!status.value?.can_dismiss && !props.locked)
+const canDismiss = computed(() => canManageShipment.value && !!unresolved.value && !!status.value?.can_dismiss && !props.locked)
 /**
  * 可以（重试）取消：以后端 can_cancel 为准（有效运单、取消结果不明的运单、带运单号的结果不明记录）；
  * 旧后端没有 can_cancel 时只在有有效运单时可取消
  */
 const canCancel = computed(() => {
-  if (props.locked || !status.value) return false
+  if (!canManageShipment.value || props.locked || !status.value) return false
   const allowed = status.value.can_cancel
   return allowed === undefined ? !!activeShipment.value : allowed
 })
@@ -388,12 +395,12 @@ const cancelTargetTracking = computed(() =>
   activeShipment.value?.tracking_number || unresolved.value?.tracking_number || cancellingShipment.value?.tracking_number || '')
 /** 结果不明区里给「重试取消」：没有有效运单、不在进行中、后端允许取消 */
 const canRetryCancel = computed(() => canCancel.value && !activeShipment.value && !!unresolved.value && !unresolvedInProgress.value)
-const canCreate = computed(() =>
+const canCreate = computed(() => canManageShipment.value &&
   !!integration.value && !props.manualOnly && !props.locked && !!status.value?.can_create && !activeShipment.value && !cancellingShipment.value
   && !unresolved.value && !tradeLoading.value && !tradeError.value
   && (!status.value?.regulatory_check_enabled || (!!tradeRequirements.value && allTradeFilesSelected.value)))
 const busy = computed(() =>
-  creating.value || cancelling.value || dismissing.value || savingTracking.value || trackingRefreshing.value)
+  loading.value || creating.value || cancelling.value || dismissing.value || savingTracking.value || trackingRefreshing.value)
 const unresolvedReasonText = computed(() => {
   const reason = unresolved.value?.reason
   if (!reason) return ''
@@ -487,6 +494,7 @@ const refresh = async () => {
   if (!unmounted && inProgress.value && !pollTimer) startPolling()
 }
 onBeforeUnmount(() => {
+  statusGeneration++
   unmounted = true
   stopPolling()
 })
@@ -601,7 +609,7 @@ const SETTINGS_BLOCKERS = ['CARRIER_INTEGRATION_DISABLED', 'CARRIER_NOT_CONFIGUR
 const EXPORTER_BLOCKERS = ['SHIPPER_ADDRESS_INVALID', 'EXPORTER_PROFILE_INCOMPLETE']
 /** 收货人信息（报关数据）的原因 */
 const CONSIGNEE_BLOCKERS = ['RECIPIENT_ADDRESS_INVALID', 'RECIPIENT_NAME_MISSING', 'RECIPIENT_PHONE_MISSING']
-const canEditCarrier = computed(() => staffStore.hasPermission('carrier_edit'))
+const canEditCarrier = computed(() => !!staffStore.refreshed && staffStore.hasPermission('carrier_edit'))
 const carrierSettingsUrl = computed(() => (status.value?.carrier?.id ? `/carrier/edit/${status.value.carrier.id}` : '/carrier/'))
 const blockerText = (b: CarrierShipmentBlocker & Record<string, any>) => {
   // 承运商相关的文案优先；签发单证的条件不全时后端直接复用单证问题码
@@ -614,7 +622,7 @@ const blockerText = (b: CarrierShipmentBlocker & Record<string, any>) => {
 
 // ------------------ 没有对接：手工填运单号 ----------------------
 /** 配送任务页、任务还能改：可以直接填运单号 */
-const canEnterTracking = computed(() => !props.locked && !!props.taskId && props.trackingEditable)
+const canEnterTracking = computed(() => !!staffStore.refreshed && !!staffStore.staffInfo && staffStore.hasPermission('delivery_edit') && !props.locked && !!props.taskId && props.trackingEditable)
 /** 有对接时手工填运单号默认收起（对接不可用时的退路） */
 const manualOpen = ref(false)
 const manualTracking = ref('')
@@ -949,7 +957,7 @@ defineExpose({ reload: async () => { await load() }, cancel })
     <div v-if="loading && !status" class="w-cship__loading" aria-busy="true">
       <span class="w-cship__skeleton" /><span class="w-cship__skeleton is-short" />
     </div>
-    <WAlert v-else-if="loadError && !status" tone="block" :title="loadError" />
+    <WAlert v-else-if="loadError && !status" tone="block" :title="loadError"><template #actions><WButton @click="refresh">{{t('dn.list.retry')}}</WButton></template></WAlert>
 
     <template v-else-if="status">
       <!-- ===== 结果不明 / 进行中 ===== -->
@@ -1149,7 +1157,7 @@ defineExpose({ reload: async () => { await load() }, cancel })
             <WButton size="sm" variant="text" :disabled="tradeLoading" @click="loadTradeRequirements">{{ t('customs.carrier.tips.trade-refresh') }}</WButton>
           </div>
           <div v-if="!locked" class="w-cship__create">
-            <WButton variant="primary" icon="delivery" :loading="creating" :disabled="!canCreate || (busy && !creating) || packagesDirty" @click="create">
+            <WButton v-if="canManageShipment" variant="primary" icon="delivery" :loading="creating" :disabled="!canCreate || (busy && !creating) || packagesDirty" @click="create">
               {{ t('customs.carrier.operations.create') }}
             </WButton>
             <WField :label="t('customs.carrier.fields.label-format')" class="w-cship__format">
@@ -1175,8 +1183,8 @@ defineExpose({ reload: async () => { await load() }, cancel })
                 {{ t('customs.carrier.operations.open-settings') }}
               </NuxtLink>
               <template v-else-if="EXPORTER_BLOCKERS.includes(b.code)">
-                <NuxtLink to="/company" class="w-cship__link">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
-                <NuxtLink v-if="warehouseId" :to="`/warehouse/edit/${warehouseId}`" class="w-cship__link">{{ t('customs.operations.edit-warehouse') }}</NuxtLink>
+                <NuxtLink v-if="staffStore.refreshed && staffStore.hasPermission('company_edit')" to="/company" class="w-cship__link">{{ t('customs.operations.edit-exporter') }}</NuxtLink>
+                <NuxtLink v-if="warehouseId && staffStore.refreshed && staffStore.hasPermission('warehouse_edit')" :to="`/warehouse/edit/${warehouseId}`" class="w-cship__link">{{ t('customs.operations.edit-warehouse') }}</NuxtLink>
               </template>
               <button v-else-if="CONSIGNEE_BLOCKERS.includes(b.code) && canEditCustoms" type="button" class="w-cship__textbtn"
                 @click="emit('edit-customs')">{{ t('customs.operations.fix') }}</button>
@@ -1203,7 +1211,7 @@ defineExpose({ reload: async () => { await load() }, cancel })
           {{ t(integration
             ? (canEnterTracking ? 'customs.carrier.tips.manual-method' : 'customs.carrier.tips.manual-method-elsewhere')
             : (canEnterTracking ? 'customs.carrier.tips.manual' : 'customs.carrier.tips.manual-elsewhere'), { carrier: carrierName }) }}
-          <NuxtLink v-if="!canEnterTracking && !locked && status.delivery_task_id" :to="`/delivery/detail/${status.delivery_task_id}`"
+          <NuxtLink v-if="!canEnterTracking && !locked && status.delivery_task_id && staffStore.refreshed && staffStore.hasPermission('delivery_read')" :to="`/delivery/detail/${status.delivery_task_id}`"
             class="w-cship__link">{{ t('customs.carrier.operations.open-delivery') }}</NuxtLink>
         </p>
 

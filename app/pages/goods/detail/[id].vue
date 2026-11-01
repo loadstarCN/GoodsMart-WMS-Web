@@ -1,4 +1,7 @@
 <script lang="ts" setup>
+import LotRelabelModal from '~/components/goods/LotRelabelModal.vue'
+import {ledgerDateRange} from '~/utils/ledgerDateRange'
+import PendingLotPicker from '~/components/inventory/PendingLotPicker.vue'
 import {removalReasonsOptions}  from '~/data/selectOptions'
 import GoodsLots from '~/components/goods/GoodsLots.vue'
 import GoodsAnalytics from '~/components/inventory/GoodsAnalytics.vue'
@@ -7,18 +10,30 @@ import { countryName } from '~/data/countries'
 import { pendingPutaway, putawayLimit, putawayQuantityError, type PendingPutaway } from '~/composables/inventory/putawayStock'
 
 // 定义页面元数据
-definePageMeta({
-});
+definePageMeta({ key: route => route.path });
 
 
 
 let loading = ref(true);
+const loadError=ref(''),tabError=ref('');
+let goodsGeneration=0;
 const router = useRouter();
 let route = useRoute();
 const productId = route.params.id;
 
 const itemData = ref<any>(null);
 const tabData = ref<any>(null);
+const lotRules=ref<any>(null),lotRulesError=ref('')
+const tracksLots=computed(()=>!lotRules.value||lotRules.value.values?.mode!=='none'||lotRules.value.has_lots)
+const expiryState=(row:any)=>{
+ if(!lotRules.value)return null
+ if(row.lot_status&&row.lot_status!=='active')return 'blocked'
+ if(!row.expiry_date)return 'unknown'
+ const warehouse=warehouseStore.warehouses.find(w=>w.id===row.location?.warehouse_id)||warehouseStore.currentWarehouse
+ const today=ledgerDateRange('today',warehouse?.timezone||'UTC')!.start_time
+ const days=Math.round((Date.parse(row.expiry_date+'T00:00:00Z')-Date.parse(today+'T00:00:00Z'))/86400000)
+ return days<Number(lotRules.value.values.ship_days)?'blocked':days<=Number(lotRules.value.values.warning_days)?'warning':'normal'
+}
 
 // 获取国际化方法
 const { t, locale } = useI18n();
@@ -27,6 +42,9 @@ const { bizErrorMessage } = useBizError();
 // 分类 / 标签 / 单位 / 库位类型 / 下架原因存代码或英文原值，显示译名
 const { categoryLabel, tagLabel, unitLabel, locationTypeLabel, removalReasonLabel } = useOptionLabel();
 const warehouseStore = useWarehouseStore();
+const staff = useStaffStore()
+const staffReady = ref(false)
+const can = (...permissions:string[]) => staffReady.value && staff.hasPermission(...permissions)
 
 // 计算属性转换
 const dataToPass = computed(() => ({
@@ -46,6 +64,9 @@ const errors = ref<Record<string, any>>({
 // 处理库位选择
 const isLoading = ref(false);
 const selectedLocation = ref<any>(null);
+const selectedLotId = ref<number|null>(null);
+const relabelOpen=ref(false),relabelStock=ref<any>(null);
+const pendingLot = ref<{lot_id:number|null;receipt_source_id:number;pending:PendingPutaway|null}|null>(null);
 const locationSelectedOptions = ref<any[]>([]);
 const quantity = ref<any>(null);
 const maxQuantity = ref<any>(null);
@@ -69,7 +90,7 @@ const fetchLocationData = async (code: string, targetRef: Ref<any[]>) => {
   
   const data = await httpRequest<PaginationData>('/api/warehouse/location/', {
     method: 'GET',
-    params: { all: true, code, warehouse_id: route.query.warehouse_id || undefined },
+    params: { all: true, code, warehouse_id: warehouseStore.currentWarehouse?.id || undefined },
     onSuccess: (data) => targetRef.value = data.items,
     onError: (error) => showToast(error.message, 'error'),
     onFinally: () => isLoading.value = false
@@ -97,8 +118,8 @@ const loadPutawayInventory = async () => {
   putawayInventories.value = null;
   await httpRequest<PaginationData>('/api/warehouse/inventory/', {
     method: 'GET',
-    params: { goods_id: productId, all: true, warehouse_id: route.query.warehouse_id || undefined },
-    headers: warehouseHeaders(String(route.query.warehouse_id || warehouseStore.currentWarehouse?.id || '')),
+    params: { goods_id: productId, all: true, warehouse_id: warehouseStore.currentWarehouse?.id || undefined },
+    headers: warehouseHeaders(warehouseStore.currentWarehouse?.id),
     onSuccess: (data) => {
       if (seq !== inventoryGeneration) return;
       putawayInventories.value = Array.isArray(data?.items) ? data.items : [];
@@ -129,11 +150,7 @@ const putawayWarehouseId = computed<number | null>(() => {
 });
 
 /** 选中库位所在仓库的待上架；库存读不到时 null；该仓库没有库存记录时按 0 */
-const selectedPending = computed<PendingPutaway | null>(() => {
-  if (putawayInventories.value === null || !putawayWarehouseId.value) return null;
-  const row = putawayPendingRows.value.find((r) => String(r.warehouseId) === String(putawayWarehouseId.value));
-  return row ? row.pending : { total: 0, good: 0, damaged: 0 };
-});
+const selectedPending = computed<PendingPutaway | null>(() => pendingLot.value?.pending ?? null);
 
 /** 选了库位后最多能上多少（破损库位 = 待上架合计；标准 / 退货库位 = 良品） */
 const putawayMax = computed<number | null>(() =>
@@ -156,23 +173,37 @@ const putawayFn = () => {
 
 /** 深链 ?putaway=open（库存页「待上架」的「上架」按钮）：打开上架弹窗 */
 const stockModal = ref<'putaway'|'removal'|'transfer'|null>(null)
-const stockOpen = computed({get:()=>stockModal.value!==null,set:value=>{if(!value)stockModal.value=null}})
 const stockBusy = ref(false)
-const openPutawayModal = () => { putawayFn(); stockModal.value='putaway' }
+watch(()=>pendingLot.value?.lot_id,()=>{if(stockModal.value==='putaway')selectedLocation.value=null})
+const stockDirty = computed(()=>stockModal.value!==null && (quantity.value!==null || !!remark.value || !!reason.value || !!transferReason.value || (stockModal.value==='putaway' && !!selectedLocation.value) || (stockModal.value==='transfer' && !!selectedToLocation.value)))
+useUnsavedForm(()=>stockDirty.value||stockBusy.value,()=>stockBusy.value)
+let closingStock=false
+const closeStock = async()=>{
+ if(stockBusy.value||closingStock)return
+ closingStock=true
+ try{if(stockDirty.value&&!await showConfirm(t('unsaved-form.title'),t('unsaved-form.message'),t('unsaved-form.leave'),t('unsaved-form.stay')))return;stockModal.value=null}finally{closingStock=false}
+}
+const stockOpen = computed({get:()=>stockModal.value!==null,set:value=>{if(!value)void closeStock()}})
+const openPutawayModal = () => { if(!can('putaway_edit'))return;pendingLot.value=null;reason.value=null;transferReason.value=null;putawayFn(); stockModal.value='putaway' }
 const searchStockLocations = async (code:string) => {
- const warehouseId = stockModal.value==='transfer' ? selectedFromLocation.value?.warehouse_id : route.query.warehouse_id || putawayWarehouseId.value
- const data = await httpRequest<PaginationData>('/api/warehouse/location/', {params:{code:code||undefined,per_page:50,warehouse_id:warehouseId||undefined}})
+ const warehouseId = stockModal.value==='transfer' ? selectedFromLocation.value?.warehouse_id : putawayWarehouseId.value
+ const isPutaway=stockModal.value==='putaway'
+ const data = await httpRequest<PaginationData>(isPutaway?`/api/warehouse/goods/${productId}/putaway-locations`:'/api/warehouse/location/', {params:{code:code||undefined,per_page:50,warehouse_id:warehouseId||undefined,is_active:true,lot_id:isPutaway?pendingLot.value?.lot_id||undefined:undefined},headers:warehouseHeaders(warehouseId)})
  const values=data?.items||[]
  if(stockModal.value==='transfer')locationToSelectedOptions.value=values
  else locationSelectedOptions.value=values
- return values.map((item:any)=>({value:item.id,label:item.code,description:nameWithTypeAndWarehouse(item)}))
+ return values.map((item:any)=>({value:item.id,label:item.code,description:nameWithTypeAndWarehouse(item)+(isPutaway?' · '+t('goods.ui.same-lot-stock',{count:item.same_lot_quantity})+(item.other_lot_quantity>0?' · '+t('goods.ui.mixed-lot-stock',{count:item.other_lot_quantity}):''):'' )}))
 }
 const chosenLocationId = computed<number|null>({get:()=>stockModal.value==='transfer'?selectedToLocation.value?.id:selectedLocation.value?.id,set:value=>{
  if(stockModal.value==='transfer')selectedToLocation.value=locationToSelectedOptions.value.find(item=>item.id===value)||null
  else selectedLocation.value=locationSelectedOptions.value.find(item=>item.id===value)||null
 }})
 const submitStock = async()=>{
- if(stockBusy.value)return
+ if(stockBusy.value||!stockModal.value||!can(stockModal.value+'_edit'))return
+ const amount=Number(quantity.value)
+ if(!Number.isInteger(amount)||amount<1){errors.value.quantity=t('common.validation.quantity-positive-integer');return}
+ const limit=stockModal.value==='putaway'?putawayMax.value:maxQuantity.value
+ if(limit!=null&&amount>limit){errors.value.quantity=t('common.validation.quantity-exceeds-available',{max:limit});return}
  stockBusy.value=true
  try{if(stockModal.value==='putaway')await createPutaway();else if(stockModal.value==='removal')await createRemoval();else if(stockModal.value==='transfer')await createTransfer()}finally{stockBusy.value=false}
 }
@@ -191,6 +222,7 @@ const createPutaway = async () => {
     return;
   }
   // 预校验待上架数量（后端同样会拦：超出待上架 15007；标准 / 退货库位超出良品 15016）
+  if (!pendingLot.value) { showToast(t('goods-label.lot-required'), 'error'); return; }
   const quantityError = putawayQuantityError(selectedPending.value, selectedLocation.value.location_type, Number(quantity.value));
   if (quantityError) {
     errors.value.quantity = bizErrorMessage(quantityError);
@@ -200,7 +232,7 @@ const createPutaway = async () => {
   const data = await httpRequest('/api/warehouse/putaway/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: {location_id: selectedLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), remark: remark.value},
+      body: {location_id: selectedLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), remark: remark.value, lot_id: pendingLot.value?.lot_id, receipt_source_id: pendingLot.value?.receipt_source_id},
       onSuccess: async() => {
         stockModal.value=null;
         selectedLocation.value = null;
@@ -226,6 +258,8 @@ const createPutaway = async () => {
 };
 
 const removalFn = (item: any) => {
+  if(!can('removal_edit'))return;
+  selectedLotId.value = item.lot_id ?? null;
   quantity.value=null;remark.value=null;reason.value=null;errors.value={};stockModal.value='removal';
   selectedLocation.value = item.location;
   maxQuantity.value = item.quantity;
@@ -252,7 +286,7 @@ const createRemoval = async () => {
   const data = await httpRequest('/api/warehouse/removal/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: {location_id: selectedLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), reason:reason.value, remark: remark.value},
+      body: {location_id: selectedLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), reason:reason.value, remark: remark.value, lot_id: selectedLotId.value},
       onSuccess: async() => {
         stockModal.value=null;
         selectedLocation.value = null;
@@ -262,7 +296,7 @@ const createRemoval = async () => {
         // 调用公共方法关闭模态框
         // closeModal('removalModal');
         showToast(t('action-results.op-success',{operation:t('goods.operations.create-removal'),entity:itemData.value?.code ?? ''}), 'success')
-        if (staff.hasPermission('inventory_read')) await loadPutawayInventory();
+        if (can('inventory_read')) await loadPutawayInventory();
         await fetchTabData();
       },
       onError: (error) => {
@@ -276,6 +310,8 @@ const createRemoval = async () => {
 };
 
 const transferFn = (item: any) => {
+  if(!can('transfer_edit'))return;
+  selectedLotId.value = item.lot_id ?? null;
   quantity.value=null;remark.value=null;selectedToLocation.value=null;errors.value={};stockModal.value='transfer';
   selectedFromLocation.value = item.location;
   maxQuantity.value = item.quantity;
@@ -320,7 +356,7 @@ const createTransfer = async () => {
   const data = await httpRequest('/api/warehouse/transfer/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: {from_location_id: selectedFromLocation.value.id, to_location_id:selectedToLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), remark: remark.value, reason: reasonText || undefined},
+      body: {from_location_id: selectedFromLocation.value.id, to_location_id:selectedToLocation.value.id, goods_id: Number(productId), quantity: Number(quantity.value), remark: remark.value, reason: reasonText || undefined, lot_id: selectedLotId.value},
       onSuccess: async() => {
         stockModal.value=null;
         selectedFromLocation.value = null;
@@ -331,7 +367,7 @@ const createTransfer = async () => {
         // 调用公共方法关闭模态框
         // closeModal('transferModal');
         showToast(t('action-results.op-success',{operation:t('goods.operations.create-transfer'),entity:itemData.value?.code ?? ''}), 'success')
-        if (staff.hasPermission('inventory_read')) await loadPutawayInventory();
+        if (can('inventory_read')) await loadPutawayInventory();
         await fetchTabData();
       },
       onError: (error) => {
@@ -349,16 +385,25 @@ const createTransfer = async () => {
 };
 
 const fetchData = async () => {
+    const seq=++goodsGeneration;loadError.value='';itemData.value=null;
     loading.value = true;
+    staffReady.value=false;
+    const currentStaff=await staff.getCurrentStaffInfo();
+    if(seq!==goodsGeneration)return;
+    if(!currentStaff){loadError.value=t('common.validation.company-required');loading.value=false;return;}
+    staffReady.value=true;
     const data = await httpRequest(`/api/warehouse/goods/${productId}`, {
         method: 'GET',
-        params: route.query,
+        params: {...route.query,warehouse_id:warehouseStore.currentWarehouse?.id||undefined},
         onSuccess: (data) => {
+          if(seq!==goodsGeneration)return;
           itemData.value = data;
           // 将tags字符串转换为数组
           itemData.value.tags = convert_tags_to_array(data.tags)
         },
         onError: (error) => {
+            if(seq!==goodsGeneration)return;
+            loadError.value=bizErrorMessage(error);
             if (error.status === 404) {
                 // 如果商品不存在，跳转到商品列表页面
                 showError({ statusCode: 404, message: t('action-results.not-found',{entity:t('common.entities.goods'),identifier:productId}) });
@@ -367,7 +412,7 @@ const fetchData = async () => {
             }            
         },
         onFinally: () => {
-            loading.value = false;
+            if(seq===goodsGeneration)loading.value = false;
         }
     })
     return data;   
@@ -375,9 +420,13 @@ const fetchData = async () => {
 
 
 let tabGeneration = 0
-onBeforeUnmount(() => { tabGeneration++; inventoryGeneration++ })
+onBeforeUnmount(() => { tabGeneration++; inventoryGeneration++;goodsGeneration++ })
 const fetchTabData = async () => {
-    const seq = ++tabGeneration;
+    const seq = ++tabGeneration;tabError.value='';tabData.value=null;loading.value=true;
+    lotRulesError.value=''
+    const rules=await httpRequest<any>(`/api/warehouse/goods/${productId}/lot-rules`,{onError:e=>{if(seq===tabGeneration)lotRulesError.value=bizErrorMessage(e)}})
+    if(seq!==tabGeneration)return
+    lotRules.value=rules
     if (activeTab.value === 'analytics' || activeTab.value === 'lots') { loading.value=false; return; }
     let url = '';
     switch (activeTab.value) {
@@ -409,13 +458,13 @@ const fetchTabData = async () => {
     loading.value = true;
     const data = await httpRequest(url, {
         method: 'GET',
-        params: {...route.query, goods_id: productId},
-        headers: warehouseHeaders(String(route.query.warehouse_id || warehouseStore.currentWarehouse?.id || '')),
+        params: {...route.query, warehouse_id:warehouseStore.currentWarehouse?.id||undefined, goods_id: productId},
+        headers: warehouseHeaders(warehouseStore.currentWarehouse?.id),
         onSuccess: (data) => {
           if (seq === tabGeneration) tabData.value = data;
         },
         onError: (error) => {
-            if (seq === tabGeneration) showToast(error.message, 'error')
+            if (seq === tabGeneration) tabError.value=bizErrorMessage(error)
         },
         onFinally: () => {
             if (seq === tabGeneration) loading.value = false;
@@ -426,7 +475,7 @@ const fetchTabData = async () => {
 
 
 const activeTab = computed(() => {
-  return route.query.tab || "storage"
+  const tab=String(route.query.tab||'storage');const allowed=['storage',...(tracksLots.value?['lots']:[]),...(can('inventory_read')?['analytics']:[]),...recordTabs.value.map(row=>row.key)];return allowed.includes(tab)?tab:'storage'
 })
 // 处理标签切换
 const setActiveFilter = (tab: string | null) => {
@@ -445,15 +494,14 @@ const setActiveFilter = (tab: string | null) => {
   router.push({ query })
 }
 
-watch([()=>route.query.warehouse_id,()=>warehouseStore.currentWarehouse?.id], () => { if(staff.hasPermission('inventory_read')) loadPutawayInventory(); });
+watch(()=>warehouseStore.currentWarehouse?.id, () => { if(can('inventory_read')) loadPutawayInventory(); if(!itemData.value)return;if(route.query.page&&Number(route.query.page)!==1)router.replace({query:{...route.query,page:1}});else fetchTabData(); });
 watch(() => route.query, async () => {
-    // await fetchData();
-    await fetchTabData();
+    if(itemData.value)await fetchTabData();
 });
 
 onMounted(async() => {
-  await fetchData();
-  if (staff.hasPermission('inventory_read')) await loadPutawayInventory();
+  if(!await fetchData())return;
+  if (can('inventory_read')) await loadPutawayInventory();
   await fetchTabData();
   if (route.query.putaway === 'open') {
     await nextTick();
@@ -463,12 +511,11 @@ onMounted(async() => {
 
 
 
-const staff = useStaffStore()
 useHead({title:()=>itemData.value?.name || t('nav.goods')})
-const recordTabs = computed(()=>[...(staff.hasPermission('inventory_read')?[{key:'ledger',label:t('common.status.all')}]:[]),...['putaway','removal','adjustment','transfer','cyclecount'].map(key=>({key,label:t('common.inventory-ops.'+(key==='cyclecount'?'cycle-count':key))}))])
+const recordTabs = computed(()=>[...(can('inventory_read')?[{key:'ledger',label:t('common.status.all')}]:[]),...['putaway','removal','adjustment','transfer','cyclecount'].filter(key=>can(key==='cyclecount'?'cycle_count_read':key+'_read')).map(key=>({key,label:t('common.inventory-ops.'+(key==='cyclecount'?'cycle-count':key))}))])
 const detailTab = computed(()=>activeTab.value==='lots'?'lots':activeTab.value==='analytics'?'analytics':activeTab.value==='storage'?'storage':'records')
-const detailTabs = computed(()=>[{key:'storage',label:t('goods.ui.location-stock')},{key:'records',label:t('goods.ui.stock-records')},...(staff.hasPermission('inventory_read')?[{key:'analytics',label:t('inventory-analysis.title')}]:[]),{key:'lots',label:t('goods-label.lot')}])
-const selectDetailTab = (key:string|number|null|undefined)=>setActiveFilter(key==='records'?(staff.hasPermission('inventory_read')?'ledger':'putaway'):String(key||'storage'))
+const detailTabs = computed(()=>[{key:'storage',label:t('goods.ui.location-stock')},...(recordTabs.value.length?[{key:'records',label:t('goods.ui.stock-records')}]:[]),...(can('inventory_read')?[{key:'analytics',label:t('inventory-analysis.title')}]:[]),...(tracksLots.value?[{key:'lots',label:t('goods-label.lot')}]:[])])
+const selectDetailTab = (key:string|number|null|undefined)=>setActiveFilter(key==='records'?(recordTabs.value[0]?.key||'storage'):String(key||'storage'))
 const goodsFacts = computed(()=>[
  {label:t('goods.fields.price'),value:itemData.value?.price==null?'':itemData.value.price+' '+(itemData.value.currency||'')},
  {label:t('goods.fields.discount-price'),value:itemData.value?.discount_price},
@@ -502,40 +549,41 @@ const recordColumns=computed(()=>{
 <template>
   <div class="w-goods-detail w-scope">
   <nav class="w-goods-detail__breadcrumb"><NuxtLink class="w-breadcrumb-link" to="/goods">{{ t('nav.goods') }}</NuxtLink><span>/</span>{{ itemData?.code }}</nav>
+<WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData().then(data=>{if(data){fetchTabData();if(can('inventory_read'))loadPutawayInventory()}})">{{t('dn.list.retry')}}</WButton></template></WAlert><WEmptyState v-if="loading&&!itemData" :title="t('common.status.loading')"/>
   <section v-if="itemData" class="w-goods-detail__overview">
     <div class="w-goods-detail__media"><img v-if="itemData.image_url" :src="itemData.image_url" :alt="itemData.name" /><div v-else class="w-goods-detail__image-empty">{{t('goods.fields.image')}}</div></div>
     <div class="w-goods-detail__body">
-      <header><div class="w-goods-detail__heading"><span class="w-goods-detail__sub">{{ t('goods.fields.code') }} {{ itemData.code }}</span><h1>{{ itemData.name }}</h1><div class="w-goods-detail__tags"><WStatus :tone="itemData.is_active?'ok':'none'" variant="pill">{{ t(itemData.is_active?'common.status.active':'common.status.inactive') }}</WStatus><span>{{ [itemData.brand,categoryLabel(itemData.category)].filter(Boolean).join(' · ') }}</span><span v-for="tag in itemData.tags" :key="tag" class="w-goods-detail__tag">{{ tagLabel(tag) }}</span></div></div><div class="w-goods-detail__actions"><WButton v-if="staff.hasPermission('goods_edit')" :to="'/goods/edit/'+productId">{{ t('button.edit') }}</WButton><WButton :to="'/goods/label/'+productId">{{t('goods-label.title')}}</WButton></div></header>
+      <header><div class="w-goods-detail__heading"><span class="w-goods-detail__sub">{{ t('goods.fields.code') }} {{ itemData.code }}</span><h1>{{ itemData.name }}</h1><div class="w-goods-detail__tags"><WStatus :tone="itemData.is_active?'ok':'none'" variant="pill">{{ t(itemData.is_active?'common.status.active':'common.status.inactive') }}</WStatus><span>{{ [itemData.brand,categoryLabel(itemData.category)].filter(Boolean).join(' · ') }}</span><span v-for="tag in itemData.tags" :key="tag" class="w-goods-detail__tag">{{ tagLabel(tag) }}</span></div></div><div class="w-goods-detail__actions"><WButton v-if="can('goods_edit')" :to="'/goods/edit/'+productId">{{ t('button.edit') }}</WButton><WButton :to="'/goods/label/'+productId">{{t('goods-label.title')}}</WButton></div></header>
       <GoodsStockComposition v-if="putawayInventories" :rows="putawayInventories" :goods-id="String(productId)" :unit="unitLabel(itemData.unit)" />
-      <dl class="w-goods-detail__facts"><div v-for="fact in goodsFacts" :key="fact.label"><dt>{{ fact.label }}</dt><dd>{{ fact.value || '—' }}</dd></div></dl>
+      <dl class="w-goods-detail__facts"><div v-for="fact in goodsFacts" :key="fact.label"><dt>{{ fact.label }}</dt><dd>{{ fact.value === 0 ? 0 : fact.value || '—' }}</dd></div></dl>
       <div v-if="itemData.description" class="w-goods-detail__description" v-html="sanitizeHtml(itemData.description)" />
     </div>
   </section>
 
-  <WCard class="w-goods-detail__records" flush>
-    <div class="w-goods-detail__record-head"><WTabs :model-value="detailTab" :items="detailTabs" :label="t('nav.inventory')" @update:model-value="selectDetailTab" /><WButton v-if="staff.hasPermission('putaway_add','putaway_edit') && (activeTab==='putaway'||activeTab==='storage')" icon="plus" size="sm" @click="openPutawayModal">{{t('goods.operations.create-putaway')}}</WButton></div>
-    <GoodsAnalytics v-if="detailTab==='analytics' && staff.hasPermission('inventory_read')" :goods-id="String(productId)" />
+  <WCard v-if="itemData" class="w-goods-detail__records" flush><WAlert v-if="tabError" tone="block" :title="tabError"><template #actions><WButton @click="fetchTabData">{{t('dn.list.retry')}}</WButton></template></WAlert>
+    <div class="w-goods-detail__record-head"><WTabs :model-value="detailTab" :items="detailTabs" :label="t('nav.inventory')" @update:model-value="selectDetailTab" /><WButton v-if="can('putaway_edit') && (activeTab==='putaway'||activeTab==='storage')" icon="plus" size="sm" @click="openPutawayModal">{{t('goods.operations.create-putaway')}}</WButton></div>
+    <WAlert v-if="lotRulesError" tone="block" :title="lotRulesError"><template #actions><WButton @click="fetchTabData">{{t('dn.list.retry')}}</WButton></template></WAlert><GoodsAnalytics v-if="detailTab==='analytics' && can('inventory_read')" :goods-id="String(productId)" />
     <GoodsLots v-else-if="detailTab==='lots'" :goods-id="Number(productId)" />
     <template v-else>
     <div v-if="detailTab==='records'" class="w-goods-detail__record-filters"><button v-for="tab in recordTabs" :key="tab.key" type="button" :class="{'is-active':activeTab===tab.key}" :aria-pressed="activeTab===tab.key" @click="setActiveFilter(tab.key)">{{tab.label}}</button></div>
     <StockLedgerTable v-if="activeTab==='ledger'" :rows="tabData?.items||[]" :loading="loading" hide-goods />
     <WTable v-else :rows="tabData?.items||[]" :columns="recordColumns" :loading="loading" inset>
-      <template #cell-location="{row}"><NuxtLink v-if="row.location" class="w-stock-link" :to="'/location/detail/'+(row.location_id||row.location.id)">{{row.location.code}}</NuxtLink><span v-if="row.location" class="w-stock-location-type">{{locationTypeLabel(row.location.location_type)}}</span><span class="w-stock-warehouse">{{row.location?.warehouse_name}}</span></template>
-      <template #cell-from="{row}"><NuxtLink v-if="row.from_location" class="w-stock-link" :to="'/location/detail/'+row.from_location_id">{{nameWithTypeAndWarehouse(row.from_location)}}</NuxtLink></template>
-      <template #cell-to="{row}"><NuxtLink v-if="row.to_location" class="w-stock-link" :to="'/location/detail/'+row.to_location_id">{{nameWithTypeAndWarehouse(row.to_location)}}</NuxtLink></template>
+      <template #cell-location="{row}"><NuxtLink v-if="row.location&&can('location_read')" class="w-stock-link" :to="'/location/detail/'+(row.location_id||row.location.id)">{{row.location.code}}</NuxtLink><span v-else>{{row.location?.code}}</span><span v-if="tracksLots" class="w-stock-location-type">{{row.lot_no||t('lot-rules.unassigned')}}<template v-if="row.expiry_date"> &middot; {{row.expiry_date}}</template></span><WStatus v-if="activeTab==='storage'&&tracksLots&&expiryState(row)&&expiryState(row)!=='normal'" :tone="expiryState(row)==='blocked'?'bad':expiryState(row)==='warning'?'warn':'none'">{{t('expiry.'+expiryState(row))}}</WStatus><span v-if="row.location" class="w-stock-location-type">{{locationTypeLabel(row.location.location_type)}}</span><span class="w-stock-warehouse">{{row.location?.warehouse_name}}</span></template>
+      <template #cell-from="{row}"><NuxtLink v-if="row.from_location&&can('location_read')" class="w-stock-link" :to="'/location/detail/'+row.from_location_id">{{nameWithTypeAndWarehouse(row.from_location)}}</NuxtLink><span v-else-if="row.from_location">{{nameWithTypeAndWarehouse(row.from_location)}}</span></template>
+      <template #cell-to="{row}"><NuxtLink v-if="row.to_location&&can('location_read')" class="w-stock-link" :to="'/location/detail/'+row.to_location_id">{{nameWithTypeAndWarehouse(row.to_location)}}</NuxtLink><span v-else-if="row.to_location">{{nameWithTypeAndWarehouse(row.to_location)}}</span></template>
       <template #cell-document="{row}"><NuxtLink class="w-stock-link" :to="activeTab==='adjustment'?'/adjustment/detail/'+row.adjustment_id:'/cyclecount/detail/'+row.task_id">{{activeTab==='adjustment'?'ADJ-':'CC-'}}{{row.adjustment_id||row.task_id}}</NuxtLink></template>
-      <template #cell-actions="{row}"><div class="w-stock-actions"><WButton v-if="staff.hasPermission('removal_add','removal_edit')" size="sm" variant="text" @click="removalFn(row)">{{t('common.inventory-ops.removal')}}</WButton><WButton v-if="staff.hasPermission('transfer_add','transfer_edit')" size="sm" variant="text" @click="transferFn(row)">{{t('common.inventory-ops.transfer')}}</WButton></div></template>
+      <template #cell-actions="{row}"><div class="w-stock-actions"><WButton v-if="can('inventory_read')" size="sm" variant="text" :to="{path:'/inventory/ledger',query:{goods_id:productId,location_id:row.location_id||row.location?.id,location_code:row.location?.code,lot_id:row.lot_id??0,lot_no:row.lot_no||undefined}}">{{t('ledger.title')}}</WButton><WButton v-if="can('inventory_edit')&&row.quantity>0" size="sm" variant="text" @click="relabelStock=row;relabelOpen=true">{{t('lot-rules.relabel')}}</WButton><WButton v-if="can('removal_edit')" size="sm" variant="text" @click="removalFn(row)">{{t('common.inventory-ops.removal')}}</WButton><WButton v-if="can('transfer_edit')" size="sm" variant="text" @click="transferFn(row)">{{t('common.inventory-ops.transfer')}}</WButton></div></template>
     </WTable>
     <footer class="w-goods-detail__record-foot"><WPagination :page="Number(route.query.page)||1" :page-size="tabData?.per_page||20" :total="tabData?.total" show-total @update:page="value=>router.push({query:{...route.query,page:value}})" /></footer>
     </template>
   </WCard>
 
-  <WModal v-model:open="stockOpen" :title="t('goods.operations.create-'+(stockModal||'putaway'))" :closable="!stockBusy">
+  <LotRelabelModal v-if="relabelStock" v-model:open="relabelOpen" :stock="relabelStock" :goods-id="Number(productId)" @saved="fetchData();fetchTabData()" /><WModal v-model:open="stockOpen" :title="t('goods.operations.create-'+(stockModal||'putaway'))" :closable="!stockBusy">
     <WFormGrid>
       <WField v-if="stockModal==='transfer'" :label="t('common.locations.from')"><p class="w-stock-location">{{ selectedFromLocation ? nameWithTypeAndWarehouse(selectedFromLocation):'' }}</p></WField>
       <WField v-if="stockModal==='removal'" :label="t('common.entities.location')"><p class="w-stock-location">{{ selectedLocation ? nameWithTypeAndWarehouse(selectedLocation):'' }}</p></WField>
-      <WField v-else :label="t(stockModal==='transfer'?'common.locations.to':'common.entities.location')" :error="stockModal==='transfer'?errors.to_location:errors.location"><WCombobox v-model="chosenLocationId" :search="searchStockLocations" :selected-label="stockModal==='transfer'?selectedToLocation?.code:selectedLocation?.code" :disabled="stockBusy" /></WField>
-      <div v-if="stockModal==='putaway' && putawayInventories!==null"><PutawayPendingNotice v-if="selectedLocation||putawayPendingRows.length<=1" :pending="selectedPending" :location-type="selectedLocation?.location_type" :warehouse-id="putawayWarehouseId" /><template v-else><PutawayPendingNotice v-for="row in putawayPendingRows" :key="row.warehouseId" :pending="row.pending" :warehouse-id="row.warehouseId" /></template></div>
+      <WField v-else :label="t(stockModal==='transfer'?'common.locations.to':'common.entities.location')" :error="stockModal==='transfer'?errors.to_location:errors.location"><WCombobox :key="String(pendingLot?.lot_id)+stockModal" v-model="chosenLocationId" two-line :search="searchStockLocations" :selected-label="stockModal==='transfer'?selectedToLocation?.code:selectedLocation?.code" :disabled="stockBusy" /></WField>
+      <PendingLotPicker v-if="stockModal==='putaway'" :goods-id="String(productId)" :warehouse-id="putawayWarehouseId" :disabled="stockBusy" @change="pendingLot=$event" /><div v-if="stockModal==='putaway' && putawayInventories!==null"><PutawayPendingNotice v-if="selectedLocation||putawayPendingRows.length<=1" :pending="selectedPending" :location-type="selectedLocation?.location_type" :warehouse-id="putawayWarehouseId" /><template v-else><PutawayPendingNotice v-for="row in putawayPendingRows" :key="row.warehouseId" :pending="row.pending" :warehouse-id="row.warehouseId" /></template></div>
       <WField :label="t('common.fields.quantity')" :error="errors.quantity"><WInput v-model="quantity" type="number" min="1" step="1" :max="stockModal==='putaway'?putawayMax??undefined:maxQuantity??undefined" :disabled="stockBusy" /></WField>
       <WField v-if="stockModal==='removal'" :label="t('common.fields.reason')" :error="errors.reason"><WSelect v-model="reason" :options="removalReasonsOptions.map(value=>({value,label:removalReasonLabel(value)}))" placeholder="—" :disabled="stockBusy" /></WField>
       <WField v-if="stockModal==='transfer'&&showTransferReason" :label="t('common.fields.reason')" :hint="t('common.tips.transfer-restore-reason')" :error="errors.transfer_reason"><WInput v-model="transferReason" maxlength="255" :disabled="stockBusy" /></WField>

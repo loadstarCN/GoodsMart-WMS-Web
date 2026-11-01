@@ -6,18 +6,18 @@ const editing=computed(()=>!!props.recipientId),canEdit=computed(()=>staff.hasPe
 const record=ref<Record<string,any>>({name:'',contact:'',phone:'',email:'',zip_code:'',address:'',is_active:true,country:null,organization:null,admin_area:null,locality:null,dependent_locality:null,address_line1:null,address_line2:null,latin:null})
 const fields=['name','contact','phone','email','zip_code','address','is_active','country','organization','admin_area','locality','dependent_locality','address_line1','address_line2','latin','tax_id','tax_id_type']
 const loading=ref(false),busy=ref(false),error=ref(''),errors=ref<Record<string,string>>({})
-let original='',generation=0
+const original=ref('');let generation=0
 const payload=()=>Object.fromEntries(fields.map(key=>[key,record.value[key]]))
-const dirty=computed(()=>JSON.stringify(payload())!==original)
+const dirty=computed(()=>JSON.stringify(payload())!==original.value)
 const title=computed(()=>t(editing.value?'recipient.operations.edit':'recipient.ui.create'))
 useHead({title})
 const load=async()=>{
  const seq=++generation;error.value=''
- if(!props.recipientId){original=JSON.stringify(payload());return}
+ if(!props.recipientId){original.value=JSON.stringify(payload());return}
  loading.value=true
  const result=await httpRequest<any>('/api/warehouse/recipient/'+props.recipientId,{onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
  if(seq!==generation)return
- if(result){record.value=result;original=JSON.stringify(payload())}
+ if(result){record.value=result;original.value=JSON.stringify(payload())}
  loading.value=false
 
 }
@@ -32,19 +32,20 @@ const save=async()=>{
  busy.value=true
  try{
   if(!staff.staffInfo)await staff.getCurrentStaffInfo()
-  const previous=original?JSON.parse(original):{}
+  const previous=original.value?JSON.parse(original.value):{}
   const body=editing.value?Object.fromEntries(Object.entries(payload()).filter(([key,value])=>JSON.stringify(value)!==JSON.stringify(previous[key]))):{...payload(),company_id:staff.staffInfo?.company_id}
   if(!Object.keys(body).length)return
   let success=false
   await httpRequest('/api/warehouse/recipient/'+(props.recipientId||''),{method:editing.value?'PUT':'POST',body:preserveAddressPatch(body,record.value),onSuccess:()=>{success=true},onError:err=>{error.value=bizErrorMessage(err)}})
-  if(success){original=JSON.stringify(payload());showToast(t('action-results.success'),'success');await router.push(props.recipientId?'/recipient/detail/'+props.recipientId:'/recipient')}
+  if(success){original.value=JSON.stringify(payload());showToast(t('action-results.success'),'success');await router.push(props.recipientId?'/recipient/detail/'+props.recipientId:'/recipient')}
  }finally{busy.value=false}
 }
+useUnsavedForm(()=>canEdit.value&&!loading.value&&!!original.value&&JSON.stringify(payload())!==original.value,()=>busy.value)
 </script>
 <template>
  <div class="w-recipient-form w-scope">
   <header><nav><NuxtLink class="w-recipient-breadcrumb" to="/recipient">{{t('nav.recipient')}}</NuxtLink><template v-if="editing"><span>/</span><NuxtLink class="w-recipient-breadcrumb" :to="'/recipient/detail/'+recipientId">{{record.name}}</NuxtLink></template><span>/</span><span>{{t(editing?'button.edit':'recipient.ui.create')}}</span></nav><div class="w-recipient-heading"><h1>{{title}}</h1></div><div v-if="editing&&record.id" class="w-recipient-meta"><span>{{t('recipient.ui.source')}} <strong>{{t(record.external_reference?'recipient.ui.external':'recipient.ui.manual')}}</strong></span><span v-if="record.external_reference">{{t('recipient.ui.external-id')}} <code>{{record.external_reference}}</code></span></div></header>
-  <WAlert v-if="error" tone="block" :title="error" />
+  <WAlert v-if="error" tone="block" :title="error"><template v-if="editing&&!record.id" #actions><WButton :disabled="loading" @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
   <WCard v-if="loading"><WEmptyState :title="t('common.status.loading')" /></WCard>
   <WCard v-else-if="!editing||record.id" flush><form @submit.prevent="save">
    <WFormSection :title="t('recipient.ui.basic')"><WFormGrid><WField :label="t('recipient.fields.name')" :error="errors.name"><WInput v-model="record.name" :disabled="busy||!canEdit" maxlength="255" /></WField><WField :label="t('common.fields.contact')" optional :span="4"><WInput v-model="record.contact" :disabled="busy||!canEdit" /></WField><WField :label="t('common.fields.phone')" optional :span="4"><WInput v-model="record.phone" type="tel" :disabled="busy||!canEdit" /></WField><WField :label="t('common.fields.email')" optional :span="4" :error="errors.email"><WInput v-model="record.email" type="email" :disabled="busy||!canEdit" /></WField></WFormGrid></WFormSection>

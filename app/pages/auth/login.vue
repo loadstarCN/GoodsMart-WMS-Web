@@ -72,7 +72,10 @@ const initCredentials = () => {
     try {
       const decrypted = decrypt(storedData);
       const { account } = JSON.parse(decrypted);
+      if (typeof account !== 'string') throw new Error('Invalid remembered account');
       user.account = account;
+      // Migrate legacy saved credentials to an account-only record immediately.
+      localStorage.setItem('userCredentials', encrypt(JSON.stringify({account,timestamp:Date.now()})));
       rememberMe.value = true;
     } catch (e) {
       console.error(t('login.errors.credential-parse-failed'), e);
@@ -83,7 +86,7 @@ const initCredentials = () => {
 
 // 清除凭证
 const clearCredentials = () => {
-  localStorage.removeItem('userCredentials');
+  try { localStorage.removeItem('userCredentials'); } catch { /* Storage may be disabled. */ }
   rememberMe.value = false;
 }
 
@@ -103,8 +106,11 @@ const user = reactive<LoginForm>({
   account: '',
   password: ''
 });
+const submitting=ref(false),loginError=ref('')
 
 const login = async () => {
+  if(submitting.value||authStore.loading)return
+  submitting.value=true;loginError.value=''
   try {
     if (rememberMe.value && !isStorageSupported.value) {
       showToast(t('login.errors.browser-not-support'), 'warning');
@@ -129,11 +135,13 @@ const login = async () => {
     } else {
       clearCredentials()
       // 优先展示后端返回的失败原因（如账号被停用、租户过期）
-      showToast(data?.message || t('login.errors.invalid-credentials'), 'error');
+      loginError.value=data?.message || t('login.errors.invalid-credentials');
     }
   } catch (error) {
     clearCredentials();
-    showToast(t('login.errors.login-failed'), 'error');
+    loginError.value=t('login.errors.login-failed');
+  } finally {
+    submitting.value=false;
   }
 };
 
@@ -175,4 +183,4 @@ definePageMeta({
 
 const showPassword=ref(false)
 useHead({title:()=>t('login.sign-in')})
-</script><template><AuthFrame><form @submit.prevent="login"><h2>{{t('login.sign-in')}}</h2><WField :label="t('common.account')"><WInput v-model="user.account" autocomplete="username" required :disabled="authStore.loading"/></WField><div class="password"><NuxtLink class="recover" to="/auth/forgot-password">{{t('login.forgot-password')}}</NuxtLink><WField :label="t('common.password')"><WInput v-model="user.password" :type="showPassword?'text':'password'" autocomplete="current-password" required :disabled="authStore.loading"><template #suffix><button type="button" class="show-password" :aria-label="t(showPassword?'auth-design.hide-password':'auth-design.show-password')" @click="showPassword=!showPassword"><WIcon :name="showPassword?'eye-off':'eye'" :size="18"/></button></template></WInput></WField></div><WCheckbox v-if="isStorageSupported" v-model="rememberMe">{{t('login.remember-me')}}</WCheckbox><WButton type="submit" variant="primary" block :loading="authStore.loading">{{t('login.sign-in')}}</WButton></form></AuthFrame></template><style scoped>.password{position:relative}.recover{position:absolute;right:0;top:0;z-index:1}.show-password{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--w-text-3)}</style>
+</script><template><AuthFrame><form @submit.prevent="login"><h2>{{t('login.sign-in')}}</h2><WAlert v-if="loginError" tone="block" :title="loginError"/><WField :label="t('common.account')"><WInput v-model="user.account" autocomplete="username" required :disabled="submitting||authStore.loading"/></WField><div class="password"><NuxtLink class="recover" to="/auth/forgot-password">{{t('login.forgot-password')}}</NuxtLink><WField :label="t('common.password')"><WInput v-model="user.password" :type="showPassword?'text':'password'" autocomplete="current-password" required :disabled="submitting||authStore.loading"><template #suffix><button type="button" class="show-password" :aria-label="t(showPassword?'auth-design.hide-password':'auth-design.show-password')" @click="showPassword=!showPassword"><WIcon :name="showPassword?'eye-off':'eye'" :size="18"/></button></template></WInput></WField></div><WCheckbox v-if="isStorageSupported" v-model="rememberMe" :disabled="submitting||authStore.loading">{{t('login.remember-me')}}</WCheckbox><WButton type="submit" variant="primary" block :loading="submitting||authStore.loading">{{t('login.sign-in')}}</WButton></form></AuthFrame></template><style scoped>.password{position:relative}.recover{position:absolute;right:0;top:0;z-index:1}.show-password{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--w-text-3)}</style>

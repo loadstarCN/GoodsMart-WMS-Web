@@ -2,7 +2,7 @@
 /**
  * 账户菜单（设计稿 TopbarSpec「账户菜单」）：头像、名字和公司；菜单里有修改密码、全屏、显示密度、退出登录。
  * 窄屏（< 768）时顶栏没有搜索框，「搜索」收进这里（打开同一个搜索面板）。
- * 「PDA 客户端」要等平台设置里有下载地址后再加（后端还没有这项设置）。
+ * PDA 下载与版本信息读取平台公共设置；未配置下载地址时不显示。
  */
 const props = withDefaults(defineProps<{
   variant?: 'wms' | 'admin'
@@ -10,13 +10,19 @@ const props = withDefaults(defineProps<{
   variant: 'wms',
 })
 
-const { t, te } = useI18n()
+const { t, te, locale, locales, setLocale } = useI18n()
+const languageCookie = useCookie<string | null>('i18n_lang', { maxAge: 2592000 })
+const languages = computed(() => locales.value.map(item => typeof item === 'string' ? { code:item, name:item } : item))
+const chooseLanguage = async (code: string) => { await setLocale(code as 'zh'|'en'|'ja'); languageCookie.value = code }
 const router = useRouter()
 const authStore = useAuthStore()
 const staffStore = useStaffStore()
 const warehouseStore = useWarehouseStore()
 const { density, setDensity } = useUiPrefs()
 const search = useGlobalSearch()
+const { data: presentation } = usePresentation()
+const pda = computed(() => presentation.value.pda || {})
+const pdaSize = computed(() => Number(pda.value.sizeBytes) > 0 ? `${(Number(pda.value.sizeBytes) / 1024 / 1024).toFixed(1)} MiB` : '')
 
 const userName = computed(() => authStore.userInfo?.user_name || '')
 const initial = computed(() => (userName.value.trim().charAt(0) || '?').toUpperCase())
@@ -47,11 +53,15 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFullscr
 
 const toggleDensity = () => setDensity(density.value === 'compact' ? 'comfortable' : 'compact')
 
-const logout = () => {
+const loggingOut = ref(false)
+const logout = async () => {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  if (!await confirmUnsavedFormsForReload()) { loggingOut.value = false; return }
   authStore.logUserOut()
   staffStore.clearStaffInfo()
   warehouseStore.clearWarehouse()
-  router.push('/')
+  await router.push('/')
 }
 </script>
 
@@ -99,6 +109,23 @@ const logout = () => {
       <span class="w-menu-item__label">{{ t('shell.account.density') }}</span>
       <span class="w-menu-item__sub">{{ density === 'compact' ? t('shell.account.density-compact') : t('shell.account.density-comfortable') }}</span>
     </button>
+    <div class="w-account-languages">
+      <div class="w-menu-divider" role="separator" />
+      <button v-for="language in languages" :key="language.code" type="button" class="w-menu-item" role="menuitemradio" :aria-checked="locale===language.code" :lang="language.code" @click="chooseLanguage(language.code)">
+        <span class="w-menu-item__label">{{language.name}}</span><WIcon v-if="locale===language.code" name="check" :size="14"/>
+      </button>
+    </div>
+    <template v-if="pda.header && pda.url">
+      <div class="w-menu-divider" role="separator" />
+      <div class="w-pda-meta">
+        <strong>{{ t('presentation.pda') }}</strong>
+        <span>{{ [pda.version, pda.releaseDate, pdaSize].filter(Boolean).join(' · ') }}</span>
+        <small v-if="pda.sha256">SHA-256 <code>{{ pda.sha256 }}</code></small>
+      </div>
+      <a :href="pda.url" target="_blank" rel="noopener noreferrer" class="w-menu-item" role="menuitem">
+        <span class="w-menu-item__label">{{ t('presentation.download') }}</span>
+      </a>
+    </template>
     <div class="w-menu-divider" role="separator" />
     <button type="button" class="w-menu-item is-danger" role="menuitem" @click="logout">
       <WIcon name="logout" :size="17" />
@@ -108,6 +135,7 @@ const logout = () => {
 </template>
 
 <style scoped>
+.w-pda-meta{display:flex;flex-direction:column;gap:4px;padding:10px 12px;font-size:12px;line-height:18px;color:var(--w-text-3);overflow-wrap:anywhere}.w-pda-meta strong{font-weight:500;color:var(--w-text-1)}.w-pda-meta code{display:block;font-size:12px;line-height:18px;color:inherit;user-select:all}
 .w-account-btn {
   display: inline-flex;
   align-items: center;
@@ -179,9 +207,10 @@ const logout = () => {
   color: var(--w-text-3);
 }
 /* 「搜索」只在窄屏出现（宽屏用顶栏的搜索框） */
-.w-account-search { display: none; }
+.w-account-search,.w-account-languages { display: none; }
 @media (max-width: 767.98px) {
   .w-account-btn__text, .w-account-btn__chevron { display: none; }
   .w-account-search { display: flex; }
+  .w-account-languages { display:block; }
 }
 </style>

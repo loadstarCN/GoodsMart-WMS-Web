@@ -427,3 +427,7 @@
 /* 字重 700 → 600（v2A 只用 400 / 500 / 600） */
 .w-page .fw-bold { font-weight: var(--w-fw-semibold) !important; }
 .w-page .text-muted { color: var(--w-text-3) !important; }
+/* Legacy confirmations can open above a WDrawer/WModal. */
+.swal2-container {
+  z-index: calc(var(--w-z-modal, 1070) + 10) !important;
+}

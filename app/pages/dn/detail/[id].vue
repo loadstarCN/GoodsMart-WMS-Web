@@ -34,6 +34,7 @@ const fetchDn = async () => {
   const request = ++dnRequest
   const id = dnId.value
   const current = () => request === dnRequest && id === dnId.value
+  loading.value = true
   loadError.value = null
   await httpRequest<any>(`/api/warehouse/dn/${id}`, {
     method: 'GET',
@@ -44,6 +45,7 @@ const fetchDn = async () => {
     },
     onError: (error) => {
       if (!current()) return
+      dn.value = null
       notFound.value = error.status === 404
       loadError.value = bizErrorMessage(error)
     },
@@ -62,6 +64,7 @@ const zoneDescription = computed(() => timeZoneDescription(view.flowTimeZone.val
 
 const load = () => Promise.all([fetchDn(), view.load()])
 onMounted(load)
+onBeforeUnmount(() => { dnRequest++ })
 watch(dnId, () => {
   dn.value = null
   loading.value = true

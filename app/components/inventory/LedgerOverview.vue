@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props=defineProps<{warehouseId:number|null;filters:Record<string,any>}>()
-const {t}=useI18n(),{bizErrorMessage}=useBizError()
+const {t}=useI18n(),{bizErrorMessage}=useBizError(),staff=useStaffStore()
 const data=ref<any>(null),loading=ref(false),error=ref(''),page=ref(1)
 let generation=0
 const scope=computed(()=>Object.fromEntries(['goods_id','goods_code','keyword','lot_id','lot_no','location_id','location_code','stock_types','start_time','end_time','category','brand','category_missing','brand_missing'].filter(key=>props.filters[key]).map(key=>[key,props.filters[key]])))
@@ -28,12 +28,12 @@ const chart=computed(()=>{
 <section class="w-ledger-overview" :aria-label="t('ledger.overview-title')">
  <header><h2>{{t('ledger.overview-title')}} <WHelp :text="t('ledger.overview-help')" /></h2><span v-if="data">{{$dayjs(data.start_time,'YYYY-MM-DD HH:mm',warehouseId)}} – {{$dayjs(data.end_time,'MM-DD HH:mm',warehouseId)}}</span></header>
  <WEmptyState v-if="!warehouseId" :title="t('common.validation.warehouse-required')" compact />
- <WAlert v-else-if="error" tone="block" :title="error" />
+ <WAlert v-else-if="error" tone="block" :title="error"><WButton @click="load">{{t('dn.list.retry')}}</WButton></WAlert>
  <WEmptyState v-else-if="loading" :title="t('common.status.loading')" compact />
  <template v-else-if="data">
  <div class="content"><div class="breakdown">
   <div class="equation"><template v-for="(key,index) in keys" :key="key"><span v-if="index" class="operator" aria-hidden="true">{{['','+','−','='][index]}}</span><div><span>{{t('stock-report.'+key)}}</span><strong :class="{closing:key==='closing'}">{{number(data.totals[key])}}</strong></div></template></div>
-  <WTable :rows="data.items" :columns="columns" :row-key="row=>row.goods_id+':'+row.lot_id"><template #cell-goods="{row}"><NuxtLink :to="'/goods/detail/'+row.goods_id">{{row.goods.name}}</NuxtLink><small>{{row.goods.code}}</small></template><template #cell-lot_no="{row}"><strong v-if="row.lot_no">{{row.lot_no}}</strong><span v-else class="no-lot">{{t('ledger.no-lot')}}</span></template></WTable>
+  <WTable :rows="data.items" :columns="columns" :row-key="row=>row.goods_id+':'+row.lot_id"><template #cell-goods="{row}"><NuxtLink v-if="staff.refreshed&&staff.hasPermission('goods_read')" :to="'/goods/detail/'+row.goods_id">{{row.goods.name}}</NuxtLink><span v-else>{{row.goods.name}}</span><small>{{row.goods.code}}</small></template><template #cell-lot_no="{row}"><strong v-if="row.lot_no">{{row.lot_no}}</strong><span v-else class="no-lot">{{t('ledger.no-lot')}}</span></template></WTable>
   <WPagination v-if="data.total>20" v-model:page="page" :page-size="20" :total="data.total" show-total />
  </div><div v-if="chart" class="trend"><h3>{{t('ledger.trend')}} <small>{{t('ledger.day-end')}}</small></h3><div class="plot"><div class="y-axis"><span>{{number(chart.max)}}</span><span>{{number(chart.min)}}</span></div><svg viewBox="0 0 300 150" role="img" :aria-label="t('ledger.trend')+': '+number(chart.lastValue)" preserveAspectRatio="none"><path d="M0 10H300 M0 75H300 M0 140H300" stroke="#EDEFF3" fill="none"/><path :d="chart.area" fill="#7855FE" fill-opacity=".1"/><path :d="chart.line" stroke="#7855FE" stroke-width="2" vector-effect="non-scaling-stroke" fill="none"/><circle :cx="chart.last[0]" :cy="chart.last[1]" r="3" fill="#7855FE"/></svg></div><div class="x-axis"><span>{{chart.firstDate}}</span><span>{{chart.lastDate}}</span></div><span class="latest">{{number(chart.lastValue)}}</span></div></div>
  <p class="scope-note">{{t('ledger.overview-scope')}}</p>

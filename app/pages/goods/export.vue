@@ -1,33 +1,52 @@
 <script setup lang="ts">
-const { t, locale }=useI18n(), route=useRoute(), staff=useStaffStore()
+const { t, locale }=useI18n(), route=useRoute(), staff=useStaffStore(),warehouse=useWarehouseStore()
 const { bizErrorMessage }=useBizError()
+const canRead=computed(()=>staff.refreshed&&!!staff.staffInfo&&staff.hasPermission('goods_read'))
 useHead({title:()=>t('goods.files.export-title')})
-const filters=ref<Record<string,any>>(Object.fromEntries(Object.entries(route.query).filter(([key])=>!['page','per_page'].includes(key))))
+const filters=ref<Record<string,any>>({is_active:'true',...Object.fromEntries(Object.entries(route.query).filter(([key])=>!['page','per_page','warehouse_id'].includes(key)))})
 const catalog=ref<any>(null), selected=ref<string[]>([]), preview=ref<any>(null), jobs=ref<any[]>([])
-const format=ref('xlsx'),encoding=ref('utf-8'),lang=ref(locale.value),busy=ref(false),error=ref('')
-const label=(item:any)=>item?.labels?.[locale.value] || item?.labels?.['en-US'] || item?.key
-const available=computed<any[]>(()=>catalog.value?.columns.filter((col:any)=>col.group!=='stock'||staff.hasPermission('inventory_read'))||[])
+const catalogLocale=computed(()=>({zh:'zh-CN',ja:'ja-JP',en:'en-US'}[locale.value]||locale.value))
+const format=ref('xlsx'),encoding=ref('utf-8'),lang=ref(catalogLocale.value),busy=ref(false),error=ref('')
+const label=(item:any)=>item?.labels?.[catalogLocale.value] || item?.labels?.['en-US'] || item?.key
+const available=computed<any[]>(()=>catalog.value?.columns.filter((col:any)=>col.group!=='stock'||(staff.refreshed&&!!staff.staffInfo&&staff.hasPermission('inventory_read')))||[])
 const selectedColumns=computed(()=>selected.value.map(key=>available.value.find(col=>col.key===key)).filter(Boolean))
 const preset=(name:string)=>{selected.value=(catalog.value?.presets[name]||[]).filter((key:string)=>available.value.some(col=>col.key===key))}
 const move=(index:number,delta:number)=>{const next=[...selected.value],target=index+delta;if(target<0||target>=next.length)return;[next[index],next[target]]=[next[target]!,next[index]!];selected.value=next}
-const body=()=>({filters:filters.value,columns:selected.value,file_format:format.value,encoding:encoding.value,lang:lang.value})
+const body=()=>({filters:{...filters.value,warehouse_id:warehouse.currentWarehouse?.id||undefined},columns:selected.value,file_format:format.value,encoding:encoding.value,lang:lang.value})
+const catalogLoading=ref(false),catalogError=ref(''),jobsLoading=ref(false),jobsError=ref('')
 let timer:ReturnType<typeof setTimeout>|undefined,alive=true
+let jobsGeneration=0
 const loadJobs=async()=>{
- const data=await httpRequest<PaginationData>('/api/warehouse/goods/exports',{params:{per_page:10}})
- if(!alive)return
- jobs.value=data?.items||[]
+ if(!canRead.value)return
+ const seq=++jobsGeneration
+ jobsLoading.value=true;jobsError.value='';jobs.value=[]
+ const data=await httpRequest<PaginationData>('/api/warehouse/goods/exports',{headers:warehouseHeaders(warehouse.currentWarehouse?.id),params:{per_page:10},onError:err=>{if(alive&&seq===jobsGeneration)jobsError.value=bizErrorMessage(err)}})
+ if(!alive||seq!==jobsGeneration)return
+ jobsLoading.value=false
+ if(data)jobs.value=data.items
  if(timer)clearTimeout(timer)
- if(jobs.value.some(job=>['pending','running'].includes(job.status)))timer=setTimeout(loadJobs,3000)
+ if(data&&jobs.value.some(job=>['pending','running'].includes(job.status)))timer=setTimeout(loadJobs,3000)
 }
-const check=async()=>{if(busy.value)return;busy.value=true;error.value='';try{preview.value=await httpRequest('/api/warehouse/goods/exports/preview',{method:'POST',body:body(),onError:err=>{error.value=bizErrorMessage(err)}})}finally{busy.value=false}}
+const check=async()=>{if(busy.value||!canRead.value||!catalog.value||catalogLoading.value)return;busy.value=true;preview.value=null;error.value='';try{const scope=warehouse.currentWarehouse?.id;const data=await httpRequest('/api/warehouse/goods/exports/preview',{method:'POST',body:body(),onError:err=>{if(alive&&scope===warehouse.currentWarehouse?.id)error.value=bizErrorMessage(err)}});if(alive&&scope===warehouse.currentWarehouse?.id)preview.value=data}finally{busy.value=false}}
 const generate=async()=>{
- if(busy.value||!preview.value||preview.value.too_large)return
+ if(busy.value||!canRead.value||!preview.value||preview.value.too_large)return
  busy.value=true;error.value=''
  try{const result=await httpRequest<any>('/api/warehouse/goods/exports',{method:'POST',body:body(),onError:err=>{error.value=bizErrorMessage(err)}});if(result){await loadJobs();if(result.downloadable)await download(result)}}finally{busy.value=false}
 }
-const download=async(job:any)=>{try{await downloadFile(`/api/warehouse/goods/exports/${job.id}/download`,{},job.file_name||'goods.xlsx')}catch(err){error.value=bizErrorMessage(err as HttpRequestError)}}
+const jobAction=ref<number|null>(null)
+const repeatJob=async(job:any,action:'retry'|'rerun')=>{
+ if(!canRead.value||jobAction.value!==null||busy.value)return
+ jobAction.value=job.id;error.value=''
+ try{
+  const result=await httpRequest<any>(`/api/warehouse/goods/exports/${job.id}/${action}`,{method:'POST',headers:warehouseHeaders(warehouse.currentWarehouse?.id),onError:err=>{if(alive)error.value=bizErrorMessage(err)}})
+  if(alive&&result)await loadJobs()
+ }finally{jobAction.value=null}
+}
+const download=async(job:any)=>{if(!canRead.value)return;try{await downloadFile(`/api/warehouse/goods/exports/${job.id}/download`,{},job.file_name||'goods.xlsx')}catch(err){error.value=bizErrorMessage(err as HttpRequestError)}}
 watch([filters,selected,format,encoding,lang],()=>{preview.value=null},{deep:true})
-onMounted(async()=>{catalog.value=await httpRequest('/api/warehouse/goods/exports/columns',{onError:err=>{error.value=bizErrorMessage(err)}});preset('import_template');await loadJobs()})
+const loadCatalog=async()=>{if(!canRead.value)return;catalogLoading.value=true;catalogError.value='';const data=await httpRequest('/api/warehouse/goods/exports/columns',{onError:err=>{if(alive)catalogError.value=bizErrorMessage(err)}});if(!alive)return;catalog.value=data;catalogLoading.value=false;if(data)preset('import_template')}
+watch(()=>warehouse.currentWarehouse?.id,()=>{preview.value=null;loadJobs()})
+onMounted(async()=>{await staff.getCurrentStaffInfo();if(alive){loadCatalog();loadJobs()}})
 onBeforeUnmount(()=>{alive=false;if(timer)clearTimeout(timer)})
 const jobColumns=computed(()=>[{key:'file_name',label:t('goods.files.file'),wrap:true},{key:'status',label:t('common.fields.status')},{key:'row_count',label:t('goods.files.rows'),type:'qty' as const},{key:'created_at',label:t('common.dates.created')},{key:'actions',label:t('common.fields.action')}])
 </script>
@@ -35,7 +54,7 @@ const jobColumns=computed(()=>[{key:'file_name',label:t('goods.files.file'),wrap
  <div class="w-file-page w-scope">
   <header><nav><NuxtLink class="w-breadcrumb-link" to="/goods">{{ t('nav.goods') }}</NuxtLink><span>/</span>{{ t('goods.ui.export') }}</nav><h1>{{ t('goods.files.export-title') }}</h1></header>
   <WAlert v-if="error" tone="block" :title="error" />
-  <div class="w-file-page__card">
+  <WAlert v-if="catalogError" tone="block" :title="catalogError"><template #actions><WButton :disabled="catalogLoading" @click="loadCatalog">{{t('dn.list.retry')}}</WButton></template></WAlert><WEmptyState v-if="catalogLoading" :title="t('common.status.loading')"/><div v-if="canRead&&catalog" class="w-file-page__card">
    <WFormSection :title="t('goods.files.filters')"><WFormGrid>
     <WField :label="t('common.search')"><WInput v-model="filters.keyword" :disabled="busy" /></WField>
     <WField :label="t('goods.fields.brand')" :span="4" optional><WInput v-model="filters.brand" :disabled="busy" /></WField>
@@ -56,8 +75,8 @@ const jobColumns=computed(()=>[{key:'file_name',label:t('goods.files.file'),wrap
    </WFormGrid></WFormSection>
    <footer class="w-file-page__footer"><span v-if="preview">{{ t('goods.files.matches',{count:preview.total}) }}</span><WButton :loading="busy" :disabled="!selected.length" @click="check">{{ t('goods.files.preview') }}</WButton><WButton variant="primary" :disabled="busy||!preview||preview.too_large" @click="generate">{{ t('goods.files.generate') }}</WButton></footer>
   </div>
-  <WAlert v-if="preview?.unencodable?.count" tone="warn" :title="t('goods.files.lossy',{count:preview.unencodable.count})" />
-  <WCard :title="t('goods.files.recent')" flush><WTable :columns="jobColumns" :rows="jobs" inset><template #cell-status="{row}"><WStatus :tone="row.status==='failed'?'bad':row.status==='completed'?'ok':'none'">{{ t('goods.files.'+row.status) }}</WStatus><span v-if="row.status==='running'"> {{ row.progress }}%</span></template><template #cell-created_at="{row}">{{ $dayjs(row.created_at) }}</template><template #cell-actions="{row}"><WButton v-if="row.downloadable" size="sm" @click="download(row)">{{ t('goods.files.download') }}</WButton></template></WTable></WCard>
+  <WAlert v-if="preview?.too_large" tone="block" :title="t('goods.files.export-too-large',{count:preview.total,limit:preview.max_rows})"/><WAlert v-if="preview?.unencodable?.count" tone="warn" :title="t('goods.files.lossy',{count:preview.unencodable.count})" />
+  <WCard :title="t('goods.files.recent')" flush><WAlert v-if="jobsError" tone="block" :title="jobsError"><template #actions><WButton :disabled="jobsLoading" @click="loadJobs">{{t('dn.list.retry')}}</WButton></template></WAlert><WTable :loading="jobsLoading" :columns="jobColumns" :rows="jobs" inset><template #cell-status="{row}"><WStatus :tone="row.status==='failed'?'bad':row.status==='completed'?'ok':'none'">{{ t('goods.files.'+row.status) }}</WStatus><span v-if="row.status==='running'"> {{ row.progress }}%</span><span v-if="row.error" class="w-export-error">{{row.error}}</span><span v-if="row.expires_at" class="w-export-expiry">{{t('goods.files.expires')}} {{$dayjs(row.expires_at)}}</span></template><template #cell-created_at="{row}">{{ $dayjs(row.created_at) }}</template><template #cell-actions="{row}"><WButton v-if="row.downloadable" size="sm" @click="download(row)">{{ t('goods.files.download') }}</WButton><WButton v-if="row.status==='failed'" size="sm" :disabled="busy||jobAction!==null" @click="repeatJob(row,'retry')">{{t('dn.list.retry')}}</WButton><WButton v-if="['completed','expired'].includes(row.status)" size="sm" variant="text" :disabled="busy||jobAction!==null" @click="repeatJob(row,'rerun')">{{t('goods.files.rerun')}}</WButton></template></WTable></WCard>
  </div>
 </template>
 <style scoped>
@@ -79,3 +98,5 @@ const jobColumns=computed(()=>[{key:'file_name',label:t('goods.files.file'),wrap
 .w-export-columns__available fieldset>div { display:flex; flex-wrap:wrap; gap:8px 16px; }
 @media(max-width:767px){.w-export-columns{grid-template-columns:minmax(0,1fr)}.w-export-columns__selected{border-right:0;border-bottom:1px solid var(--w-border);max-height:220px}}
 </style>
+
+<style scoped>.w-export-error,.w-export-expiry{display:block;font-size:12px;line-height:18px;overflow-wrap:anywhere;max-width:320px}.w-export-error{color:var(--w-danger)}.w-export-expiry{color:var(--w-text-3)}</style>

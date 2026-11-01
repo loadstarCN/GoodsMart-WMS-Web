@@ -1,20 +1,24 @@
 <script lang="ts" setup>
+import PendingLotPicker from '~/components/inventory/PendingLotPicker.vue'
 import LocationMapPreview from '~/components/warehouse/LocationMapPreview.vue'
 import LocationActivity from '~/components/inventory/LocationActivity.vue'
 import {removalReasonsOptions}  from '~/data/selectOptions'
 import { pendingPutaway, putawayLimit, putawayQuantityError, type PendingPutaway } from '~/composables/inventory/putawayStock'
 
 // 定义页面元数据
-definePageMeta({
-});
+definePageMeta({key:route=>route.path});
 
 
 
 let loading = ref(true);
+const loadError=ref(''),historyError=ref(''),overviewError=ref(''),overviewLoading=ref(false);
+let detailGeneration=0;
 const router = useRouter();
 let route = useRoute();
 const locationId = Number(route.params.id);
 const staff = useStaffStore();
+const permissionsReady=ref(false);
+const allowed=(...permissions:string[])=>permissionsReady.value&&staff.hasPermission(...permissions);
 const operation = ref<'putaway'|'removal'|'transfer'|null>(null);
 const modalOpen = computed({ get:()=>operation.value!==null,set:value=>{if(!value)operation.value=null} });
 
@@ -52,6 +56,9 @@ const remark = ref<any>(null);
 const reason = ref<any>(null);
 
 const selectedLocation = ref<any>(null);
+const selectedLotId = ref<number|null>(null);
+const selectedLotName=ref(''),selectedLotExpiry=ref('');
+const pendingLot = ref<{lot_id:number|null;receipt_source_id:number;pending:PendingPutaway|null}|null>(null);
 const locationSelectedOptions = ref<any[]>([]);
 // 移库原因：从破损 / 退货库位（本库位）移回标准库位（货重新变成可售）必填，否则后端 400 15018；被后端以 15018 拦下时也显示
 const transferReason = ref<any>(null);
@@ -105,10 +112,7 @@ const nameWithCodeAndName = (({ code, name }: any) => {
 // ------------------ 上架：所选商品在本仓库的待上架（良品 / 破损） ----------------------
 // 本库位是标准 / 退货库位时只能上良品；读不到库存（没有库存查看权限等）时不提示、不预校验，以后端为准
 const putawayInventory = ref<any | null | undefined>(undefined);
-const putawayPending = computed<PendingPutaway | null>(() => {
-  if (putawayInventory.value === undefined) return null;
-  return pendingPutaway(putawayInventory.value) ?? { total: 0, good: 0, damaged: 0 };
-});
+const putawayPending = computed<PendingPutaway | null>(() => pendingLot.value?.pending ?? null);
 const putawayMax = computed<number | null>(() =>
   putawayPending.value ? putawayLimit(putawayPending.value, itemData.value?.location_type) : null
 );
@@ -160,6 +164,7 @@ const createPutaway = async () => {
     return;
   }
   // 预校验待上架数量（后端同样会拦：超出待上架 15007；标准 / 退货库位超出良品 15016）
+  if (!pendingLot.value) { showToast(t('goods-label.lot-required'), 'error'); return; }
   const quantityError = putawayQuantityError(putawayPending.value, itemData.value?.location_type, Number(quantity.value));
   if (quantityError) {
     errors.value.quantity = bizErrorMessage(quantityError);
@@ -170,7 +175,7 @@ const createPutaway = async () => {
   const data = await httpRequest('/api/warehouse/putaway/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...warehouseHeaders(itemData.value?.warehouse_id) },
-      body: {location_id: locationId, goods_id: selectedGoods.value.id, quantity: Number(quantity.value), remark: remark.value},
+      body: {location_id: locationId, goods_id: selectedGoods.value.id, quantity: Number(quantity.value), remark: remark.value, lot_id: pendingLot.value?.lot_id, receipt_source_id: pendingLot.value?.receipt_source_id},
       onSuccess: async() => {
         selectedGoods.value = null;
         quantity.value = null;
@@ -196,6 +201,7 @@ const createPutaway = async () => {
 };
 
 const removalFn = (item: any) => {
+  selectedLotId.value = item.lot_id ?? null;selectedLotName.value=item.lot_no||'';selectedLotExpiry.value=item.expiry_date||'';
   activePutaway.value = false;
   selectedGoods.value = item.goods;
   maxQuantity.value = item.quantity;
@@ -211,8 +217,12 @@ const createRemoval = async () => {
     errors.value.goods = t('location.validation.goods.required');
     return;
   }
-  if (!quantity.value) {
-    errors.value.quantity = t('location.validation.quantity-required');
+  if (!Number.isSafeInteger(Number(quantity.value)) || Number(quantity.value) <= 0) {
+    errors.value.quantity = t('common.validation.quantity-positive-integer');
+    return;
+  }
+  if (Number(quantity.value) > Number(maxQuantity.value)) {
+    errors.value.quantity = t('common.validation.quantity-exceeds-available',{max:maxQuantity.value});
     return;
   }
   if (!reason.value) {
@@ -223,7 +233,7 @@ const createRemoval = async () => {
   const data = await httpRequest('/api/warehouse/removal/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...warehouseHeaders(itemData.value?.warehouse_id) },
-      body: {location_id: locationId, goods_id: selectedGoods.value.id, quantity: Number(quantity.value), reason:reason.value, remark: remark.value},
+      body: {location_id: locationId, goods_id: selectedGoods.value.id, quantity: Number(quantity.value), reason:reason.value, remark: remark.value, lot_id: selectedLotId.value},
       onSuccess: async() => {
         selectedGoods.value = null;
         quantity.value = null;
@@ -247,6 +257,7 @@ const createRemoval = async () => {
 };
 
 const transferFn = (item: any) => {
+  selectedLotId.value = item.lot_id ?? null;selectedLotName.value=item.lot_no||'';selectedLotExpiry.value=item.expiry_date||'';
   activePutaway.value = false;
   selectedGoods.value = item.goods;
   maxQuantity.value = item.quantity;
@@ -269,19 +280,23 @@ const createTransfer = async () => {
     return;
   }
   if (!selectedLocation.value) {
-    errors.value.location = 'Please select a location.';
+    errors.value.location = t('goods.validation.location.required');
     return;
   }
   if (selectedLocation.value.id === locationId) {
-    errors.value.location = 'The two locations cannot be the same.';
+    errors.value.location = t('goods.validation.location.not-same');
     return;
   }
   if (selectedLocation.value.warehouse_id !== itemData.value.warehouse_id) {
-    errors.value.location = 'The two locations must be in the same warehouse.';
+    errors.value.location = t('goods.validation.location.same-warehouse');
     return;
   }
-  if (!quantity.value) {
-    errors.value.quantity = t('location.validation.quantity-required');
+  if (!Number.isSafeInteger(Number(quantity.value)) || Number(quantity.value) <= 0) {
+    errors.value.quantity = t('common.validation.quantity-positive-integer');
+    return;
+  }
+  if (Number(quantity.value) > Number(maxQuantity.value)) {
+    errors.value.quantity = t('common.validation.quantity-exceeds-available',{max:maxQuantity.value});
     return;
   }
   if (transferReasonRequired.value && !reasonText) {
@@ -292,7 +307,7 @@ const createTransfer = async () => {
   const data = await httpRequest('/api/warehouse/transfer/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...warehouseHeaders(itemData.value?.warehouse_id) },
-      body: {from_location_id: locationId, to_location_id:selectedLocation.value.id, goods_id: selectedGoods.value.id, quantity: Number(quantity.value), remark: remark.value, reason: reasonText || undefined},
+      body: {from_location_id: locationId, to_location_id:selectedLocation.value.id, goods_id: selectedGoods.value.id, quantity: Number(quantity.value), remark: remark.value, reason: reasonText || undefined, lot_id: selectedLotId.value},
       onSuccess: async() => {
         selectedGoods.value = null;
         selectedLocation.value = null;
@@ -321,14 +336,16 @@ const createTransfer = async () => {
 };
 
 const fetchData = async () => {
-    loading.value = true;
+    const seq=++detailGeneration;loadError.value='';itemData.value=null;loading.value=true;
+    permissionsReady.value=false;const current=await staff.getCurrentStaffInfo();if(seq!==detailGeneration)return null;if(!current){loadError.value=t('common.validation.company-required');loading.value=false;return null}permissionsReady.value=true;
     const data = await httpRequest(`/api/warehouse/location/${locationId}`, {
         method: 'GET',
         params: route.query,
         onSuccess: (data) => {
-          itemData.value = data;
+          if(seq===detailGeneration)itemData.value = data;
         },
         onError: (error) => {
+            if(seq!==detailGeneration)return;loadError.value=bizErrorMessage(error);
             if (error.status === 404) {
                 // 如果商品不存在，跳转到商品列表页面
                 showError({ statusCode: 404, message: t('action-results.not-found',{entity:t('common.entities.location'),identifier:locationId}) });
@@ -338,7 +355,7 @@ const fetchData = async () => {
 
         },
         onFinally: () => {
-            loading.value = false;
+            if(seq===detailGeneration)loading.value = false;
         }
     })
     return data;
@@ -347,7 +364,7 @@ const fetchData = async () => {
 
 let historyGeneration=0
 const fetchTabData = async () => {
-    const seq=++historyGeneration; if(!activeTab.value){tabData.value=null;loading.value=false;return}
+    const seq=++historyGeneration;historyError.value='';tabData.value=null; if(!activeTab.value){tabData.value=null;loading.value=false;return}
     let url = '';
     switch (activeTab.value) {
         case 'all':
@@ -384,7 +401,7 @@ const fetchTabData = async () => {
           if(seq===historyGeneration)tabData.value = data;
         },
         onError: (error) => {
-            if(seq===historyGeneration)showToast(error.message, 'error')
+            if(seq===historyGeneration)historyError.value=bizErrorMessage(error)
         },
         onFinally: () => {
             if(seq===historyGeneration)loading.value = false;
@@ -421,7 +438,7 @@ watch(() => route.query, async () => {
 });
 
 onMounted(async() => {
-  await fetchData();
+  if(!await fetchData())return;
   await fetchTabData();
         await loadOverview();
 });
@@ -429,8 +446,9 @@ onMounted(async() => {
 
 
 useHead({title:()=>itemData.value?.code||t('nav.location')})
-const historyTabs=computed(()=>['all','putaway','removal','adjustment','transfer','cyclecount'].filter(key=>staff.hasPermission(key==='all'?'inventory_read':key+'_read')).map(key=>({key,label:t('location.ui.'+key)})))
+const historyTabs=computed(()=>['all','putaway','removal','adjustment','transfer','cyclecount'].filter(key=>allowed(key==='all'?'inventory_read':key==='cyclecount'?'cycle_count_read':key+'_read')).map(key=>({key,label:t('location.ui.'+key)})))
 const openOperation=(kind:'putaway'|'removal'|'transfer',row?:any)=>{
+ if(!allowed(kind+'_edit')||loading.value)return;
  quantity.value=null;remark.value=null;reason.value=null;selectedLocation.value=null;errors.value={};
  if(kind==='putaway')putawayFn();else if(kind==='removal')removalFn(row);else transferFn(row);
  operation.value=kind;
@@ -439,31 +457,33 @@ const selectedGoodsId=computed({get:()=>selectedGoods.value?.id??null,set:id=>{s
 const selectedLocationId=computed({get:()=>selectedLocation.value?.id??null,set:id=>{selectedLocation.value=locationSelectedOptions.value.find(row=>row.id===id)||null}})
 const searchGoods=async(query:string)=>{await fetchGoodsData(query);return goodsSelectedOptions.value.map(row=>({value:row.id,label:nameWithCodeAndName(row)}))}
 const searchLocations=async(query:string)=>{await fetchLocationData(query);return locationSelectedOptions.value.filter(row=>row.id!==locationId).map(row=>({value:row.id,label:nameWithTypeAndWarehouse(row)}))}
-const submitOperation=()=>operation.value==='putaway'?createPutaway():operation.value==='removal'?createRemoval():createTransfer()
+const submitOperation=()=>{if(!operation.value||!allowed(operation.value+'_edit')||isLoading.value)return;return operation.value==='putaway'?createPutaway():operation.value==='removal'?createRemoval():createTransfer()}
 
 const storagePage=ref(1)
 const storageRows=ref<PaginationData|null>(null),locationSummary=ref<any>(null),latestMovement=ref<any>(null),lastCount=ref<any>(null)
 let overviewGeneration=0
 const loadOverview=async()=>{
- const seq=++overviewGeneration
+ const seq=++overviewGeneration;overviewLoading.value=true;overviewError.value='';storageRows.value=null;locationSummary.value=null;latestMovement.value=null;lastCount.value=null
+ const onError=(e:HttpRequestError)=>{if(seq===overviewGeneration)overviewError.value=bizErrorMessage(e)}
  const headers=warehouseHeaders(itemData.value?.warehouse_id),params={location_id:locationId,per_page:50,page:storagePage.value}
  const values=await Promise.all([
-  staff.hasPermission('goods_read')?httpRequest<PaginationData>('/api/warehouse/goods/locations/',{params,headers}):null,
-  staff.hasPermission('inventory_read')?httpRequest<any>('/api/warehouse/inventory/by-location',{params:{location_id:locationId,include_inactive:true},headers}):null,
-  staff.hasPermission('inventory_read')?httpRequest<PaginationData>('/api/warehouse/stock-ledger/',{params:{...params,page:1,per_page:1},headers}):null,
-  staff.hasPermission('cyclecount_read')?httpRequest<PaginationData>('/api/warehouse/cyclecount/details/search/',{params:{...params,page:1,per_page:1,status:'completed',order_by:'completed_at'},headers}):null,
+  allowed('goods_read')?httpRequest<PaginationData>('/api/warehouse/goods/locations/',{params,headers,onError}):null,
+  allowed('inventory_read')?httpRequest<any>('/api/warehouse/inventory/by-location',{params:{location_id:locationId,include_inactive:true},headers,onError}):null,
+  allowed('inventory_read')?httpRequest<PaginationData>('/api/warehouse/stock-ledger/',{params:{...params,page:1,per_page:1},headers,onError}):null,
+  allowed('cycle_count_read')?httpRequest<PaginationData>('/api/warehouse/cyclecount/details/search/',{params:{...params,page:1,per_page:1,status:'completed',order_by:'completed_at'},headers,onError}):null,
  ])
- if(seq===overviewGeneration){storageRows.value=values[0];locationSummary.value=values[1]?.items?.[0];latestMovement.value=values[2]?.items?.[0];lastCount.value=values[3]?.items?.[0]}
+ if(seq===overviewGeneration){overviewLoading.value=false;storageRows.value=values[0];locationSummary.value=values[1]?.items?.[0];latestMovement.value=values[2]?.items?.[0];lastCount.value=values[3]?.items?.[0]}
 }
 watch(storagePage,loadOverview)
-onBeforeUnmount(()=>{overviewGeneration++;historyGeneration++})
+onBeforeUnmount(()=>{overviewGeneration++;historyGeneration++;detailGeneration++})
 const storageColumns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},{key:'quantity',label:t('common.fields.quantity'),type:'qty' as const,strong:true,keepZero:true},{key:'created_at',label:t('location.ui.putaway-time')},{key:'updated_at',label:t('location.ui.last-movement')},{key:'actions',label:t('common.fields.action'),align:'right' as const}])
 </script>
 <template>
  <div class="w-location-detail w-scope"><nav><NuxtLink class="w-location-back" to="/location">{{t('nav.location')}}</NuxtLink><span>/</span><span>{{itemData?.code}}</span></nav>
- <WCard v-if="itemData" class="w-location-overview"><header><div><h1>{{itemData.code}}</h1><WStatus muted :tone="itemData.is_active?'ok':'none'">{{t(itemData.is_active?'recipient.ui.enabled':'recipient.ui.disabled')}}</WStatus><span>{{locationTypeLabel(itemData.location_type)}}</span></div><div><WButton icon="printer" :to="'/location/label/'+locationId">{{t('location-label.title')}}</WButton><WButton v-if="staff.hasPermission('location_edit')" :to="'/location/edit/'+locationId">{{t('button.edit')}}</WButton></div></header><div class="w-location-context"><strong>{{itemData.warehouse?.name||itemData.warehouse_name}}</strong><span>{{locationTypeLabel(itemData.location_type)}}</span></div><div class="w-location-metrics"><div><span>{{t('goods.ui.onhand')}}</span><strong>{{locationSummary?.quantity??'—'}}</strong><small>{{t('warehouse.ui.goods-count',{count:locationSummary?.goods_count??'—'})}}</small></div><div><span>{{t('location.ui.last-movement')}}</span><strong>{{latestMovement?$dayjs(latestMovement.occurred_at,'MM/DD HH:mm',itemData):'—'}}</strong><small>{{latestMovement?t('ledger.movements.'+latestMovement.movement_type):''}}</small></div><div><span>{{t('location.ui.last-count')}}</span><strong>{{lastCount?.completed_at?$dayjs(lastCount.completed_at,'MM/DD',itemData):'—'}}</strong><small>{{lastCount?.task_id?'CC-'+lastCount.task_id:''}}</small></div><div><span>{{t('location.ui.utilization')}}</span><strong>{{locationSummary?.volume_utilization!=null?Math.round(locationSummary.volume_utilization*100)+'%':'—'}}</strong><progress v-if="locationSummary?.volume_utilization!=null" :value="locationSummary.volume_utilization" max="1" /></div></div></WCard>
+ <WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData().then(data=>{if(data){fetchTabData();loadOverview()}})">{{t('dn.list.retry')}}</WButton></template></WAlert><WAlert v-if="overviewError" tone="block" :title="overviewError"><template #actions><WButton @click="loadOverview">{{t('dn.list.retry')}}</WButton></template></WAlert><WAlert v-if="historyError" tone="block" :title="historyError"><template #actions><WButton @click="fetchTabData">{{t('dn.list.retry')}}</WButton></template></WAlert>
+ <WCard v-if="itemData" class="w-location-overview"><header><div><h1>{{itemData.code}}</h1><WStatus muted :tone="itemData.is_active?'ok':'none'">{{t(itemData.is_active?'recipient.ui.enabled':'recipient.ui.disabled')}}</WStatus><span>{{locationTypeLabel(itemData.location_type)}}</span></div><div><WButton icon="printer" :to="'/location/label/'+locationId">{{t('location-label.title')}}</WButton><WButton v-if="allowed('location_edit')" :to="'/location/edit/'+locationId">{{t('button.edit')}}</WButton></div></header><div class="w-location-context"><strong>{{itemData.warehouse?.name||itemData.warehouse_name}}</strong><span>{{locationTypeLabel(itemData.location_type)}}</span></div><div class="w-location-metrics"><div><span>{{t('goods.ui.onhand')}}</span><strong>{{locationSummary?.quantity??'—'}}</strong><small>{{t('warehouse.ui.goods-count',{count:locationSummary?.goods_count??'—'})}}</small></div><div><span>{{t('location.ui.last-movement')}}</span><strong>{{latestMovement?$dayjs(latestMovement.occurred_at,'MM/DD HH:mm',itemData):'—'}}</strong><small>{{latestMovement?t('ledger.movements.'+latestMovement.movement_type):''}}</small></div><div><span>{{t('location.ui.last-count')}}</span><strong>{{lastCount?.completed_at?$dayjs(lastCount.completed_at,'MM/DD',itemData):'—'}}</strong><small>{{lastCount?.task_id?'CC-'+lastCount.task_id:''}}</small></div><div><span>{{t('location.ui.utilization')}}</span><strong>{{locationSummary?.volume_utilization!=null?Math.round(locationSummary.volume_utilization*100)+'%':'—'}}</strong><progress v-if="locationSummary?.volume_utilization!=null" :value="locationSummary.volume_utilization" max="1" /></div></div></WCard>
  <WEmptyState v-if="loading&&!itemData" :title="t('common.status.loading')" />
- <div v-if="itemData" class="w-location-detail__layout"><div class="w-location-detail__main"><WCard v-if="staff.hasPermission('goods_read')" flush><div class="w-location-section w-location-section--actions"><h2>{{t('location.ui.storage')}} <small>{{storageRows?.total}}</small></h2><WButton v-if="staff.hasPermission('putaway_edit')" size="sm" icon="plus" @click="openOperation('putaway')">{{t('location.ui.putaway')}}</WButton></div><WTable :rows="storageRows?.items||[]" :columns="storageColumns" inset><template #cell-goods="{row}"><div class="w-location-product"><span class="w-product-image"><img v-if="row.goods.thumbnail_url" :src="row.goods.thumbnail_url" alt=""/><WIcon v-else name="box" :size="18"/></span><div><NuxtLink class="w-location-record" :to="'/goods/detail/'+row.goods.id">{{row.goods.name}}</NuxtLink><span class="w-location-secondary">{{row.goods.code}}</span></div></div></template><template #cell-created_at="{row}">{{$dayjs(row.created_at,'MM/DD HH:mm',itemData)}}</template><template #cell-updated_at="{row}">{{$dayjs(row.updated_at,'MM/DD HH:mm',itemData)}}</template><template #cell-actions="{row}"><WDropdown :label="t('common.fields.action')" placement="bottom-end"><template #trigger="{attrs}"><WButton v-bind="attrs" icon="more" icon-only variant="text" size="sm" :aria-label="t('common.fields.action')" /></template><button v-if="staff.hasPermission('removal_edit')" class="w-menu-item" role="menuitem" @click="openOperation('removal',row)">{{t('location.ui.removal')}}</button><button v-if="staff.hasPermission('transfer_edit')" class="w-menu-item" role="menuitem" @click="openOperation('transfer',row)">{{t('location.ui.transfer')}}</button></WDropdown></template></WTable><footer><WPagination v-model:page="storagePage" :page-size="50" :total="storageRows?.total" show-total /></footer></WCard><WCard v-if="historyTabs.length" flush>
+ <div v-if="itemData" class="w-location-detail__layout"><div class="w-location-detail__main"><WCard v-if="allowed('goods_read')" flush><div class="w-location-section w-location-section--actions"><h2>{{t('location.ui.storage')}} <small>{{storageRows?.total}}</small></h2><WButton v-if="allowed('putaway_edit')" size="sm" icon="plus" @click="openOperation('putaway')">{{t('location.ui.putaway')}}</WButton></div><WTable :loading="overviewLoading" :rows="storageRows?.items||[]" :columns="storageColumns" inset><template #cell-goods="{row}"><div class="w-location-product"><span class="w-product-image"><img v-if="row.goods.thumbnail_url" :src="row.goods.thumbnail_url" alt=""/><WIcon v-else name="box" :size="18"/></span><div><NuxtLink class="w-location-record" :to="'/goods/detail/'+row.goods.id">{{row.goods.name}}</NuxtLink><span class="w-location-secondary">{{row.goods.code}}</span><span class="w-location-secondary">{{row.lot_no||t('lot-rules.unassigned')}}<template v-if="row.expiry_date"> &middot; {{row.expiry_date}}</template></span></div></div></template><template #cell-created_at="{row}">{{$dayjs(row.created_at,'MM/DD HH:mm',itemData)}}</template><template #cell-updated_at="{row}">{{$dayjs(row.updated_at,'MM/DD HH:mm',itemData)}}</template><template #cell-actions="{row}"><WDropdown v-if="allowed('removal_edit')||allowed('transfer_edit')" :label="t('common.fields.action')" placement="bottom-end"><template #trigger="{attrs}"><WButton v-bind="attrs" icon="more" icon-only variant="text" size="sm" :aria-label="t('common.fields.action')" /></template><button v-if="allowed('removal_edit')" class="w-menu-item" role="menuitem" @click="openOperation('removal',row)">{{t('location.ui.removal')}}</button><button v-if="allowed('transfer_edit')" class="w-menu-item" role="menuitem" @click="openOperation('transfer',row)">{{t('location.ui.transfer')}}</button></WDropdown></template></WTable><footer><WPagination v-model:page="storagePage" :page-size="50" :total="storageRows?.total" show-total /></footer></WCard><WCard v-if="historyTabs.length" flush>
  <div class="w-location-section w-location-section--actions"><h2>{{t('location.ui.history')}}</h2><div class="w-history-segments" role="group" :aria-label="t('location.ui.history')"><button v-for="tab in historyTabs" :key="tab.key" type="button" :class="{active:activeTab===tab.key}" :aria-pressed="activeTab===tab.key" @click="setActiveFilter(tab.key)">{{tab.label}}</button></div></div>
  <LocationActivity v-if="activeTab==='all'" :rows="tabData?.items||[]" :loading="loading" :warehouse="itemData"/><div v-else class="w-location-table-wrap"><table class="w-location-table" :aria-busy="loading"><thead>
                   <tr v-if="activeTab === 'storage'">
@@ -550,11 +570,11 @@ const storageColumns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},
                     <td class="">{{ $dayjs(item?.updated_at, 'YYYY-MM-DD HH:mm:ss', item) }}</td>
                     <td>
                       <button class="w-location-operation"
-                         @click="openOperation('removal',item)" v-if="staff.hasPermission('removal_edit')" :title="t('common.inventory-ops.removal')">
+                         @click="openOperation('removal',item)" v-if="allowed('removal_edit')" :title="t('common.inventory-ops.removal')">
                         <i class="ri-arrow-down-line"></i>
                       </button>
                       <button class="w-location-operation"
-                         @click="openOperation('transfer',item)" v-if="staff.hasPermission('transfer_edit')" :title="t('common.inventory-ops.transfer')">
+                         @click="openOperation('transfer',item)" v-if="allowed('transfer_edit')" :title="t('common.inventory-ops.transfer')">
                         <i class="ri-arrow-right-line"></i>
                       </button>
                     </td>
@@ -713,14 +733,14 @@ const storageColumns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},
                 </tbody></table></div>
  <footer><WPagination :page="Number(route.query.page)||1" :page-size="tabData?.per_page||20" :total="tabData?.total" show-total @update:page="page=>router.push({query:{...route.query,page}})" /></footer>
  </WCard></div><aside>
- <WCard><h3>{{t('location.ui.position')}}</h3><LocationMapPreview :warehouse-id="itemData.warehouse_id" :location-id="locationId"/><dl><dt>{{t('common.entities.warehouse')}}</dt><dd><NuxtLink class="w-location-back" :to="'/warehouse/detail/'+itemData.warehouse_id">{{itemData.warehouse?.name||itemData.warehouse_name}}</NuxtLink></dd><dt>{{t('location.fields.location-type')}}</dt><dd>{{locationTypeLabel(itemData.location_type)}}</dd></dl></WCard>
+ <WCard><h3>{{t('location.ui.position')}}</h3><LocationMapPreview v-if="allowed('warehouse_read')" :warehouse-id="itemData.warehouse_id" :location-id="locationId"/><dl><dt>{{t('common.entities.warehouse')}}</dt><dd><NuxtLink v-if="allowed('warehouse_read')" class="w-location-back" :to="'/warehouse/detail/'+itemData.warehouse_id">{{itemData.warehouse?.name||itemData.warehouse_name}}</NuxtLink><span v-else>{{itemData.warehouse?.name||itemData.warehouse_name}}</span></dd><dt>{{t('location.fields.location-type')}}</dt><dd>{{locationTypeLabel(itemData.location_type)}}</dd></dl></WCard>
  <WCard><h3>{{t('location.ui.label')}}</h3><div class="w-location-barcode"><div class="w-label-header">{{itemData.warehouse?.name||itemData.warehouse_name}}</div><strong class="w-label-code">{{itemData.code}}</strong><Barcode :value="itemData.code" /></div></WCard>
  <WCard><h3>{{t('location.fields.specification')}}</h3><dl><template v-for="key in ['width','depth','height','capacity']" :key="key"><dt>{{t('location.fields.'+key)}}</dt><dd>{{itemData[key]??'—'}} {{key==='capacity'?'m³':'cm'}}</dd></template></dl></WCard>
  <WCard><h3>{{t('location.ui.information')}}</h3><dl><dt>{{t('common.users.creator')}}</dt><dd>{{itemData.creator?.user_name}}</dd><dt>{{t('common.dates.created')}}</dt><dd>{{$dayjs(itemData.created_at,'YYYY/MM/DD HH:mm',itemData)}}</dd><dt>{{t('common.dates.updated')}}</dt><dd>{{$dayjs(itemData.updated_at,'YYYY/MM/DD HH:mm',itemData)}}</dd></dl><div v-if="itemData.description" v-html="sanitizeHtml(itemData.description)" /></WCard>
  </aside></div>
  <WModal v-model:open="modalOpen" :title="t('goods.operations.create-'+(operation||'putaway'))" :closable="!loading">
  <WFormGrid><WField :label="t('common.entities.goods')" :error="errors.goods"><WCombobox v-if="operation==='putaway'" v-model="selectedGoodsId" :search="searchGoods" :min-chars="1" :selected-label="selectedGoods?nameWithCodeAndName(selectedGoods):''" :disabled="loading" /><span v-else>{{selectedGoods?nameWithCodeAndName(selectedGoods):''}}</span><PutawayPendingNotice v-if="operation==='putaway'&&selectedGoods&&putawayPending" :pending="putawayPending" :location-type="itemData?.location_type" :warehouse-id="itemData?.warehouse_id" /></WField>
- <WField v-if="operation==='transfer'" :label="t('common.entities.location')" :error="errors.location"><WCombobox v-model="selectedLocationId" :search="searchLocations" :min-chars="1" :selected-label="selectedLocation?nameWithTypeAndWarehouse(selectedLocation):''" :disabled="loading" /></WField>
+ <WField v-if="operation!=='putaway'" :label="t('goods-label.lot')"><span>{{selectedLotName||t('lot-rules.unassigned')}}<template v-if="selectedLotExpiry"> &middot; {{selectedLotExpiry}}</template></span></WField><PendingLotPicker v-if="operation==='putaway'" :goods-id="selectedGoods?.id" :warehouse-id="itemData?.warehouse_id" :disabled="loading" @change="pendingLot=$event" /><WField v-if="operation==='transfer'" :label="t('common.entities.location')" :error="errors.location"><WCombobox v-model="selectedLocationId" :search="searchLocations" :min-chars="1" :selected-label="selectedLocation?nameWithTypeAndWarehouse(selectedLocation):''" :disabled="loading" /></WField>
  <WField :label="t('common.fields.quantity')" :error="errors.quantity"><WInput v-model="quantity" type="number" min="1" step="1" :max="operation==='putaway'?putawayMax??undefined:maxQuantity" :disabled="loading" /></WField>
  <WField v-if="operation==='removal'" :label="t('common.fields.reason')" :error="errors.reason"><WSelect v-model="reason" :options="removalReasonsOptions.map(value=>({value,label:removalReasonLabel(value)}))" :disabled="loading" /></WField>
  <WField v-if="operation==='transfer'&&showTransferReason" :label="t('common.fields.reason')" :error="errors.transfer_reason"><WInput v-model="transferReason" :disabled="loading" /></WField>

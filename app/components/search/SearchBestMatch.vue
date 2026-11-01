@@ -20,6 +20,8 @@ const { t, locale } = useI18n()
 const navigation = useSearchNavigation()
 const display = useSearchDisplay()
 const { locationTypeLabel } = useOptionLabel()
+const staff=useStaffStore(),permissionReady=ref(false)
+onMounted(async()=>{permissionReady.value=!!await staff.getCurrentStaffInfo()})
 const uid = useId()
 const titleId = `${uid}-title`
 
@@ -89,7 +91,7 @@ const related = computed(() => {
   return hint && typeof hint === 'object' && code ? { code: String(code), target: { url_hint: hint, warehouse_id: props.item.warehouse_id } } : null
 })
 const inventoryLink = computed(() =>
-  (props.item.type === 'goods' && props.item.code ? { path: '/inventory', query: { keyword: props.item.code } } : null))
+  (permissionReady.value && staff.hasPermission('inventory_read') && props.item.type === 'goods' && props.item.code ? { path: '/inventory', query: { keyword: props.item.code } } : null))
 </script>
 
 <template>
@@ -187,6 +189,7 @@ const inventoryLink = computed(() =>
 }
 .w-best__eyebrow {
   display: inline-flex;
+  flex-wrap:wrap;
   align-items: center;
   gap: 8px;
   font-size: var(--w-fs-12);
@@ -215,6 +218,7 @@ const inventoryLink = computed(() =>
   color: var(--w-text-3);
 }
 .w-best__sub {
+  overflow-wrap:anywhere;
   font-size: var(--w-fs-13);
   line-height: var(--w-lh-13);
   color: var(--w-text-2);
@@ -233,6 +237,7 @@ const inventoryLink = computed(() =>
   color: var(--w-text-3);
 }
 .w-best__fact dd {
+  overflow-wrap:anywhere;
   margin: 0;
   font-size: var(--w-fs-14);
   line-height: var(--w-lh-14);
@@ -277,3 +282,5 @@ const inventoryLink = computed(() =>
   line-height: 20px;
 }
 </style>
+
+<style scoped>@media(max-width:600px){.w-best{grid-template-columns:40px minmax(0,1fr);gap:12px;padding:16px}.w-best__thumb{width:40px;height:40px}.w-best__status{grid-column:2;margin-top:0}.w-best__kpis{gap:8px 16px}}</style>

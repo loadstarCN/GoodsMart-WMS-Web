@@ -17,8 +17,12 @@ const zoneTitle = computed(() =>
   (current.value?.timezone ? t('timezone.shown-in', { zone: timeZoneDescription(current.value.timezone) }) : undefined))
 const zoneOf = (warehouse: WarehouseSimple) => (warehouse.timezone ? timeZoneDescription(warehouse.timezone) : '')
 
-const select = (warehouse: WarehouseSimple | null) => {
+let switching=false
+const select = async (warehouse: WarehouseSimple | null) => {
+  if(switching)return
   if ((warehouse?.id ?? null) === (current.value?.id ?? null)) return
+  switching=true
+  if(!await confirmUnsavedFormsForReload()){switching=false;return}
   warehouseStore.selectWarehouse(warehouse)
   const target = new URL(location.href)
   target.searchParams.delete('warehouse_id')

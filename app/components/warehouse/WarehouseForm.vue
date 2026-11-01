@@ -7,24 +7,32 @@ const props = defineProps<{ warehouseId?: string }>()
 const { t } = useI18n()
 const staff = useStaffStore(), router = useRouter(), { bizErrorMessage } = useBizError()
 const editing = computed(() => !!props.warehouseId)
-const canEdit = computed(() => staff.hasPermission('warehouse_edit'))
+const companyManager=computed(()=>staff.isCompanyAdmin||!!staff.staffInfo?.permissions?.some(p=>['all_access','company_all_access'].includes(p)))
+const canEdit = computed(() => (editing.value||companyManager.value)&&staff.refreshed&&!!staff.staffInfo&&staff.hasPermission('warehouse_edit')&&!loading.value&&(!editing.value||!!record.value.id))
 const title = computed(() => t(editing.value ? 'warehouse.operations.edit' : 'warehouse.ui.create'))
 const record = ref<Record<string, any>>({ name: '', phone: '', country_code: 'JP', timezone: null,
   default_currency: staff.staffInfo?.company?.default_currency || 'JPY', manager_id: null,
   address: '', address_en: '', contact_name_en: '', is_active: true,
   default_spec_capture_fields: [], default_spec_capture_mode: 'missing', spec_capture_enforcement: 'warn' })
-const fields = ['name', 'phone', 'country_code', 'timezone', 'default_currency', 'manager_id', 'address',
+const operationDefaults={allow_unassigned:null,map_enabled:true,route_enabled:true,start_station_id:null,end_station_id:null,picking_sort:'code'}
+record.value.operations={...operationDefaults}
+const fields = ['operations','name', 'phone', 'country_code', 'timezone', 'default_currency', 'manager_id', 'address',
   'address_en', 'contact_name_en', 'is_active', 'zip_code', 'admin_area', 'locality', 'address_line1',
   'address_line2', 'latin', 'default_spec_capture_fields', 'default_spec_capture_mode', 'spec_capture_enforcement']
 const loading = ref(false), busy = ref(false), error = ref(''), errors = ref<Record<string, string>>({})
 const defaultZone = ref<string | null>(null)
-let original = '', generation = 0
+const original=ref('');let generation=0
 const payload = () => Object.fromEntries(fields.map(key => [key, record.value[key]]))
-const dirty = computed(() => JSON.stringify(payload()) !== original)
+const dirty = computed(() => JSON.stringify(payload()) !== original.value)
 useHead({ title })
 const load = async () => {
   const seq = ++generation
-  if (!props.warehouseId) { original = JSON.stringify(payload()); return }
+  error.value = '';loading.value=true;original.value='';if(editing.value)record.value.id=undefined
+  const current=await staff.getCurrentStaffInfo()
+  if(seq!==generation)return
+  if(!current){error.value=t('common.validation.company-required');loading.value=false;return}
+  if(seq!==generation)return
+  if (!props.warehouseId) { original.value = JSON.stringify(payload());loading.value=false; return }
   loading.value = true
   const data = await httpRequest<any>('/api/warehouse/warehouse/' + props.warehouseId, {
     onError: err => { if (seq === generation) error.value = bizErrorMessage(err) },
@@ -32,8 +40,8 @@ const load = async () => {
   if (seq !== generation) return
   if (data) {
     defaultZone.value = data.timezone_configured ? null : data.timezone
-    record.value = { ...data, timezone: data.timezone_configured ?? null }
-    original = JSON.stringify(payload())
+    record.value = { ...data, operations:{...operationDefaults,...data.operations}, timezone: data.timezone_configured ?? null }
+    original.value = JSON.stringify(payload())
   }
   loading.value = false
 }
@@ -41,6 +49,7 @@ onMounted(load)
 watch(() => props.warehouseId, load)
 onBeforeUnmount(() => generation++)
 const searchStaff = async (user_name: string) => {
+  if(!staff.refreshed||!staff.staffInfo||!staff.hasPermission('staff_read'))return []
   const data = await httpRequest<PaginationData>('/api/warehouse/staff/', { params: { user_name, per_page: 30 } })
   return (data?.items || []).map(row => ({ value: row.id, label: row.user_name || row.name }))
 }
@@ -52,14 +61,14 @@ const zoneOptions = computed(() => {
 })
 const zone = computed({ get: () => record.value.timezone || '__default__', set: value => { record.value.timezone = value === '__default__' ? null : value } })
 const save = async () => {
-  if (busy.value || !canEdit.value) return
+  if (busy.value || !canEdit.value || !original.value) return
   errors.value = {}; error.value = ''
   if (!String(record.value.name || '').trim()) errors.value.name = t('common.validation.name-required', { entity: t('warehouse.entity') })
   if (Object.keys(errors.value).length) return
   busy.value = true
   try {
     if (!staff.staffInfo) await staff.getCurrentStaffInfo()
-    const previous = original ? JSON.parse(original) : {}
+    const previous = original.value ? JSON.parse(original.value) : {}
     const body = editing.value ? Object.fromEntries(Object.entries(payload()).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(previous[key])))
       : { ...payload(), company_id: staff.staffInfo?.company_id }
     if (!Object.keys(body).length) return
@@ -69,34 +78,36 @@ const save = async () => {
       onSuccess: () => { success = true }, onError: err => { error.value = bizErrorMessage(err) },
     })
     if (success) {
-      original = JSON.stringify(payload())
+      original.value = JSON.stringify(payload())
       await staff.refreshStaffInfo()
       showToast(t('action-results.success'), 'success')
       await router.push('/warehouse')
     }
   } finally { busy.value = false }
 }
+useUnsavedForm(()=>canEdit.value&&!loading.value&&!!original.value&&JSON.stringify(payload())!==original.value,()=>busy.value)
 </script>
 <template>
   <div class="w-warehouse-form w-scope">
     <header><nav><NuxtLink class="w-warehouse-link" to="/warehouse">{{ t('nav.warehouse') }}</NuxtLink><span>/</span><span>{{ title }}</span></nav><h1>{{ title }}</h1></header>
-    <WAlert v-if="error" tone="block" :title="error" />
+    <WAlert v-if="error" tone="block" :title="error"><template v-if="editing&&!record.id" #actions><WButton :disabled="loading" @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
     <WEmptyState v-if="loading" :title="t('common.status.loading')" />
     <WCard v-else-if="!editing || record.id" flush><form @submit.prevent="save">
       <WFormSection :title="t('warehouse.ui.basic')"><WFormGrid>
         <WField :label="t('warehouse.fields.name')" :error="errors.name"><WInput v-model="record.name" :disabled="busy || !canEdit" maxlength="255" /></WField>
         <WField :label="t('common.fields.phone')" optional :span="4"><WInput v-model="record.phone" type="tel" :disabled="busy || !canEdit" /></WField>
-        <WField :label="t('common.users.manager')" optional :span="4"><WCombobox v-model="record.manager_id" :search="searchStaff" :selected-label="record.manager?.user_name" clearable :disabled="busy || !canEdit" /></WField>
+        <WField :label="t('common.users.manager')" optional :span="4"><WCombobox v-model="record.manager_id" :search="searchStaff" :selected-label="record.manager?.user_name" clearable :disabled="busy || !canEdit || !companyManager || !staff.hasPermission('staff_read')" /></WField>
         <WField :label="t('warehouse.ui.currency')" :span="4"><WSelect v-model="record.default_currency" :options="currenciesOptions.map(value => ({ value, label: value }))" :disabled="busy || !canEdit" /></WField>
       </WFormGrid></WFormSection>
       <WFormSection :title="t('common.fields.address')"><StructuredAddressFields v-model="record" id-prefix="warehouse" country-key="country_code" legacy-latin-key="address_en" :latin-keys="['address_line1','address_line2','locality','admin_area']" :editable="!busy && canEdit" /></WFormSection>
       <WFormSection :title="t('warehouse.fields.timezone')"><WFormGrid><WField :label="t('warehouse.fields.timezone')" :hint="t('warehouse.tips.timezone')" :span="6"><WCombobox v-model="zone" :options="zoneOptions" :placeholder="t('timezone.search')" :disabled="busy || !canEdit" /></WField></WFormGrid></WFormSection>
       <WFormSection :title="t('warehouse.ui.pickup-contact')"><WFormGrid><WField :label="t('warehouse.fields.contact-name-en')" optional :span="6" :hint="hasNonLatin(record.contact_name_en) ? t('common.tips.non-latin') : t('warehouse.tips.export')"><WInput v-model="record.contact_name_en" maxlength="100" :disabled="busy || !canEdit" /></WField></WFormGrid></WFormSection>
       <WFormSection :title="t('warehouse.ui.capture')"><WFormGrid>
-        <WField :label="t('warehouse.ui.capture-fields')"><div class="w-warehouse-checks"><WCheckbox v-for="field in ['weight','dimensions','origin_country']" :key="field" v-model="record.default_spec_capture_fields" :value="field" :label="t('warehouse.ui.' + field)" :disabled="busy || !canEdit" /></div></WField>
+        <WField group :label="t('warehouse.ui.capture-fields')"><div class="w-warehouse-checks"><WCheckbox v-for="field in ['weight','dimensions','origin_country']" :key="field" v-model="record.default_spec_capture_fields" :value="field" :label="t('warehouse.ui.' + field)" :disabled="busy || !canEdit" /></div></WField>
         <WField :label="t('warehouse.ui.capture-mode')" :span="6"><WSelect v-model="record.default_spec_capture_mode" :options="['missing','remeasure'].map(value=>({value,label:t('warehouse.ui.'+value)}))" :disabled="busy || !canEdit" /></WField>
         <WField :label="t('warehouse.ui.capture-enforcement')" :span="6"><WSelect v-model="record.spec_capture_enforcement" :options="['warn','block'].map(value=>({value,label:t('warehouse.ui.'+value)}))" :disabled="busy || !canEdit" /></WField>
       </WFormGrid></WFormSection>
+      <WarehouseOperationsSettings v-model="record.operations" :warehouse-id="warehouseId" :disabled="busy||!canEdit"/>
       <footer><span v-if="dirty">{{ t('recipient.ui.unsaved') }}</span><WButton to="/warehouse" :disabled="busy">{{ t('button.cancel') }}</WButton><WButton v-if="canEdit" type="submit" variant="primary" :disabled="!dirty" :loading="busy">{{ t('button.save') }}</WButton></footer>
     </form></WCard>
   </div>

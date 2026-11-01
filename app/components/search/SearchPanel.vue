@@ -51,7 +51,7 @@ const panel = useTemplateRef<HTMLElement>('panel')
 const input = useTemplateRef<HTMLInputElement>('input')
 
 const query = ref('')
-const scope = ref<GlobalSearchScope>('warehouse')
+const scope = computed<GlobalSearchScope>(()=>warehouseStore.currentWarehouse?'warehouse':'all')
 const result = ref<GlobalSearchResult | null>(null)
 /** result 是哪个关键字 + 范围的结果 */
 const resultKey = ref('')
@@ -72,7 +72,6 @@ const best = computed(() => pickBestMatch(result.value))
 const recent = computed(() => recentSearches.recent.value)
 const currentWarehouse = computed(() => warehouseStore.currentWarehouse)
 /** 「在全部仓库中搜索」：可访问多个仓库、页头选了某个仓库时才有意义（选「全部仓库」时本来就搜全部） */
-const canSearchAll = computed(() => warehouseStore.warehouses.length > 1 && !!currentWarehouse.value)
 const typeLabel = (type: GlobalSearchType) => t(GLOBAL_SEARCH_TYPE_META[type].label)
 
 type Mode = 'recent' | 'idle' | 'loading' | 'results' | 'empty' | 'error'
@@ -80,8 +79,7 @@ const mode = computed<Mode>(() => {
   if (!trimmed.value) return recent.value.length ? 'recent' : 'idle'
   if (fresh.value) return total.value > 0 ? 'results' : 'empty'
   if (failed.value) return 'error'
-  // 新关键字的结果还没回来：先留着上一次的（有结果时），没有就显示「搜索中」
-  return result.value && total.value > 0 ? 'results' : 'loading'
+  return 'loading'
 })
 
 const sections = computed<PanelSection[]>(() => {
@@ -163,6 +161,13 @@ const run = (): Promise<void> => {
 watch(query, () => {
   if (!search.isOpen.value) return
   clearTimer()
+  // Invalidate immediately, including the debounce window, so old rows cannot
+  // be opened under a newly typed query or replace its pending result.
+  seq++
+  failed.value = false
+  loading.value = false
+  running = null
+  active.value = -1
   if (!trimmed.value) {
     run()
     active.value = recent.value.length ? 0 : -1
@@ -185,6 +190,7 @@ const setActive = (index: number, scroll = true) => {
 const close = () => search.close()
 
 const openItem = (item: GlobalSearchItem) => {
+  if (!fresh.value) return
   recentSearches.add(trimmed.value || item.code || '', {
     type: item.type,
     field: item.matched_field === 'tracking_number' ? 'tracking_number' : undefined,
@@ -271,12 +277,6 @@ const clearRecent = () => {
   active.value = -1
   input.value?.focus()
 }
-const searchAll = () => {
-  scope.value = 'all'
-  run()
-  input.value?.focus()
-}
-
 // ---- 文案 ----
 const emptyText = computed(() => (scope.value === 'all'
   ? t('search.empty.all', { q: trimmed.value })
@@ -307,7 +307,6 @@ const place = () => {
 const onOpen = async () => {
   clearTimer()
   seq++
-  scope.value = 'warehouse'
   result.value = null
   resultKey.value = ''
   loading.value = false
@@ -329,6 +328,7 @@ const onClosed = () => {
   window.removeEventListener('resize', place)
 }
 
+watch(()=>warehouseStore.currentWarehouse?.id,()=>{if(search.isOpen.value)close()})
 watch(search.isOpen, (open) => (open ? onOpen() : onClosed()))
 watch(() => route.fullPath, () => { if (search.isOpen.value) close() })
 onMounted(() => { if (search.isOpen.value) onOpen() })
@@ -399,9 +399,7 @@ useWOverlay(search.isOpen, panel, close)
               {{ emptyText }}
               <WHelp :text="t('search.help')" placement="bottom" />
             </template>
-            <template v-if="canSearchAll && scope === 'warehouse'" #action>
-              <WButton size="sm" @click="searchAll">{{ t('search.empty.search-all') }}</WButton>
-            </template>
+
           </WEmptyState>
 
           <div v-else-if="mode === 'error'" class="w-sp__note">

@@ -3,54 +3,64 @@ import { QuillEditor } from '@vueup/vue-quill'
 import 'quill/dist/quill.snow.css'
 const props=defineProps<{locationId?:string}>()
 const {t}=useI18n(),router=useRouter(),staff=useStaffStore(),warehouses=useWarehouseStore(),{bizErrorMessage}=useBizError(),{locationTypeLabel}=useOptionLabel()
-const editing=computed(()=>!!props.locationId),canEdit=computed(()=>staff.hasPermission('location_edit'))
+const editing=computed(()=>!!props.locationId),canEdit=computed(()=>staff.refreshed&&!!staff.staffInfo&&staff.hasPermission('location_edit')&&!loading.value&&(!editing.value||!!record.value.id))
 const record=ref<Record<string,any>>({code:'',location_type:'standard',warehouse_id:warehouses.currentWarehouse?.id||null,description:'',width:null,depth:null,height:null,capacity:null})
 const loading=ref(false),busy=ref(false),error=ref(''),errors=ref<Record<string,string>>({})
 const title=computed(()=>t(editing.value?'location.operations.edit':'location.ui.create'))
-const fields=['code','location_type','warehouse_id','description','width','depth','height','capacity']
+const positionFields=['picking_order','rack_column','rack_level']
+const fields=['map_rack_id',...positionFields,'code','location_type','warehouse_id','description','width','depth','height','capacity']
 const dimensions=['width','depth','height','capacity']
-let original='',generation=0
-const payload=()=>Object.fromEntries(fields.map(key=>[key,dimensions.includes(key)?toNullableNumber(record.value[key]):record.value[key]]))
-const dirty=computed(()=>JSON.stringify(payload())!==original)
-const warehouseOptions=computed(()=>warehouses.warehouses.map(w=>({value:w.id,label:w.name})))
+const original=ref('');let generation=0,descriptionTouched=false,originalDescription:any=''
+const touchDescription=()=>{if(!descriptionTouched&&original.value){const value=JSON.parse(original.value);value.description=record.value.description;original.value=JSON.stringify(value)}descriptionTouched=true}
+const payload=()=>Object.fromEntries(fields.map(key=>[key,key==='description'&&!descriptionTouched?originalDescription:[...dimensions,...positionFields].includes(key)?toNullableNumber(record.value[key]):record.value[key]]))
+const dirty=computed(()=>JSON.stringify(payload())!==original.value)
+const warehouseOptions=computed(()=>(!editing.value&&warehouses.currentWarehouse?[warehouses.currentWarehouse]:warehouses.warehouses).map(w=>({value:w.id,label:w.name})))
+watch(()=>warehouses.currentWarehouse?.id,id=>{if(!editing.value)record.value.warehouse_id=id??null},{immediate:true})
 useHead({title})
 const load=async()=>{
- const seq=++generation
+ const seq=++generation;descriptionTouched=false;error.value='';loading.value=true;original.value='';if(editing.value)record.value.id=undefined
+ const current=await staff.getCurrentStaffInfo()
+ if(seq!==generation)return
+ if(!current){error.value=t('common.validation.company-required');loading.value=false;return}
+ if(seq!==generation)return
  await warehouses.fetchWarehouses()
- if(!editing.value){if(!record.value.warehouse_id&&warehouseOptions.value.length===1)record.value.warehouse_id=warehouseOptions.value[0]?.value;original=JSON.stringify(payload());return}
+ if(seq!==generation)return
+ if(!editing.value){if(!record.value.warehouse_id&&warehouseOptions.value.length===1)record.value.warehouse_id=warehouseOptions.value[0]?.value;original.value=JSON.stringify(payload());loading.value=false;return}
  loading.value=true
  const data=await httpRequest<any>('/api/warehouse/location/'+props.locationId,{onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
  if(seq!==generation)return
- if(data){record.value=data;original=JSON.stringify(payload())}
+ if(data){record.value=data;originalDescription=data.description;original.value=JSON.stringify(payload())}
  loading.value=false
 }
 onMounted(load);watch(()=>props.locationId,load);onBeforeUnmount(()=>generation++)
 const save=async()=>{
- if(busy.value||!canEdit.value)return
+ if(busy.value||!canEdit.value||!original.value)return
  errors.value={};error.value=''
  if(!String(record.value.code||'').trim())errors.value.code=t('location.validation.code-required')
  if(!record.value.warehouse_id)errors.value.warehouse=t('location.validation.warehouse-required')
  for(const key of dimensions){const value=toNullableNumber(record.value[key]);if(value!==null&&(!Number.isFinite(value)||value<=0))errors.value[key]=t('location.ui.positive')}
+ for(const key of positionFields){const value=toNullableNumber(record.value[key]);if(value!==null&&(!Number.isSafeInteger(value)||value<1||value>2147483647))errors.value[key]=t('location.ui.positive')}
  if(Object.keys(errors.value).length)return
  busy.value=true
  try{
-  const previous=original?JSON.parse(original):{}
+  const previous=original.value?JSON.parse(original.value):{}
   const body=editing.value?Object.fromEntries(Object.entries(payload()).filter(([key,value])=>JSON.stringify(value)!==JSON.stringify(previous[key]))):payload()
   if(!Object.keys(body).length)return
   let success=false
   await httpRequest('/api/warehouse/location/'+(props.locationId||''),{method:editing.value?'PUT':'POST',headers:warehouseHeaders(record.value.warehouse_id),body,onSuccess:()=>{success=true},onError:err=>{error.value=bizErrorMessage(err)}})
-  if(success){original=JSON.stringify(payload());showToast(t('action-results.success'),'success');await router.push('/location')}
+  if(success){original.value=JSON.stringify(payload());showToast(t('action-results.success'),'success');await router.push('/location')}
  }finally{busy.value=false}
 }
+useUnsavedForm(()=>canEdit.value&&!loading.value&&!!original.value&&JSON.stringify(payload())!==original.value,()=>busy.value)
 </script>
 <template>
- <div class="w-location-form w-scope"><header><nav><NuxtLink class="w-location-back" to="/location">{{t('nav.location')}}</NuxtLink><span>/</span><span>{{title}}</span></nav><h1>{{title}}</h1></header><WAlert v-if="error" tone="block" :title="error" /><WEmptyState v-if="loading" :title="t('common.status.loading')" />
+ <div class="w-location-form w-scope"><header><nav><NuxtLink class="w-location-back" to="/location">{{t('nav.location')}}</NuxtLink><span>/</span><span>{{title}}</span></nav><h1>{{title}}</h1><WButton v-if="!editing&&canEdit" to="/location/generate">{{t('location-generate.title')}}</WButton></header><WAlert v-if="error" tone="block" :title="error"><template v-if="editing&&!record.id" #actions><WButton :disabled="loading" @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert><WEmptyState v-if="loading" :title="t('common.status.loading')" />
  <WCard v-else-if="!editing||record.id" flush><form @submit.prevent="save">
  <WFormSection :title="t('location.ui.position')"><WFormGrid><WField :label="t('common.entities.warehouse')" :span="4" :error="errors.warehouse"><WCombobox v-model="record.warehouse_id" :options="warehouseOptions" :selected-label="record.warehouse?.name||record.warehouse_name" :disabled="editing||busy||!canEdit||warehouseOptions.length===1" /></WField><WField :label="t('location.fields.code')" :span="8" :error="errors.code"><WInput v-model="record.code" maxlength="50" :disabled="busy||!canEdit" /></WField></WFormGrid></WFormSection>
  <WFormSection :title="t('location.fields.location-type')"><div class="w-location-types"><label v-for="type in ['standard','damaged','return']" :key="type" :class="{'is-selected':record.location_type===type}"><input v-model="record.location_type" type="radio" :value="type" :disabled="busy||!canEdit" />{{locationTypeLabel(type)}}</label></div></WFormSection>
  <WFormSection :title="t('location.ui.dimensions')"><WFormGrid><WField v-for="key in dimensions" :key="key" :label="t('location.fields.'+key)" optional :span="3" :error="errors[key]"><WInput v-model="record[key]" type="number" min="0.000001" step="any" :disabled="busy||!canEdit"><template #suffix>{{key==='capacity'?'m³':'cm'}}</template></WInput></WField></WFormGrid></WFormSection>
- <WFormSection :title="t('common.fields.description')"><div class="w-location-editor"><QuillEditor v-model:content="record.description" content-type="html" toolbar="minimal" :read-only="busy||!canEdit" /></div></WFormSection>
- <footer><span v-if="dirty">{{t('recipient.ui.unsaved')}}</span><WButton to="/location" :disabled="busy">{{t('button.cancel')}}</WButton><WButton v-if="canEdit" type="submit" variant="primary" :loading="busy" :disabled="!dirty">{{t('button.save')}}</WButton></footer>
+ <WFormSection :title="t('common.fields.description')"><div class="w-location-editor" :inert="busy||!canEdit" @keydown.capture="touchDescription" @paste.capture="touchDescription" @drop.capture="touchDescription" @pointerdown.capture="touchDescription"><QuillEditor v-model:content="record.description" content-type="html" toolbar="minimal" :read-only="busy||!canEdit" /></div></WFormSection>
+ <LocationMapPosition v-if="staff.refreshed&&staff.staffInfo" v-model="record" :warehouse-id="record.warehouse_id" :errors="errors" :disabled="busy||!canEdit"/><footer><span v-if="dirty">{{t('recipient.ui.unsaved')}}</span><WButton to="/location" :disabled="busy">{{t('button.cancel')}}</WButton><WButton v-if="canEdit" type="submit" variant="primary" :loading="busy" :disabled="!dirty">{{t('button.save')}}</WButton></footer>
  </form></WCard></div>
 </template>
 <style scoped>

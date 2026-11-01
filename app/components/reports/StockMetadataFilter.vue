@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /** Options come from the same permission-scoped report, never a sample catalogue. */
-const props=defineProps<{ dimension:'category'|'brand'; warehouseId:number|null; filters:Record<string,any> }>()
+const props=defineProps<{ analysis?:boolean; dimension:'category'|'brand'|'zone'; warehouseId:number|null; filters:Record<string,any> }>()
 const emit=defineEmits<{ change:[patch:Record<string,any>] }>()
 const {t}=useI18n(),{categoryLabel}=useOptionLabel(),{bizErrorMessage}=useBizError()
 const rows=ref<(string|null)[]>([]),page=ref(0),total=ref(0),loaded=ref(0),loading=ref(false),error=ref('')
 const placement=ref<'bottom-start'|'bottom-end'>('bottom-start')
 const position=(event:Event)=>{const rect=(event.currentTarget as HTMLElement).getBoundingClientRect();placement.value=rect.left+260>window.innerWidth-16&&rect.right>=260?'bottom-end':'bottom-start'}
 let generation=0
-const label=computed(()=>t('stock-report.'+props.dimension))
+const label=computed(()=>t(props.dimension==='zone'?'inventory-analysis.zone':'stock-report.'+props.dimension))
 const missing=computed(()=>String(props.filters[props.dimension+'_missing'])==='1')
 const current=computed(()=>missing.value?t('stock-report.unassigned'):props.filters[props.dimension]?display(String(props.filters[props.dimension])):t('w.filter.all'))
 const display=(value:string|null)=>value===null?t('stock-report.unassigned'):props.dimension==='category'?categoryLabel(value):value
@@ -18,9 +18,9 @@ const load=async(append=false)=>{
  if(!append){rows.value=[];page.value=0;loaded.value=0;total.value=0}
  loading.value=true;error.value=''
  const next=page.value+1
- const result=await httpRequest<any>('/api/warehouse/stock-ledger/summary',{params:{...scope.value,group_by:props.dimension,warehouse_id:props.warehouseId,page:next,per_page:100},headers:warehouseHeaders(props.warehouseId),onError:e=>{if(seq===generation)error.value=bizErrorMessage(e)}})
+ const result=await httpRequest<any>(props.analysis?'/api/warehouse/inventory/analysis-options':'/api/warehouse/stock-ledger/summary',{params:{...scope.value,dimension:props.dimension,group_by:props.dimension,warehouse_id:props.warehouseId,page:next,per_page:100},headers:warehouseHeaders(props.warehouseId),onError:e=>{if(seq===generation)error.value=bizErrorMessage(e)}})
  if(seq!==generation)return
- if(result){rows.value=[...new Set([...rows.value,...result.items.map((row:any)=>row.group_value??null)])] as (string|null)[];page.value=next;loaded.value+=result.items.length;total.value=result.total}
+ if(result){rows.value=[...new Set([...rows.value,...result.items.map((row:any)=>props.analysis?row:row.group_value??null)])] as (string|null)[];page.value=next;loaded.value+=result.items.length;total.value=result.total}
  loading.value=false
 }
 const choose=(value:string|null|undefined)=>emit('change',{[props.dimension]:value??undefined,[props.dimension+'_missing']:value===null?1:undefined})

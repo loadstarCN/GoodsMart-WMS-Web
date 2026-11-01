@@ -89,7 +89,7 @@ export const WMS_NAV: NavGroup[] = [
       { key: 'report-outbound', label: 'shell.nav.report-outbound', icon: 'report-outbound', to: '/reports/outbound', permission: 'dn_read', ready: true },
       { key: 'report-operator', label: 'shell.nav.report-operator', icon: 'report-operator', to: '/reports/operator', permission: ['picking_read','packing_read'], ready: true },
       { key: 'report-stock-summary', label: 'shell.nav.report-stock-summary', icon: 'report-stock-summary', to: '/reports/stock-summary', permission: 'inventory_read', ready: true },
-      { key: 'freight', label: 'shell.nav.freight', icon: 'freight', to: '/reports/freight', permission: 'freight_read', ready: false },
+      { key: 'freight', label: 'shell.nav.freight', icon: 'freight', to: '/reports/freight', permission: 'freight_read', ready: true },
     ],
   },
   {
@@ -111,7 +111,7 @@ export const WMS_NAV: NavGroup[] = [
       { key: 'company', label: 'nav.company', icon: 'company', to: '/company', permission: 'company_read', ready: true },
       { key: 'department', label: 'nav.department', icon: 'department', to: '/department', permission: 'department_read', ready: true },
       // 公司内的角色与权限页还没有（目前只有平台管理端的角色页）
-      { key: 'roles', label: 'shell.nav.roles', icon: 'roles', to: '/roles', permission: 'role_read', ready: false },
+      { key: 'roles', label: 'shell.nav.roles', icon: 'roles', to: '/roles', permission: ['company_roles_read','company_roles_edit'], ready: true },
       { key: 'apikeys', label: 'nav.apikeys', icon: 'apikeys', to: '/apikeys', permission: 'api_keys_read', ready: true },
       { key: 'webhooks', label: 'nav.webhook-logs', icon: 'webhooks', to: '/webhook-logs', permission: 'webhook_read', ready: true },
     ],

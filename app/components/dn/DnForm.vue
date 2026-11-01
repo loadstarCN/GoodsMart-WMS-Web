@@ -5,7 +5,7 @@ import { dnTypesOptions, dnTransportationModesOptions } from '~/data/selectOptio
 import { addressFieldLabel, cleanShipTo, formatAddressOneLine, hasStructuredAddress, shipToFromRecipient } from '~/composables/address/structuredAddress'
 import { loadCarrierServiceOptions, optionKeyOfError, optionsChange, optionsPayload, optionsToForm } from '~/composables/dn/shippingOptionsForm'
 import { useShippingAddressLine } from '~/composables/dn/shippingAddressLine'
-import { mergeDocumentItems, invalidItemQuantity, itemExceedsStock, type DocumentItem } from '~/utils/documentItems'
+import { mergeDocumentItems, invalidItemQuantity, goodsExceedingStock, type DocumentItem } from '~/utils/documentItems'
 
 const props = defineProps<{ dnId?: string }>()
 const { t, te } = useI18n()
@@ -18,9 +18,15 @@ const title = computed(() => editing.value ? t('dn.operations.edit') : t('dn.lis
 useHead({ title })
 const loading = ref(true)
 const loadError = ref('')
+const saveError = ref('')
+let loadGeneration = 0
+let disposed = false
+const allowed = (permission: string) => !!(staffStore.refreshed && staffStore.staffInfo && staffStore.hasPermission(permission))
 const submitting = ref(false)
 const addressLoading = ref(false)
 const optionsLoading = ref(false)
+const optionsLoadError = ref('')
+let optionsInitial = false
 const errors = ref<Record<string, string>>({})
 const optionErrors = ref<Record<string, string>>({})
 const dn = ref<Record<string, any>>({ warehouse_id: null, recipient_id: null, carrier_id: null, dn_type: 'shipping',
@@ -42,7 +48,7 @@ const optionForm = ref<Record<string, string>>({})
 const bulkOpen = ref(false)
 const goodsCode = ref('')
 const adding = ref(false)
-const canEdit = computed(() => staffStore.hasPermission('dn_edit') && (!editing.value || dn.value.status === 'pending'))
+const canEdit = computed(() => allowed('dn_edit') && (!editing.value || dn.value.status === 'pending'))
 const warehouseOptions = computed(() => {
   const list = [...warehouseStore.warehouses]
   if (dn.value.warehouse && !list.some(w => w.id === dn.value.warehouse.id)) list.push(dn.value.warehouse)
@@ -50,7 +56,8 @@ const warehouseOptions = computed(() => {
 })
 const typeOptions = computed(() => dnTypesOptions.map(value => ({ value, label: t(`dn.type.${value}`) })))
 const transportOptions = computed(() => dnTransportationModesOptions.map(value => ({ value, label: t(`dn.transportation.${value}`) })))
-const overCount = computed(() => details.value.filter(itemExceedsStock).length)
+const overGoods = computed(() => goodsExceedingStock(details.value))
+const overCount = computed(() => details.value.filter(item => overGoods.value.has(item.goods_id)).length)
 const total = computed(() => details.value.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0))
 const columns = computed(() => [
   { key: 'goods', label: t('common.entities.goods'), wrap: true },
@@ -60,6 +67,7 @@ const columns = computed(() => [
   { key: 'actions', label: t('common.fields.action'), width: '60px' },
 ])
 const search = async (kind: 'recipient' | 'carrier', name: string): Promise<WComboboxOption<number>[]> => {
+  if (!allowed(`${kind}_read`)) return []
   const data = await httpRequest<PaginationData>(`/api/warehouse/${kind}/`, {
     params: { name: name || undefined, per_page: 30 }, headers: warehouseHeaders(dn.value.warehouse_id),
     onError: error => showToast(bizErrorMessage(error), 'error'),
@@ -73,10 +81,15 @@ const selectRecipient = async (option: WComboboxOption<number> | null) => {
   const generation = ++addressGeneration
   recipientLabel.value = option?.label || ''
   errors.value.recipient = ''
+  // A changed recipient must never retain the previous recipient's address.
+  shipTo.value = {}
+  effectiveShipTo.value = null
+  shippingAddress.value = null
+  addressLine.reset()
   if (!option) { addressLoading.value = false; return }
   addressLoading.value = true
   const data = await httpRequest<any>(`/api/warehouse/recipient/${option.value}`, {
-    headers: warehouseHeaders(dn.value.warehouse_id), onError: error => showToast(bizErrorMessage(error), 'error'),
+    headers: warehouseHeaders(dn.value.warehouse_id), onError: error => { if(generation===addressGeneration){errors.value.recipient=bizErrorMessage(error);showToast(bizErrorMessage(error), 'error')} },
   })
   if (generation !== addressGeneration) return
   addressLoading.value = false
@@ -91,42 +104,62 @@ const selectRecipient = async (option: WComboboxOption<number> | null) => {
 let optionGeneration = 0
 const loadOptions = async (initial = false) => {
   const generation = ++optionGeneration
+  const wasClean = originalDraft.value !== null && draftSnapshot() === originalDraft.value
+  optionsInitial = initial
+  optionsLoadError.value = ''
+  if (!allowed('carrier_read')) { schema.value = []; return }
   optionsLoading.value = true
-  const next = await loadCarrierServiceOptions(dn.value.carrier_id)
+  const next = await loadCarrierServiceOptions(dn.value.carrier_id, warehouseHeaders(dn.value.warehouse_id), error => {
+    if (generation === optionGeneration) optionsLoadError.value = bizErrorMessage(error)
+  })
   if (generation !== optionGeneration) return
+  optionsLoading.value = false
+  if (next === null) return
   schema.value = next
   optionForm.value = optionsToForm(next, initial ? originalOptions.value : null, initial ? {} : optionForm.value)
   optionErrors.value = {}
   optionsLoading.value = false
+  if (initial && wasClean) originalDraft.value = draftSnapshot()
 }
 const selectCarrier = (option: WComboboxOption<number> | null) => { carrierLabel.value = option?.label || ''; loadOptions() }
 const changeWarehouse = async (id: number | null | undefined) => {
-  if (editing.value || id === dn.value.warehouse_id) return
+  if (loading.value || submitting.value || adding.value || !canEdit.value || editing.value || id === dn.value.warehouse_id) return
   if (details.value.length && !await wConfirm({ title: t('dn.form-ui.change-warehouse'), message: t('dn.form-ui.clear-items'), confirmText: t('button.confirm'), cancelText: t('button.cancel') })) return
   dn.value.warehouse_id = id ?? null
   details.value = []
   goodsCode.value = ''
   errors.value.warehouse = ''
 }
+let availabilityGeneration = 0
 const refreshAvailability = async () => {
+  const generation = ++availabilityGeneration
+  const warehouseId = dn.value.warehouse_id
+  const requestedItems = details.value.map(item => ({ goods_id: item.goods_id, code: item.goods?.code }))
   if (!details.value.length) return true
   const data = await httpRequest<any>('/api/warehouse/inventory/availability', {
     method: 'POST', headers: warehouseHeaders(dn.value.warehouse_id), body: { goods_codes: details.value.map(item => item.goods?.code) },
-    onError: error => showToast(bizErrorMessage(error), 'error'),
+    onError: error => { if (generation === availabilityGeneration && !disposed) { saveError.value = bizErrorMessage(error); showToast(saveError.value, 'error') } },
   })
-  if (!data) return false
+  if (!data || disposed || generation !== availabilityGeneration || warehouseId !== dn.value.warehouse_id || JSON.stringify(requestedItems) !== JSON.stringify(details.value.map(item => ({ goods_id: item.goods_id, code: item.goods?.code })))) return false
   details.value = details.value.map(item => {
     const stock = data.items.find((row: any) => row.goods_id === item.goods_id)
     return { ...item, max_qty: stock ? Math.max(0, stock.available_stock_for_sale + (originalQty.value[String(item.goods_id)] || 0)) : 0 }
   })
   return true
 }
+const originalDraft=ref<string|null>(null)
+const draftSnapshot=()=>JSON.stringify({fields:Object.fromEntries(['warehouse_id','recipient_id','carrier_id','dn_type','transportation_mode','order_number','shipping_address','expected_shipping_date','packaging_info','special_handling','remark'].map(key=>[key,dn.value[key]])),details:details.value.map(({goods_id,quantity,remark})=>({goods_id,quantity,remark})),shipTo:shipTo.value,options:optionForm.value})
+useUnsavedForm(()=>canEdit.value&&!loading.value&&originalDraft.value!==null&&draftSnapshot()!==originalDraft.value,()=>submitting.value)
 const load = async () => {
+  const generation = ++loadGeneration
   loading.value = true; loadError.value = ''
+  originalDraft.value = null
   await staffStore.getCurrentStaffInfo()
   await warehouseStore.fetchWarehouses()
+  if (generation !== loadGeneration || disposed) return
   if (editing.value) {
-    const data = await httpRequest<any>(`/api/warehouse/dn/${props.dnId}`, { onError: error => { loadError.value = bizErrorMessage(error) } })
+    const data = await httpRequest<any>(`/api/warehouse/dn/${props.dnId}`, { onError: error => { if (generation === loadGeneration && !disposed) loadError.value = bizErrorMessage(error) } })
+    if (generation !== loadGeneration || disposed) return
     if (!data) { loading.value = false; return }
     dn.value = data
     details.value = (data.details || []).map((item: DocumentItem) => ({ ...item }))
@@ -145,13 +178,17 @@ const load = async () => {
   } else {
     dn.value.warehouse_id = warehouseStore.currentWarehouse?.id ?? (warehouseOptions.value.length === 1 ? warehouseOptions.value[0]?.value : null)
   }
+  await nextTick()
+  if (generation !== loadGeneration || disposed) return
+  originalDraft.value=draftSnapshot()
   loading.value = false
 }
 onMounted(load)
+onBeforeUnmount(()=>{disposed = true; loadGeneration++; addressGeneration++;optionGeneration++;availabilityGeneration++})
 const useEffectiveAddress = () => { shipTo.value = { ...(cleanShipTo(effectiveShipTo.value) || {}) }; addressOpen.value = true }
 const addGoods = async () => {
   const code = goodsCode.value.trim()
-  if (!code || !dn.value.warehouse_id || adding.value) return
+  if (disposed || loading.value || submitting.value || !canEdit.value || !code || !dn.value.warehouse_id || adding.value) return
   const warehouseId = dn.value.warehouse_id
   adding.value = true
   const data = await httpRequest<any>('/api/warehouse/dn/items/preview', {
@@ -159,7 +196,7 @@ const addGoods = async () => {
     onError: error => showToast(bizErrorMessage(error), 'error'),
   })
   adding.value = false
-  if (!data || warehouseId !== dn.value.warehouse_id) return
+  if (disposed || !data || warehouseId !== dn.value.warehouse_id) return
   const invalid = data.items.find((row: any) => row.error)
   if (invalid) { showToast(t(`items-import.errors.${invalid.error}`), 'error'); return }
   const merged = mergeDocumentItems(details.value, data.items, 'add', originalQty.value)
@@ -167,7 +204,8 @@ const addGoods = async () => {
   details.value = merged; goodsCode.value = ''; errors.value.details = ''
 }
 const save = async () => {
-  if (submitting.value || loading.value || !canEdit.value || addressLoading.value || optionsLoading.value) return
+  if (disposed || submitting.value || adding.value || loading.value || loadError.value || !canEdit.value || addressLoading.value || optionsLoading.value || optionsLoadError.value) return
+  saveError.value = ''
   errors.value = {}
   if (!dn.value.warehouse_id) errors.value.warehouse = t('common.validation.warehouse-required')
   if (!dn.value.recipient_id) errors.value.recipient = t('common.validation.recipient-required')
@@ -192,8 +230,9 @@ const save = async () => {
     if (!editing.value ? !!options.options : ('changed' in options && options.changed)) body.shipping_options = options.options
     await httpRequest<any>(editing.value ? `/api/warehouse/dn/${props.dnId}` : '/api/warehouse/dn/', {
       method: editing.value ? 'PUT' : 'POST', headers: warehouseHeaders(dn.value.warehouse_id), body,
-      onSuccess: data => { saved = true; showToast(t('action-results.success'), 'success'); router.push(data?.id ? `/dn/detail/${data.id}` : '/dn') },
+      onSuccess: data => { saved = true; originalDraft.value=draftSnapshot(); showToast(t('action-results.success'), 'success'); router.push(data?.id ? `/dn/detail/${data.id}` : '/dn') },
       onError: error => {
+        saveError.value = bizErrorMessage(error)
         const key = error.code === 16139 ? optionKeyOfError(error.field) : null
         if (key) optionErrors.value[key] = error.message
         if (String(error.field || '').startsWith('ship_to')) {
@@ -217,10 +256,11 @@ const save = async () => {
     <WCard v-else-if="loading"><span role="status">{{ t('common.status.loading') }}</span></WCard>
     <WAlert v-else-if="!canEdit" tone="warn" :title="t('dn.form-ui.readonly')" />
     <form v-else class="dn-form__card" @submit.prevent="save">
+      <WAlert v-if="saveError" tone="block" :title="saveError" />
       <WFormSection :title="t('common.entities.recipient')">
         <WFormGrid>
           <WField :label="t('common.entities.recipient')" :span="12" :error="errors.recipient">
-            <WCombobox v-model="dn.recipient_id" :search="searchRecipients" :selected-label="recipientLabel" two-line :disabled="submitting" :placeholder="t('common.search-placeholder')" @select="selectRecipient" />
+            <WCombobox v-model="dn.recipient_id" :search="searchRecipients" :selected-label="recipientLabel" two-line :disabled="submitting || !allowed('recipient_read')" :placeholder="t('common.search-placeholder')" @select="selectRecipient" />
           </WField>
           <WField :label="t('dn.fields.shipping-address')" :error="errors.shipping_address">
             <WTextarea :model-value="shippingAddress" :rows="2" :disabled="addressLoading || submitting" @update:model-value="value => addressLine.onInput(value || '')" />
@@ -248,23 +288,24 @@ const save = async () => {
           <WButton :disabled="!dn.warehouse_id || submitting" @click="bulkOpen = true">{{ t('items-import.title') }}</WButton>
         </div>
         <WAlert v-if="errors.details" tone="block" :title="errors.details" />
-        <WTable :rows="details" :columns="columns" row-key="goods_id">
-          <template #cell-goods="{ row }"><NuxtLink class="w-record-link" :to="`/goods/detail/${row.goods_id}`" target="_blank">{{ row.goods?.name }}</NuxtLink><div class="w-muted">{{ row.goods?.code }}</div></template>
-          <template #cell-quantity="{ row }"><WInput v-model.number="row.quantity" type="number" min="1" step="1" :disabled="submitting" :invalid="invalidItemQuantity(row) || itemExceedsStock(row)" :aria-label="`${row.goods?.code} ${t('common.fields.quantity')}`" /><span v-if="itemExceedsStock(row)" class="dn-form__warning">{{ t('common.validation.quantity-exceeds-available', { max: row.max_qty }) }}</span></template>
+        <WTable :rows="details" :columns="columns" :row-key="row => row.id != null ? `detail-${row.id}` : `goods-${row.goods_id}`">
+          <template #cell-goods="{ row }"><NuxtLink v-if="allowed('goods_read')" class="w-record-link" :to="`/goods/detail/${row.goods_id}`" target="_blank">{{ row.goods?.name }}</NuxtLink><span v-else>{{ row.goods?.name }}</span><div class="w-muted">{{ row.goods?.code }}</div></template>
+          <template #cell-quantity="{ row }"><WInput v-model.number="row.quantity" type="number" min="1" step="1" :disabled="submitting" :invalid="invalidItemQuantity(row) || overGoods.has(row.goods_id)" :aria-label="`${row.goods?.code} ${t('common.fields.quantity')}`" /><span v-if="overGoods.has(row.goods_id)" class="dn-form__warning">{{ t('common.validation.quantity-exceeds-available', { max: row.max_qty }) }}</span></template>
           <template #cell-remark="{ row }"><WInput v-model="row.remark" :disabled="submitting" :aria-label="`${row.goods?.code} ${t('common.fields.remark')}`" /></template>
           <template #cell-actions="{ row }"><WButton variant="text" size="sm" :disabled="submitting" @click="details = details.filter(item => item !== row)">{{ t('button.delete') }}</WButton></template>
         </WTable>
-        <p class="dn-form__totals">{{ t('dn.list.goods', { kinds: details.length, qty: total }) }}</p>
+        <p class="dn-form__totals">{{ t('dn.list.goods', { kinds: new Set(details.map(item=>item.goods_id)).size, qty: total }) }}</p>
       </WFormSection>
       <WFormSection :title="t('dn.form-ui.shipping')">
         <WFormGrid>
 
 
 
-          <WField :label="t('common.entities.carrier')" :span="8" optional><WCombobox v-model="dn.carrier_id" :search="searchCarriers" :selected-label="carrierLabel" clearable :disabled="submitting" @select="selectCarrier" /></WField>
+          <WField :label="t('common.entities.carrier')" :span="8" optional><WCombobox v-model="dn.carrier_id" :search="searchCarriers" :selected-label="carrierLabel" clearable :disabled="submitting || !allowed('carrier_read')" @select="selectCarrier" /></WField>
           <WField :label="t('dn.fields.transportation-mode')" :span="4" optional><WSelect v-model="dn.transportation_mode" :options="transportOptions" :disabled="submitting" /></WField>
         </WFormGrid>
-        <ShippingOptionsFields v-if="schema.length" v-model="optionForm" :schema="schema" :errors="optionErrors" :disabled="submitting" id-prefix="dn-form-options" />
+        <WAlert v-if="optionsLoadError" tone="block" :title="optionsLoadError"><template #actions><WButton :disabled="optionsLoading" @click="loadOptions(optionsInitial)">{{ t('dn.list.retry') }}</WButton></template></WAlert>
+        <ShippingOptionsFields v-if="schema.length && !optionsLoadError" v-model="optionForm" :schema="schema" :errors="optionErrors" :disabled="submitting || optionsLoading" id-prefix="dn-form-options" />
         <WFormGrid class="dn-form__notes">
           <WField :label="t('dn.fields.packing-info')" :span="6" optional><WTextarea v-model="dn.packaging_info" :disabled="submitting" /></WField>
           <WField :label="t('dn.fields.special-handling')" :span="6" optional><WTextarea v-model="dn.special_handling" :disabled="submitting" /></WField>
@@ -274,7 +315,7 @@ const save = async () => {
       <footer class="dn-form__footer">
         <span v-if="overCount" class="dn-form__warning">{{ t('dn.form-ui.over-stock', { count: overCount }) }}</span>
         <WButton to="/dn" :disabled="submitting">{{ t('button.cancel') }}</WButton>
-        <WButton type="submit" variant="primary" :loading="submitting" :disabled="adding || addressLoading || optionsLoading">{{ title }}</WButton>
+        <WButton type="submit" variant="primary" :loading="submitting" :disabled="adding || addressLoading || optionsLoading || !!optionsLoadError">{{ title }}</WButton>
       </footer>
     </form>
     <DocumentItemsImport v-model:open="bulkOpen" kind="dn" :warehouse-id="dn.warehouse_id" :existing="details" :reserved="originalQty" @apply="items => { details = items; errors.details = '' }" />
@@ -282,6 +323,9 @@ const save = async () => {
 </template>
 
 <style scoped>
+.dn-form :deep(.w-table) { table-layout: fixed; min-width: 720px; }
+.dn-form :deep(.w-table td) { overflow-wrap: anywhere; }
+.dn-form :deep(.w-table .w-input__control) { width: 0; }
 .dn-form { display: flex; flex-direction: column; gap: 24px; }
 .dn-form__heading { display: flex; flex-direction: column; gap: 8px; }
 .dn-form nav { display: flex; align-items: center; gap: 8px; line-height: 20px; }

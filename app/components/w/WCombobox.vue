@@ -38,6 +38,8 @@ const props = withDefaults(defineProps<{
   invalid?: boolean
   disabled?: boolean
   id?: string
+  ariaLabel?: string
+  ariaLabelledby?: string
 }>(), {
   options: () => [],
   search: null,
@@ -235,6 +237,7 @@ defineExpose({ focus: () => input.value?.focus() })
     'is-disabled': disabled, 'is-two-line': showSecondLine }]">
     <div class="w-combo__box" @mousedown.prevent="input?.focus(); openList()">
       <input ref="input" :id="inputId" class="w-combo__input" type="text" role="combobox" autocomplete="off"
+        :aria-label="ariaLabel" :aria-labelledby="ariaLabelledby"
         :value="displayValue" :placeholder="placeholder" :disabled="disabled" :aria-expanded="open"
         :aria-controls="listId" aria-autocomplete="list" :aria-activedescendant="open && active >= 0 ? optionId(active) : undefined"
         :aria-invalid="isInvalid || undefined" :aria-describedby="field?.describedBy.value"

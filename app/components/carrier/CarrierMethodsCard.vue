@@ -27,6 +27,7 @@ const props = withDefaults(defineProps<{
 })
 
 const { t, te } = useI18n()
+const {bizErrorMessage}=useBizError()
 
 const TRACKING_PLACEHOLDER = '{tracking_number}'
 const DEFAULTS = { waybill: 'manual', pickup: 'none', tracking: 'link' } as const
@@ -37,19 +38,21 @@ const FIELD: Record<Kind, string> = { waybill: 'waybill_method', pickup: 'pickup
 // 插件内置的公开查询页（对接插件声明的 tracking_url_template）
 interface PluginInfo { code: string; tracking_url_template?: string | null }
 const plugins = ref<PluginInfo[]>([])
-onMounted(async () => {
-  await httpRequest<PluginInfo[]>('/api/warehouse/carrier/integrations', {
-    method: 'GET',
-    onSuccess: (data) => {
-      plugins.value = Array.isArray(data) ? data : []
-    },
-  })
-})
-// 文件方式的预设（GET /carrier/file-presets；旧后端没有 → null，不列文件方式）
 const filePresets = ref<CarrierFilePreset[] | null>(null)
-onMounted(async () => {
-  filePresets.value = await loadFilePresets()
-})
+const metadataError=ref(''),metadataLoading=ref(true)
+let metadataGeneration=0
+const loadMetadata=async()=>{
+ const seq=++metadataGeneration;metadataLoading.value=true;metadataError.value='';plugins.value=[];filePresets.value=null
+ const catalog=await httpRequest<PluginInfo[]>('/api/warehouse/carrier/integrations',{onError:e=>{if(seq===metadataGeneration)metadataError.value=bizErrorMessage(e)}})
+ if(seq!==metadataGeneration)return
+ if(catalog)plugins.value=catalog
+ const presets=await loadFilePresets()
+ if(seq!==metadataGeneration)return
+ if(presets===null)metadataError.value=metadataError.value||t('action-results.failed')
+ filePresets.value=presets;metadataLoading.value=false
+}
+onMounted(loadMetadata)
+onBeforeUnmount(()=>metadataGeneration++)
 const fileRef = ref<{ validate: (active: boolean) => boolean; payload: () => Record<string, any> } | null>(null)
 const pluginTemplate = computed(() => {
   const adapter = carrier.value?.integration?.adapter
@@ -120,6 +123,7 @@ const errorOf = (field: string): string => {
 }
 
 const validate = (): boolean => {
+  if(metadataLoading.value||metadataError.value)return false
   const errs: Record<string, string> = {}
   if (methodOf('pickup') === 'scheduled') {
     const s = schedule.value
@@ -164,11 +168,11 @@ const payload = (): Record<string, any> => {
   }
 }
 
-defineExpose({ validate, payload })
+defineExpose({ validate, payload, ready:computed(()=>!metadataLoading.value&&!metadataError.value) })
 </script>
 
 <template>
- <div class="w-carrier-methods">
+ <div class="w-carrier-methods"><WAlert v-if="metadataError" tone="block" :title="metadataError"><template #actions><WButton :loading="metadataLoading" @click="loadMetadata">{{t('dn.list.retry')}}</WButton></template></WAlert>
   <WFormSection v-for="kind in KINDS" :key="kind" :title="t(`carrier.methods.${kind}`)"><div class="w-method-body"><div class="w-method-options"><label v-for="value in optionsOf(kind)" :key="value" class="w-method-option" :class="{'is-selected':methodOf(kind)===value,'is-disabled':unavailable(kind,value)||!editable}"><input type="radio" :name="'carrier-method-'+kind" :value="value" :checked="methodOf(kind)===value" :disabled="!editable||unavailable(kind,value)" @change="setMethod(kind,value)" /><span><strong>{{optionText(kind,value)}}</strong><small>{{helpText(kind,value)}}</small></span></label></div><WAlert v-if="errorOf(FIELD[kind])" tone="block" :title="errorOf(FIELD[kind])" />
    <p v-if="apiUnavailable(kind)" class="w-method-hint">{{t('carrier.methods.api-unavailable')}}</p>
    <template v-if="kind==='waybill'&&methodOf(kind)==='file'&&filePresets"><CarrierFileSettings :ref="(el:any)=>{fileRef=el}" v-model="carrier" :presets="filePresets" :editable="editable" :server-errors="serverErrors" /></template>

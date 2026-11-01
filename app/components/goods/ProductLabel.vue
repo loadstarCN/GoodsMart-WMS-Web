@@ -20,7 +20,7 @@ onMounted(async()=>{observer=new ResizeObserver(measure);if(artboard.value)obser
 onBeforeUnmount(()=>{disposed=true;observer?.disconnect()})
 // Original artboard: 378 × 227 px at 2×. Scale the design, not the remaining whitespace.
 const scale=computed(()=>Math.min(props.width*96/25.4/378,props.height*96/25.4/227))
-const artStyle=computed(()=>({width:props.width*96/25.4/scale.value+'px',height:props.height*96/25.4/scale.value+'px',transform:`scale(${scale.value})`,...(props.margin==null?{}:{padding:props.margin*96/25.4/scale.value+'px'})}))
+const artStyle=computed(()=>({'--art-scale':scale.value,width:props.width*96/25.4/scale.value+'px',height:props.height*96/25.4/scale.value+'px',transform:`scale(${scale.value})`,...(props.margin==null?{}:{padding:props.margin*96/25.4/scale.value+'px'})}))
 const nameStyle=computed(()=>({fontFamily:props.nameFamily||'"Noto Sans JP", Inter, sans-serif',...(props.nameFontPt==null?{}:{fontSize:props.nameFontPt*96/72/scale.value+'px'})}))
 const barcode=computed<any>(()=>props.qr?null:referenceGoodsBarcode(props.code))
 </script>
@@ -55,5 +55,5 @@ svg{display:block;flex:none}.code128 svg{max-width:100%}
 footer{margin-top:auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;padding-top:5px;border-top:2px solid #151923;font-variant-numeric:tabular-nums;gap:12px}
 footer>span{font-size:16px;font-weight:800;max-width:100%;overflow-wrap:anywhere}footer small{font-size:12px;font-weight:700;margin-right:6px}
 .qr-block{display:flex;flex-direction:column;align-items:center;margin-top:8px}.qr-block img{width:120px;height:120px}
-@media print{.w-product-label{border-radius:0;break-inside:avoid;break-after:page}.w-product-label:last-child{break-after:auto}}
+@media print{.artboard{transform:none!important;zoom:var(--art-scale)}.w-product-label{border-radius:0;break-inside:avoid;break-after:page}.w-product-label:last-child{break-after:auto}}
 </style>

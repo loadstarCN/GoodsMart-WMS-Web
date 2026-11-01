@@ -19,14 +19,15 @@ const emit = defineEmits<{ navigate: [] }>()
 const { t, locale } = useI18n()
 const route = useRoute()
 const staffStore = useStaffStore()
-const brand = useRuntimeConfig().public.brand
+const warehouseStore = useWarehouseStore()
+const {brand} = usePresentation()
 
 /** 按权限过滤（平台管理端不过滤）；没做好的页面不显示；一组里一项都不剩时整组不显示 */
 const visibleGroups = computed(() => props.groups
   .map((group) => ({
     ...group,
     items: group.items.filter((item) =>
-      item.ready && (props.variant === 'admin' || !item.permission || staffStore.hasPermission(...([] as string[]).concat(item.permission)))),
+      item.ready && (props.variant === 'admin' || !item.permission || (staffStore.refreshed && staffStore.staffInfo && staffStore.hasPermission(...([] as string[]).concat(item.permission))))),
   }))
   .filter((group) => group.items.length > 0))
 
@@ -35,21 +36,29 @@ const activeKey = computed(() => matchNavItem(props.groups, route))
 // ---- 上架徽标：当前仓库待上架件数（GET /inventory/pending-putaway/summary 的 total_quantity），0 时不显示 ----
 const putawayCount = ref(0)
 let putawayFetchedAt = 0
+let badgeGeneration = 0
 const hasPutawayBadge = computed(() => visibleGroups.value.some((group) => group.items.some((item) => item.badge === 'putaway')))
 
 const fetchPutaway = async (force = false) => {
   if (!hasPutawayBadge.value) return
   // 切页时最多 30 秒刷新一次；换仓库会整页重新加载
   if (!force && Date.now() - putawayFetchedAt < 30_000) return
+  const generation = ++badgeGeneration
   putawayFetchedAt = Date.now()
   await httpRequest<{ total_quantity?: number }>('/api/warehouse/inventory/pending-putaway/summary', {
     method: 'GET',
-    onSuccess: (data) => { putawayCount.value = Number(data?.total_quantity) || 0 },
-    onError: () => { putawayCount.value = 0 },
+    headers: warehouseHeaders(warehouseStore.currentWarehouse?.id),
+    onSuccess: (data) => { if (generation === badgeGeneration) putawayCount.value = Number(data?.total_quantity) || 0 },
+    onError: () => { if (generation === badgeGeneration) putawayCount.value = 0 },
   })
 }
 onMounted(() => fetchPutaway(true))
 watch(() => route.fullPath, () => fetchPutaway())
+watch([hasPutawayBadge, () => warehouseStore.currentWarehouse?.id], () => {
+  badgeGeneration++; putawayCount.value = 0; putawayFetchedAt = 0
+  fetchPutaway(true)
+})
+onBeforeUnmount(() => badgeGeneration++)
 
 const badgeOf = (item: NavItem) => (item.badge === 'putaway' && putawayCount.value > 0 ? putawayCount.value.toLocaleString(locale.value) : '')
 /** 有徽标时链接的名称要带上数字（徽标本身对读屏隐藏） */

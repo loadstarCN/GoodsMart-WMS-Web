@@ -1,15 +1,20 @@
 <script lang="ts" setup>
+import LabelLotPicker from '~/components/goods/LabelLotPicker.vue'
 import CompactFlow from '~/components/operations/CompactFlow.vue'
 const staff=useStaffStore()
-const canEdit=computed(()=>staff.hasPermission('sorting_edit'))
+const canEdit=computed(()=>!!staff.refreshed && !!staff.staffInfo && !loading.value && !loadError.value && staff.hasPermission('sorting_edit'))
 const actionBusy=ref(false)
 const runAction=async(action:()=>Promise<any>)=>{if(actionBusy.value||submitting.value||!canEdit.value)return;actionBusy.value=true;try{await action()}finally{actionBusy.value=false}}
 
 // 定义页面元数据
-definePageMeta({
-});
+definePageMeta({ key: route => route.path });
 
 let loading = ref(true);
+const loadError = ref('');
+const entryError = ref('');
+const reasonAttempted = ref(false);
+let loadGeneration = 0;
+onBeforeUnmount(() => { loadGeneration++ });
 const route = useRoute();
 const taskId = route.params.id;
 
@@ -60,11 +65,12 @@ const totalOldDamaged = computed<number>(() => {
 
 
 const fetchData = async () => {
-    loading.value = true;
+    const generation = ++loadGeneration;
+    loading.value = true; loadError.value = ''; itemData.value = null;
     const data = await httpRequest(`/api/warehouse/sorting/${taskId}`, {
         method: 'GET',
-        params: route.query,
         onSuccess: (data) => {
+          if (generation !== loadGeneration) return;
           itemData.value = data;
           if (itemData.value?.status !== 'in_progress') {
             return;
@@ -88,20 +94,21 @@ const fetchData = async () => {
               return acc;
             }, {});
           // 更新asn.details中的旧数量
-          itemData.value.asn.details.forEach((item:any) => {
+          (itemData.value?.asn?.details || []).forEach((item:any) => {
             const goodsId = item.goods_id;
             // 统计task_details中的数据（按goods_id聚合）
             // 使用可选链防止undefined错误
             // 双问号操作符设置默认值
             item.old_sorted_quantity = taskSummary[goodsId]?.sorted ?? 0;
             item.old_damage_quantity = taskSummary[goodsId]?.damage ?? 0;
+            item.old_rejected_quantity = (itemData.value.task_details||[]).filter((line:any)=>line.goods_id===goodsId).reduce((sum:number,line:any)=>sum+Number(line.rejected_quantity||0),0);
           });
         },
         onError: (error) => {
-            showToast(error.message, 'error')
+            if (generation === loadGeneration) loadError.value = bizErrorMessage(error);
         },
         onFinally: () => {
-            loading.value = false;
+            if (generation === loadGeneration) loading.value = false;
         }
     })
     return data;   
@@ -117,26 +124,38 @@ const addDamageQTY = (item:any) => {
 };
 
 const resetTask = () => {
-    itemData.value.asn.details.forEach((item:any) => {
+    entryError.value = ''; reasonAttempted.value = false;
+    (itemData.value?.asn?.details || []).forEach((item:any) => {
         item.new_sorted_quantity = undefined;
         item.new_damage_quantity = undefined;
+        item.new_rejected_quantity = undefined; item.rejection_reason=''; item.concession_reason='';
     });
 };
 
 const saveTask = async () => {
-  if(!canEdit.value||actionBusy.value)return;
+  if(!canEdit.value||actionBusy.value||submitting.value)return;
+  entryError.value = '';
+  reasonAttempted.value = true;
+  if ((itemData.value?.asn?.details || []).some((row:any) => Number(row.new_rejected_quantity)>0 && !String(row.rejection_reason||'').trim())) {
+    entryError.value = t('error.generic-required', { field: t('receiving-exceptions.rejection-reason') });
+    return;
+  }
+  if (invalidTaskEntries('sorting', itemData.value?.asn?.details || [])) { showToast(t('error.check-quantities'), 'error'); return; }
   // 安全访问嵌套属性并处理空值
   const details = (itemData.value?.asn?.details ?? [])
     .map((item:any) => ({
       goods_id: item?.goods_id ?? null,
       sorted_quantity: Number(item?.new_sorted_quantity) || 0,
-      damage_quantity: Number(item?.new_damage_quantity) || 0
+      lot_id: item?.receiving_lot?.id ?? null,
+      damage_quantity: Number(item?.new_damage_quantity) || 0,
+      rejected_quantity: Number(item?.new_rejected_quantity) || 0,
+      rejection_reason: item.rejection_reason?.trim()||null, concession_reason: item.concession_reason?.trim()||null
     }))
     .filter((item:any) => {
       // 同时满足两个条件才保留条目
       return (
         item.goods_id !== undefined && // 原始过滤条件[1](@ref)
-        (item.sorted_quantity !== 0 || item.damage_quantity !== 0) // 新增过滤条件
+        (item.sorted_quantity !== 0 || item.damage_quantity !== 0 || item.rejected_quantity !== 0) // 新增过滤条件
       );
     });
 
@@ -162,6 +181,7 @@ const saveTask = async () => {
             done = true;
         },
         onError: (error) => {
+            entryError.value = bizErrorMessage(error);
             replayMismatch = batchKey.isReplayMismatch(error);
             showToast(bizErrorMessage(error), 'error')
         }
@@ -244,13 +264,9 @@ const completeTask = async () => {
     return data;   
 };
 
-const hasUnsavedChanges = computed(() => {
-  return itemData.value?.asn?.details?.some((item: any) => {
-    const sorted = Number(item?.new_sorted_quantity) || 0
-    const damaged = Number(item?.new_damage_quantity) || 0
-    return sorted > 0 || damaged > 0
-  }) ?? false
-})
+const hasUnsavedChanges = computed(() => hasTaskEntry(itemData.value?.asn?.details || [], ['new_sorted_quantity', 'new_damage_quantity','new_rejected_quantity']))
+useUnsavedForm(() => hasUnsavedChanges.value, () => submitting.value || actionBusy.value)
+
 
 function completeFn() {
 
@@ -296,12 +312,14 @@ onMounted(async() => {
   await fetchData();
 });
 
-const saved=(row:any,field:'sorted_quantity'|'damage_quantity')=>(itemData.value?.task_details||[]).filter((line:any)=>line.goods_id===row.goods_id).reduce((sum:number,line:any)=>sum+Number(line[field]||0),0)
-const variance=(row:any)=>saved(row,'sorted_quantity')+saved(row,'damage_quantity')+Number(row.new_sorted_quantity||0)+Number(row.new_damage_quantity||0)-row.quantity
-const goodsColumns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},{key:'quantity',label:t('common.quantities.expected'),type:'qty' as const},{key:'sorted',label:t('common.quantities.sorted'),type:'qty' as const},{key:'damaged',label:t('common.quantities.damaged'),type:'qty' as const},{key:'new_sorted',label:t('operations.ui.new-good')},{key:'new_damage',label:t('operations.ui.new-damage')},{key:'variance',label:t('operations.ui.variance'),type:'qty' as const}])
+const saved=(row:any,field:'sorted_quantity'|'damage_quantity'|'rejected_quantity')=>(itemData.value?.task_details||[]).filter((line:any)=>line.goods_id===row.goods_id).reduce((sum:number,line:any)=>sum+Number(line[field]||0),0)
+const variance=(row:any)=>saved(row,'sorted_quantity')+saved(row,'damage_quantity')+Number(row.new_sorted_quantity||0)+Number(row.new_damage_quantity||0)+saved(row,'rejected_quantity')+Number(row.new_rejected_quantity||0)-row.quantity
+const goodsColumns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},{key:'quantity',label:t('common.quantities.expected'),type:'qty' as const},{key:'sorted',label:t('common.quantities.sorted'),type:'qty' as const},{key:'damaged',label:t('common.quantities.damaged'),type:'qty' as const},{key:'rejected',label:t('receiving-exceptions.rejected'),type:'qty' as const},{key:'new_sorted',label:t('operations.ui.new-good')},{key:'new_damage',label:t('operations.ui.new-damage')},{key:'variance',label:t('operations.ui.variance'),type:'qty' as const}])
 useHead({title:()=>`SORT-${taskId}`})
 </script>
-<template><div class="w-sorting-detail w-scope"><header><nav><NuxtLink class="w-sort-muted" to="/sorting">{{t('nav.sorting')}}</NuxtLink><span>/</span><span>SORT-{{taskId}}</span></nav><div class="w-sort-heading"><h1>SORT-{{taskId}}</h1><WStatus v-if="itemData" :tone="itemData.status==='completed'?'ok':itemData.status==='in_progress'?'warn':'none'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus></div><div v-if="itemData" class="w-sort-meta"><NuxtLink class="w-sort-link" :to="'/asn/detail/'+itemData.asn_id">ASN-{{itemData.asn_id}}</NuxtLink><span>{{itemData.asn?.supplier?.name}}</span><span>{{$dayjs(itemData.started_at,undefined,itemData)}}</span></div></header><CompactFlow v-if="itemData" :key="itemData.status" :document-id="itemData.asn_id" kind="asn" current="sorting" /><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard><div v-if="itemData" class="w-sort-layout"><div class="w-sort-main"><WCard flush><div class="w-sort-section"><div class="w-sort-section-heading"><h2>{{t('nav.goods')}} <small>{{itemData.asn?.details?.length}}</small></h2><span>{{t('common.quantities.sorted')}} <strong>{{itemData.total_sorted_quantity+itemData.total_damage_quantity}}</strong> / {{itemData.expected_quantity}}</span></div><progress :value="itemData.total_sorted_quantity+itemData.total_damage_quantity" :max="Math.max(1,itemData.expected_quantity)" :aria-label="t('operations.ui.progress')" /></div><WTable :columns="goodsColumns" :rows="itemData.asn?.details||[]" inset><template #cell-goods="{row}"><NuxtLink class="w-sort-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span class="w-sort-sub">{{row.goods?.code}}</span><span class="w-sort-sub">{{row.remark}}</span></template><template #cell-sorted="{row}">{{saved(row,'sorted_quantity')}}</template><template #cell-damaged="{row}">{{saved(row,'damage_quantity')}}</template><template #cell-new_sorted="{row}"><WInput v-if="itemData.status==='in_progress'&&canEdit" v-model.number="row.new_sorted_quantity" type="number" min="0" step="1" size="sm" align="right" :aria-label="row.goods?.name+' '+t('operations.ui.new-good')" :disabled="submitting||actionBusy" /><span v-else>—</span></template><template #cell-new_damage="{row}"><WInput v-if="itemData.status==='in_progress'&&canEdit" v-model.number="row.new_damage_quantity" type="number" min="0" step="1" size="sm" align="right" :aria-label="row.goods?.name+' '+t('operations.ui.new-damage')" :disabled="submitting||actionBusy" /><span v-else>—</span></template><template #cell-variance="{row}"><span :class="{'w-sort-warning':variance(row)!==0}">{{variance(row)>0?'+':''}}{{variance(row)}}</span></template></WTable><footer v-if="canEdit"><WButton v-if="itemData.status==='pending'" variant="primary" :loading="actionBusy" @click="runAction(processTask)">{{t('button.process')}}</WButton><template v-if="itemData.status==='in_progress'"><span class="w-sort-sub">{{t('operations.ui.this-entry')}} {{totalNewSorted+totalNewDamaged}}</span><WButton :disabled="submitting||actionBusy" @click="resetTask">{{t('button.reset')}}</WButton><WButton :disabled="!hasUnsavedChanges||actionBusy" :loading="submitting" @click="saveTask">{{t('button.save')}}</WButton><WButton variant="primary" :disabled="hasUnsavedChanges||submitting" :loading="actionBusy" @click="completeFn">{{t('button.complete')}}</WButton></template></footer></WCard></div><aside><WCard><h3>{{t('nav.ASN')}}</h3><dl><dt>{{t('nav.supplier')}}</dt><dd>{{itemData.asn?.supplier?.name}}</dd><dt>{{t('dn.fields.order-no')}}</dt><dd>{{itemData.asn?.order_number||'—'}}</dd><dt>{{t('nav.warehouse')}}</dt><dd>{{itemData.asn?.warehouse?.name}}</dd><dt>{{t('common.fields.remark')}}</dt><dd>{{itemData.asn?.remark||'—'}}</dd></dl></WCard><WCard><h3>{{t('operations.ui.records')}} <small>{{itemData.batches?.length||0}}</small></h3><ol class="w-sort-records"><li v-for="batch in itemData.batches" :key="batch.id"><strong>#{{batch.id}}</strong><span class="w-sort-sub">{{$dayjs(batch.operation_time,'MM/DD HH:mm',itemData)}} · {{batch.operator?.user_name}}</span><div v-for="line in batch.details" :key="line.id" class="w-sort-record-line"><span>{{line.goods?.name}}</span><span>{{line.sorted_quantity}} / {{line.damage_quantity}}</span><WButton v-if="canEdit&&itemData.status==='in_progress'" icon="trash" icon-only variant="danger" size="sm" :aria-label="t('button.delete')" :disabled="actionBusy||submitting" @click="runAction(()=>deleteDetailItem(line.id))" /></div></li></ol></WCard><WCard><h3>{{t('operations.ui.status-records')}}</h3><ol class="w-sort-records"><li v-for="log in itemData.status_logs" :key="log.id"><span class="w-sort-sub">{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</span>{{t('common.status.'+String(log.new_status).replaceAll('_','-'))}}</li></ol></WCard></aside></div></div></template>
+<template><div class="w-sorting-detail w-scope"><header><nav><NuxtLink class="w-sort-muted" to="/sorting">{{t('nav.sorting')}}</NuxtLink><span>/</span><span>SORT-{{taskId}}</span></nav><div class="w-sort-heading"><h1>SORT-{{taskId}}</h1><WStatus v-if="itemData" :tone="itemData.status==='completed'?'ok':itemData.status==='in_progress'?'warn':'none'">{{t('common.status.'+itemData.status.replaceAll('_','-'))}}</WStatus></div><div v-if="itemData" class="w-sort-meta"><NuxtLink v-if="staff.hasPermission('asn_read')" class="w-sort-link" :to="'/asn/detail/'+itemData.asn_id">ASN-{{itemData.asn_id}}</NuxtLink><span v-else>ASN-{{itemData.asn_id}}</span><span>{{itemData.asn?.supplier?.name}}</span><span>{{$dayjs(itemData.started_at,undefined,itemData)}}</span></div></header><CompactFlow v-if="itemData" :key="itemData.status" :document-id="itemData.asn_id" kind="asn" current="sorting" /><WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData">{{t('dn.list.retry')}}</WButton></template></WAlert><WAlert v-if="entryError" tone="block" :title="entryError"/><WCard v-if="loading&&!itemData"><WEmptyState :title="t('common.status.loading')" /></WCard><div v-if="itemData" class="w-sort-layout"><div class="w-sort-main"><WCard flush><div class="w-sort-section"><div class="w-sort-section-heading"><h2>{{t('nav.goods')}} <small>{{itemData.asn?.details?.length}}</small></h2><span>{{t('common.quantities.sorted')}} <strong>{{itemData.total_sorted_quantity+itemData.total_damage_quantity+(itemData.total_rejected_quantity||0)}}</strong> / {{itemData.expected_quantity}}</span></div><progress :value="itemData.total_sorted_quantity+itemData.total_damage_quantity+(itemData.total_rejected_quantity||0)" :max="Math.max(1,itemData.expected_quantity)" :aria-label="t('operations.ui.progress')" /></div><WTable :columns="goodsColumns" :rows="itemData.asn?.details||[]" inset><template #cell-goods="{row}"><NuxtLink v-if="staff.hasPermission('goods_read')" class="w-sort-goods" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else class="w-sort-goods">{{row.goods?.name}}</span><span class="w-sort-sub">{{row.goods?.code}}</span><span class="w-sort-sub">{{row.remark}}</span><LabelLotPicker v-if="itemData.status==='in_progress'&&canEdit" v-model="row.receiving_lot" :goods-id="row.goods_id" receiving :disabled="submitting||actionBusy" /><details v-if="itemData.status==='in_progress'&&canEdit" class="receipt-exception"><summary>{{t('receiving-exceptions.title')}}</summary><WField :label="t('receiving-exceptions.new-rejected')"><WInput v-model.number="row.new_rejected_quantity" type="number" min="0" step="1" :disabled="submitting||actionBusy"/></WField><WField v-if="Number(row.new_rejected_quantity)>0" :label="t('receiving-exceptions.rejection-reason')" :error="reasonAttempted && !String(row.rejection_reason||'').trim() ? t('common.tips.required') : undefined" required><WTextarea v-model="row.rejection_reason" :maxlength="500" :disabled="submitting||actionBusy"/></WField><WField :label="t('receiving-exceptions.concession-reason')"><WTextarea v-model="row.concession_reason" :maxlength="500" :disabled="submitting||actionBusy"/></WField><small>{{t('receiving-exceptions.hint')}}</small></details><AsnSpecCapture :asn="itemData.asn" :line="row" :disabled="submitting||actionBusy||hasUnsavedChanges" @saved="fetchData" /></template><template #cell-sorted="{row}">{{saved(row,'sorted_quantity')}}</template><template #cell-rejected="{row}">{{saved(row,'rejected_quantity')}}</template><template #cell-damaged="{row}">{{saved(row,'damage_quantity')}}</template><template #cell-new_sorted="{row}"><WInput v-if="itemData.status==='in_progress'&&canEdit" v-model.number="row.new_sorted_quantity" type="number" min="0" step="1" size="sm" align="right" :aria-label="row.goods?.name+' '+t('operations.ui.new-good')" :disabled="submitting||actionBusy" /><span v-else>—</span></template><template #cell-new_damage="{row}"><WInput v-if="itemData.status==='in_progress'&&canEdit" v-model.number="row.new_damage_quantity" type="number" min="0" step="1" size="sm" align="right" :aria-label="row.goods?.name+' '+t('operations.ui.new-damage')" :disabled="submitting||actionBusy" /><span v-else>—</span></template><template #cell-variance="{row}"><span :class="{'w-sort-warning':variance(row)!==0}">{{variance(row)>0?'+':''}}{{variance(row)}}</span></template></WTable><footer v-if="canEdit"><WButton v-if="itemData.status==='pending'" variant="primary" :loading="actionBusy" @click="runAction(processTask)">{{t('button.process')}}</WButton><template v-if="itemData.status==='in_progress'"><span class="w-sort-sub">{{t('operations.ui.this-entry')}} {{totalNewSorted+totalNewDamaged+(itemData.asn?.details||[]).reduce((sum:number,row:any)=>sum+Number(row.new_rejected_quantity||0),0)}}</span><WButton :disabled="submitting||actionBusy" @click="resetTask">{{t('button.reset')}}</WButton><WButton :disabled="!hasUnsavedChanges||actionBusy" :loading="submitting" @click="saveTask">{{t('button.save')}}</WButton><WButton variant="primary" :disabled="hasUnsavedChanges||submitting" :loading="actionBusy" @click="completeFn">{{t('button.complete')}}</WButton></template></footer></WCard></div><aside><WCard><h3>{{t('nav.ASN')}}</h3><dl><dt>{{t('nav.supplier')}}</dt><dd>{{itemData.asn?.supplier?.name}}</dd><dt>{{t('dn.fields.order-no')}}</dt><dd>{{itemData.asn?.order_number||'—'}}</dd><dt>{{t('nav.warehouse')}}</dt><dd>{{itemData.asn?.warehouse?.name}}</dd><dt>{{t('common.fields.remark')}}</dt><dd>{{itemData.asn?.remark||'—'}}</dd></dl></WCard><WCard><h3>{{t('operations.ui.records')}} <small>{{itemData.batches?.length||0}}</small></h3><ol class="w-sort-records"><li v-for="batch in itemData.batches" :key="batch.id"><strong>#{{batch.id}}</strong><span class="w-sort-sub">{{$dayjs(batch.operation_time,'MM/DD HH:mm',itemData)}} · {{batch.operator?.user_name}}</span><div v-for="line in batch.details" :key="line.id" class="w-sort-record-line"><span>{{line.goods?.name}}<span class="w-sort-sub">{{line.lot_no || t('lot-rules.unassigned')}}</span></span><span>{{line.sorted_quantity}} / {{line.damage_quantity}}<span v-if="line.rejected_quantity" class="w-sort-sub">{{t('receiving-exceptions.rejected')}} {{line.rejected_quantity}} &middot; {{line.rejection_reason}}</span><span v-if="line.concession_reason" class="w-sort-sub">{{t('receiving-exceptions.concession')}}: {{line.concession_reason}}</span></span><WButton v-if="canEdit&&itemData.status==='in_progress'" icon="trash" icon-only variant="danger" size="sm" :aria-label="t('button.delete')" :disabled="actionBusy||submitting" @click="runAction(()=>deleteDetailItem(line.id))" /></div></li></ol></WCard><WCard><h3>{{t('operations.ui.status-records')}}</h3><ol class="w-sort-records"><li v-for="log in itemData.status_logs" :key="log.id"><span class="w-sort-sub">{{$dayjs(log.changed_at,'MM/DD HH:mm',itemData)}} · {{log.operator?.user_name}}</span>{{t('common.status.'+String(log.new_status).replaceAll('_','-'))}}</li></ol></WCard></aside></div></div></template>
 <style scoped>
-.w-sorting-detail{display:flex;flex-direction:column;gap:16px}.w-sorting-detail header{display:flex;flex-direction:column;gap:8px}.w-sorting-detail nav{display:flex;gap:8px;color:var(--w-text-2);font-size:13px;line-height:20px}.w-sort-muted{color:var(--w-text-3);text-decoration:none}.w-sort-heading{display:flex;gap:12px;align-items:center}.w-sort-heading h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.w-sort-meta{display:flex;flex-wrap:wrap;gap:4px 24px;font-size:13px;color:var(--w-text-3)}.w-sort-link{color:var(--w-link);text-decoration:none}.w-sort-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}.w-sort-main,.w-sort-layout aside{min-width:0;display:flex;flex-direction:column;gap:16px}.w-sort-section{padding:16px 24px;display:flex;flex-direction:column;gap:12px}.w-sort-section-heading{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px}.w-sorting-detail h2{margin:0;font-size:16px;line-height:24px;font-weight:600}.w-sorting-detail small{font-size:13px;font-weight:400;color:var(--w-text-3)}.w-sort-section progress{width:100%;height:6px;border:0;border-radius:6px;overflow:hidden}.w-sort-section progress::-webkit-progress-bar{background:#EDEFF3}.w-sort-section progress::-webkit-progress-value{background:#7855FE}.w-sort-main :deep(.w-table){min-width:780px}.w-sort-main :deep(.w-table td){padding-top:14px;padding-bottom:14px;vertical-align:top}.w-sort-main :deep(.w-input){min-width:64px;max-width:88px}.w-sort-goods{color:var(--w-text-1);font-size:14px;font-weight:500;text-decoration:none}.w-sort-sub{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.w-sort-warning{color:#B87400}.w-sort-main footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:16px 24px;border-top:1px solid var(--w-border)}.w-sort-main footer>span{margin-right:auto}.w-sort-layout aside :deep(.w-card__body){padding:16px 20px 20px}.w-sort-layout h3{margin:0 0 10px;font-size:14px;line-height:22px;font-weight:600}.w-sort-layout dl{display:grid;grid-template-columns:72px minmax(0,1fr);gap:6px;font-size:13px;line-height:20px;margin:0}.w-sort-layout dt{color:var(--w-text-3);font-weight:400}.w-sort-layout dd{margin:0;overflow-wrap:anywhere}.w-sort-records{list-style:none;margin:0;padding:0}.w-sort-records li{padding:12px 0;border-top:1px solid var(--w-line);font-size:13px}.w-sort-record-line{display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:12px;margin-top:6px}.w-sort-record-line>span:first-child{flex:1;min-width:0}@media(max-width:1100px){.w-sort-layout{grid-template-columns:minmax(0,1fr)}}
+.receipt-exception{margin-top:12px;min-width:180px}.receipt-exception summary{cursor:pointer;color:var(--w-pri);margin-bottom:8px}.receipt-exception small{color:var(--w-text-3);font-size:12px}.receipt-exception :deep(.w-field){margin-top:8px}
+
+.w-sorting-detail{display:flex;flex-direction:column;gap:16px}.w-sorting-detail header{display:flex;flex-direction:column;gap:8px}.w-sorting-detail nav{display:flex;gap:8px;color:var(--w-text-2);font-size:13px;line-height:20px}.w-sort-muted{color:var(--w-text-3);text-decoration:none}.w-sort-heading{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.w-sort-heading h1{margin:0;font-size:24px;line-height:32px;font-weight:600}.w-sort-meta>span{min-width:0;overflow-wrap:anywhere}.w-sort-meta{display:flex;flex-wrap:wrap;gap:4px 24px;font-size:13px;color:var(--w-text-3)}.w-sort-link{color:var(--w-link);text-decoration:none}.w-sort-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}.w-sort-main,.w-sort-layout aside{min-width:0;display:flex;flex-direction:column;gap:16px}.w-sort-section{padding:16px 24px;display:flex;flex-direction:column;gap:12px}.w-sort-section-heading{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px}.w-sorting-detail h2{margin:0;font-size:16px;line-height:24px;font-weight:600}.w-sorting-detail small{font-size:13px;font-weight:400;color:var(--w-text-3)}.w-sort-section progress{width:100%;height:6px;border:0;border-radius:6px;overflow:hidden}.w-sort-section progress::-webkit-progress-bar{background:#EDEFF3}.w-sort-section progress::-webkit-progress-value{background:#7855FE}.w-sort-main :deep(.w-table){min-width:780px}.w-sort-main :deep(.w-table td){padding-top:14px;padding-bottom:14px;vertical-align:top}.w-sort-main :deep(.w-input){min-width:64px;max-width:88px}.w-sort-goods{color:var(--w-text-1);font-size:14px;font-weight:500;text-decoration:none}.w-sort-sub{display:block;font-size:12px;line-height:18px;color:var(--w-text-3);margin-top:4px}.w-sort-warning{color:#B87400}.w-sort-main footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:16px 24px;border-top:1px solid var(--w-border)}.w-sort-main footer>span{margin-right:auto}.w-sort-layout aside :deep(.w-card__body){padding:16px 20px 20px}.w-sort-layout h3{margin:0 0 10px;font-size:14px;line-height:22px;font-weight:600}.w-sort-layout dl{display:grid;grid-template-columns:72px minmax(0,1fr);gap:6px;font-size:13px;line-height:20px;margin:0}.w-sort-layout dt{color:var(--w-text-3);font-weight:400}.w-sort-layout dd{margin:0;overflow-wrap:anywhere}.w-sort-records{list-style:none;margin:0;padding:0}.w-sort-records li{overflow-wrap:anywhere;padding:12px 0;border-top:1px solid var(--w-line);font-size:13px}.w-sort-record-line{display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:12px;margin-top:6px}.w-sort-record-line>span:first-child{flex:1 1 40%;min-width:0}.w-sort-record-line>span:nth-child(2){flex:1 1 60%;min-width:0}.w-sort-record-line>span{min-width:0;overflow-wrap:anywhere}.w-sort-record-line>button{flex-shrink:0}@media(max-width:1100px){.w-sort-layout{grid-template-columns:minmax(0,1fr)}}
 </style>

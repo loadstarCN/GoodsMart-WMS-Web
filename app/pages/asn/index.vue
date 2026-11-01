@@ -8,11 +8,14 @@ useHead({ title: () => t('nav.ASN') })
 const route = useRoute()
 const router = useRouter()
 const staff = useStaffStore()
+const ready=computed(()=>staff.refreshed&&!!staff.staffInfo)
+const allowed=(...permissions:string[])=>ready.value&&staff.hasPermission(...permissions)
 const warehouses = useWarehouseStore()
 const { bizErrorMessage } = useBizError()
 const { busy, run } = useAsnActions()
 const loading = ref(false)
-const error = ref('')
+const error = ref(''),countError=ref(''),supplierError=ref('')
+let supplierGeneration=0
 const data = ref<PaginationData | null>(null)
 const keyword = ref(String(route.query.keyword || ''))
 const page = computed(() => Math.max(1, Number(route.query.page) || 1))
@@ -26,13 +29,14 @@ const moreFilters = ref(false)
 const dateFrom = ref(String(route.query.expected_arrival_date || ''))
 const listStages = ['expected','in_transit','receiving','sorting','putaway','completed','exception','closed']
 const loadSuppliers = async () => {
-  if (!staff.hasPermission('supplier_read')) return
+  const seq=++supplierGeneration; supplierError.value='';suppliers.value=[]
+  if (!allowed('supplier_read')) return
   const options: {value:number;label:string}[] = []
   for (const is_active of [true, false]) {
     let page = 1
     while (true) {
-      const result = await httpRequest<PaginationData>('/api/warehouse/supplier/', {params:{is_active,page,per_page:100}})
-      if (!result) return
+      const result = await httpRequest<PaginationData>('/api/warehouse/supplier/', {params:{is_active,page,per_page:100},onError:e=>{if(seq===supplierGeneration)supplierError.value=bizErrorMessage(e)}})
+      if (!result||seq!==supplierGeneration) return
       options.push(...result.items.map((row:any)=>({value:row.id,label:row.name})))
       if (page >= result.pages) break
       page++
@@ -57,6 +61,7 @@ const columns = computed(() => [
 ])
 const go = (patch: Record<string, unknown>, keepPage = false) => {
   const query: Record<string, any> = { ...route.query, ...patch }
+  delete query.warehouse_id
   for (const key of Object.keys(query)) if (query[key] == null || query[key] === '' || query[key] === 'all') delete query[key]
   if (!keepPage) delete query.page
   router.push({ query })
@@ -64,9 +69,12 @@ const go = (patch: Record<string, unknown>, keepPage = false) => {
 let generation = 0, countGeneration = 0
 const fetchList = async () => {
   const seq = ++generation
-  loading.value = true; error.value = ''
+  loading.value = true; error.value = ''; data.value = null
+  if(!allowed('asn_read')){loading.value=false;return}
+  const params: Record<string, any> = { ...route.query, page: page.value, per_page: 20 }
+  delete params.warehouse_id
   await httpRequest<PaginationData>('/api/warehouse/asn/', {
-    params: { ...route.query, page: page.value, per_page: 20 },
+    params, headers:warehouseHeaders(warehouses.currentWarehouse?.id),
     onSuccess: value => { if (seq === generation) data.value = value },
     onError: err => { if (seq === generation) error.value = bizErrorMessage(err) },
     onFinally: () => { if (seq === generation) loading.value = false },
@@ -74,34 +82,53 @@ const fetchList = async () => {
 }
 const fetchCounts = async () => {
   const seq = ++countGeneration
+  countError.value=''
+  counts.value={};specCount.value=undefined
+  if(!allowed('asn_read'))return
+  const headers=warehouseHeaders(warehouses.currentWarehouse?.id)
+  const onError=(e:any)=>{if(seq===countGeneration)countError.value=bizErrorMessage(e)}
   const params: Record<string, any> = { ...route.query, per_page: 1 }
-  delete params.page; delete params.inbound_stage
+  delete params.page; delete params.inbound_stage; delete params.warehouse_id
   counts.value = {}; specCount.value = undefined
   const specParams = {...params}; delete specParams.spec_pending
-  const specResult = await httpRequest<PaginationData>('/api/warehouse/asn/', {params:{...specParams,spec_pending:true}})
+  const specResult = await httpRequest<PaginationData>('/api/warehouse/asn/', {params:{...specParams,spec_pending:true},headers,onError})
   if (seq !== countGeneration) return
   if (specResult) specCount.value = specResult.total
   await Promise.all(['all', ...INBOUND_STAGE_TABS].map(async key => {
-    const result = await httpRequest<PaginationData>('/api/warehouse/asn/', { params: { ...params, ...(key === 'all' ? {} : { inbound_stage: key }) } })
+    const result = await httpRequest<PaginationData>('/api/warehouse/asn/', { params: { ...params, ...(key === 'all' ? {} : { inbound_stage: key }) },headers,onError })
     if (seq === countGeneration && result) counts.value[key] = result.total
   }))
 }
+const refresh=()=>Promise.all([fetchList(),fetchCounts(),...(supplierError.value?[loadSuppliers()]:[])])
 const countKey = computed(() => { const q = { ...route.query }; delete q.page; delete q.inbound_stage; return JSON.stringify(q) })
 watch(() => route.query, () => { keyword.value = String(route.query.keyword || ''); dateFrom.value = String(route.query.expected_arrival_date || ''); fetchList() })
 watch(countKey, fetchCounts)
-const act = async (id: number, action: 'receive' | 'close' | 'cancel' | 'delete') => { if (await run(id, action)) await Promise.all([fetchList(), fetchCounts()]) }
+const act = async (id: number, action: 'receive' | 'close' | 'cancel' | 'delete') => {
+  if(!allowed(...(action==='receive'?['asn_receive','asn_edit']:action==='delete'?['asn_delete']:['asn_edit'])))return
+  if (await run(id, action)) await Promise.all([fetchList(), fetchCounts()])
+}
+const goPutaway=(row:any)=>{
+ if(!allowed('inventory_read'))return
+ const destination=warehouses.warehouses.find(item=>Number(item.id)===Number(row.warehouse_id))
+ if(!destination)return
+ warehouses.selectWarehouse(destination)
+ router.push({path:'/inventory',query:{pending_putaway:'true'}})
+}
+watch(ready,()=>{fetchList();fetchCounts();loadSuppliers()})
+watch(()=>warehouses.currentWarehouse?.id,()=>{if(page.value>1)go({});else{fetchList();fetchCounts()}})
 onMounted(() => { fetchList(); fetchCounts(); loadSuppliers() })
-onBeforeUnmount(() => { generation++; countGeneration++ })
+onBeforeUnmount(() => { generation++; countGeneration++;supplierGeneration++ })
 const tone = (value: string): 'ok' | 'warn' | 'bad' | 'info' | 'none' => value === 'exception' ? 'bad' : value === 'completed' ? 'ok' : ['receiving', 'putaway'].includes(value) ? 'warn' : ['in_transit', 'sorting'].includes(value) ? 'info' : 'none'
 </script>
 <template>
   <div class="asn-list w-scope">
-    <header><h1>{{ t('nav.ASN') }} <small>{{ warehouses.currentWarehouse?.name ? warehouses.currentWarehouse.name + ' · ' : '' }}{{ data ? t('asn.list.count', {count:number(data.total)}) : '' }}</small></h1><WButton v-if="staff.hasPermission('asn_edit')" variant="primary" icon="plus" to="/asn/add">{{ t('asn.list.create') }}</WButton></header>
+    <header><h1>{{ t('nav.ASN') }} <small>{{ warehouses.currentWarehouse?.name ? warehouses.currentWarehouse.name + ' · ' : '' }}{{ data ? t('asn.list.count', {count:number(data.total)}) : '' }}</small></h1><WButton v-if="allowed('asn_edit')" variant="primary" icon="plus" to="/asn/add">{{ t('asn.list.create') }}</WButton></header>
     <WCard flush>
       <WTabs inset :model-value="stage" :items="tabs" :label="t('asn.flow.stage-column')" @update:model-value="value => go({ inbound_stage: value })" />
       <form class="asn-list__filters" @submit.prevent="go({ keyword: keyword.trim() })">
+        <WButton v-if="route.query.warehouse_todo_date" variant="secondary" @click="go({warehouse_todo_date:null})">{{ t('warehouse.ui.receive-today') }} · {{ route.query.warehouse_todo_date }} ×</WButton>
         <WInput v-model="keyword" type="search" :placeholder="t('asn.list.search')" :aria-label="t('common.search')" @change="go({keyword:keyword.trim()})"><template #prefix><WIcon name="search" :size="16" /></template></WInput>
-        <WFilterSelect v-if="staff.hasPermission('supplier_read')" :model-value="Number(route.query.supplier_id)||null" :options="suppliers" :label="t('common.entities.supplier')" @change="value=>go({supplier_id:value})" />
+        <WFilterSelect v-if="allowed('supplier_read')" :model-value="Number(route.query.supplier_id)||null" :options="suppliers" :label="t('common.entities.supplier')" @change="value=>go({supplier_id:value})" />
         <WFilterSelect :model-value="type || null" :options="types.filter(option => option.value)" :label="t('asn.list.type')" @change="value => go({ asn_type: value })" />
         <WDropdown :label="t('asn.list.arrival')" width="260px"><template #trigger="{attrs}"><button v-bind="attrs" class="w-asn-filter" type="button"><span>{{ t('asn.list.arrival') }}</span><span>{{ dateFrom || t('common.status.all') }}</span><WIcon name="chevron-down" :size="14" /></button></template>
           <div class="w-asn-date" data-keep-open><WField :label="t('asn.list.arrival-from')" optional><WInput v-model="dateFrom" type="date" @change="go({expected_arrival_date:dateFrom})" /></WField><WButton size="sm" @click="go({expected_arrival_date:null})">{{ t('common.status.all') }}</WButton></div>
@@ -110,7 +137,7 @@ const tone = (value: string): 'ok' | 'warn' | 'bad' | 'info' | 'none' => value =
         <WButton variant="text" :aria-expanded="moreFilters" @click="moreFilters=!moreFilters">{{ t('dn.list.more-filters') }}</WButton>
         <div v-if="moreFilters" class="w-asn-more"><WFilterSelect :model-value="status || null" :options="statuses.filter(option => option.value)" :label="t('shipping.dn.status-filter')" @change="value => go({ status: value })" /></div>
       </form>
-      <WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="fetchList">{{ t('dn.list.retry') }}</WButton></template></WAlert>
+      <WAlert v-if="error||countError||supplierError" tone="block" :title="error||countError||supplierError"><template #actions><WButton @click="refresh">{{ t('dn.list.retry') }}</WButton></template></WAlert>
       <WTable :rows="data?.items || []" :columns="columns" :loading="loading" inset valign="top">
         <template #cell-number="{ row }"><div class="w-asn-number"><NuxtLink class="w-asn-record-link" :to="`/asn/detail/${row.id}`">ASN-{{ row.id }}</NuxtLink><span v-if="row.asn_type !== 'inbound'" class="w-asn-type">{{ t(`asn.type.${row.asn_type}`) }}</span></div><div v-if="row.order_number" class="w-asn-sub">{{ row.order_number }}</div></template>
         <template #cell-goods="{ row }"><div>{{ t('asn.list.goods-count', { lines: number(row.detail_count), quantity: number(row.total_quantity) }) }}</div><span v-if="row.spec_pending_count" class="w-asn-spec-badge">{{ t('asn.form-ui.pending-specs',{count:row.spec_pending_count}) }}</span></template>
@@ -118,16 +145,16 @@ const tone = (value: string): 'ok' | 'warn' | 'bad' | 'info' | 'none' => value =
         <template #cell-expected_arrival_date="{row}"><span class="w-asn-date-text">{{ shortDate(row.expected_arrival_date) }}</span></template>
         <template #cell-stage="{ row }"><WStatus muted :tone="tone(row.inbound_stage)">{{ t(`asn.flow.stage.${row.inbound_stage || 'expected'}`) }}</WStatus><div class="w-asn-sub w-asn-stage-sub">{{ t(`common.status.${row.status}`) }}</div></template>
         <template #cell-actions="{ row }"><div class="asn-list__actions">
-          <WButton v-if="row.status === 'pending' && staff.hasPermission('asn_receive', 'asn_edit')" size="sm" :disabled="busy" @click="act(row.id, 'receive')">{{ t('asn.operations.receive') }}</WButton>
-          <WButton v-if="row.inbound_stage === 'sorting' && staff.hasPermission('sorting_read')" size="sm" :to="`/sorting?asn_id=${row.id}`">{{ t('asn.operations.sorting') }}</WButton>
-          <WButton v-if="row.inbound_stage==='putaway' && staff.hasPermission('inventory_read')" size="sm" :to="{path:'/inventory',query:{pending_putaway:'true',warehouse_id:row.warehouse_id}}">{{ t('asn.flow.steps.putaway') }}</WButton>
+          <WButton v-if="row.status === 'pending' && allowed('asn_receive', 'asn_edit')" size="sm" :disabled="busy" @click="act(row.id, 'receive')">{{ t('asn.operations.receive') }}</WButton>
+          <WButton v-if="row.inbound_stage === 'sorting' && allowed('sorting_read')" size="sm" :to="`/sorting?asn_id=${row.id}`">{{ t('asn.operations.sorting') }}</WButton>
+          <WButton v-if="row.inbound_stage==='putaway' && allowed('inventory_read')" size="sm" @click="goPutaway(row)">{{ t('asn.flow.steps.putaway') }}</WButton>
           <WDropdown :label="t('common.fields.action')" placement="bottom-end" width="180px">
             <template #trigger="{ attrs }"><WButton v-bind="attrs" variant="text" class="w-asn-more-button" icon="more" icon-only size="sm" :aria-label="t('common.fields.action')" /></template>
             <NuxtLink class="w-menu-item" role="menuitem" :to="`/asn/detail/${row.id}`">{{ t('asn.fields.details') }}</NuxtLink>
-            <NuxtLink class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && staff.hasPermission('asn_edit')" :to="`/asn/edit/${row.id}`">{{ t('asn.operations.edit') }}</NuxtLink>
-            <button class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && staff.hasPermission('asn_edit')" :disabled="busy" @click="act(row.id, 'close')">{{ t('button.close') }}</button>
-            <button class="w-menu-item" role="menuitem" v-if="row.status === 'received' && staff.hasPermission('asn_edit')" :disabled="busy" @click="act(row.id, 'cancel')">{{ t('asn.operations.cancel') }}</button>
-            <button class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && staff.hasPermission('asn_delete')" :disabled="busy" @click="act(row.id, 'delete')">{{ t('button.delete') }}</button>
+            <NuxtLink class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && allowed('asn_edit')" :to="`/asn/edit/${row.id}`">{{ t('asn.operations.edit') }}</NuxtLink>
+            <button class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && allowed('asn_edit')" :disabled="busy" @click="act(row.id, 'close')">{{ t('button.close') }}</button>
+            <button class="w-menu-item" role="menuitem" v-if="row.status === 'received' && allowed('asn_edit')" :disabled="busy" @click="act(row.id, 'cancel')">{{ t('asn.operations.cancel') }}</button>
+            <button class="w-menu-item" role="menuitem" v-if="row.status === 'pending' && allowed('asn_delete')" :disabled="busy" @click="act(row.id, 'delete')">{{ t('button.delete') }}</button>
           </WDropdown>
         </div></template>
       </WTable>
@@ -168,4 +195,8 @@ const tone = (value: string): 'ok' | 'warn' | 'bad' | 'info' | 'none' => value =
 .w-asn-date { display:flex; flex-direction:column; gap:8px; padding:8px; }
 .w-asn-more { display:flex; flex-basis:100%; padding-top:4px; }
 .w-asn-more-button { color:var(--w-text-2); }
+.asn-list :deep(.w-table td) { max-width:260px;overflow-wrap:anywhere; }
+.asn-list :deep(.w-table td:nth-child(1)),.asn-list :deep(.w-table td:nth-child(2)) { min-width:150px; }
+.asn-list :deep(.w-table td:nth-child(4)) { min-width:180px; }
+.w-asn-sub { max-width:240px;overflow-wrap:anywhere;white-space:normal; }
 </style>

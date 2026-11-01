@@ -26,6 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const staff=useStaffStore()
 const { bizErrorMessage } = useBizError()
 
 interface PackageRow {
@@ -282,11 +283,12 @@ defineExpose({ reload: load, dirty })
           {{ t('customs.packages.total', { count: rows.length, weight: totalWeight }) }}
           <WTag v-if="editable && dirty" tone="warn">{{ t('customs.packages.unsaved') }}</WTag>
         </span>
-        <div v-if="editable" class="w-pkgs__actions">
+        <div class="w-pkgs__actions"><WButton v-if="rows.length&&staff.hasPermission('dn_read')" size="sm" :disabled="dirty||saving" :to="'/dn/carton-label/'+dnId">{{t('carton-label.title')}}</WButton><template v-if="editable">
           <WButton size="sm" icon="plus" :disabled="rows.length >= MAX_PACKAGES" @click="addRow">{{ t('customs.packages.add') }}</WButton>
-          <WButton size="sm" variant="primary" :loading="saving" :disabled="!dirty" @click="save">{{ t('customs.packages.save') }}</WButton>
+          <WButton size="sm" variant="primary" :loading="saving" :disabled="!dirty" @click="save">{{ t('customs.packages.save') }}</WButton></template>
         </div>
       </div>
+      <DnCartonContents v-if="rows.length" :dn-id="dnId" :editable="editable&&!dirty" :packages="props.packages" @saved="value=>{reset(value.packages);emit('saved',value)}"/>
     </template>
   </div>
 </template>
@@ -324,7 +326,7 @@ defineExpose({ reload: load, dirty })
 .w-pkgs__grid .is-num { text-align: right; }
 .w-pkgs__grid td.is-num { min-width: 80px; }
 .w-pkgs__grid .is-no { width: 64px; white-space: nowrap; font-weight: var(--w-fw-medium); }
-.w-pkgs__grid .is-del { width: 40px; text-align: right; }
+.w-pkgs__grid .is-del { position: relative; width: 40px; text-align: right; }
 .w-pkgs__grid td :deep(.w-input) { min-width: 84px; }
 .w-pkgs__errors td { border-top: 0; padding-top: 0; color: var(--w-bad-text); font-size: var(--w-fs-12); }
 .w-pkgs__errors span + span::before { content: ' · '; }

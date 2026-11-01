@@ -45,9 +45,8 @@ const toggleSidebar = () => {
   else setSidebarCollapsed(!sidebarCollapsed.value)
 }
 watch(() => route.fullPath, () => { drawerOpen.value = false })
-const onKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && drawerOpen.value) drawerOpen.value = false
-}
+const sidebarPanel=useTemplateRef<HTMLElement>('sidebarPanel')
+useWOverlay(drawerOpen,sidebarPanel,()=>{drawerOpen.value=false})
 
 useHead({
   htmlAttrs: {
@@ -61,7 +60,6 @@ onMounted(async () => {
   mql = window.matchMedia('(max-width: 991.98px)')
   onMediaChange()
   mql.addEventListener('change', onMediaChange)
-  document.addEventListener('keydown', onKeydown)
   reloadDensity()
 
   // 员工信息：每次打开页面都从后端刷新一次（登录时刚刷新过的不再重复），公司、可访问仓库可能已被改过
@@ -69,6 +67,9 @@ onMounted(async () => {
     if (!staffStore.staffInfo || !staffStore.refreshed) {
       await staffStore.getCurrentStaffInfo()
     }
+    // A transient identity failure is not evidence that warehouse access was revoked.
+    // Keep the selected cookie until a successful refresh can validate it.
+    if (!staffStore.staffInfo || !staffStore.refreshed) return
   }
   // 用最新的仓库列表校验当前仓库（cookie）：不在列表里（已停用 / 无权访问）就清掉；
   // 非公司管理员没有当前仓库时自动选第一个可访问的仓库。自动选了 / 换了仓库时，本页已发出的请求
@@ -82,14 +83,13 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   mql?.removeEventListener('change', onMediaChange)
-  document.removeEventListener('keydown', onKeydown)
 })
 </script>
 
 <template>
   <div class="w-shell" :class="{ 'is-collapsed': collapsed, 'is-mobile': mobile, 'is-drawer-open': drawerOpen }">
     <a href="#w-main" class="w-shell__skip">{{ t('shell.skip-to-content') }}</a>
-    <aside :id="sidebarId" class="w-shell__sidebar">
+    <aside :id="sidebarId" ref="sidebarPanel" class="w-shell__sidebar" :role="mobile?'dialog':undefined" :aria-modal="mobile&&drawerOpen?true:undefined" :aria-label="t(variant==='admin'?'shell.admin-nav-label':'shell.nav-label')" :inert="mobile&&!drawerOpen||undefined" tabindex="-1"><WButton v-if="mobile" class="w-shell__drawer-close" variant="text" icon="close" icon-only :aria-label="t('shell.close-menu')" @click="drawerOpen=false"/>
       <ShellSidebar :groups="groups" :variant="variant" :collapsed="collapsed" @navigate="drawerOpen = false" />
     </aside>
     <div v-if="mobile && drawerOpen" class="w-shell__backdrop" aria-hidden="true" @click="drawerOpen = false" />
@@ -97,7 +97,7 @@ onBeforeUnmount(() => {
       <ShellTopbar class="w-shell__topbar" :variant="variant" :sidebar-expanded="sidebarExpanded" :mobile="mobile"
         :sidebar-id="sidebarId" :query="variant === 'wms' ? searchQuery : null" @toggle-sidebar="toggleSidebar" />
       <main id="w-main" class="w-main" tabindex="-1">
-        <div class="w-page">
+        <div class="w-page"><PlatformNotices place="header"/>
           <slot />
         </div>
         <footer class="w-shell__footer">
@@ -204,3 +204,5 @@ onBeforeUnmount(() => {
   .w-main { padding: 0; }
 }
 </style>
+
+<style scoped>.w-shell__drawer-close{position:absolute;top:14px;right:8px;z-index:1;color:#fff}.w-shell__sidebar:focus{outline:none}</style>
