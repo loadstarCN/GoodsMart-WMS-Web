@@ -62,6 +62,9 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      - name: Regression tests
+        run: npm run test:dn
+
       - name: Build
         run: npm run build
 
