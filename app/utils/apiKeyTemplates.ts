@@ -12,14 +12,15 @@ export interface ApiKeyTemplate {
 
 export const API_KEY_TEMPLATES: ApiKeyTemplate[] = [
   {
-    // 订单对接（批发站 / 电商平台 / ERP）：建收货通知和发货单，同步商品和收货方，查库存和配送进度
+    // 订单对接（批发站 / 电商平台 / ERP）：建收货通知和发货单，同步商品和收货方，查库存、刷新配送进度
     key: 'order-integration',
     permissions: [
       'goods_read', 'goods_add', 'goods_edit',
       'inventory_read',
       'asn_read', 'asn_edit',
       'dn_read', 'dn_edit',
-      'delivery_read',
+      // 刷新承运商跟踪可能自动完成发货 / 签收，因此需要 delivery_edit。
+      'delivery_read', 'delivery_edit',
       'carrier_read',
       'recipient_read', 'recipient_edit',
       'warehouse_read',

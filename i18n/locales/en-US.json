@@ -2139,7 +2139,7 @@
     "templates": {
       "order-integration": {
         "name": "Order integration",
-        "desc": "Create ASNs and DNs, sync goods and recipients, query inventory and delivery status"
+        "desc": "Create ASNs and DNs, sync goods and recipients, query inventory and refresh tracking (may automatically confirm dispatch and receipt)"
       },
       "inventory-sync": {
         "name": "Inventory sync",
