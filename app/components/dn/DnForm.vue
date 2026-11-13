@@ -8,7 +8,7 @@ import { useShippingAddressLine } from '~/composables/dn/shippingAddressLine'
 import { mergeDocumentItems, invalidItemQuantity, goodsExceedingStock, type DocumentItem } from '~/utils/documentItems'
 
 const props = defineProps<{ dnId?: string }>()
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const router = useRouter()
 const warehouseStore = useWarehouseStore()
 const staffStore = useStaffStore()
@@ -29,7 +29,7 @@ const optionsLoadError = ref('')
 let optionsInitial = false
 const errors = ref<Record<string, string>>({})
 const optionErrors = ref<Record<string, string>>({})
-const dn = ref<Record<string, any>>({ warehouse_id: null, recipient_id: null, carrier_id: null, dn_type: 'shipping',
+const dn = ref<Record<string, any>>({ warehouse_id: null, recipient_id: null, carrier_id: null, dn_type: 'shipping', stock_source:'standard', supplier_id:null, purpose_reason:'',
   transportation_mode: 'express', order_number: '', shipping_address: '', expected_shipping_date: null,
   packaging_info: '', special_handling: '', remark: '' })
 const details = ref<DocumentItem[]>([])
@@ -54,7 +54,11 @@ const warehouseOptions = computed(() => {
   if (dn.value.warehouse && !list.some(w => w.id === dn.value.warehouse.id)) list.push(dn.value.warehouse)
   return list.map(w => ({ value: w.id, label: w.name }))
 })
-const typeOptions = computed(() => dnTypesOptions.map(value => ({ value, label: t(`dn.type.${value}`) })))
+const typeOptions = computed(() => dnTypesOptions.filter(value=>value!=='transfer'||(editing.value&&dn.value.dn_type==='transfer')).map(value => ({ value, label: t(`dn.type.${value}`) })))
+const returnLabels=computed(()=>({source:t('stock-operations.return-pool'),reason:t('stock-operations.return-reason')}))
+const returnSources=computed(()=>['standard','damaged','return'].map(value=>({value,label:t('common.locations.'+value)})))
+watch(()=>dn.value.dn_type,()=>{if(!editing.value){dn.value.stock_source=dn.value.dn_type==='damage_to_supplier'?'damaged':'standard';if(!['return_to_supplier','damage_to_supplier'].includes(dn.value.dn_type)){dn.value.supplier_id=null;dn.value.purpose_reason=''}}})
+watch(()=>dn.value.stock_source,()=>{if(!loading.value)refreshAvailability()})
 const transportOptions = computed(() => dnTransportationModesOptions.map(value => ({ value, label: t(`dn.transportation.${value}`) })))
 const overGoods = computed(() => goodsExceedingStock(details.value))
 const overCount = computed(() => details.value.filter(item => overGoods.value.has(item.goods_id)).length)
@@ -66,7 +70,7 @@ const columns = computed(() => [
   { key: 'remark', label: t('common.fields.remark'), width: '220px' },
   { key: 'actions', label: t('common.fields.action'), width: '60px' },
 ])
-const search = async (kind: 'recipient' | 'carrier', name: string): Promise<WComboboxOption<number>[]> => {
+const search = async (kind: 'recipient' | 'carrier' | 'supplier', name: string): Promise<WComboboxOption<number>[]> => {
   if (!allowed(`${kind}_read`)) return []
   const data = await httpRequest<PaginationData>(`/api/warehouse/${kind}/`, {
     params: { name: name || undefined, per_page: 30 }, headers: warehouseHeaders(dn.value.warehouse_id),
@@ -137,18 +141,18 @@ const refreshAvailability = async () => {
   const requestedItems = details.value.map(item => ({ goods_id: item.goods_id, code: item.goods?.code }))
   if (!details.value.length) return true
   const data = await httpRequest<any>('/api/warehouse/inventory/availability', {
-    method: 'POST', headers: warehouseHeaders(dn.value.warehouse_id), body: { goods_codes: details.value.map(item => item.goods?.code) },
+    method: 'POST', headers: warehouseHeaders(dn.value.warehouse_id), body: { goods_codes: details.value.map(item => item.goods?.code), dn_type:dn.value.dn_type, stock_source:dn.value.stock_source||'standard' },
     onError: error => { if (generation === availabilityGeneration && !disposed) { saveError.value = bizErrorMessage(error); showToast(saveError.value, 'error') } },
   })
   if (!data || disposed || generation !== availabilityGeneration || warehouseId !== dn.value.warehouse_id || JSON.stringify(requestedItems) !== JSON.stringify(details.value.map(item => ({ goods_id: item.goods_id, code: item.goods?.code })))) return false
   details.value = details.value.map(item => {
     const stock = data.items.find((row: any) => row.goods_id === item.goods_id)
-    return { ...item, max_qty: stock ? Math.max(0, stock.available_stock_for_sale + (originalQty.value[String(item.goods_id)] || 0)) : 0 }
+    return { ...item, max_qty: stock ? Math.max(0, (stock.available_for_purpose ?? stock.available_stock_for_sale) + (originalQty.value[String(item.goods_id)] || 0)) : 0 }
   })
   return true
 }
 const originalDraft=ref<string|null>(null)
-const draftSnapshot=()=>JSON.stringify({fields:Object.fromEntries(['warehouse_id','recipient_id','carrier_id','dn_type','transportation_mode','order_number','shipping_address','expected_shipping_date','packaging_info','special_handling','remark'].map(key=>[key,dn.value[key]])),details:details.value.map(({goods_id,quantity,remark})=>({goods_id,quantity,remark})),shipTo:shipTo.value,options:optionForm.value})
+const draftSnapshot=()=>JSON.stringify({fields:Object.fromEntries(['warehouse_id','recipient_id','carrier_id','stock_source','supplier_id','purpose_reason','dn_type','transportation_mode','order_number','shipping_address','expected_shipping_date','packaging_info','special_handling','remark'].map(key=>[key,dn.value[key]])),details:details.value.map(({goods_id,quantity,remark})=>({goods_id,quantity,remark})),shipTo:shipTo.value,options:optionForm.value})
 useUnsavedForm(()=>canEdit.value&&!loading.value&&originalDraft.value!==null&&draftSnapshot()!==originalDraft.value,()=>submitting.value)
 const load = async () => {
   const generation = ++loadGeneration
@@ -201,7 +205,7 @@ const addGoods = async () => {
   if (invalid) { showToast(t(`items-import.errors.${invalid.error}`), 'error'); return }
   const merged = mergeDocumentItems(details.value, data.items, 'add', originalQty.value)
   if (merged.length > 500 || merged.some(invalidItemQuantity)) { showToast(t('items-import.limit'), 'error'); return }
-  details.value = merged; goodsCode.value = ''; errors.value.details = ''
+  details.value = merged; goodsCode.value = ''; errors.value.details = ''; await refreshAvailability()
 }
 const save = async () => {
   if (disposed || submitting.value || adding.value || loading.value || loadError.value || !canEdit.value || addressLoading.value || optionsLoading.value || optionsLoadError.value) return
@@ -222,7 +226,7 @@ const save = async () => {
     if (!await refreshAvailability()) return
     if (overCount.value) { errors.value.details = t('dn.form-ui.over-stock', { count: overCount.value }); return }
     const body: Record<string, any> = {}
-    for (const key of ['warehouse_id', 'recipient_id', 'carrier_id', 'dn_type', 'transportation_mode', 'order_number', 'expected_shipping_date', 'packaging_info', 'special_handling', 'remark']) body[key] = dn.value[key]
+    for (const key of ['warehouse_id', 'recipient_id', 'carrier_id', 'stock_source', 'supplier_id', 'purpose_reason', 'dn_type', 'transportation_mode', 'order_number', 'expected_shipping_date', 'packaging_info', 'special_handling', 'remark']) body[key] = dn.value[key]
     body.shipping_address = String(shippingAddress.value || '').trim() || null
     body.details = details.value.map(({ id, goods_id, quantity, remark }) => ({ ...(id ? { id } : {}), goods_id, quantity: Number(quantity), remark }))
     if (hasStructuredAddress(shipTo.value)) body.ship_to = cleanShipTo(shipTo.value)
@@ -277,7 +281,8 @@ const save = async () => {
             <WSelect :model-value="dn.warehouse_id" :options="warehouseOptions" :disabled="editing || submitting" :placeholder="t('common.validation.warehouse-required')" @update:model-value="changeWarehouse" />
           </WField>
           <WField :label="t('dn.fields.scheduled-date')" :span="4" :error="errors.date"><WDatePicker v-model="dn.expected_shipping_date" :disabled="submitting" weekday /></WField>
-          <WField :label="t('dn.fields.type')" :span="4" :error="errors.type"><WSelect v-model="dn.dn_type" :options="typeOptions" :disabled="submitting" /></WField>
+          <WField :label="t('dn.fields.type')" :span="4" :error="errors.type"><WSelect v-model="dn.dn_type" :options="typeOptions" :disabled="submitting||editing" /></WField>
+          <template v-if="['return_to_supplier','damage_to_supplier'].includes(dn.dn_type)"><WField :label="t('nav.supplier')" :span="4"><WCombobox v-model="dn.supplier_id" :search="name=>search('supplier',name)" :disabled="editing||submitting"/></WField><WField :label="returnLabels.source" :span="4"><WSelect v-model="dn.stock_source" :options="returnSources" :disabled="editing||submitting||dn.dn_type==='damage_to_supplier'"/></WField><WField :label="returnLabels.reason" :span="4"><WInput v-model="dn.purpose_reason" :maxlength="255" :disabled="editing||submitting"/></WField></template>
           <WField :label="t('dn.fields.order-no')" :span="4" optional><WInput v-model="dn.order_number" :disabled="submitting" /></WField>
         </WFormGrid>
       </WFormSection>

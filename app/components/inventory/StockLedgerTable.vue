@@ -3,8 +3,8 @@ const props=defineProps<{rows:any[];loading?:boolean;compact?:boolean;hideGoods?
 const {t}=useI18n(),staff=useStaffStore()
 const canRead=(permission:string)=>staff.refreshed&&!!staff.staffInfo&&staff.hasPermission(permission)
 const documentLink=(row:any)=>{
- const paths:Record<string,string>={asn:'/asn/detail/',dn:'/dn/detail/',adjustment:'/adjustment/detail/',picking_task:'/picking/detail/',packing_task:'/packing/detail/'}
- const permissions:Record<string,string>={asn:'asn_read',dn:'dn_read',adjustment:'adjustment_read',picking_task:'picking_read',packing_task:'packing_read'}
+ const paths:Record<string,string>={asn:'/asn/detail/',dn:'/dn/detail/',adjustment:'/adjustment/detail/',picking_task:'/picking/detail/',packing_task:'/packing/detail/',warehouse_transfer:'/stock-operations/transfers?id=',customer_return:'/stock-operations/returns?id='}
+ const permissions:Record<string,string>={asn:'asn_read',dn:'dn_read',adjustment:'adjustment_read',picking_task:'picking_read',packing_task:'packing_read',warehouse_transfer:'transfer_read',customer_return:'asn_read'}
  return row.doc_id&&paths[row.doc_type]&&canRead(permissions[row.doc_type]||'')?paths[row.doc_type]+row.doc_id:null
 }
 const columns=computed(()=>[

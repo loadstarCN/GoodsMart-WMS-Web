@@ -14,6 +14,8 @@ const fields = [
   ['damage_stock', 'inventory.fields.damage'],
   ['asn_stock', 'inventory.fields.asn'],
   ['unshippable_stock', 'lot-rules.unshippable'],
+  ['damaged_dn_stock', 'stock-operations.reserved-damaged'],
+  ['return_dn_stock', 'stock-operations.reserved-return'],
 ] as const
 const totals = computed(() => Object.fromEntries(fields.map(([key]) => [key, props.rows.reduce((sum, row) => sum + Number(row[key] || 0), 0)])))
 const labels = computed(() => Object.fromEntries(fields.map(([key, label]) => [key, t(label)])))
@@ -40,6 +42,7 @@ const formula = computed(() => `${labels.value.onhand_stock} ${qty('onhand_stock
     <div class="w-goods-composition__bar" role="img" :aria-label="formula"><span v-for="part in parts.filter(part=>part.value>0)" :key="part.key" :style="{flex:part.value,background:part.color}" /></div>
     <div class="w-goods-composition__legend"><span v-for="part in parts" :key="part.key"><i :style="{background:part.color}" />{{ labels[part.key] }} <b>{{ qty(part.key) }}</b></span></div>
     <div class="w-goods-composition__outside"><span class="w-goods-composition__caption">{{ t('inventory.ui.outside') }}</span><span v-for="key in ['return_stock','sorted_stock','damage_stock','asn_stock']" :key="key" class="w-goods-composition__pill">{{ labels[key] }} <b>{{ qty(key) }}</b></span></div>
+    <div class="w-goods-composition__legend"><span v-for="key in ['damaged_dn_stock','return_dn_stock']" :key="key">{{labels[key]}} <b>{{qty(key)}}</b></span></div>
     <dl class="w-goods-composition__metrics"><div v-for="[key] in fields.slice(0,6)" :key="key"><dt>{{ labels[key] }}</dt><dd>{{ qty(key) }}</dd></div></dl>
   </section>
 </template>

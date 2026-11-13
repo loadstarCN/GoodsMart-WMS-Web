@@ -54,6 +54,8 @@ export const WMS_NAV: NavGroup[] = [
       { key: 'inventory', label: 'nav.inventory', icon: 'inventory', to: '/inventory', permission: 'inventory_read', ready: true,
         match: (route) => route.path.startsWith('/inventory') && !isPendingPutaway(route) },
       { key: 'goods', label: 'nav.goods', icon: 'goods', to: '/goods', permission: 'goods_read', ready: true },
+      { key: 'warehouse-transfers', label: 'stock-operations.transfers', icon: 'inventory', to: '/stock-operations/transfers', permission: 'transfer_read', ready: true },
+      { key: 'customer-returns', label: 'stock-operations.returns', icon: 'asn', to: '/stock-operations/returns', permission: 'asn_read', ready: true },
       { key: 'cycle', label: 'nav.cyclecount', icon: 'cycle', to: '/cyclecount', permission: 'cycle_count_read', ready: true },
       { key: 'adjust', label: 'nav.adjustment', icon: 'adjust', to: '/adjustment', permission: 'adjustment_read', ready: true },
     ],

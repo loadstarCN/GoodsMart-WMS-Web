@@ -157,7 +157,7 @@ const save = async () => {
         <WFormGrid>
           <WField :label="t('common.entities.supplier')" :error="errors.supplier"><WCombobox v-model="record.supplier_id" :search="searchSuppliers" :selected-label="supplierLabel" two-line :disabled="submitting || !allowed('supplier_read')" @select="option => supplierLabel = option?.label || ''" /></WField>
           <WField :label="t('asn.fields.type')" :error="errors.type">
-            <div class="asn-form__types"><label v-for="type in asnTypesOptions" :key="type" :class="{ selected: record.asn_type === type }"><input v-model="record.asn_type" type="radio" name="asn-type" :value="type" :disabled="submitting">{{ t(`asn.type.${type}`) }}</label></div>
+            <p><NuxtLink to="/stock-operations/returns">{{t('stock-operations.returns')}}</NuxtLink> ? <NuxtLink to="/stock-operations/transfers">{{t('stock-operations.transfers')}}</NuxtLink></p><div class="asn-form__types"><label v-for="type in asnTypesOptions.filter(value=>value==='inbound'||(editing&&value===record.asn_type))" :key="type" :class="{ selected: record.asn_type === type }"><input v-model="record.asn_type" type="radio" name="asn-type" :value="type" :disabled="submitting">{{ t(`asn.type.${type}`) }}</label></div>
           </WField>
         </WFormGrid>
       </WFormSection>
