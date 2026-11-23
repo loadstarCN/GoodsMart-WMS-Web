@@ -46,6 +46,8 @@ const reviewReason = ref(""),
 const page = ref(1),
   pages = ref(1),
   keyword = ref("");
+const appliedKeyword = ref("");
+const viewHeading = ref<HTMLElement | null>(null);
 const route=useRoute(),router=useRouter();
 let generation = 0;
 const canCreate = computed(
@@ -120,6 +122,22 @@ useUnsavedForm(
   () => busy.value,
 );
 const field = (key: string) => t("stock-operations." + key);
+const documentColumns = computed(() => [
+  { key: "id", label: field("document-number"), strong: true },
+  { key: "status", label: t("common.fields.status") },
+  ...(isTransfer.value
+    ? [
+        { key: "source_warehouse", label: field("source"), wrap: true },
+        { key: "destination_warehouse", label: field("destination"), wrap: true },
+      ]
+    : [{ key: "original_dn_id", label: field("original-dn") }]),
+  { key: "reason", label: t("common.fields.reason"), wrap: true },
+]);
+function changePage(next: number) {
+  if (busy.value) return;
+  page.value = next;
+  return load();
+}
 async function search(
   kind: string,
   keyword: string,
@@ -165,23 +183,25 @@ const dnSearch = async (q: string) =>
   );
 async function load() {
   const seq = ++generation;
+  const query = keyword.value.trim();
   loading.value = true;
   error.value = "";
   const result = await httpRequest<any>(base.value, {
-    params: { page: page.value, per_page: 25, keyword: keyword.value },
+    params: { page: page.value, per_page: 25, keyword: query },
     onError: (e) => {
       if (seq === generation) error.value = bizErrorMessage(e);
     },
   });
   if (seq !== generation) return;
   docs.value = result?.items || [];
+  appliedKeyword.value = query;
   pages.value = result?.pages || 1;
   const ident=selected.value?.id||Number(route.query.id);
   if(ident){const current=await httpRequest<any>(`${base.value}/${ident}`,{onError:e=>{if(seq===generation)error.value=bizErrorMessage(e)}});if(seq!==generation)return;selected.value=current;if(!operation.line_id)operation.line_id=current?.lines[0]?.id??null;}
   loading.value = false;
 }
 async function choose(doc: any) {
-  if (busy.value) return;
+  if (busy.value || loading.value) return;
   if (
     dirty.value &&
     !(await wConfirm({
@@ -198,10 +218,15 @@ async function choose(doc: any) {
   reviewReason.value = "";
   creating.value = false;
   selected.value = doc;
-  await router.replace({query:{...route.query,id:String(doc.id)}});
-  operation.line_id = doc.lines[0]?.id ?? null;
+  const query = { ...route.query };
+  if (doc) query.id = String(doc.id);
+  else delete query.id;
+  await router.replace({ query });
+  operation.line_id = doc?.lines[0]?.id ?? null;
   operation.location_id = null;
   operation.target_location_id = null;
+  await nextTick();
+  viewHeading.value?.focus();
 }
 async function submit(path: string, payload: any, wid: number) {
   if (busy.value) return;
@@ -368,19 +393,19 @@ useHead({ title: () => field(props.kind) });
 </script>
 <template>
   <main class="stock-operations w-scope">
-    <header>
-      <h1>{{ field(kind) }}</h1>
-      <WButton :disabled="loading || busy" @click="load">{{
-        field("refresh")
-      }}</WButton
-      ><WButton
-        v-if="canCreate"
-        :disabled="busy"
-        @click="creating = !creating"
-        >{{ field("new") }}</WButton
-      >
+    <header class="page-header">
+      <div class="page-heading">
+        <h1>{{ field(kind) }}</h1>
+        <WHelp :text="field(isTransfer ? 'transfer-help' : 'return-help')" />
+      </div>
+      <div class="actions">
+        <WButton icon="refresh" :disabled="loading || busy" @click="load">{{ field("refresh") }}</WButton>
+        <WButton v-if="canCreate" variant="primary" :icon="creating ? undefined : 'plus'"
+          :disabled="busy" @click="creating = !creating">
+          {{ creating ? field("hide-form") : field("new") }}
+        </WButton>
+      </div>
     </header>
-    <p>{{ field(isTransfer ? "transfer-help" : "return-help") }}</p>
     <WAlert v-if="error" tone="block" :title="error" />
     <WCard v-if="creating && canCreate"
       ><h2>{{ field("new") }}</h2>
@@ -460,59 +485,44 @@ useHead({ title: () => field(props.kind) });
         >
       </fieldset></WCard
     >
-    <div class="layout">
-      <WCard
-        ><h2>{{ field("documents") }}</h2>
-        <WInput
-          v-model="keyword"
-          :placeholder="field('search')"
-          @keydown.enter="
-            page = 1;
-            load();
-          "
-        />
-        <div class="actions">
-          <WButton
-            :disabled="busy || loading || page <= 1"
-            @click="
-              page--;
-              load();
-            "
-            >{{ field("previous") }}</WButton
-          ><span>{{ page }} / {{ pages }}</span
-          ><WButton
-            :disabled="busy || loading || page >= pages"
-            @click="
-              page++;
-              load();
-            "
-            >{{ field("next") }}</WButton
-          >
+      <WCard v-if="!selected" class="documents" flush>
+        <div class="list-toolbar">
+          <h2 ref="viewHeading" tabindex="-1">{{ field("documents") }}</h2>
+          <form class="document-search" role="search" @submit.prevent="changePage(1)">
+            <WInput v-model="keyword" type="search" :aria-label="field('search')" :placeholder="field('search')">
+              <template #prefix><WIcon name="search" :size="16" /></template>
+            </WInput>
+            <WButton type="submit" :disabled="busy">{{ t("button.search") }}</WButton>
+          </form>
         </div>
-        <WEmptyState
-          v-if="loading"
-          :title="t('common.status.loading')"
-        /><WEmptyState
-          v-else-if="!docs.length"
-          :title="t('common.status.nothing-show')"
-        /><button
-          v-for="doc in docs"
-          :key="doc.id"
-          class="document"
-          :class="{ selected: selected?.id === doc.id }"
-          :disabled="busy"
-          @click="choose(doc)"
-        >
-          <strong>{{ isTransfer ? "TR" : "RMA" }}-{{ doc.id }}</strong
-          ><span>{{ field(doc.status) }}</span
-          ><small v-if="isTransfer"
-            >{{ doc.source_warehouse }} → {{ doc.destination_warehouse }}</small
-          ><small>{{ doc.reason }}</small>
-        </button></WCard
-      >
-      <section v-if="selected">
+        <WTable v-if="loading || docs.length" :columns="documentColumns" :rows="docs" inset
+          :loading="loading" :skeleton-rows="3" :clickable="!busy" :caption="field('documents')" @row-click="choose">
+          <template #cell-id="{ row }">
+            <button type="button" class="document-link" :disabled="busy" @click="choose(row)">
+              {{ isTransfer ? "TR" : "RMA" }}-{{ row.id }}
+            </button>
+          </template>
+          <template #cell-status="{ row }">
+            <WStatus>{{ field(row.status) }}</WStatus>
+          </template>
+          <template #cell-original_dn_id="{ row }">{{ row.original_dn_id ? 'DN-' + row.original_dn_id : '—' }}</template>
+        </WTable>
+        <WEmptyState v-else-if="!error" compact :icon="appliedKeyword ? 'search-off' : 'box'"
+          :title="field(appliedKeyword ? 'no-matches' : isTransfer ? 'no-transfers' : 'no-returns')" />
+        <template v-if="pages > 1" #footer>
+          <fieldset :disabled="busy || loading">
+            <WPagination :page="page" :page-count="pages" @update:page="changePage" />
+          </fieldset>
+        </template>
+      </WCard>
+      <section v-else class="document-detail">
+        <div>
+          <WButton variant="text" icon="chevron-left" :disabled="busy || loading" @click="choose(null)">
+            {{ field("back-to-documents") }}
+          </WButton>
+        </div>
         <WCard
-          ><h2>
+          ><h2 ref="viewHeading" tabindex="-1">
             {{ isTransfer ? "TR" : "RMA" }}-{{ selected.id }} ·
             {{ field(selected.status) }}
           </h2>
@@ -744,25 +754,37 @@ useHead({ title: () => field(props.kind) });
           </article></WCard
         >
       </section>
-    </div>
   </main>
 </template>
 <style scoped>
 .stock-operations {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  min-width: 0;
+  gap: var(--w-sp-16);
 }
-header,
+.page-header,
+.page-heading,
+.list-toolbar,
+.document-search,
 .actions {
   display: flex;
-  gap: 12px;
+  gap: var(--w-sp-8);
   align-items: center;
+}
+.page-header,
+.list-toolbar {
+  justify-content: space-between;
+  gap: var(--w-sp-16);
+  flex-wrap: wrap;
+}
+.actions {
   flex-wrap: wrap;
 }
 h1 {
   font-size: 24px;
-  margin: 0 auto 0 0;
+  line-height: 32px;
+  margin: 0;
 }
 h2 {
   font-size: 17px;
@@ -785,35 +807,39 @@ fieldset {
   flex-direction: column;
   gap: 16px;
 }
-.layout {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
+.list-toolbar {
+  padding: var(--w-sp-16) var(--w-card-pad);
+  border-bottom: 1px solid var(--w-line);
 }
-.layout > section {
+.list-toolbar h2 {
+  margin: 0;
+  font-size: var(--w-fs-16);
+  line-height: var(--w-lh-16);
+}
+.document-search {
+  width: min(100%, 340px);
+}
+.document-search :deep(.w-input) {
+  flex: 1;
+  min-width: 0;
+}
+.document-detail {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--w-sp-16);
+  min-width: 0;
 }
-.document {
-  display: flex;
-  flex-wrap: wrap;
-  width: 100%;
-  gap: 8px;
-  padding: 14px;
+.document-link {
   background: transparent;
   border: 0;
-  border-top: 1px solid var(--w-line);
-  text-align: left;
+  padding: 0;
+  color: var(--w-link);
+  font: inherit;
   cursor: pointer;
 }
-.document.selected {
-  background: var(--w-bg-2, #eef3fa);
-}
-.document small {
-  width: 100%;
-  overflow-wrap: anywhere;
+.document-link:hover,
+.document-link:focus-visible {
+  text-decoration: underline;
 }
 small {
   display: block;
@@ -839,9 +865,9 @@ article {
   padding: 12px 0;
   border-top: 1px solid var(--w-line);
 }
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 600px) {
+  .document-search {
+    width: 100%;
   }
 }
 </style>
