@@ -39,6 +39,8 @@ const CONSIGNEE_KEYS = ['company', 'name', 'address_line1', 'address_line2', 'ci
 
 interface LineDraft {
   goods_code: string
+  thumbnail_url?: string | null
+  image_url?: string | null
   goods_name: string | null
   planned_quantity: number | null
   packed_quantity: number | null
@@ -109,6 +111,8 @@ const init = () => {
     return {
       goods_code: l.goods_code,
       goods_name: l.goods_name,
+      thumbnail_url: l.thumbnail_url,
+      image_url: l.image_url,
       planned_quantity: l.planned_quantity,
       packed_quantity: l.packed_quantity,
       origin_country: l.origin_country,
@@ -313,8 +317,8 @@ const save = async () => {
             <tbody>
               <tr v-for="line in lineDrafts" :key="line.goods_code">
                 <td>
-                  <span class="w-csnap__code">{{ line.goods_code }}</span>
-                  <span class="w-csnap__name">{{ line.goods_name }}</span>
+                  <GoodsIdentity :goods="line"><span class="w-csnap__code">{{ line.goods_code }}</span>
+                  <span class="w-csnap__name">{{ line.goods_name }}</span></GoodsIdentity>
                 </td>
                 <td class="is-num">{{ line.packed_quantity ?? 0 }} / {{ line.planned_quantity ?? '—' }}</td>
                 <td class="is-wide"><WInput v-model="line.description_en" size="sm" maxlength="500" :aria-label="t('customs.fields.description-en')" /></td>

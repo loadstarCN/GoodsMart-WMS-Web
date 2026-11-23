@@ -20,7 +20,7 @@ const columns=computed(()=>[
  <template #cell-occurred_at="{row}">{{$dayjs(timeField==='posted'?row.posted_at:row.occurred_at,compact?'MM/DD HH:mm':'YYYY/MM/DD HH:mm',row)}}</template>
  <template #cell-movement_type="{row}">{{t('ledger.movements.'+row.movement_type)}}</template>
  <template #cell-document="{row}"><NuxtLink v-if="documentLink(row)" class="w-ledger-link" :to="documentLink(row)!">{{row.doc_type.toUpperCase()}}-{{row.doc_id}}</NuxtLink><span v-else>{{row.doc_type?row.doc_type.toUpperCase()+'-'+row.doc_id:'—'}}</span><span class="w-ledger-sub">{{row.doc_no||row.reason}}</span></template>
- <template #cell-goods="{row}"><NuxtLink v-if="canRead('goods_read')" class="w-ledger-link" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else>{{row.goods?.name}}</span><span class="w-ledger-sub">{{row.goods?.code}}</span></template>
+ <template #cell-goods="{row}"><GoodsIdentity :goods="row.goods"><NuxtLink v-if="canRead('goods_read')" class="w-ledger-link" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else>{{row.goods?.name}}</span><span class="w-ledger-sub">{{row.goods?.code}}</span></GoodsIdentity></template>
  <template #cell-lot_no="{row}">{{row.lot_no||t('ledger.no-lot')}}</template>
  <template #cell-location="{row}"><NuxtLink v-if="row.location&&canRead('location_read')" class="w-ledger-link" :to="'/location/detail/'+row.location.id">{{row.location.code}}</NuxtLink><span v-else-if="row.location">{{row.location.code}}</span></template>
  <template #cell-stock_type="{row}">{{t('ledger.types.'+row.stock_type)}}</template>

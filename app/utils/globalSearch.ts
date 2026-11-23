@@ -29,6 +29,8 @@ export interface GlobalSearchUrlHint {
 
 export interface GlobalSearchItem {
   type: GlobalSearchType
+  thumbnail_url?: string | null
+  image_url?: string | null
   id: number
   /** 单号（DN-163、PICK-5 …）/ 商品、库位编码；收货方没有 */
   code: string | null
@@ -99,6 +101,8 @@ const normalizeItem = (raw: any): GlobalSearchItem | null => {
     : null
   return {
     type: raw.type,
+    thumbnail_url: toText(raw.thumbnail_url ?? raw.columns?.thumbnail_url),
+    image_url: toText(raw.image_url ?? raw.columns?.image_url),
     id: toInt(raw.id),
     code: toText(raw.code),
     title: toText(raw.title),

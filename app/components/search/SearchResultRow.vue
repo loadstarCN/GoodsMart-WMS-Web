@@ -39,7 +39,8 @@ const statusText = computed(() => display.statusLabel(props.item.status))
 
 <template>
   <a :href="href" class="w-sr-row" :class="[`w-sr-row--${size}`, { 'is-active': active }]">
-    <span class="w-sr-row__icon" aria-hidden="true"><WIcon :name="meta.icon" :size="size === 'sm' ? 14 : 16" /></span>
+    <GoodsThumbnail v-if="item.type === 'goods'" :goods="item" :size="size === 'sm' ? 28 : 32" />
+    <span v-else class="w-sr-row__icon" aria-hidden="true"><WIcon :name="meta.icon" :size="size === 'sm' ? 14 : 16" /></span>
     <span class="w-sr-row__main">
       <span class="w-sr-row__line1">
         <span class="w-sr-row__title"><SearchHighlight :text="titleText" :highlights="item.highlights" :field="titleField" /></span>

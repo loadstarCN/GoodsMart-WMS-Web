@@ -75,11 +75,6 @@ pscroll
 range-slider
 jsVector
 */
-/* FONT */
-/* inter */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
-/* Montserrat */
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600&display=swap");
 :root {
   --scrollthumb: #f3f3f3;
   --placeholder-font-size: 0.876rem;

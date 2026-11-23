@@ -16,11 +16,21 @@ const load=async()=>{
  if(seq!==generation)return
  ready.value=!!currentStaff
  if(!allowed('warehouse_read')){loading.value=false;return}
- const params={...route.query,is_active:active.value,per_page:10}
- const values=await Promise.all([httpRequest<PaginationData>('/api/warehouse/warehouse/',{params,onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}}),httpRequest<PaginationData>('/api/warehouse/warehouse/',{params:{...params,is_active:active.value==='true'?'false':'true',per_page:1},onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})])
- if(seq!==generation)return
- data.value=values[0];loading.value=false
- counts.value={...(values[0]?{[active.value]:values[0].total}:{}),...(values[1]?{[active.value==='true'?'false':'true']:values[1].total}:{})}
+ const selectedStatus = active.value
+ const otherStatus = selectedStatus === 'true' ? 'false' : 'true'
+ const params = {...route.query, is_active: selectedStatus, per_page: 10}
+ const onError = (err: any) => { if (seq === generation) error.value = bizErrorMessage(err) }
+ const selectedPage = httpRequest<PaginationData>('/api/warehouse/warehouse/', {params, onError})
+ void httpRequest<PaginationData>('/api/warehouse/warehouse/', {
+  params: {...params, page: 1, is_active: otherStatus, per_page: 1}, onError,
+ }).then(result => {
+  if (seq === generation && result) counts.value[otherStatus] = result.total
+ })
+ const result = await selectedPage
+ if (seq !== generation) return
+ data.value = result
+ loading.value = false
+ if (result) counts.value[selectedStatus] = result.total
  await Promise.all((data.value?.items||[]).filter(row=>row.is_active&&(warehouses.canSelectAll||warehouses.warehouses.some(w=>w.id===row.id))).map(async row=>{
   const result=await httpRequest<any>('/api/warehouse/warehouse/'+row.id+'/overview',{onError:err=>{if(seq===generation)error.value=bizErrorMessage(err)}})
   if(seq===generation&&result)overview.value[row.id]=result
@@ -71,7 +81,7 @@ watch(()=>route.query,()=>{keyword.value=String(route.query.name||'');load()});o
  </div>
 </template>
 <style scoped>
-.w-warehouse-list { display:flex; flex-direction:column; gap:18px; max-width:1216px; }
+.w-warehouse-list { display:flex; flex-direction:column; gap:18px; width:100%; min-width:0; }
 .w-warehouse-list header,.w-warehouse-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
 .w-warehouse-list header>div { display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; }
 .w-warehouse-list h1 { margin:0;font-size:24px;line-height:32px;font-weight:600; }

@@ -93,7 +93,7 @@ onBeforeUnmount(()=>{generation++})
       </form>
       <WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="load">{{ t('dn.list.retry') }}</WButton></template></WAlert>
       <WTable :columns="columns" :rows="data?.items||[]" :loading="loading" inset>
-        <template #cell-goods="{row}"><div class="w-goods__product"><img v-if="row.thumbnail_url" :src="row.thumbnail_url" alt="" loading="lazy"><span v-else class="w-goods__image"><WIcon name="box" :size="18" /></span><div><NuxtLink class="w-goods__name" :to="'/goods/detail/'+row.id">{{ row.name }}</NuxtLink><span class="w-goods__sub">{{ row.code }}</span></div></div></template>
+        <template #cell-goods="{row}"><div class="w-goods__product"><GoodsThumbnail :goods="row" /><div><NuxtLink class="w-goods__name" :to="'/goods/detail/'+row.id">{{ row.name }}</NuxtLink><span class="w-goods__sub">{{ row.code }}</span></div></div></template>
         <template #cell-brand="{row}"><span>{{ row.brand }}</span><span class="w-goods__sub">{{ row.manufacturer }}</span></template>
         <template #cell-price="{row}"><span>{{ money(row.price,row.currency) }}</span><span v-if="row.discount_price!=null" class="w-goods__sub">{{ money(row.discount_price,row.currency) }}</span></template>
         <template #cell-info="{row}"><WStatus v-if="!missing(row).length" tone="ok">{{ t('goods.ui.complete') }}</WStatus><WStatus v-else tone="warn" variant="pill">{{ t('goods.ui.missing',{fields:missing(row).join(' · ')}) }}</WStatus></template>
@@ -121,8 +121,7 @@ onBeforeUnmount(()=>{generation++})
 .w-goods__pill.is-selected { border-color:var(--w-pri); background:var(--w-sel-soft); color:var(--w-sel-text); }
 .w-goods__dot { width:6px; height:6px; border-radius:50%; background:var(--w-warn-dot); }
 .w-goods__product { display:flex; align-items:center; gap:12px; min-width:220px; }
-.w-goods__product img,.w-goods__image { width:40px; height:40px; object-fit:contain; border-radius:6px; flex:none; }
-.w-goods__image { display:grid; place-items:center; background:var(--w-line); color:var(--w-nontext); }
+.w-goods__product img { width:40px; height:40px; object-fit:contain; border-radius:6px; flex:none; }
 .w-goods__name { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:14px; line-height:20px; font-weight:500; color:var(--w-text-1); }
 .w-goods__name:hover { color:var(--w-link); }
 .w-goods__sub { display:block; font-size:12px; line-height:18px; color:var(--w-text-3); }

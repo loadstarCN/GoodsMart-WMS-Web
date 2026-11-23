@@ -46,10 +46,7 @@ const columns = computed<WTableColumn<any>[]>(() => [
     <WTable :columns="columns" :rows="rows" inset row-key="id" :caption="t('dn.detail.goods.title')">
       <template #cell-goods="{ row }">
         <div class="w-dngoods__goods">
-          <span class="w-dngoods__thumb" aria-hidden="true">
-            <img v-if="row.goods?.thumbnail_url" :src="row.goods.thumbnail_url" alt="" loading="lazy">
-            <WIcon v-else name="box" :size="16" />
-          </span>
+          <GoodsThumbnail :goods="row.goods" />
           <span class="w-dngoods__names">
             <NuxtLink v-if="row.goods?.id" :to="`/goods/detail/${row.goods.id}`" class="w-dngoods__name">{{ row.goods?.name }}</NuxtLink>
             <span v-else class="w-dngoods__name">{{ row.goods?.name }}</span>
@@ -82,19 +79,6 @@ const columns = computed<WTableColumn<any>[]>(() => [
 .w-dngoods__count { font-size: var(--w-fs-13); color: var(--w-text-2); }
 .w-dngoods__nodiff { font-size: var(--w-fs-12); }
 .w-dngoods__goods { display: flex; align-items: flex-start; gap: 10px; min-width: 220px; }
-.w-dngoods__thumb {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 32px;
-  height: 32px;
-  overflow: hidden;
-  border: 1px solid var(--w-border);
-  border-radius: var(--w-radius-control);
-  background: var(--w-surface-2);
-  color: var(--w-text-3);
-}
-.w-dngoods__thumb img { width: 100%; height: 100%; object-fit: cover; }
 .w-dngoods__names { display: flex; flex-direction: column; min-width: 0; }
 .w-dngoods__name { color: var(--w-text-1); font-weight: var(--w-fw-medium); text-decoration: none; }
 .w-dngoods__name:hover { color: var(--w-link); }

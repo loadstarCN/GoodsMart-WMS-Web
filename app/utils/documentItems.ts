@@ -14,7 +14,15 @@ export interface ItemPreview {
   quantity: number | string
   remark: string
   error: string | null
-  goods?: { goods_id: number; code: string; name: string; available_stock_for_sale?: number; [key: string]: any } | null
+  goods?: {
+    goods_id: number
+    code: string
+    name: string
+    thumbnail_url?: string | null
+    image_url?: string | null
+    available_stock_for_sale?: number
+    [key: string]: any
+  } | null
 }
 
 /** Preview is read-only; preserving an existing row also preserves its remark and detail ID. */

@@ -12,7 +12,7 @@ const record=ref<Record<string,any>>({name:'',code:'',unit:'pcs',currency:staff.
 const loading=ref(false),busy=ref(false),error=ref(''),errors=ref<Record<string,string>>({}),tag=ref('')
 const canEdit=computed(()=>staff.refreshed&&!!staff.staffInfo&&staff.hasPermission('goods_edit')&&!loading.value&&(!editing.value||!!record.value.id))
 let original:Record<string,any>|null=null,descriptionTouched=false,generation=0,savedSuccessfully=false
-const image=computed({get:()=>record.value.image_url??null,set:value=>{record.value.image_url=value;record.value.thumbnail_url=value}})
+const image=computed({get:()=>record.value.image_url||record.value.thumbnail_url||null,set:value=>{record.value.image_url=value;record.value.thumbnail_url=value}})
 const options=(values:string[],label=(value:string)=>value)=>values.map(value=>({value,label:label(value)}))
 const tags=computed<string[]>(()=>Array.isArray(record.value.tags)?record.value.tags:[])
 const addTag=()=>{const next=tag.value.trim();if(next&&!tags.value.includes(next))record.value.tags=[...tags.value,next];tag.value=''}

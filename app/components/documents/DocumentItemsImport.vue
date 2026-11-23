@@ -108,7 +108,7 @@ const apply = () => { if (canApply.value) { emit('apply', merged.value); open.va
     </div>
     <WAlert v-if="error" tone="block" :title="error" />
     <WTable v-if="rows.length" :rows="rows" :columns="columns" :row-key="row => row.lines.join(',')" max-height="360px">
-      <template #cell-goods="{ row }"><b>{{ row.goods?.name || row.code }}</b><div class="w-muted">{{ row.goods ? row.code : '' }}</div></template>
+      <template #cell-goods="{ row }"><GoodsIdentity :goods="row.goods"><b>{{ row.goods?.name || row.code }}</b><div class="w-muted">{{ row.goods ? row.code : '' }}</div></GoodsIdentity></template>
       <template #cell-available="{ row }">{{ available(row) ?? '—' }}</template>
       <template #cell-result="{ row }"><span :class="{ 'items-import__error': row.error || over(row) }">{{ result(row) }}</span></template>
     </WTable>

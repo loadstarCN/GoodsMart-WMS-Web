@@ -551,7 +551,7 @@ const recordColumns=computed(()=>{
   <nav class="w-goods-detail__breadcrumb"><NuxtLink class="w-breadcrumb-link" to="/goods">{{ t('nav.goods') }}</NuxtLink><span>/</span>{{ itemData?.code }}</nav>
 <WAlert v-if="loadError" tone="block" :title="loadError"><template #actions><WButton @click="fetchData().then(data=>{if(data){fetchTabData();if(can('inventory_read'))loadPutawayInventory()}})">{{t('dn.list.retry')}}</WButton></template></WAlert><WEmptyState v-if="loading&&!itemData" :title="t('common.status.loading')"/>
   <section v-if="itemData" class="w-goods-detail__overview">
-    <div class="w-goods-detail__media"><img v-if="itemData.image_url" :src="itemData.image_url" :alt="itemData.name" /><div v-else class="w-goods-detail__image-empty">{{t('goods.fields.image')}}</div></div>
+    <div class="w-goods-detail__media"><GoodsThumbnail :goods="itemData" :alt="itemData.name" :size="240" full-size /></div>
     <div class="w-goods-detail__body">
       <header><div class="w-goods-detail__heading"><span class="w-goods-detail__sub">{{ t('goods.fields.code') }} {{ itemData.code }}</span><h1>{{ itemData.name }}</h1><div class="w-goods-detail__tags"><WStatus :tone="itemData.is_active?'ok':'none'" variant="pill">{{ t(itemData.is_active?'common.status.active':'common.status.inactive') }}</WStatus><span>{{ [itemData.brand,categoryLabel(itemData.category)].filter(Boolean).join(' · ') }}</span><span v-for="tag in itemData.tags" :key="tag" class="w-goods-detail__tag">{{ tagLabel(tag) }}</span></div></div><div class="w-goods-detail__actions"><WButton v-if="can('goods_edit')" :to="'/goods/edit/'+productId">{{ t('button.edit') }}</WButton><WButton :to="'/goods/label/'+productId">{{t('goods-label.title')}}</WButton></div></header>
       <GoodsStockComposition v-if="putawayInventories" :rows="putawayInventories" :goods-id="String(productId)" :unit="unitLabel(itemData.unit)" />
@@ -602,10 +602,9 @@ const recordColumns=computed(()=>{
 .w-breadcrumb-link { color:var(--w-text-3); }
 .w-goods-detail__overview { display:flex; flex-wrap:wrap; gap:24px; padding:24px; border:1px solid var(--w-border); border-radius:10px; background:var(--w-surface); }
 .w-goods-detail__media { flex:0 1 240px; min-width:200px; }
-.w-goods-detail__image-empty { width:100%; aspect-ratio:1; display:grid; place-items:center; background:var(--w-line); border-radius:10px; color:var(--w-text-3); font-size:13px; line-height:20px; }
 .w-stock-location-type { margin-left:6px; color:var(--w-text-3); font-size:12px; line-height:18px; }
 .w-stock-warehouse { display:block; color:var(--w-text-3); font-size:12px; line-height:18px; }
-.w-goods-detail__media img { width:100%; aspect-ratio:1; object-fit:contain; border-radius:10px; background:var(--w-line); }
+.w-goods-detail__media img { width:100%; height:auto; aspect-ratio:1; object-fit:contain; border-radius:10px; background:var(--w-line); }
 .w-goods-detail__body { flex:999 1 460px; min-width:0; display:flex; flex-direction:column; gap:16px; }
 .w-goods-detail__body header { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; }
 .w-goods-detail__actions { display:flex; flex-wrap:wrap; gap:8px; }

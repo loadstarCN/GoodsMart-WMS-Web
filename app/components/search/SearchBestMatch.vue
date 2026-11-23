@@ -29,7 +29,6 @@ const meta = computed(() => GLOBAL_SEARCH_TYPE_META[props.item.type])
 const typeName = computed(() => display.typeLabel(props.item.type))
 const columns = computed(() => props.detail?.columns ?? props.item.columns ?? null)
 const col = (key: string): any => columns.value?.[key] ?? null
-const thumbnail = computed(() => (props.item.type === 'goods' ? col('thumbnail_url') : null))
 const titleField = computed(() => (props.item.title ? 'title' : 'code'))
 const exactLabel = computed(() => (props.item.exact ? display.exactFieldLabel(props.item.matched_field) : ''))
 const goodsAt = computed(() => {
@@ -96,7 +95,7 @@ const inventoryLink = computed(() =>
 
 <template>
   <section class="w-best" :aria-labelledby="titleId">
-    <img v-if="thumbnail" :src="thumbnail" alt="" class="w-best__thumb">
+    <GoodsThumbnail v-if="item.type === 'goods'" :goods="detail || item" class="w-best__thumb" />
     <span v-else class="w-best__icon" aria-hidden="true"><WIcon :name="meta.icon" :size="20" /></span>
 
     <div class="w-best__main">

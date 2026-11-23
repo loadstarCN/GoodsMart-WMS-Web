@@ -294,7 +294,7 @@ const save = async () => {
         </div>
         <WAlert v-if="errors.details" tone="block" :title="errors.details" />
         <WTable :rows="details" :columns="columns" :row-key="row => row.id != null ? `detail-${row.id}` : `goods-${row.goods_id}`">
-          <template #cell-goods="{ row }"><NuxtLink v-if="allowed('goods_read')" class="w-record-link" :to="`/goods/detail/${row.goods_id}`" target="_blank">{{ row.goods?.name }}</NuxtLink><span v-else>{{ row.goods?.name }}</span><div class="w-muted">{{ row.goods?.code }}</div></template>
+          <template #cell-goods="{ row }"><GoodsIdentity :goods="row.goods"><NuxtLink v-if="allowed('goods_read')" class="w-record-link" :to="`/goods/detail/${row.goods_id}`" target="_blank">{{ row.goods?.name }}</NuxtLink><span v-else>{{ row.goods?.name }}</span><div class="w-muted">{{ row.goods?.code }}</div></GoodsIdentity></template>
           <template #cell-quantity="{ row }"><WInput v-model.number="row.quantity" type="number" min="1" step="1" :disabled="submitting" :invalid="invalidItemQuantity(row) || overGoods.has(row.goods_id)" :aria-label="`${row.goods?.code} ${t('common.fields.quantity')}`" /><span v-if="overGoods.has(row.goods_id)" class="dn-form__warning">{{ t('common.validation.quantity-exceeds-available', { max: row.max_qty }) }}</span></template>
           <template #cell-remark="{ row }"><WInput v-model="row.remark" :disabled="submitting" :aria-label="`${row.goods?.code} ${t('common.fields.remark')}`" /></template>
           <template #cell-actions="{ row }"><WButton variant="text" size="sm" :disabled="submitting" @click="details = details.filter(item => item !== row)">{{ t('button.delete') }}</WButton></template>

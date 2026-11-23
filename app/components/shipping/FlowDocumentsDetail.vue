@@ -188,10 +188,10 @@ defineExpose({ run })
         <!-- 缺原产国：就地补录到商品主数据 -->
         <div v-if="canEditOrigin && originMissingLines.length > 0" class="w-flow-docs__origins">
           <div v-for="line in originMissingLines" :key="line.goods_code" class="w-flow-docs__origin">
-            <span class="w-flow-docs__origin-goods">
+            <GoodsIdentity :goods="line" class="w-flow-docs__origin-goods">
               <span class="w-flow-docs__mono">{{ line.goods_code }}</span>
               <span class="w-faint">{{ line.goods_name }}</span>
-            </span>
+            </GoodsIdentity>
             <CountryCombobox v-model="originDraft[String(line.goods_id)]" size="sm" :clearable="false" class="w-flow-docs__origin-select"
               :aria-label="t('customs.fields.origin')" />
             <WButton size="sm" variant="primary" :loading="originSaving[String(line.goods_id)]"
@@ -269,7 +269,8 @@ defineExpose({ run })
 .w-flow-docs__problems-title { font-weight: var(--w-fw-semibold); color: var(--w-warn-text); }
 .w-flow-docs__origins { display: flex; flex-direction: column; gap: 6px; }
 .w-flow-docs__origin { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.w-flow-docs__origin-goods { display: inline-flex; flex-direction: column; min-width: 200px; }
+.w-flow-docs__origin-goods { min-width: 200px; }
+.w-flow-docs__origin-goods .w-faint { display: block; }
 .w-flow-docs__origin-select { width: 240px; }
 .w-flow-docs__mono { font-family: var(--w-font-mono); font-size: var(--w-fs-12); }
 .w-flow-docs__fix { display: flex; align-items: center; gap: 8px; }

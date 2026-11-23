@@ -62,6 +62,8 @@ export const CUSTOMS_WORKFLOW_PROBLEMS = ['NOT_PACKED', 'PACKAGES_MISSING']
 export interface CustomsLine {
   goods_id: number | null
   goods_code: string
+  thumbnail_url?: string | null
+  image_url?: string | null
   goods_name: string | null
   planned_quantity: number | null
   packed_quantity: number | null

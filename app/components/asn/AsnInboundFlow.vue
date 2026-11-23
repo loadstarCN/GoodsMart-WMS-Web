@@ -335,7 +335,7 @@ defineExpose({ reload })
               { key: 'goods', label: t('common.entities.goods'), wrap: true },
               { key: 'quantity', label: t('asn.flow.putaway.quantity'), type: 'qty', keepZero: true },
               { key: 'pending', label: t(step.summary.estimated ? 'asn.flow.putaway.pending' : 'asn.flow.putaway.pending-exact'), type: 'qty', keepZero: true, strong: true }]">
-              <template #cell-goods="{ row }"><NuxtLink v-if="allowed('goods_read')" :to="'/goods/detail/' + row.goods_id">{{ row.name || row.code }}</NuxtLink><span v-else>{{ row.name || row.code }}</span><div class="w-muted">{{ row.code }}</div></template>
+              <template #cell-goods="{ row }"><GoodsIdentity :goods="row"><NuxtLink v-if="allowed('goods_read')" :to="'/goods/detail/' + row.goods_id">{{ row.name || row.code }}</NuxtLink><span v-else>{{ row.name || row.code }}</span><div class="w-muted">{{ row.code }}</div></GoodsIdentity></template>
             </WTable>
             <p class="asn-current__note">{{ t(step.summary.estimated?'asn.flow.putaway.estimated':'putaway-source.tracked') }} <template v-if="step.summary.last_putaway_at">{{ t('asn.flow.putaway.last', { time: time(step.summary.last_putaway_at) }) }}</template></p>
           </template>

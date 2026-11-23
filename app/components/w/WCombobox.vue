@@ -16,6 +16,7 @@ export interface WComboboxOption<V = string | number> {
   description?: string
   /** 另外参与本地筛选的文字（代码、英文名） */
   keywords?: string
+  record?: Record<string, any>
   disabled?: boolean
 }
 
@@ -257,7 +258,7 @@ defineExpose({ focus: () => input.value?.focus() })
         class="w-combo__option" :class="{ 'is-active': index === active, 'is-selected': option.value === model, 'is-disabled': option.disabled }"
         :aria-selected="option.value === model" :aria-disabled="option.disabled || undefined" :data-index="index"
         @mouseenter="active = index" @click="choose(option)">
-        <span class="w-combo__label">{{ option.label }}</span>
+        <slot name="option-label" :option="option"><span class="w-combo__label">{{ option.label }}</span></slot>
         <span v-if="option.description" class="w-combo__desc">{{ option.description }}</span>
       </li>
       <li v-if="!filtered.length && !loading" class="w-combo__empty" role="presentation">{{ emptyMessage }}</li>

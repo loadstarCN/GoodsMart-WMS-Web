@@ -142,9 +142,9 @@ const exportReasonText = (reason: string | null | undefined) => {
           <tbody>
             <tr v-for="line in lines" :key="line.goods_code" :class="{ 'is-off': !Number(line.packed_quantity) }">
               <td>
-                <NuxtLink v-if="line.goods_id" :to="`/goods/detail/${line.goods_id}`" class="w-cdata__link">{{ line.goods_code }}</NuxtLink>
+                <GoodsIdentity :goods="line"><NuxtLink v-if="line.goods_id" :to="`/goods/detail/${line.goods_id}`" class="w-cdata__link">{{ line.goods_code }}</NuxtLink>
                 <span v-else>{{ line.goods_code }}</span>
-                <span class="w-cdata__line w-cdata__sub">{{ line.goods_name }}</span>
+                <span class="w-cdata__line w-cdata__sub">{{ line.goods_name }}</span></GoodsIdentity>
               </td>
               <td>
                 <template v-if="line.description_en">

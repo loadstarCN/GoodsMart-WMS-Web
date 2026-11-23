@@ -113,7 +113,7 @@ const relatedOf = (row: GlobalSearchItem) => {
   <WTable :columns="columns" :rows="items" :row-key="(row) => `${row.type}-${row.id}`" :loading="loading" clickable inset
     :caption="caption" :empty-title="t('search.no-items')" @row-click="navigation.open">
     <template #cell-main="{ row }">
-      <span class="w-st-main">
+      <div class="w-st-cell"><GoodsThumbnail v-if="type === 'goods'" :goods="row" /><span class="w-st-main">
         <a :href="navigation.hrefOf(row)" class="w-st-main__title" :class="{ 'is-code': mainField(row) === 'code' }"
           @click="navigation.onLinkClick($event, row)">
           <SearchHighlight :text="row[mainField(row)]" :highlights="row.highlights" :field="mainField(row)" />
@@ -135,7 +135,7 @@ const relatedOf = (row: GlobalSearchItem) => {
           <SearchHighlight :text="row.subtitle" :highlights="row.highlights" field="subtitle" :insert-at="goodsAt(row)"
             :insert-text="t('search.contains')" />
         </span>
-      </span>
+      </span></div>
     </template>
 
     <template #cell-carrier="{ row }">
@@ -170,6 +170,7 @@ const relatedOf = (row: GlobalSearchItem) => {
 </template>
 
 <style scoped>
+.w-st-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .w-st-main,
 .w-st-two {
   display: flex;

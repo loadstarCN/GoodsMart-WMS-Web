@@ -157,6 +157,10 @@ async function search(
   }));
 }
 const goodsSearch = (q: string) => search("goods", q);
+function selectGoods(option: any) {
+  labels.goods = option?.label || "";
+  line.goods = option?.record || null;
+}
 const locationSearch = (q: string, wid: number, type?: string) =>
   search("location", q, { code: q, location_type: type, is_active: true }, wid);
 const lotSearch = async (q: string) => {
@@ -271,6 +275,7 @@ function addLine() {
     location: labels.location,
   });
   Object.assign(line, {
+    goods: null,
     goods_id: null,
     lot_id: null,
     source_location_id: null,
@@ -446,7 +451,9 @@ useHead({ title: () => field(props.kind) });
               v-model="line.goods_id"
               :search="goodsSearch"
               :selected-label="labels.goods"
-              @select="(o) => (labels.goods = o?.label || '')" /></WField
+              @select="selectGoods">
+              <template #option-label="{ option }"><GoodsIdentity :goods="option.record">{{ option.label }}</GoodsIdentity></template>
+            </WCombobox></WField
           ><WField :label="t('goods-label.lot')" optional
             ><WCombobox
               v-model="line.lot_id" clearable
@@ -471,8 +478,8 @@ useHead({ title: () => field(props.kind) });
         }}</WButton>
         <ul>
           <li v-for="(row, index) in draft" :key="index">
-            {{ row.name }} · {{ row.lot || "—" }} · {{ row.location }} ·
-            {{ row.quantity }}
+            <GoodsIdentity :goods="row.goods">{{ row.name }} · {{ row.lot || "—" }} · {{ row.location }} ·
+            {{ row.quantity }}</GoodsIdentity>
             <WButton variant="text" @click="draft.splice(index, 1)">{{
               t("button.delete")
             }}</WButton>
@@ -558,7 +565,7 @@ useHead({ title: () => field(props.kind) });
               <tbody>
                 <tr v-for="row in selected.lines" :key="row.id">
                   <td>
-                    {{ row.goods_code }}<small>{{ row.goods_name }}</small>
+                    <GoodsIdentity :goods="row">{{ row.goods_code }}<small>{{ row.goods_name }}</small></GoodsIdentity>
                   </td>
                   <td>{{ row.lot_no || "—" }}</td>
                   <td>
