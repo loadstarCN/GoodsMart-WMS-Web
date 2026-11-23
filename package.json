@@ -11,6 +11,7 @@
     "preview": "nuxt preview --dotenv .env.prod",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxi typecheck",
+    "test": "node --test \"tests/*.test.cjs\"",
     "test:dn": "node --test tests/dn-regressions.test.cjs"
   },
   "devDependencies": {

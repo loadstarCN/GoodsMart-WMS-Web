@@ -63,7 +63,7 @@ jobs:
         run: npm run typecheck
 
       - name: Regression tests
-        run: npm run test:dn
+        run: npm test
 
       - name: Build
         run: npm run build
