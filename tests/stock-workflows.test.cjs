@@ -34,6 +34,17 @@ function component(file, exposed, overrides = {}) {
   return { ...sandbox.exposed, warehouse, route }
 }
 
+test('inventory capacity volumes preserve six decimals from the API and distinguish zero from unknown', () => {
+  const { number } = component('reports/InventoryCapacity.vue', 'number', {
+    useI18n: () => ({ t: key => key, locale: vue.ref('zh-CN') }),
+  })
+  assert.equal(number(0.000363), '0.000363')
+  assert.equal(number(0.000001), '0.000001')
+  assert.equal(number(1.25), '1.25')
+  assert.equal(number(0), '0')
+  assert.equal(number(null), '—')
+})
+
 test('uncertain responses reuse the same operation ID; changed quantities use a new ID', async () => {
   const requests = []
   const ui = component('operations/StockOperations.vue', 'submit,busy', {

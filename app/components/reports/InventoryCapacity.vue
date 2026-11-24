@@ -12,7 +12,8 @@ const load=async()=>{
 }
 watch(()=>props.warehouseId,()=>{if(page.value!==1)page.value=1;else load()})
 watch(page,load);onMounted(load);onBeforeUnmount(()=>generation++)
-const number=(value:any)=>value==null?'—':Number(value).toLocaleString(locale.value,{maximumFractionDigits:3})
+const number = (value: number | string | null | undefined) =>
+  value == null ? '—' : Number(value).toLocaleString(locale.value, { maximumFractionDigits: 6 })
 const percent=(value:any)=>value==null?'—':Number(value).toLocaleString(locale.value,{style:'percent',maximumFractionDigits:1})
 const colours=['#F5F4FF','#E9E5FF','#C9BFFD','#9B8AFB','#7855FE','#4E1DBC']
 const colour=(rate:number)=>colours[Math.min(5,Math.max(0,Math.ceil(rate*5)))]
