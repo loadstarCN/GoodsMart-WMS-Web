@@ -1517,6 +1517,7 @@
       "readonly": "This receipt cannot be edited with its current status or your permissions",
       "close-confirm": "Close ASN-{id}? Receiving will stop for this order.",
       "goods-specs": "Goods · Unit specifications",
+      "line-measure-help": "Shows the recorded line total when available. Otherwise, the unit specifications are multiplied by the expected quantity, or by the actual quantity for a completed ASN. Totals include only rows with values.",
       "expected": "Expected",
       "rejected": "Rejected",
       "pending-specs": "Specifications pending: {count}",

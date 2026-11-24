@@ -1517,6 +1517,7 @@
       "readonly": "当前状态或权限不允许编辑此收货通知",
       "close-confirm": "关闭 ASN-{id}？此单将停止接收。",
       "goods-specs": "商品 · 单件规格",
+      "line-measure-help": "优先显示该行录入的值。缺值时，按单件规格乘以预计数量换算，已完成单据按实收数量换算。合计只计入有值的行。",
       "expected": "预计",
       "rejected": "拒收",
       "pending-specs": "待采集规格 {count} 种",

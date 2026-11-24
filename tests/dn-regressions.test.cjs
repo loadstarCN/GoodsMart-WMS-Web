@@ -194,6 +194,41 @@ test('bulk items preserve detail identity, merge remarks and restore this order 
   for (const quantity of [0, -1, 1.5, NaN, 2147483648]) assert.equal(invalidItemQuantity({ quantity }), true)
 })
 
+test('ASN measurements use unit specs for missing line totals and follow the receipt quantity', () => {
+  const { asnMeasurements } = load('utils/asnMeasurements')
+  const line = {
+    quantity: 5, actual_quantity: 3, weight: 0, volume: null,
+    goods: { weight: 0.023, length: 110, width: 110, height: 10 },
+  }
+  const completed = asnMeasurements([line], 'completed')
+  assert.equal(completed.rows[0].lineWeight, 0.069)
+  assert.equal(completed.rows[0].lineVolume, 0.000363)
+  assert.equal(completed.totalWeight, completed.rows[0].lineWeight)
+  assert.equal(completed.totalVolume, completed.rows[0].lineVolume)
+  assert.ok(Math.abs(asnMeasurements([line], 'received').totalWeight - 0.115) < Number.EPSILON)
+
+  const recordedWeight = { ...line, weight: 1.5, goods: { weight: 2 } }
+  const recordedVolume = { ...line, volume: 0.25, goods: { weight: 2, width: 100, height: 10 } }
+  const mixed = asnMeasurements([recordedWeight, recordedVolume], 'completed')
+  assert.equal(mixed.rows[0].lineVolume, null)
+  assert.equal(mixed.rows[1].lineWeight, 6)
+  assert.equal(mixed.totalWeight, 7.5)
+  assert.equal(mixed.totalVolume, 0.25)
+})
+
+test('ASN measurements distinguish zero arrivals from missing quantities or specs', () => {
+  const { asnMeasurements } = load('utils/asnMeasurements')
+  const missing = { quantity: 3, actual_quantity: 3, goods: { length: 110, height: 10 } }
+  const unknown = asnMeasurements([missing], 'completed')
+  assert.equal(unknown.totalWeight, null)
+  assert.equal(unknown.totalVolume, null)
+  const noneReceived = asnMeasurements([{ ...missing, actual_quantity: 0 }], 'completed')
+  assert.equal(noneReceived.totalWeight, 0)
+  assert.equal(noneReceived.totalVolume, 0)
+  const missingQuantity = asnMeasurements([{ ...missing, actual_quantity: null, goods: { weight: 1 } }], 'completed')
+  assert.equal(missingQuantity.totalWeight, null)
+})
+
 test('document form and bulk import literal messages exist in all languages', () => {
   const files = ['components/warehouse/LocationWarehouseMap.vue','components/asn/AsnSpecCapture.vue','components/documents/CycleCountPrint.vue','components/reports/OperatorPhaseReport.vue','pages/reports/operator.vue','components/inventory/InventoryStockTrend.vue','components/inventory/LedgerOverview.vue','components/goods/LabelLotPicker.vue','components/goods/ProductLabel.vue','pages/goods/label/[id].vue','components/inventory/GoodsStockComposition.vue','components/inventory/GoodsAnalytics.vue','components/warehouse/WarehousePlans.vue','pages/location/label/[id].vue','components/warehouse/LocationMapPreview.vue','components/inventory/LocationActivity.vue','pages/warehouse/layout/[id].vue','components/reports/DocumentReport.vue','pages/reports/inventory.vue','pages/reports/stock-summary.vue','pages/dashboard/empty.vue','pages/admin/index.vue','components/documents/DocumentPrint.vue','pages/adjustment/add.vue','pages/authentication/reset-password.vue','components/auth/AuthFrame.vue','pages/auth/login.vue','pages/auth/forgot-password.vue','pages/admin/tenants/add.vue','pages/admin/tenants/[id].vue','components/admin/RoleManager.vue','pages/admin/permissions/index.vue','pages/admin/permissions/add.vue','pages/admin/permissions/[id].vue','pages/admin/tenants/index.vue','pages/admin/users/index.vue','pages/admin/settings/index.vue','pages/admin/logs/index.vue','pages/apikeys/index.vue','pages/webhook-logs/index.vue','pages/delivery/pickup.vue','pages/adjustment/detail/[id].vue','pages/delivery/index.vue','pages/delivery/detail/[id].vue','pages/cyclecount/add.vue','pages/cyclecount/detail/[id].vue','components/operations/InventoryTaskList.vue','pages/picking/detail/[id].vue','pages/packing/detail/[id].vue','components/operations/TaskList.vue','components/operations/CompactFlow.vue','pages/sorting/detail/[id].vue','components/carrier/CarrierForm.vue','components/carrier/CarrierMethodsCard.vue','components/carrier/CarrierIntegrationCard.vue','components/carrier/CarrierFileSettings.vue','pages/carrier/index.vue','pages/company/index.vue','components/staff/StaffForm.vue', 'pages/staff/index.vue', 'pages/department/index.vue', 'components/inventory/ThresholdEditor.vue', 'components/dn/DnForm.vue', 'components/documents/DocumentItemsImport.vue', 'components/asn/AsnForm.vue', 'pages/asn/index.vue', 'pages/asn/detail/[id].vue', 'pages/goods/index.vue', 'pages/goods/export.vue', 'pages/goods/upload.vue', 'components/goods/GoodsForm.vue', 'pages/inventory/index.vue', 'components/supplier/SupplierForm.vue', 'pages/supplier/index.vue', 'pages/goods/detail/[id].vue', 'components/recipient/RecipientForm.vue', 'pages/recipient/index.vue', 'pages/recipient/detail/[id].vue', 'components/common/StructuredAddressFields.vue', 'components/inventory/StockLedgerTable.vue', 'components/inventory/InventoryViewNav.vue', 'pages/inventory/ledger.vue', 'pages/inventory/by-location.vue', 'pages/inventory/history.vue', 'components/warehouse/WarehouseForm.vue', 'pages/warehouse/index.vue', 'pages/warehouse/detail/[id].vue', 'components/location/LocationForm.vue', 'pages/location/index.vue', 'pages/location/detail/[id].vue']
   for (const locale of ['zh-CN', 'en-US', 'ja-JP']) {

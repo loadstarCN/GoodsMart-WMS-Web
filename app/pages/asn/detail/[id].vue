@@ -2,6 +2,7 @@
 import { countryName } from '~/data/countries'
 import type { InboundFlow } from '~/composables/asn/inboundFlow'
 import { useAsnActions } from '~/composables/asn/useAsnActions'
+import { asnMeasurements } from '~/utils/asnMeasurements'
 definePageMeta({})
 const route = useRoute()
 const id = computed(() => String(route.params.id))
@@ -50,6 +51,8 @@ const act = async (action: 'receive' | 'close' | 'cancel') => { if (!allowed('as
 watch(id, () => { record.value = null; flow.value = null; selectedStep.value = null; load() })
 onMounted(load)
 onBeforeUnmount(() => { generation++ })
+const measurements = computed(() => asnMeasurements(record.value?.details ?? [], record.value?.status))
+const measureFormat = computed(() => new Intl.NumberFormat(locale.value, { maximumSignificantDigits: 15 }))
 const columns = computed(() => [
   { key: 'goods', label: t('asn.form-ui.goods-specs'), wrap: true },
   { key: 'quantity', label: t('asn.form-ui.expected'), type: 'qty' as const, keepZero: true, strong: true },
@@ -57,8 +60,8 @@ const columns = computed(() => [
   { key: 'sorted_quantity', label: t('common.quantities.sorted'), type: 'qty' as const },
   { key: 'damage_quantity', label: t('common.quantities.damaged'), type: 'qty' as const },
   { key: 'rejected_quantity', label: t('asn.form-ui.rejected'), type: 'qty' as const, keepZero: true },
-  { key: 'weight', label: `${t('goods.fields.weight')} (kg)`, type: 'qty' as const },
-  { key: 'volume', label: `${t('goods.fields.volume')} (m³)`, type: 'qty' as const },
+  { key: 'lineWeight', label: `${t('goods.fields.weight')} (kg)`, type: 'qty' as const, keepZero: true, format: measureFormat.value.format, help: t('asn.form-ui.line-measure-help') },
+  { key: 'lineVolume', label: `${t('goods.fields.volume')} (m³)`, type: 'qty' as const, keepZero: true, format: measureFormat.value.format, help: t('asn.form-ui.line-measure-help') },
   { key: 'remark', label: t('common.fields.remark'), wrap: true },
 ])
 const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.value?.status === 'completed' ? 'ok' : record.value?.status === 'received' ? 'warn' : flow.value?.stage === 'in_transit' ? 'info' : 'none')
@@ -86,9 +89,21 @@ const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.v
         <AsnInboundFlow :key="id" ref="flowRef" :asn-id="id" :selected="selectedStep" @loaded="flow = $event" @changed="load" />
         <WCard class="asn-detail__items" :title="t('common.entities.goods')" :subtitle="t('dn.list.goods', { kinds: record.detail_count, qty: record.total_quantity })" flush>
           <template #actions><WStatus v-if="record.spec_pending_count" tone="warn">{{ t('asn.form-ui.pending-specs', { count: record.spec_pending_count }) }}</WStatus></template>
-          <WTable :rows="record.details || []" :columns="columns" row-key="id" inset>
+          <WTable :rows="measurements.rows" :columns="columns" row-key="id" inset>
             <template #cell-goods="{ row }"><GoodsIdentity :goods="row.goods"><div class="asn-detail__goods"><NuxtLink v-if="allowed('goods_read')" class="w-record-link" :to="'/goods/detail/' + row.goods_id">{{ row.goods?.name }}</NuxtLink><span v-else>{{ row.goods?.name }}</span><div>{{ row.goods?.code }}</div><div class="asn-detail__specs">{{ [row.goods?.weight ? row.goods.weight + ' kg' : '', row.goods?.length && row.goods?.width && row.goods?.height ? [row.goods.length, row.goods.width, row.goods.height].map(value => value / 10).join(' × ') + ' cm' : '', row.goods?.origin_country ? countryName(row.goods.origin_country, locale) : ''].filter(Boolean).join(' · ') }}</div><div v-if="row.announced_lots?.length" class="asn-detail__announced"><b>{{t('announced-lots.title')}}</b><span v-for="(lot,index) in row.announced_lots" :key="Number(index)">{{lot.lot_code}} / {{lot.expiry_date||'—'}} / {{lot.quantity}}</span></div><AsnSpecCapture :asn="record" :line="row" :disabled="busy" @saved="load" /></div></GoodsIdentity></template>
-            <template #foot><tr><th>{{ t('asn.form-ui.total') }}</th><td>{{ record.total_quantity }}</td><td>{{ record.status === 'completed' ? record.total_actual_quantity : '—' }}</td><td>{{ record.total_sorted_quantity || '' }}</td><td>{{ record.total_damage_quantity || '' }}</td><td>{{ record.total_rejected_quantity ?? '—' }}</td><td>{{ record.total_weight || '' }}</td><td>{{ record.total_volume || '' }}</td><td /></tr></template>
+            <template #foot>
+              <tr>
+                <th>{{ t('asn.form-ui.total') }}</th>
+                <td>{{ record.total_quantity }}</td>
+                <td>{{ record.status === 'completed' ? record.total_actual_quantity : '—' }}</td>
+                <td>{{ record.total_sorted_quantity || '' }}</td>
+                <td>{{ record.total_damage_quantity || '' }}</td>
+                <td>{{ record.total_rejected_quantity ?? '—' }}</td>
+                <td>{{ measurements.totalWeight != null ? measureFormat.format(measurements.totalWeight) : '' }}</td>
+                <td>{{ measurements.totalVolume != null ? measureFormat.format(measurements.totalVolume) : '' }}</td>
+                <td />
+              </tr>
+            </template>
           </WTable>
         </WCard>
       </div>
