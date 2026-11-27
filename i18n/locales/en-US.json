@@ -89,7 +89,26 @@
     "empty": "No picking tasks were created today in the current warehouse scope.",
     "limit": "Today's tasks exceed the 50-task print limit. The list now shows today's tasks; select and print one page at a time."
   },
+  "sorting-variance": {
+    "complete-hint": "Submit the current entries and complete sorting. Any quantity difference must be reviewed first.",
+    "shortage": "{quantity} short",
+    "overage": "{quantity} extra",
+    "review": "Review receiving quantity differences",
+    "hint": "Check each product against the physical shipment. Go back to add missing entries, or enter a reason to confirm the difference.",
+    "recheck": "The latest received quantities match the plan. Confirm completion again.",
+    "counts": "Planned {planned} · Received {received} · Rejected {rejected}",
+    "reason": "Reason for the difference",
+    "go-back": "Back to review",
+    "confirm": "Confirm difference and complete",
+    "follow-up": "Receiving difference follow-up",
+    "unresolved": "Needs follow-up",
+    "resolved": "Resolved",
+    "resolution-note": "Resolution, such as a related document number or the supplier’s response",
+    "mark-resolved": "Mark resolved"
+  },
   "pending-split": {
+    "asn-hint": "Select a location and check the pending quantity for this ASN. Enter a smaller quantity for partial putaway.",
+    "add-location": "Add location",
     "hint": "Choose a receipt source, lot, destination and quantity.",
     "add": "Add another lot / location for this product",
     "remove": "Remove row"
@@ -3025,7 +3044,7 @@
     "code-16057": "This goods item is not part of the ASN",
     "code-16058": "The sorting batch does not belong to this sorting task",
     "code-16061": "The actual shipping date cannot be earlier than the expected shipping date",
-    "code-16062": "The sorted quantity exceeds the planned quantity",
+    "code-16062": "The sorted quantity exceeds the plan. Check the physical count and confirm any extra units when completing sorting.",
     "code-44001": "This user is still bound to active API keys. Reassign or deactivate them before deleting the user.",
     "code-44002": "This role is still assigned to users and cannot be deleted",
     "code-44003": "The company still has related records and cannot be deleted. Remove them first.",
@@ -5099,6 +5118,9 @@
   },
   "pending-age": {
     "sources": "Lots and receipt sources",
+    "lot-number": "Lot {lot}",
+    "lot-expiry": "Expiry {date}",
+    "sources-unavailable": "Lot and receipt details are unavailable",
     "unknown": "Entry time is unknown for {n} units; excluded from overdue quantities.",
     "overdue": "Waiting more than {days} days",
     "goods": "{n} SKUs",
@@ -5209,6 +5231,10 @@
     "buckets": "Total includes shelf, damaged, returned, pending, picked and packed stock. Pending damage is included in pending quantity; shipments in transit are excluded."
   },
   "pending-source-view": {
+    "asn-title": "ASN-{id} pending putaway",
+    "asn-hint": "Quantities show the remaining units for each product and lot on this ASN. Use the row action for partial putaway.",
+    "asn-scope-error": "The pending stock could not be verified for this ASN. Please try again.",
+    "asn-untracked": "This historical ASN has no receipt source records to verify its pending quantities.",
     "below-acceptance": "Below the {days}-day receiving limit",
     "title": "Pending stock by source",
     "hint": "Current warehouse only. Recorded ASN receipts, short-pack returns and cancelled-DN returns show remaining quantities by source. Unrecorded historical sources and times stay unknown. Locations show the same product and lot.",

@@ -53,10 +53,30 @@ onMounted(load)
 onBeforeUnmount(() => { generation++ })
 const measurements = computed(() => asnMeasurements(record.value?.details ?? [], record.value?.status))
 const measureFormat = computed(() => new Intl.NumberFormat(locale.value, { maximumSignificantDigits: 15 }))
+const quantityDifferences = computed(() => {
+  const result = new Map<number, { firstRow: number; quantity: number }>()
+  if (record.value?.status !== 'completed') return result
+  for (const row of record.value.details ?? []) {
+    const previous = result.get(row.goods_id)
+    result.set(row.goods_id, {
+      firstRow: previous?.firstRow ?? row.id,
+      quantity: (previous?.quantity ?? 0) + Number(row.actual_quantity ?? 0) + Number(row.rejected_quantity ?? 0) - Number(row.quantity ?? 0),
+    })
+  }
+  return result
+})
+const hasQuantityDifference = computed(() => [...quantityDifferences.value.values()].some(row => row.quantity !== 0))
+const hasReceiptIssue = computed(() => hasQuantityDifference.value ||
+  (record.value?.status === 'completed' && Number(record.value.total_rejected_quantity) > 0))
+const lineDifference = (row: { id?: number; goods_id: number }) => {
+  const difference = quantityDifferences.value.get(row.goods_id)
+  return row.id !== undefined && difference?.firstRow === row.id ? difference.quantity : 0
+}
 const columns = computed(() => [
   { key: 'goods', label: t('asn.form-ui.goods-specs'), wrap: true },
   { key: 'quantity', label: t('asn.form-ui.expected'), type: 'qty' as const, keepZero: true, strong: true },
   { key: 'actual_quantity', label: t('common.quantities.actual'), type: 'qty' as const, keepZero: true, value: (row: any) => record.value?.status === 'completed' ? row.actual_quantity : null },
+  ...(hasQuantityDifference.value ? [{ key: 'variance', label: t('operations.ui.variance'), align: 'right' as const }] : []),
   { key: 'sorted_quantity', label: t('common.quantities.sorted'), type: 'qty' as const },
   { key: 'damage_quantity', label: t('common.quantities.damaged'), type: 'qty' as const },
   { key: 'rejected_quantity', label: t('asn.form-ui.rejected'), type: 'qty' as const, keepZero: true },
@@ -76,6 +96,7 @@ const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.v
         <WButton :to="`/asn/print/${id}`" target="_blank">{{ t('button.print') }}</WButton>
         <WButton v-if="record.status === 'pending' && allowed('asn_edit')" :to="`/asn/edit/${id}`">{{ t('button.edit') }}</WButton>
         <WButton v-if="record.status === 'received' && allowed('sorting_read')" :to="`/sorting?asn_id=${id}`">{{ t('asn.operations.sorting') }}</WButton>
+        <WButton v-if="hasReceiptIssue && allowed('sorting_read')" :to="`/sorting?asn_id=${id}&has_variance=true`">{{ t('sorting-variance.follow-up') }}</WButton>
         <WButton variant="danger" v-if="record.status === 'pending' && allowed('asn_edit')" :disabled="busy" @click="act('close')">{{ t('button.close') }}</WButton>
         <WButton v-if="record.status === 'received' && allowed('asn_edit')" variant="text" :disabled="busy" @click="act('cancel')">{{ t('asn.operations.cancel') }}</WButton>
       </div>
@@ -91,11 +112,13 @@ const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.v
           <template #actions><WStatus v-if="record.spec_pending_count" tone="warn">{{ t('asn.form-ui.pending-specs', { count: record.spec_pending_count }) }}</WStatus></template>
           <WTable :rows="measurements.rows" :columns="columns" row-key="id" inset>
             <template #cell-goods="{ row }"><GoodsIdentity :goods="row.goods"><div class="asn-detail__goods"><NuxtLink v-if="allowed('goods_read')" class="w-record-link" :to="'/goods/detail/' + row.goods_id">{{ row.goods?.name }}</NuxtLink><span v-else>{{ row.goods?.name }}</span><div>{{ row.goods?.code }}</div><div class="asn-detail__specs">{{ [row.goods?.weight ? row.goods.weight + ' kg' : '', row.goods?.length && row.goods?.width && row.goods?.height ? [row.goods.length, row.goods.width, row.goods.height].map(value => value / 10).join(' × ') + ' cm' : '', row.goods?.origin_country ? countryName(row.goods.origin_country, locale) : ''].filter(Boolean).join(' · ') }}</div><div v-if="row.announced_lots?.length" class="asn-detail__announced"><b>{{t('announced-lots.title')}}</b><span v-for="(lot,index) in row.announced_lots" :key="Number(index)">{{lot.lot_code}} / {{lot.expiry_date||'—'}} / {{lot.quantity}}</span></div><AsnSpecCapture :asn="record" :line="row" :disabled="busy" @saved="load" /></div></GoodsIdentity></template>
+            <template #cell-variance="{ row }"><WDifference :value="record.status === 'completed' ? lineDifference(row) : null" /></template>
             <template #foot>
               <tr>
                 <th>{{ t('asn.form-ui.total') }}</th>
                 <td>{{ record.total_quantity }}</td>
                 <td>{{ record.status === 'completed' ? record.total_actual_quantity : '—' }}</td>
+                <td v-if="hasQuantityDifference"><WDifference :value="record.total_actual_quantity - record.total_quantity" /></td>
                 <td>{{ record.total_sorted_quantity || '' }}</td>
                 <td>{{ record.total_damage_quantity || '' }}</td>
                 <td>{{ record.total_rejected_quantity ?? '—' }}</td>
