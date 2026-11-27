@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BulkPutaway from '~/components/inventory/BulkPutaway.vue'
+import PutawayEditor from '~/components/inventory/PutawayEditor.vue'
 import PendingSources from '~/components/inventory/PendingSources.vue'
 import ThresholdEditor from '~/components/inventory/ThresholdEditor.vue'
 import InventoryHealthSummary from '~/components/inventory/InventoryHealthSummary.vue'
@@ -14,7 +15,14 @@ useHead({title:()=>t('nav.inventory')})
 const data=ref<PaginationData|null>(null),summary=ref<any>(null),pendingSummary=ref<any>(null),loading=ref(true),error=ref('')
 const keyword=ref(String(route.query.keyword||'')),selected=ref<(string|number)[]>([]),thresholdOpen=ref(false)
 const exporting=ref(false),bulkOpen=ref(false)
-const openBulk=()=>{if(!allowed('putaway_edit')||loading.value)return;if(new Set(selection.value.map((row:any)=>row.warehouse_id)).size!==1){error.value=t('inventory.ui.choose-warehouse');return}bulkOpen.value=true}
+const singlePutaway=ref(false)
+const openBulk=(row?:any)=>{
+ if(!allowed('putaway_edit')||loading.value)return
+ if(row)selected.value=[rowKey(row)]
+ if(new Set(selection.value.map((item:any)=>item.warehouse_id)).size!==1){error.value=t('inventory.ui.choose-warehouse');return}
+ singlePutaway.value=!!row
+ bulkOpen.value=true
+}
 const downloadPending=async()=>{
  if(exporting.value||loading.value||!allowed('inventory_read'))return
  exporting.value=true;error.value=''
@@ -57,7 +65,7 @@ const load=async()=>{
  if(seq!==generation)return
  sourceRevision.value++;data.value=values[0];summary.value=values[1];pendingSummary.value=values[2];loading.value=false
 }
-watch(()=>route.query,()=>{keyword.value=String(route.query.keyword||'');load()})
+watch(()=>route.query,()=>{bulkOpen.value=false;keyword.value=String(route.query.keyword||'');load()})
 watch(()=>warehouses.currentWarehouse?.id,()=>{bulkOpen.value=false;thresholdOpen.value=false;if(Number(route.query.page)>1)go({page:undefined});else load()})
 onMounted(load);onBeforeUnmount(()=>{generation++})
 const rowKey=(row:any)=>row.warehouse_id+':'+row.goods_id
@@ -70,7 +78,6 @@ const openThresholds=()=>{
 }
 const qty=(value:any,keep=false)=>Number(value)||keep?Number(value||0).toLocaleString(locale.value):''
 const dwell=(row:any)=>{if(!row.pending_since)return '—';const date=parseDateTime(row.pending_since);if(!date)return '—';const days=Math.floor((Date.now()-date.getTime())/86400000);return days<1?t('inventory.pending.dwell-under-day'):t('inventory.pending.dwell-days',{n:days})}
-const openPutaway=(row:any)=>{selected.value=[rowKey(row)];openBulk()}
 const parts=computed(()=>[{key:'available_stock_for_sale',color:'var(--w-pri)'},{key:'dn_stock',color:'var(--w-nontext)'},{key:'locked_stock',color:'var(--w-warn-dot)'},...(Number(summary.value?.unshippable_stock)>0?[{key:'unshippable_stock',color:'#C54B57'}]:[])].map(item=>({...item,value:Number(summary.value?.[item.key]||0)})))
 const pendingColumns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},{key:'warehouse',label:t('common.entities.warehouse'),value:(row:any)=>row.warehouse?.name},{key:'good',label:t('inventory.pending.good'),type:'qty' as const,value:(row:any)=>pendingPutaway(row)?.good},{key:'sorted_damage_stock',label:t('inventory.pending.damaged'),type:'qty' as const},{key:'sorted_stock',label:t('inventory.pending.total'),type:'qty' as const,strong:true},{key:'dwell',label:t('inventory.pending.dwell'),value:dwell},{key:'actions',label:t('common.fields.action')}])
 </script>
@@ -90,14 +97,14 @@ const pendingColumns=computed(()=>[{key:'goods',label:t('nav.goods'),wrap:true},
     <button type="button" class="pending-card" :aria-pressed="String(route.query.pending_overdue_days)===String(pendingSummary.overdue_days)" @click="go({pending_damaged:undefined,pending_overdue_days:pendingSummary.overdue_days})"><span>{{t('pending-age.overdue',{days:pendingSummary.overdue_days})}}</span><strong>{{qty(pendingSummary.overdue_quantity,true)}} <small>{{t('pending-age.units')}}</small></strong><small>{{t('pending-age.rows',{n:pendingSummary.overdue_inventory_count})}}</small></button>
     <button type="button" class="pending-card" :aria-pressed="String(route.query.pending_overdue_days)==='7'" @click="go({pending_damaged:undefined,pending_overdue_days:7})"><span>{{t('pending-age.overdue',{days:7})}}</span><strong>{{qty(pendingSummary.overdue_seven_quantity,true)}} <small>{{t('pending-age.units')}}</small></strong><small>{{t('pending-age.rows',{n:pendingSummary.overdue_seven_inventory_count})}}</small></button>
   </section><WAlert v-if="pendingSummary.unknown_age_quantity" tone="warn" :title="t('pending-age.unknown',{n:pendingSummary.unknown_age_quantity})"/></template>
-  <WButton v-if="pending&&allowed('putaway_edit')" :disabled="!selected.length||loading" @click="openBulk">{{t('pending-bulk.title')}}<template v-if="selected.length"> ({{selected.length}})</template></WButton>
+  <WButton v-if="pending&&allowed('putaway_edit')" :disabled="!selected.length||loading" @click="openBulk()">{{t('pending-bulk.title')}}<template v-if="selected.length"> ({{selected.length}})</template></WButton>
   <WCard flush>
    <form class="w-inventory__filters" @submit.prevent="go({keyword:keyword.trim()})"><WInput v-model="keyword" type="search" :placeholder="t('common.search-placeholder')" :aria-label="t('common.search')"><template #prefix><WIcon name="search" :size="16" /></template></WInput><WButton type="submit">{{t('common.search')}}</WButton><WFilterSelect :model-value="String(route.query.stock_bucket||'')||null" :label="t('inventory-buckets.filter')" :options="bucketOptions" @change="value=>go({stock_bucket:value})" /><WFilterSelect :model-value="route.query.below_low_threshold?'low':route.query.above_high_threshold?'high':null" :label="t('inventory.ui.thresholds')" :options="[{value:'low',label:t('inventory.thresholds.low-stock')},{value:'high',label:t('inventory.thresholds.high-stock')}]" @change="value=>go({below_low_threshold:value==='low'?'true':undefined,above_high_threshold:value==='high'?'true':undefined})" /><WCheckbox v-if="!pending" v-model="showMetrics" :label="t('inventory-buckets.metrics')"/><span v-if="selected.length">{{t('inventory.ui.selected',{count:selected.length})}}</span></form>
-   <p v-if="!pending&&showMetrics" class="metrics-hint">{{t('inventory-buckets.metrics-hint')}}</p><WTable v-if="pending" :selectable="allowed('putaway_edit')" v-model:selected="selected" :rows="data?.items||[]" :columns="pendingColumns" :loading="loading" :row-key="rowKey" inset><template #cell-goods="{row}"><GoodsIdentity :goods="row.goods"><NuxtLink v-if="allowed('goods_read')" class="w-inventory__name" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else class="w-inventory__name">{{row.goods?.name}}</span><span class="w-inventory__sub">{{row.goods?.code}}</span></GoodsIdentity><PendingSources :key="rowKey(row)+':'+sourceRevision" :goods-id="row.goods_id" :warehouse-id="row.warehouse_id" /></template><template #cell-actions="{row}"><WButton v-if="allowed('putaway_edit')" size="sm" @click="openPutaway(row)">{{t('goods.operations.create-putaway')}}</WButton></template></WTable>
+   <p v-if="!pending&&showMetrics" class="metrics-hint">{{t('inventory-buckets.metrics-hint')}}</p><WTable v-if="pending" :selectable="allowed('putaway_edit')" v-model:selected="selected" :rows="data?.items||[]" :columns="pendingColumns" :loading="loading" :row-key="rowKey" inset><template #cell-goods="{row}"><GoodsIdentity :goods="row.goods"><NuxtLink v-if="allowed('goods_read')" class="w-inventory__name" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else class="w-inventory__name">{{row.goods?.name}}</span><span class="w-inventory__sub">{{row.goods?.code}}</span></GoodsIdentity><PendingSources :key="rowKey(row)+':'+sourceRevision" :goods-id="row.goods_id" :warehouse-id="row.warehouse_id" /></template><template #cell-actions="{row}"><WButton v-if="allowed('putaway_edit')" size="sm" @click="openBulk(row)">{{t('goods.operations.create-putaway')}}</WButton></template></WTable>
    <div v-else class="w-inventory__table-wrap"><table :aria-busy="loading"><thead><tr><th rowspan="2"><WCheckbox v-if="allowed('inventory_edit')" v-model="allSelected" :indeterminate="selected.length>0&&!allSelected" :label="t('common.status.all')" /></th><th rowspan="2">{{t('nav.goods')}}</th><th rowspan="2">{{t('common.entities.warehouse')}}</th><th colspan="9" class="w-inventory__group">{{t('inventory.ui.composition')}}</th><th colspan="4" class="w-inventory__group">{{t('inventory.ui.operations')}}</th><th v-if="showMetrics" :colspan="metricColumns.length" class="w-inventory__group">{{t('inventory-buckets.metrics')}}</th></tr><tr><th v-for="key in keys" :key="key" class="w-inventory__qty" :class="{'is-strong':key==='available_stock_for_sale'}">{{labels[key]}}</th><template v-if="showMetrics"><th v-for="column in metricColumns" :key="column.key" class="w-inventory__qty">{{column.label}}</th></template></tr></thead><tbody><tr v-if="loading"><td :colspan="16+(showMetrics?metricColumns.length:0)"><WEmptyState :title="t('common.status.loading')" /></td></tr><tr v-for="row in loading?[]:data?.items||[]" :key="rowKey(row)"><td><WCheckbox v-if="allowed('inventory_edit')" v-model="selected" :value="rowKey(row)" :aria-label="row.goods?.name" /></td><td><GoodsIdentity :goods="row.goods"><NuxtLink v-if="allowed('goods_read')" class="w-inventory__name" :to="'/goods/detail/'+row.goods_id">{{row.goods?.name}}</NuxtLink><span v-else class="w-inventory__name">{{row.goods?.name}}</span><span class="w-inventory__sub">{{row.goods?.code}}</span></GoodsIdentity></td><td>{{row.warehouse?.name}}</td><td v-for="key in keys" :key="key" class="w-inventory__qty" :class="{'is-strong':key==='available_stock_for_sale','is-low':key==='available_stock_for_sale'&&row.low_stock_threshold>=0&&row[key]<row.low_stock_threshold}">{{qty(row[key],key==='available_stock_for_sale')}}</td><template v-if="showMetrics"><td v-for="column in metricColumns" :key="column.key" class="w-inventory__qty">{{metricValue(row,column.key)}}</td></template></tr><tr v-if="!loading&&!data?.items.length"><td :colspan="16+(showMetrics?metricColumns.length:0)"><WEmptyState :title="t('common.status.nothing-show')" /></td></tr></tbody></table></div>
    <footer><WPagination :page="Number(route.query.page)||1" :total="data?.total" :page-size="50" show-total @update:page="value=>go({page:value},true)" /></footer>
   </WCard>
-  <BulkPutaway v-model:open="bulkOpen" :rows="selection" @saved="load"/>
+  <component :is="singlePutaway ? PutawayEditor : BulkPutaway" v-model:open="bulkOpen" :rows="selection" @saved="load"/>
   <ThresholdEditor v-model:open="thresholdOpen" :warehouse-id="warehouses.currentWarehouse?.id||selection[0]?.warehouse_id" :goods-ids="selection.map(row=>row.goods_id)" @saved="load" />
  </div>
 </template>

@@ -90,6 +90,7 @@
     "limit": "Today's tasks exceed the 50-task print limit. The list now shows today's tasks; select and print one page at a time."
   },
   "pending-split": {
+    "hint": "Choose a receipt source, lot, destination and quantity.",
     "add": "Add another lot / location for this product",
     "remove": "Remove row"
   },
@@ -5062,7 +5063,10 @@
   },
   "pending-bulk": {
     "title": "Bulk putaway",
-    "hint": "Choose a pending source, lot, destination and quantity for each product. All rows are submitted together.",
+    "summary": "All {quantity} selected units across {goods} products will go to the same location.",
+    "confirm": "Confirm putaway",
+    "stock-changed": "Pending quantities have changed. Refresh stock and select the items again.",
+    "too-many-sources": "This selection has more than 500 lot and source entries. Select smaller batches in the pending sources list.",
     "maximum": "Maximum for this lot and location: {n}",
     "uncertain": "The result could not be confirmed. Refresh stock and check putaway records before submitting again.",
     "refresh": "Close and refresh stock"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BulkPutaway from '~/components/inventory/BulkPutaway.vue'
+import PutawayEditor from '~/components/inventory/PutawayEditor.vue'
 const {t}=useI18n(),route=useRoute(),router=useRouter(),warehouse=useWarehouseStore(),staff=useStaffStore(),{bizErrorMessage}=useBizError()
 const data=ref<any>(null),loading=ref(false),error=ref(''),keyword=ref(String(route.query.keyword||''))
 const ready=ref(false)
@@ -31,7 +32,12 @@ const download=async()=>{
  try{const params=new URLSearchParams(Object.entries(filters()).map(([key,value])=>[key,String(value)]));await downloadFile('/api/warehouse/inventory/pending-putaway/sources/export?'+params,{headers:warehouseHeaders(id)},'pending-sources.csv')}
  catch(e){if(seq===generation)error.value=bizErrorMessage(e as HttpRequestError)}finally{exporting.value=false}
 }
-const openBulk=(row?:any)=>{if(!canPutaway.value||loading.value)return;if(row)selected.value=[row.id];if(selection.value.length)bulkOpen.value=true}
+const singlePutaway=ref(false)
+const openBulk=(row?:any)=>{
+ if(!canPutaway.value||loading.value)return
+ if(row)selected.value=[row.id]
+ if(selection.value.length){singlePutaway.value=!!row;bulkOpen.value=true}
+}
 watch(()=>route.query,()=>{keyword.value=String(route.query.keyword||'');bulkOpen.value=false;load()})
 watch(()=>warehouse.currentWarehouse?.id,()=>{bulkOpen.value=false;if(Number(route.query.page)>1)go({});else load()})
 onMounted(load);onBeforeUnmount(()=>generation++)
@@ -74,7 +80,7 @@ const columns=computed(()=>[
     <footer><WPagination :page="Number(route.query.page)||1" :page-size="50" :total="data?.total||0" show-total @update:page="value=>go({page:value},true)"/></footer>
    </WCard>
   </template>
-  <BulkPutaway v-model:open="bulkOpen" :rows="selection" @saved="load"/>
+  <component :is="singlePutaway ? PutawayEditor : BulkPutaway" v-model:open="bulkOpen" :rows="selection" @saved="load"/>
  </div>
 </template>
 <style scoped>
