@@ -123,6 +123,32 @@ test('duplicate document lines share one available stock limit', () => {
   assert.equal(goodsExceedingStock([{ goods_id: 9, quantity: 3 }]).size, 0)
 })
 
+test('bulk putaway sends all checked stock to one location, keeping each lot and receipt', async () => {
+  const { bulkPutawayRecords } = load('composables/inventory/bulkPutaway')
+  const product = { warehouse_id: 1, goods_id: 17, sorted_stock: 5, sorted_damage_stock: 1 }
+  const lots = [
+    { lot_id: 7, receipt_source_id: 11, sorted_stock: 2, sorted_damage_stock: 1 },
+    { lot_id: 7, receipt_source_id: 12, sorted_stock: 1, sorted_damage_stock: 0 },
+    { lot_id: null, receipt_source_id: 0, sorted_stock: 2, sorted_damage_stock: 0 },
+  ]
+  const source = { warehouse_id: 1, goods_id: 24, ...lots[2] }
+  const fetched = []
+  const records = await bulkPutawayRecords([product, source], 8, async row => {
+    fetched.push(row.goods_id)
+    return lots
+  })
+  assert.deepEqual(fetched, [17])
+  assert.deepEqual(Array.from(records, record => ({ ...record })), [
+    { goods_id: 17, location_id: 8, lot_id: 7, receipt_source_id: 11, quantity: 2 },
+    { goods_id: 17, location_id: 8, lot_id: 7, receipt_source_id: 12, quantity: 1 },
+    { goods_id: 17, location_id: 8, lot_id: null, receipt_source_id: 0, quantity: 2 },
+    { goods_id: 24, location_id: 8, lot_id: null, receipt_source_id: 0, quantity: 2 },
+  ])
+  for (const changed of [null, [], lots.slice(1), lots.map(row => ({ ...row, sorted_damage_stock: 0 }))]) {
+    assert.equal(await bulkPutawayRecords([source, product], 8, async () => changed), null)
+  }
+})
+
 test('split putaway shares receipt capacity and reserves damaged stock correctly', () => {
   const { putawaySplitLimit } = load('composables/inventory/putawayStock')
   const pending = { total: 10, good: 6, damaged: 4 }
