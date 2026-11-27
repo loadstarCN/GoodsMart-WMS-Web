@@ -24,7 +24,7 @@ const estimate=computed(()=>row.value?{amount:row.value.estimated_amount,currenc
    <dt>{{t('freight.estimate')}}</dt><dd>{{money(estimate?.amount)}} {{estimate?.currency||''}}</dd>
    <template v-if="row">
     <dt>{{t('freight.amount')}}</dt><dd><div v-for="(amount,currency) in row.billed" :key="currency">{{money(amount)}} {{currency}}</div><span v-if="!Object.keys(row.billed).length">—</span></dd>
-    <dt>{{t('freight.difference')}}</dt><dd>{{money(row.difference)}} <span v-if="row.difference!=null">{{row.estimated_currency}}</span></dd>
+    <dt>{{t('freight.difference')}}</dt><dd><WDifference :value="row.difference" /> <span v-if="row.difference!=null">{{row.estimated_currency}}</span></dd>
     <dt>{{t('freight.actual-weight')}}</dt><dd>{{row.actual_weight??'—'}} kg</dd>
    </template>
   </dl>

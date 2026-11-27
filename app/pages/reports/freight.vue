@@ -43,7 +43,7 @@ useHead({title:()=>t('freight.title')})
  <template #cell-dn_id="{row}"><NuxtLink v-if="staff.refreshed&&staff.staffInfo&&staff.hasPermission('dn_read')" :to="'/dn/detail/'+row.dn_id">DN #{{row.dn_id}}</NuxtLink><span v-else>DN #{{row.dn_id}}</span><small class="order-number">{{row.order_number}}</small></template>
  <template #cell-weights="{row}"><span>{{t('freight.actual-weight')}}: {{row.actual_weight??'\u2014'}} kg</span><small class="weight-line" v-for="invoice in row.invoices" :key="invoice.id">{{invoice.invoice_number}}: {{row.billed_weights[invoice.id]??'\u2014'}} kg</small><small class="weight-line" v-if="row.package_count">{{t('freight.box-count',{count:row.package_count})}}</small></template>
  <template #cell-estimated_amount="{row}">{{row.estimated_amount??'—'}} {{row.estimated_currency||''}}</template>
- <template #cell-difference="{row}">{{row.difference??'—'}}</template>
+ <template #cell-difference="{row}"><WDifference :value="row.difference" /></template>
  <template #cell-billed="{row}"><div v-for="(amount,currency) in row.billed" :key="currency">{{currency}} {{amount}}</div><span v-if="!Object.keys(row.billed).length">—</span></template>
  <template #cell-state="{row}"><WStatus :tone="row.state==='matched'?'ok':'warn'">{{t('freight.states.'+row.state)}}</WStatus></template>
  <template #cell-invoices="{row}"><NuxtLink v-for="invoice in row.invoices" :key="invoice.id" class="invoice-link" :to="'/freight/invoices/'+invoice.id">{{invoice.invoice_number}} &middot; {{t('freight.states.'+invoice.status)}}</NuxtLink></template>

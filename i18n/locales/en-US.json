@@ -2193,6 +2193,7 @@
     "events": {
       "asn_received": "ASN received",
       "asn_completed": "ASN completed",
+      "asn_quantity_corrected": "ASN quantity corrected",
       "asn_cancelled": "ASN cancelled",
       "dn_in_progress": "DN in progress",
       "dn_picked": "DN picked",
@@ -3093,6 +3094,14 @@
     "code-15019": "Invalid stock query parameter ({field}). Check the dates (not in the future, at most 400 days apart), stock category, grouping / status / sort options, and select a warehouse",
     "code-15020": "The export exceeds the limit of 50,000 rows. Narrow the filters and try again",
     "code-17020": "Invalid spec capture settings: items can only be weight, dimensions and country of origin; the mode must be \"missing only\" or \"remeasure all\"; handling of uncaptured specs must be \"warn\" or \"block\"",
+    "code-17032": "Only completed receipts can be corrected.",
+    "code-17033": "The corrected quantity exceeds the ASN planned quantity.",
+    "code-17034": "This product and lot already have a correction awaiting review.",
+    "code-17035": "The quantities changed. Reload the sorting task.",
+    "code-17036": "The pending stock for this receipt could not be verified. Check inventory and related documents.",
+    "code-17037": "The units to deduct have already moved. Check putaway and downstream documents.",
+    "code-17038": "A different authorized user must review this correction.",
+    "code-17039": "This correction has already been reviewed.",
     "code-17021": "This warehouse requires specs to be captured before sorting is completed: some sorted goods still have specs to capture and no skip reason",
     "code-17022": "Invalid spec capture: enter spec values or a skip reason; length, width and height must be entered together; in \"remeasure all\" mode every requested spec is required; the skip reason can be at most 255 characters",
     "code-17023": "Specs can only be captured on an ASN that has been received or completed",
@@ -4783,6 +4792,23 @@
       "day_5_7": "5–7 days",
       "day_over_7": "> 7 days"
     }
+  },
+  "sorting-quantity": {
+    "edit": "Edit quantity",
+    "title": "Receipt quantity corrections",
+    "request": "Request a correction",
+    "submit": "Submit for review",
+    "empty": "No quantity corrections yet",
+    "pending": "Correction awaiting review",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "approve": "Approve correction",
+    "reject": "Reject correction",
+    "reason": "Correction reason",
+    "review-note": "Review note",
+    "other-lot": "Another lot",
+    "original-count": "Original: {count}",
+    "approval-hint": "Approval applies the difference to stock and the received quantity for this receipt lot."
   },
   "receiving-exceptions": {
     "title": "Rejection / receipt concession",

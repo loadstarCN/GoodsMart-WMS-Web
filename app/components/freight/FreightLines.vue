@@ -20,7 +20,7 @@ const columns=computed(()=>[
  <template #cell-tracking_number="{row}"><strong>{{row.tracking_number}}</strong><small class="line-meta">{{row.service||'—'}}<template v-if="row.billable_weight!=null"> &middot; {{row.billable_weight}} kg</template></small></template>
  <template #cell-dn_id="{row}"><NuxtLink v-if="row.dn_id && staff.refreshed && staff.staffInfo && staff.hasPermission('dn_read')" :to="'/dn/detail/'+row.dn_id">DN #{{row.dn_id}}</NuxtLink><span v-else>{{row.dn_id ? 'DN #'+row.dn_id : '—'}}</span></template>
  <template #cell-estimated_amount="{row}">{{row.estimated_amount??'—'}} {{row.estimated_currency||''}}</template>
- <template #cell-difference="{row}">{{row.difference??'—'}}</template>
+ <template #cell-difference="{row}"><WDifference :value="row.difference" /></template>
  <template #cell-state="{row}"><WStatus :tone="['matched','accepted','external'].includes(row.state)?'ok':row.state==='disputed'?'bad':'warn'">{{t('freight.states.'+row.state)}}</WStatus></template>
  <template #cell-actions="{row}"><WButton size="sm" variant="text" @click="emit('review',row)">{{t('freight.review')}}</WButton></template>
 </WTable><div class="pager"><WPagination v-model:page="page" :total="rows.length" :page-size="20" show-total/></div></template>
