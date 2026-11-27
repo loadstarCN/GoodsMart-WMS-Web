@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import PendingLotPicker from './PendingLotPicker.vue'
-import {putawaySplitLimit,type PendingPutaway} from '~/composables/inventory/putawayStock'
+import {pendingPutaway,putawaySplitLimit,type PendingPutaway} from '~/composables/inventory/putawayStock'
 const open=defineModel<boolean>('open',{default:false})
-const props=defineProps<{rows:any[]}>(),emit=defineEmits<{saved:[]}>()
+const props=defineProps<{rows:any[];lockSource?:boolean}>(),emit=defineEmits<{saved:[]}>()
 const {t}=useI18n(),{bizErrorMessage}=useBizError(),staff=useStaffStore()
 type Source={lot_id:number|null;receipt_source_id:number;pending:PendingPutaway|null}
-const drafts=ref<{key:number;searchGeneration:number;stock:any;source:Source|null;location:number|null;options:any[];quantity:number|null;remark:string}[]>([])
+type Draft={key:number;searchGeneration:number;stock:any;source:Source|null;location:number|null;options:any[];quantity:number|null;remark:string}
+const drafts=ref<Draft[]>([])
 let nextKey=0
-const newRow=(stock:any)=>({key:++nextKey,searchGeneration:0,stock,source:null,location:null,options:[],quantity:null,remark:''})
+const newRow=(stock:any):Draft=>{
+ const source=props.lockSource?{
+  lot_id:stock.lot_id??null,
+  receipt_source_id:stock.receipt_source_id,
+  pending:pendingPutaway(stock),
+ }:null
+ return {key:++nextKey,searchGeneration:0,stock,source,location:null,options:[],quantity:null,remark:''}
+}
 const split=(stock:any)=>{if(!busy.value&&!uncertain.value&&drafts.value.length<100)drafts.value.push(newRow(stock))}
 const {locationTypeLabel}=useOptionLabel()
 const busy=ref(false),error=ref(''),uncertain=ref(false)
@@ -19,7 +27,11 @@ const modalOpen=computed({get:()=>open.value,set:value=>{if(!value)void close()}
 watch(open,value=>{if(value){error.value='';uncertain.value=false;drafts.value=props.rows.map(newRow)}},{immediate:true})
 const locationOf=(row:typeof drafts.value[number])=>row.options.find(item=>item.id===row.location)
 const maximum=(row:typeof drafts.value[number])=>row.source?.pending&&locationOf(row)?putawaySplitLimit(row.source.pending,locationOf(row).location_type,drafts.value.filter(other=>other.key!==row.key&&other.stock.goods_id===row.stock.goods_id&&other.stock.warehouse_id===row.stock.warehouse_id&&other.source?.lot_id===row.source?.lot_id&&other.source?.receipt_source_id===row.source?.receipt_source_id&&locationOf(other)).map(other=>({quantity:Number(other.quantity),locationType:locationOf(other).location_type}))):0
-const valid=computed(()=>drafts.value.length>0&&new Set(drafts.value.map(row=>row.stock.warehouse_id)).size===1&&drafts.value.every(row=>row.source&&row.location&&Number.isInteger(row.quantity)&&Number(row.quantity)>0&&Number(row.quantity)<=maximum(row)))
+const setDefaultQuantity=(row:Draft)=>{
+ if(props.lockSource&&row.quantity===null)row.quantity=maximum(row)||null
+}
+const valid=computed(()=>drafts.value.length>0&&new Set(drafts.value.map(row=>row.stock.warehouse_id)).size===1&&drafts.value.every(row=>
+ row.source&&(!props.lockSource||row.source.receipt_source_id>0)&&row.location&&Number.isInteger(row.quantity)&&Number(row.quantity)>0&&Number(row.quantity)<=maximum(row)))
 const search=async(row:typeof drafts.value[number],code:string)=>{
  const seq=++row.searchGeneration
  const current=()=>open.value&&seq===row.searchGeneration&&drafts.value.some(item=>item.key===row.key)
@@ -39,7 +51,51 @@ const submit=async()=>{
 }
 const refresh=()=>{open.value=false;emit('saved')}
 </script>
-<template><WModal v-model:open="modalOpen" :title="t('goods.operations.create-putaway')" :closable="!busy"><p class="bulk-hint">{{t('pending-split.hint')}}</p><WAlert v-if="error" tone="block" :title="error"/><WAlert v-if="uncertain" tone="warn" :title="t('pending-bulk.uncertain')"><template #actions><WButton @click="refresh">{{t('pending-bulk.refresh')}}</WButton></template></WAlert><div class="bulk-rows"><section v-for="row in drafts" :key="row.key"><h3>{{row.stock.goods?.name}} <small>{{row.stock.goods?.code}}</small></h3><WFormGrid><PendingLotPicker :preferred-source="row.stock.source_type?row.stock:undefined" :goods-id="row.stock.goods_id" :warehouse-id="row.stock.warehouse_id" :disabled="busy||uncertain" @change="selectSource(row,$event)"/><WField :label="t('common.entities.location')"><WCombobox :key="String(row.source?.lot_id)" v-model="row.location" :search="code=>search(row,code)" :selected-label="locationOf(row)?.code||''" :disabled="busy||uncertain" two-line/></WField><WField :label="t('common.fields.quantity')" :hint="t('pending-bulk.maximum',{n:maximum(row)})"><WInput v-model.number="row.quantity" type="number" min="1" :max="maximum(row)" step="1" :disabled="busy||uncertain"/></WField><WField :label="t('common.fields.remark')" optional><WInput v-model="row.remark" :disabled="busy||uncertain"/></WField></WFormGrid><div class="split-actions"><WButton size="sm" :disabled="busy||uncertain||drafts.length>=100" @click="split(row.stock)">{{t('pending-split.add')}}</WButton><WButton v-if="drafts.length>1" size="sm" variant="text" :disabled="busy||uncertain" @click="drafts=drafts.filter(item=>item.key!==row.key)">{{t('pending-split.remove')}}</WButton></div></section></div><template #footer><WButton :disabled="busy" @click="close">{{t('button.cancel')}}</WButton><WButton variant="primary" :loading="busy" :disabled="!valid||uncertain" @click="submit">{{t('button.submit')}}</WButton></template></WModal></template>
+<template>
+  <WModal v-model:open="modalOpen" :title="t('goods.operations.create-putaway')" :closable="!busy">
+    <p class="bulk-hint">{{ t(lockSource ? 'pending-split.asn-hint' : 'pending-split.hint') }}</p>
+    <WAlert v-if="error" tone="block" :title="error" />
+    <WAlert v-if="uncertain" tone="warn" :title="t('pending-bulk.uncertain')">
+      <template #actions><WButton @click="refresh">{{ t('pending-bulk.refresh') }}</WButton></template>
+    </WAlert>
+    <div class="bulk-rows">
+      <section v-for="row in drafts" :key="row.key">
+        <h3>{{ row.stock.goods?.name }} <small>{{ row.stock.goods?.code }}</small></h3>
+        <WFormGrid>
+          <WField v-if="lockSource" :label="t('pending-source-view.source')" group>
+            <span>ASN #{{ row.stock.asn_id }} ? {{ row.stock.lot_no || t('lot-rules.unassigned') }}</span>
+          </WField>
+          <PendingLotPicker v-else :preferred-source="row.stock.source_type ? row.stock : undefined"
+            :goods-id="row.stock.goods_id" :warehouse-id="row.stock.warehouse_id"
+            :disabled="busy || uncertain" @change="selectSource(row, $event)" />
+          <WField :label="t('common.entities.location')">
+            <WCombobox :key="String(row.source?.lot_id)" v-model="row.location" :search="code => search(row, code)"
+              :selected-label="locationOf(row)?.code || ''" :disabled="busy || uncertain" two-line @select="setDefaultQuantity(row)" />
+          </WField>
+          <WField :label="t('common.fields.quantity')" :hint="t('pending-bulk.maximum', { n: maximum(row) })">
+            <WInput v-model.number="row.quantity" type="number" min="1" :max="maximum(row)" step="1" :disabled="busy || uncertain" />
+          </WField>
+          <WField :label="t('common.fields.remark')" optional>
+            <WInput v-model="row.remark" :disabled="busy || uncertain" />
+          </WField>
+        </WFormGrid>
+        <div class="split-actions">
+          <WButton size="sm" :disabled="busy || uncertain || drafts.length >= 100" @click="split(row.stock)">
+            {{ t(lockSource ? 'pending-split.add-location' : 'pending-split.add') }}
+          </WButton>
+          <WButton v-if="drafts.length > 1" size="sm" variant="text" :disabled="busy || uncertain"
+            @click="drafts = drafts.filter(item => item.key !== row.key)">
+            {{ t('pending-split.remove') }}
+          </WButton>
+        </div>
+      </section>
+    </div>
+    <template #footer>
+      <WButton :disabled="busy" @click="close">{{ t('button.cancel') }}</WButton>
+      <WButton variant="primary" :loading="busy" :disabled="!valid || uncertain" @click="submit">{{ t('button.submit') }}</WButton>
+    </template>
+  </WModal>
+</template>
 <style scoped>.bulk-hint{font-size:13px;line-height:20px;color:var(--w-text-2)}.bulk-rows{display:flex;flex-direction:column;gap:16px}.bulk-rows section{padding:12px 0;border-top:1px solid var(--w-line)}h3{margin:0 0 12px;font-size:14px;line-height:20px;font-weight:600;overflow-wrap:anywhere}small{font-size:12px;font-weight:400;color:var(--w-text-3)}</style>
 
 <style scoped>.split-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}</style>

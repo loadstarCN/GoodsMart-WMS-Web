@@ -112,7 +112,7 @@ const goPutaway=(row:any)=>{
  const destination=warehouses.warehouses.find(item=>Number(item.id)===Number(row.warehouse_id))
  if(!destination)return
  warehouses.selectWarehouse(destination)
- router.push({path:'/inventory',query:{pending_putaway:'true'}})
+ router.push({path:'/inventory/pending-sources',query:{asn_id:String(row.id)}})
 }
 watch(ready,()=>{fetchList();fetchCounts();loadSuppliers()})
 watch(()=>warehouses.currentWarehouse?.id,()=>{if(page.value>1)go({});else{fetchList();fetchCounts()}})

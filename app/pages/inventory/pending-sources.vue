@@ -4,14 +4,19 @@ import PutawayEditor from '~/components/inventory/PutawayEditor.vue'
 const {t}=useI18n(),route=useRoute(),router=useRouter(),warehouse=useWarehouseStore(),staff=useStaffStore(),{bizErrorMessage}=useBizError()
 const data=ref<any>(null),loading=ref(false),error=ref(''),keyword=ref(String(route.query.keyword||''))
 const ready=ref(false)
+const asnScoped=computed(()=>Object.hasOwn(route.query,'asn_id'))
+const asnId=computed(()=>String(route.query.asn_id??''))
+const title=computed(()=>asnScoped.value?t('pending-source-view.asn-title',{id:asnId.value}):t('pending-source-view.title'))
 const selected=ref<(string|number)[]>([]),bulkOpen=ref(false),exporting=ref(false)
 const selection=computed(()=>data.value?.items.filter((row:any)=>selected.value.includes(row.id))||[])
 const canPutaway=computed(()=>ready.value&&!!staff.staffInfo&&staff.hasPermission('putaway_edit'))
 const filters=()=>Object.fromEntries(['keyword','source','damaged','has_lot','overdue_days'].map(key=>[key,route.query[key]]).filter(([,value])=>value!=null&&value!==''))
+const requestFilters=()=>({...filters(),...(asnScoped.value?{asn_id:asnId.value}:{})})
 let generation=0
 const go=(patch:Record<string,unknown>,keepPage=false)=>{
  const query:Record<string,any>={...filters(),...patch};if(keepPage&&route.query.page)query.page=patch.page??route.query.page
  for(const key of Object.keys(query))if(query[key]==null||query[key]==='')delete query[key]
+ if(asnScoped.value)query.asn_id=asnId.value
  router.push({query})
 }
 const load=async()=>{
@@ -22,14 +27,21 @@ const load=async()=>{
  const current=await staff.getCurrentStaffInfo();if(seq!==generation)return
  if(!current){error.value=t('common.validation.company-required');loading.value=false;return}
  ready.value=true
- const result=await httpRequest<any>('/api/warehouse/inventory/pending-putaway/sources',{headers:warehouseHeaders(id),params:{...filters(),page:Number(route.query.page)||1,per_page:50},onError:e=>{if(seq===generation)error.value=bizErrorMessage(e)}})
- if(seq===generation){data.value=result;loading.value=false}
+ const result=await httpRequest<any>('/api/warehouse/inventory/pending-putaway/sources',{headers:warehouseHeaders(id),params:{...requestFilters(),page:Number(route.query.page)||1,per_page:50},onError:e=>{if(seq===generation)error.value=bizErrorMessage(e)}})
+ if(seq!==generation)return
+ loading.value=false
+ if(result&&asnScoped.value&&(result.asn?.id!==Number(asnId.value)||result.asn?.warehouse_id!==id||!Array.isArray(result.items)||
+   result.items.some((row:any)=>row.asn_id!==result.asn.id||row.warehouse_id!==id||!(row.receipt_source_id>0)))){
+  error.value=t('pending-source-view.asn-scope-error')
+  return
+ }
+ data.value=result
 }
 const download=async()=>{
  const id=warehouse.currentWarehouse?.id,seq=generation
  if(!id||!ready.value||!data.value||loading.value||exporting.value)return
  exporting.value=true;error.value=''
- try{const params=new URLSearchParams(Object.entries(filters()).map(([key,value])=>[key,String(value)]));await downloadFile('/api/warehouse/inventory/pending-putaway/sources/export?'+params,{headers:warehouseHeaders(id)},'pending-sources.csv')}
+ try{const params=new URLSearchParams(Object.entries(requestFilters()).map(([key,value])=>[key,String(value)]));await downloadFile('/api/warehouse/inventory/pending-putaway/sources/export?'+params,{headers:warehouseHeaders(id)},'pending-sources.csv')}
  catch(e){if(seq===generation)error.value=bizErrorMessage(e as HttpRequestError)}finally{exporting.value=false}
 }
 const singlePutaway=ref(false)
@@ -41,12 +53,17 @@ const openBulk=(row?:any)=>{
 watch(()=>route.query,()=>{keyword.value=String(route.query.keyword||'');bulkOpen.value=false;load()})
 watch(()=>warehouse.currentWarehouse?.id,()=>{bulkOpen.value=false;if(Number(route.query.page)>1)go({});else load()})
 onMounted(load);onBeforeUnmount(()=>generation++)
-useHead({title:()=>t('pending-source-view.title')})
+useHead({title})
+const summaryColumns=computed(()=>[
+ {key:'quantity',label:t('inventory.pending.total')},
+ {key:'damaged_quantity',label:t('inventory.pending.damaged')},
+ asnScoped.value?{key:'goods_count',label:t('nav.goods')}:{key:'unknown_quantity',label:t('putaway-source.unknown')},
+])
 const dwell=(row:any)=>{const date=row.pending_since&&parseDateTime(row.pending_since);if(!date)return '—';const days=Math.floor((Date.now()-date.getTime())/86400000);return days<1?t('inventory.pending.dwell-under-day'):t('inventory.pending.dwell-days',{n:days})}
 const columns=computed(()=>[
  {key:'goods',label:t('nav.goods'),wrap:true},
  {key:'lot_no',label:t('goods-label.lot'),value:(row:any)=>row.lot_no||(row.tracks_lots?t('lot-rules.unassigned'):'')},
- {key:'source',label:t('pending-source-view.source')},
+ ...(!asnScoped.value?[{key:'source',label:t('pending-source-view.source')}]:[]),
  {key:'expiry_date',label:t('goods-label.expiry'),value:(row:any)=>row.expiry_date||'—'},
  ...[{key:'good_quantity',label:t('inventory.pending.good')},{key:'sorted_damage_stock',label:t('inventory.pending.damaged')},{key:'sorted_stock',label:t('inventory.pending.total')}].map(c=>({...c,type:'qty' as const,keepZero:true})),
  {key:'dwell',label:t('inventory.pending.dwell'),value:dwell},
@@ -56,16 +73,17 @@ const columns=computed(()=>[
 </script>
 <template>
  <div class="w-pending-sources w-scope">
-  <header><div><h1>{{t('pending-source-view.title')}}</h1><p>{{t('pending-source-view.hint')}}</p></div><WButton :disabled="!warehouse.currentWarehouse||!ready||!data||loading||!!error" :loading="exporting" icon="download" @click="download">{{t('goods.ui.export')}}</WButton></header>
-  <WButton variant="text" to="/inventory?pending_putaway=true">← {{t('inventory.tabs.pending-putaway')}}</WButton>
+  <header><div><h1>{{title}}</h1><p>{{t(asnScoped?'pending-source-view.asn-hint':'pending-source-view.hint')}}</p></div><WButton :disabled="!warehouse.currentWarehouse||!ready||!data||loading||!!error" :loading="exporting" icon="download" @click="download">{{t('goods.ui.export')}}</WButton></header>
+  <WButton variant="text" :to="asnScoped?'/asn?inbound_stage=putaway':'/inventory?pending_putaway=true'">← {{t(asnScoped?'nav.ASN':'inventory.tabs.pending-putaway')}}</WButton>
   <WAlert v-if="!warehouse.currentWarehouse" tone="warn" :title="t('pending-source-view.warehouse')"/>
   <template v-else>
    <WAlert v-if="error" tone="block" :title="error"><template #actions><WButton @click="load">{{t('dn.list.retry')}}</WButton></template></WAlert>
-   <section v-if="data" class="summary"><div v-for="item in [{key:'quantity',label:t('inventory.pending.total')},{key:'damaged_quantity',label:t('inventory.pending.damaged')},{key:'unknown_quantity',label:t('putaway-source.unknown')}]" :key="item.key"><span>{{item.label}}</span><strong>{{data.summary[item.key]}}</strong></div></section>
+   <WAlert v-if="data?.asn?.putaway_tracked===false" tone="warn" :title="t('pending-source-view.asn-untracked')"/>
+   <section v-if="data" class="summary"><div v-for="item in summaryColumns" :key="item.key"><span>{{item.label}}</span><strong>{{data.summary[item.key]}}</strong></div></section>
    <WCard flush>
     <form @submit.prevent="go({keyword:keyword.trim()})">
      <WInput v-model="keyword" type="search" :aria-label="t('common.search')" :placeholder="t('pending-source-view.search')"><template #prefix><WIcon name="search" :size="16"/></template></WInput><WButton type="submit">{{t('common.search')}}</WButton>
-     <WFilterSelect :model-value="String(route.query.source||'')||null" :label="t('pending-source-view.source')" :options="[{value:'asn',label:'ASN'},...['pack_short_return','dn_cancel_return'].map(value=>({value,label:t('ledger.movements.'+value)})),{value:'unknown',label:t('putaway-source.unknown')}]" @change="value=>go({source:value})"/>
+     <WFilterSelect v-if="!asnScoped" :model-value="String(route.query.source||'')||null" :label="t('pending-source-view.source')" :options="[{value:'asn',label:'ASN'},...['pack_short_return','dn_cancel_return'].map(value=>({value,label:t('ledger.movements.'+value)})),{value:'unknown',label:t('putaway-source.unknown')}]" @change="value=>go({source:value})"/>
      <WFilterSelect :model-value="String(route.query.damaged||'')||null" :label="t('inventory.pending.damaged')" :options="[{value:'true',label:t('inventory.pending.damaged')}]" @change="value=>go({damaged:value})"/>
      <WFilterSelect :model-value="String(route.query.has_lot||'')||null" :label="t('goods-label.lot')" :options="[{value:'true',label:t('pending-source-view.with-lot')}]" @change="value=>go({has_lot:value})"/>
      <WFilterSelect :model-value="String(route.query.overdue_days||'')||null" :label="t('inventory.pending.dwell')" :options="[3,7,30].map(n=>({value:String(n),label:t('pending-age.overdue',{days:n})}))" @change="value=>go({overdue_days:value})"/>
@@ -80,7 +98,8 @@ const columns=computed(()=>[
     <footer><WPagination :page="Number(route.query.page)||1" :page-size="50" :total="data?.total||0" show-total @update:page="value=>go({page:value},true)"/></footer>
    </WCard>
   </template>
-  <component :is="singlePutaway ? PutawayEditor : BulkPutaway" v-model:open="bulkOpen" :rows="selection" @saved="load"/>
+  <PutawayEditor v-if="singlePutaway" v-model:open="bulkOpen" :rows="selection" :lock-source="asnScoped" @saved="load"/>
+  <BulkPutaway v-else v-model:open="bulkOpen" :rows="selection" @saved="load"/>
  </div>
 </template>
 <style scoped>
