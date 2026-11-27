@@ -4677,7 +4677,7 @@
     "receive_days": "收货最少剩余天数",
     "ship_days": "发货最少剩余天数",
     "strategy": "出库顺序",
-    "allow_unassigned": "允许无批次库存发货",
+    "allow_unassigned": "允许未标批号的库存发货",
     "none": "不强制批次",
     "lot": "批次管理",
     "expiry": "批次与效期",
@@ -4698,7 +4698,7 @@
     "relabel": "批次补录／改标",
     "relabel-help": "仅修改所选数量的批次，不改变库位或库存总量。已被拣货任务占用的数量不可改标。",
     "relabel-validation": "请选择不同的目标批次，填写有效数量和改标原因。",
-    "unassigned": "无批次"
+    "unassigned": "批号缺失"
   },
   "expiry": {
     "title": "临期批号 · 按有效期至",
@@ -4815,8 +4815,12 @@
   "sorting-quantity": {
     "edit": "修改数量",
     "title": "收货数量更正",
-    "request": "提交数量更正",
-    "submit": "提交审核",
+    "request": "更正数量",
+    "submit": "整单提交审核",
+    "row-count": "{count} 行数量更正",
+    "changed-rows": "已修改 {count} 行",
+    "received-total": "实收合计",
+    "processed": "已处理",
     "empty": "暂无数量更正记录",
     "pending": "待审核更正",
     "approved": "已批准",
@@ -4825,9 +4829,8 @@
     "reject": "驳回更正",
     "reason": "更正原因",
     "review-note": "审核备注",
-    "other-lot": "其他批次",
     "original-count": "原数量 {count}",
-    "approval-hint": "批准后按差额更新该收货批次的库存和实收数量。"
+    "approval-hint": "批准后一次更新本次更正的全部库存和实收数量。"
   },
   "receiving-exceptions": {
     "title": "拒收／让步收货",
@@ -4877,7 +4880,7 @@
     "actual": "实际装入数量",
     "hint": "本次少打包涉及多个批次。填写实际装入的各批数量；未装入的数量将按批次退回待上架。",
     "total": "该商品已保存打包 {count} 件",
-    "unassigned": "无批次",
+    "unassigned": "批号缺失",
     "check": "每批不得超过已拣数量，各批合计必须等于该商品已保存的打包数量。",
     "returned": "退回待上架",
     "summary": "打包批次明细"

@@ -4815,8 +4815,12 @@
   "sorting-quantity": {
     "edit": "数量を編集",
     "title": "入荷数量の訂正",
-    "request": "数量訂正を申請",
-    "submit": "承認を申請",
+    "request": "数量を訂正",
+    "submit": "一括で承認を申請",
+    "row-count": "数量訂正 {count} 行",
+    "changed-rows": "{count} 行を変更",
+    "received-total": "実入荷合計",
+    "processed": "処理済み",
     "empty": "数量訂正の履歴はありません",
     "pending": "承認待ちの訂正",
     "approved": "承認済み",
@@ -4825,9 +4829,8 @@
     "reject": "訂正を却下",
     "reason": "訂正理由",
     "review-note": "承認・却下のメモ",
-    "other-lot": "その他のロット",
     "original-count": "訂正前 {count}",
-    "approval-hint": "承認すると、この入荷ロットの在庫と実入荷数量に差分が反映されます。"
+    "approval-hint": "承認すると、申請したすべての行の在庫と実入荷数量に差分が反映されます。"
   },
   "receiving-exceptions": {
     "title": "受入拒否・条件付き受入",

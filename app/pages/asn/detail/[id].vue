@@ -66,8 +66,9 @@ const quantityDifferences = computed(() => {
   return result
 })
 const hasQuantityDifference = computed(() => [...quantityDifferences.value.values()].some(row => row.quantity !== 0))
-const hasReceiptIssue = computed(() => hasQuantityDifference.value ||
-  (record.value?.status === 'completed' && Number(record.value.total_rejected_quantity) > 0))
+const hasDamage = computed(() => record.value?.status === 'completed' && Number(record.value.total_damage_quantity) > 0)
+const hasRejection = computed(() => record.value?.status === 'completed' && Number(record.value.total_rejected_quantity) > 0)
+const hasReceiptIssue = computed(() => hasQuantityDifference.value || hasRejection.value)
 const lineDifference = (row: { id?: number; goods_id: number }) => {
   const difference = quantityDifferences.value.get(row.goods_id)
   return row.id !== undefined && difference?.firstRow === row.id ? difference.quantity : 0
@@ -75,11 +76,13 @@ const lineDifference = (row: { id?: number; goods_id: number }) => {
 const columns = computed(() => [
   { key: 'goods', label: t('asn.form-ui.goods-specs'), wrap: true },
   { key: 'quantity', label: t('asn.form-ui.expected'), type: 'qty' as const, keepZero: true, strong: true },
-  { key: 'actual_quantity', label: t('common.quantities.actual'), type: 'qty' as const, keepZero: true, value: (row: any) => record.value?.status === 'completed' ? row.actual_quantity : null },
+  { key: 'actual_quantity', label: t('sorting-quantity.received-total'), type: 'qty' as const, keepZero: true, value: (row: any) => record.value?.status === 'completed' ? row.actual_quantity : null },
   ...(hasQuantityDifference.value ? [{ key: 'variance', label: t('operations.ui.variance'), align: 'right' as const }] : []),
-  { key: 'sorted_quantity', label: t('common.quantities.sorted'), type: 'qty' as const },
-  { key: 'damage_quantity', label: t('common.quantities.damaged'), type: 'qty' as const },
-  { key: 'rejected_quantity', label: t('asn.form-ui.rejected'), type: 'qty' as const, keepZero: true },
+  ...(hasDamage.value ? [
+    { key: 'sorted_quantity', label: t('inventory.pending.good'), type: 'qty' as const, keepZero: true },
+    { key: 'damage_quantity', label: t('inventory.pending.damaged'), type: 'qty' as const, keepZero: true },
+  ] : []),
+  ...(hasRejection.value ? [{ key: 'rejected_quantity', label: t('asn.form-ui.rejected'), type: 'qty' as const, keepZero: true }] : []),
   { key: 'lineWeight', label: `${t('goods.fields.weight')} (kg)`, type: 'qty' as const, keepZero: true, format: measureFormat.value.format, help: t('asn.form-ui.line-measure-help') },
   { key: 'lineVolume', label: `${t('goods.fields.volume')} (m³)`, type: 'qty' as const, keepZero: true, format: measureFormat.value.format, help: t('asn.form-ui.line-measure-help') },
   { key: 'remark', label: t('common.fields.remark'), wrap: true },
@@ -118,10 +121,10 @@ const tone = computed(() => flow.value?.stage === 'exception' ? 'bad' : record.v
                 <th>{{ t('asn.form-ui.total') }}</th>
                 <td>{{ record.total_quantity }}</td>
                 <td>{{ record.status === 'completed' ? record.total_actual_quantity : '—' }}</td>
-                <td v-if="hasQuantityDifference"><WDifference :value="record.total_actual_quantity - record.total_quantity" /></td>
-                <td>{{ record.total_sorted_quantity || '' }}</td>
-                <td>{{ record.total_damage_quantity || '' }}</td>
-                <td>{{ record.total_rejected_quantity ?? '—' }}</td>
+                <td v-if="hasQuantityDifference"><WDifference :value="record.total_actual_quantity + Number(record.total_rejected_quantity || 0) - record.total_quantity" /></td>
+                <td v-if="hasDamage">{{ record.total_sorted_quantity }}</td>
+                <td v-if="hasDamage">{{ record.total_damage_quantity }}</td>
+                <td v-if="hasRejection">{{ record.total_rejected_quantity }}</td>
                 <td>{{ measurements.totalWeight != null ? measureFormat.format(measurements.totalWeight) : '' }}</td>
                 <td>{{ measurements.totalVolume != null ? measureFormat.format(measurements.totalVolume) : '' }}</td>
                 <td />

@@ -63,7 +63,7 @@ const refresh=()=>{open.value=false;emit('saved')}
         <h3>{{ row.stock.goods?.name }} <small>{{ row.stock.goods?.code }}</small></h3>
         <WFormGrid>
           <WField v-if="lockSource" :label="t('pending-source-view.source')" group>
-            <span>ASN #{{ row.stock.asn_id }} ? {{ row.stock.lot_no || t('lot-rules.unassigned') }}</span>
+            <span>ASN #{{ row.stock.asn_id }}<template v-if="row.stock.lot_no"> · {{ row.stock.lot_no }}</template></span>
           </WField>
           <PendingLotPicker v-else :preferred-source="row.stock.source_type ? row.stock : undefined"
             :goods-id="row.stock.goods_id" :warehouse-id="row.stock.warehouse_id"

@@ -27,7 +27,7 @@ onMounted(load);onBeforeUnmount(()=>generation++)
 useHead({title:()=>t('lot-view.title')})
 const columns=computed(()=>[
  {key:'goods',label:t('nav.goods'),wrap:true},
- {key:'lot_no',label:t('goods-label.lot'),value:(row:any)=>row.lot_no||t('lot-rules.unassigned')},
+ {key:'lot_no',label:t('goods-label.lot'),value:(row:any)=>row.lot_no},
  {key:'production_date',label:t('goods.fields.product-date'),value:(row:any)=>row.production_date||'—'},
  {key:'expiry_date',label:t('goods-label.expiry'),value:(row:any)=>row.expiry_date||'—'},
  {key:'remaining_days',label:t('lot-view.remaining'),type:'qty' as const,keepZero:true,value:(row:any)=>row.remaining_days??'—'},

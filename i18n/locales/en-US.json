@@ -4815,8 +4815,12 @@
   "sorting-quantity": {
     "edit": "Edit quantity",
     "title": "Receipt quantity corrections",
-    "request": "Request a correction",
-    "submit": "Submit for review",
+    "request": "Correct quantities",
+    "submit": "Submit all for review",
+    "row-count": "{count} correction rows",
+    "changed-rows": "{count} rows changed",
+    "received-total": "Total received",
+    "processed": "Processed",
     "empty": "No quantity corrections yet",
     "pending": "Correction awaiting review",
     "approved": "Approved",
@@ -4825,9 +4829,8 @@
     "reject": "Reject correction",
     "reason": "Correction reason",
     "review-note": "Review note",
-    "other-lot": "Another lot",
     "original-count": "Original: {count}",
-    "approval-hint": "Approval applies the difference to stock and the received quantity for this receipt lot."
+    "approval-hint": "Approval updates the stock and received quantities for all rows in this request together."
   },
   "receiving-exceptions": {
     "title": "Rejection / receipt concession",

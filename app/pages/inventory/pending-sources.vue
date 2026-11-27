@@ -62,7 +62,7 @@ const summaryColumns=computed(()=>[
 const dwell=(row:any)=>{const date=row.pending_since&&parseDateTime(row.pending_since);if(!date)return '—';const days=Math.floor((Date.now()-date.getTime())/86400000);return days<1?t('inventory.pending.dwell-under-day'):t('inventory.pending.dwell-days',{n:days})}
 const columns=computed(()=>[
  {key:'goods',label:t('nav.goods'),wrap:true},
- {key:'lot_no',label:t('goods-label.lot'),value:(row:any)=>row.lot_no||(row.tracks_lots?t('lot-rules.unassigned'):'')},
+ {key:'lot_no',label:t('goods-label.lot'),value:(row:any)=>row.lot_no},
  ...(!asnScoped.value?[{key:'source',label:t('pending-source-view.source')}]:[]),
  {key:'expiry_date',label:t('goods-label.expiry'),value:(row:any)=>row.expiry_date||'—'},
  ...[{key:'good_quantity',label:t('inventory.pending.good')},{key:'sorted_damage_stock',label:t('inventory.pending.damaged')},{key:'sorted_stock',label:t('inventory.pending.total')}].map(c=>({...c,type:'qty' as const,keepZero:true})),

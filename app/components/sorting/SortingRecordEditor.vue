@@ -68,7 +68,7 @@ async function save() {
 <template>
   <WModal v-model:open="open" :title="t('sorting-quantity.edit')" :closable="!busy" :close-on-backdrop="!busy">
     <form class="sorting-record-editor" @submit.prevent="save">
-      <div><strong>{{ line?.goods?.name }}</strong> · {{ line?.lot_no || t('lot-rules.unassigned') }}</div>
+      <div><strong>{{ line?.goods?.name }}</strong><template v-if="line?.lot_no"> · {{ line.lot_no }}</template></div>
       <WAlert v-if="error" tone="block" :title="error" />
       <SortingQuantityFields v-model="quantities" :disabled="busy" />
       <WField v-if="quantities.rejected_quantity" :label="t('receiving-exceptions.rejection-reason')">

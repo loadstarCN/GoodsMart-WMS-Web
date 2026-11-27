@@ -62,7 +62,7 @@ const details = computed(() => (props.rows ?? fallback.value ?? []).flatMap(row 
       <NuxtLink v-if="row.link" class="source" :to="row.link">{{ row.source }}</NuxtLink>
       <span v-else class="source" :class="{ 'source--unknown': !row.asn_id && !row.dn_id }">{{ row.source }}</span>
       <span v-if="row.dn_id && row.source_type" class="metadata">{{ t('ledger.movements.' + row.source_type) }}</span>
-      <span class="metadata">{{ row.lot_no ? t('pending-age.lot-number', { lot: row.lot_no }) : t('lot-rules.unassigned') }}</span>
+      <span v-if="row.lot_no" class="metadata">{{ t('pending-age.lot-number', { lot: row.lot_no }) }}</span>
       <span v-if="row.expiry_date" class="metadata">{{ t('pending-age.lot-expiry', { date: row.expiry_date }) }}</span>
       <span class="quantities">
         <span v-if="row.good">{{ t('inventory.pending.good') }} <strong>{{ n(row.good) }}</strong></span>
